@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export type Page =
