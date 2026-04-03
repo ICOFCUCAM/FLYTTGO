@@ -78,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }
 
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+
   async function updateProfile(data: Partial<UserProfile>) {
     if (!user) return;
     await supabase.from('profiles').update(data).eq('user_id', user.id);
