@@ -37,6 +37,9 @@ interface AuthContextType {
     password: string
   ) => Promise<{ error: any }>;
 
+  signInWithGoogle: () => Promise<{ error: any }>;
+resetPassword: (email: string) => Promise<{ error: any }>;
+
   signOut: () => Promise<void>;
 
   updateProfile: (
@@ -233,6 +236,17 @@ export function AuthProvider({
     return { error };
   }
 
+async function signInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: window.location.origin,
+    },
+  });
+
+  return { error };
+}
+
 /* ================= SIGNOUT ================= */
 
   async function signOut() {
@@ -241,6 +255,14 @@ export function AuthProvider({
     setUser(null);
     setProfile(null);
   }
+
+async function resetPassword(email: string) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
+  });
+
+  return { error };
+}
 
 /* ================= UPDATE PROFILE ================= */
 
@@ -268,16 +290,18 @@ export function AuthProvider({
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        profile,
-        loading,
-        signUp,
-        signIn,
-        signOut,
-        updateProfile
-      }}
-    >
+value={{
+  user,
+  profile,
+  loading,
+  signUp,
+  signIn,
+  signInWithGoogle,
+  resetPassword,
+  signOut,
+  updateProfile,
+}}
+>
       {children}
     </AuthContext.Provider>
   );
