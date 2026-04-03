@@ -5,7 +5,7 @@ import { X, Eye, EyeOff } from 'lucide-react';
 
 export default function AuthModal() {
   const { showAuthModal, setShowAuthModal, authMode, setAuthMode } = useApp();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -17,6 +17,7 @@ export default function AuthModal() {
   if (!showAuthModal) return null;
 
   const isSignIn = authMode === 'signin';
+  const isReset = authMode === 'reset-password';
   const isDriverSignup = authMode === 'driver-signup';
   const role = isDriverSignup ? 'driver' : 'customer';
 
@@ -24,18 +25,42 @@ export default function AuthModal() {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      if (isSignIn) {
-        const { error } = await signIn(email, password);
-        if (error) { setError(error.message); return; }
-      } else {
-        const { error } = await signUp(email, password, firstName, lastName, role);
-        if (error) { setError(error.message); return; }
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
+
+  try {
+    if (isReset) {
+      const { error } = await resetPassword(email);
+      if (error) {
+        setError(error.message);
+        return;
       }
-      setShowAuthModal(false);
-    } finally {
-      setLoading(false);
+      setError('Password reset link sent to your email.');
+      return;
     }
+
+    if (isSignIn) {
+      const { error } = await signIn(email, password);
+      if (error) {
+        setError(error.message);
+        return;
+      }
+    } else {
+      const { error } = await signUp(email, password, firstName, lastName, role);
+      if (error) {
+        setError(error.message);
+        return;
+      }
+    }
+
+    setShowAuthModal(false);
+
+  } finally {
+    setLoading(false);
   }
+}  
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -90,14 +115,55 @@ export default function AuthModal() {
               </button>
             </div>
           </div>
+         
+         {isSignIn && (
+  <div className="text-right">
+    <button
+      type="button"
+      onClick={() => setAuthMode('reset-password')}
+      className="text-xs text-emerald-600 hover:underline"
+    >
+      Forgot password?
+    </button>
+  </div>
+)}
+
           <button type="submit" disabled={loading}
             className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition disabled:opacity-60">
             {loading ? 'Please wait...' : isSignIn ? 'Sign In' : isDriverSignup ? 'Apply as Driver' : 'Create Account'}
           </button>
+
+        <div className="relative flex items-center my-4">
+  <div className="flex-grow border-t border-gray-200"></div>
+  <span className="mx-3 text-xs text-gray-400">OR</span>
+  <div className="flex-grow border-t border-gray-200"></div>
+</div>
+
+<button
+  type="button"
+  onClick={signInWithGoogle}
+  className="w-full flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 text-sm font-medium hover:bg-gray-50 transition"
+>
+  <img
+    src="https://www.svgrepo.com/show/475656/google-color.svg"
+    className="w-4 h-4"
+  />
+  Continue with Google
+</button>
         </form>
 
         <p className="text-center text-sm text-gray-500 mt-4">
-          {isSignIn ? (
+          {isReset ? (
+  <>
+    Remember your password?{' '}
+    <button
+      onClick={() => setAuthMode('signin')}
+      className="text-emerald-600 font-semibold hover:underline"
+    >
+      Sign in
+    </button>
+  </>
+) : isSignIn ? (
             <>Don't have an account?{' '}
               <button onClick={() => setAuthMode('signup')} className="text-emerald-600 font-semibold hover:underline">Sign up</button>
             </>
