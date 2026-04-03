@@ -51,13 +51,6 @@ const AuthContext =
     undefined
   );
 
-/* ================= CONTEXT ================= */
-
-const AuthContext =
-  createContext<AuthContextType | undefined>(
-    undefined
-  );
-
 /* ================= PROVIDER ================= */
 
 export function AuthProvider({
