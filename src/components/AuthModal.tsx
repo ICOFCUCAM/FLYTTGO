@@ -24,11 +24,6 @@ export default function AuthModal() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(''); setLoading(true);
-    try {
-async function handleSubmit(e: React.FormEvent) {
-  e.preventDefault();
-  setError('');
-  setLoading(true);
 
   try {
     if (isReset) {
