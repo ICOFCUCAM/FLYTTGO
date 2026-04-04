@@ -1,0 +1,143 @@
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../lib/auth";
+import { useApp } from "../lib/store";
+import { supabase } from "../lib/supabase";
+
+function fmt(value: any): string {
+  const n = Number(value ?? 0);
+  return String(Math.floor(isNaN(n) ? 0 : n));
+}
+
+export default function CustomerDashboard() {
+  const { profile, user } = useAuth();
+  const { setPage } = useApp();
+  const [stats, setStats] = useState({ total: 0, active: 0, completed: 0, spent: 0 });
+  const [recentBookings, setRecentBookings] = useState<any[]>([]);
+  const [activeBooking, setActiveBooking] = useState<any>(null);
+  const [escrowAdjustment, setEscrowAdjustment] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) { setLoading(false); return; }
+    loadData();
+  }, [user]);
+
+  async function loadData() {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      const { data } = await supabase.from("bookings").select("*").eq("customer_id", user.id).order("created_at", { ascending: false });
+      const bookings = data || [];
+      setRecentBookings(bookings.slice(0, 5));
+      const active = bookings.find((b: any) => !["completed", "cancelled"].includes(b.status));
+      setActiveBooking(active || null);
+      setStats({
+        total: bookings.length,
+        active: bookings.filter((b: any) => !["completed", "cancelled"].includes(b.status)).length,
+        completed: bookings.filter((b: any) => b.status === "completed").length,
+        spent: bookings.reduce((s: number, b: any) => { const val = Number(b.final_price ?? b.original_price ?? b.price_estimate ?? 0); return s + (isNaN(val) ? 0 : val); }, 0)
+      });
+      if (active) {
+        const { data: escrow } = await supabase.from("escrow_payments").select("*").eq("booking_id", active.id).maybeSingle();
+        setEscrowAdjustment(escrow || null);
+      }
+    } catch (err) { console.error("Dashboard error:", err); }
+    setLoading(false);
+  }
+
+  async function confirmCompletion(bookingId: string) {
+    await supabase.from("bookings").update({ customer_confirmation: true, status: "customer_confirmed" }).eq("id", bookingId);
+    const { data: booking } = await supabase.from("bookings").select("driver_confirmation").eq("id", bookingId).single();
+    if (booking?.driver_confirmation === true) {
+      await fetch("https://jomhtghowrtegjfddite.databasepad.com/functions/v1/process-payment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "release_escrow", bookingId }) });
+      alert("Job complete! Payment released to driver.");
+    } else { alert("Confirmed! Waiting for driver confirmation."); }
+    loadData();
+  }
+
+  async function approveAdjustment(escrowId: string) {
+    await supabase.from("escrow_payments").update({ adjustment_approved: true }).eq("id", escrowId);
+    alert("Additional time charge approved"); loadData();
+  }
+
+  async function cancelBooking(bookingId: string) {
+    await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
+    alert("Booking cancelled"); loadData();
+  }
+
+  if (!user) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <p className="text-gray-700 font-semibold mb-2">Please sign in to view your dashboard</p>
+        <button onClick={() => setPage("home")} className="mt-4 px-6 py-2 bg-emerald-600 text-white rounded-xl">Go to Home</button>
+      </div>
+    </div>
+  );
+
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-gray-500">Loading your dashboard...</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {profile?.first_name || "Customer"}</h1>
+          <p className="text-gray-600 mt-1">Track your move in real time</p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[{ label: "Total Bookings", value: stats.total }, { label: "Active", value: stats.active }, { label: "Completed", value: stats.completed }, { label: "Total Spent", value: `${fmt(stats.spent)} NOK` }].map(s => (
+            <div key={s.label} className="bg-white rounded-xl p-5 border">
+              <p className="text-sm text-gray-500">{s.label}</p>
+              <p className="text-2xl font-bold">{s.value}</p>
+            </div>
+          ))}
+        </div>
+        {activeBooking && (
+          <div className="bg-white rounded-xl border p-6 mb-8">
+            <h2 className="text-lg font-bold mb-4">Active Booking</h2>
+            <p className="font-medium">{activeBooking.pickup_address} → {activeBooking.dropoff_address}</p>
+            <p className="text-sm text-gray-500 mt-2">Status: <strong>{activeBooking.status?.replace(/_/g, " ")}</strong></p>
+            <p className="text-sm text-gray-500">Estimated Hours: <strong>{activeBooking.estimated_hours ?? "-"}</strong></p>
+            <p className="text-sm text-gray-500">Actual Hours: <strong>{activeBooking.actual_hours ?? "Running"}</strong></p>
+            <p className="text-sm text-gray-500">Escrow protected until completion</p>
+            <p className="text-lg font-bold mt-2">{fmt(activeBooking.final_price ?? activeBooking.original_price ?? activeBooking.price_estimate)} NOK</p>
+            {activeBooking.price_adjusted && (<div className="bg-orange-50 border border-orange-200 p-4 rounded mt-4"><p className="text-orange-700 font-semibold">Extra time detected</p><p className="text-sm text-orange-600">Final price updated automatically</p></div>)}
+            {escrowAdjustment?.adjustment_required && !escrowAdjustment.adjustment_approved && (<button onClick={() => approveAdjustment(escrowAdjustment.id)} className="mt-4 bg-orange-600 text-white px-4 py-2 rounded">Approve additional time charge</button>)}
+            {activeBooking.status === "completed_by_driver" && (<button onClick={() => confirmCompletion(activeBooking.id)} className="mt-4 bg-emerald-600 text-white px-4 py-2 rounded">Confirm Completion</button>)}
+            {activeBooking.status === "awaiting_driver" && (<button onClick={() => cancelBooking(activeBooking.id)} className="mt-4 bg-red-600 text-white px-4 py-2 rounded">Cancel Booking</button>)}
+          </div>
+        )}
+        <div className="grid sm:grid-cols-3 gap-4 mb-8">
+          <button onClick={() => setPage("booking")} className="bg-emerald-600 text-white rounded-xl p-5 font-semibold">New Booking</button>
+          <button onClick={() => setPage("my-bookings")} className="bg-white rounded-xl p-5 border font-semibold">My Bookings</button>
+          <button onClick={() => setPage("van-guide")} className="bg-white rounded-xl p-5 border font-semibold">Van Calculator</button>
+        </div>
+        <div className="bg-white rounded-xl border overflow-hidden">
+          <div className="p-5 border-b"><h2 className="text-lg font-bold">Recent Bookings</h2></div>
+          {recentBookings.length === 0 ? (<div className="p-8 text-center text-gray-500">No bookings yet</div>) : (
+            <div className="divide-y">
+              {recentBookings.map(b => (
+                <div key={b.id} className="p-5 flex justify-between items-center">
+                  <div>
+                    <p className="font-medium">{b.pickup_address} → {b.dropoff_address}</p>
+                    <p className="text-xs text-gray-500">{b.created_at ? new Date(b.created_at).toLocaleDateString() : "-"}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold">{fmt(b.final_price ?? b.original_price ?? b.price_estimate)} NOK</p>
+                    <span className={`text-xs px-2 py-1 rounded ${b.status === "completed" ? "bg-emerald-100 text-emerald-700" : b.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>{b.status?.replace(/_/g, " ")}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
