@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseFunctionUrl } from '../lib/supabase';
 
 function safeNumber(value: any): number {
   const n = Number(value ?? 0);
@@ -202,14 +202,14 @@ export default function DriverPortal() {
   async function startJob(jobId: string) { await supabase.from('bookings').update({ status: 'in_transit', start_time: new Date().toISOString() }).eq('id', jobId); loadJobs(); }
   async function finishJob(jobId: string) {
     await supabase.from('bookings').update({ status: 'completed_by_driver', end_time: new Date().toISOString() }).eq('id', jobId);
-    await fetch('https://jomhtghowrtegjfddite.databasepad.com/functions/v1/process-payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'recalculate_price', bookingId: jobId }) });
+    await fetch(supabaseFunctionUrl('process-payment'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'recalculate_price', bookingId: jobId }) });
     loadJobs();
   }
   async function confirmCompletion(jobId: string) {
     await supabase.from('bookings').update({ driver_confirmation: true }).eq('id', jobId);
     const { data: booking } = await supabase.from('bookings').select('customer_confirmation').eq('id', jobId).single();
     if (booking?.customer_confirmation === true) {
-      await fetch('https://jomhtghowrtegjfddite.databasepad.com/functions/v1/process-payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'release_escrow', bookingId: jobId }) });
+      await fetch(supabaseFunctionUrl('process-payment'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'release_escrow', bookingId: jobId }) });
       alert('Payment released to your wallet!');
     } else { alert('Confirmed! Waiting for customer confirmation.'); }
     loadJobs();

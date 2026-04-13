@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseFunctionUrl } from '../lib/supabase';
 import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, calculatePrice, recommendVan } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { formatNorwegianAddress, validateNorwegianAddress } from '../utils/formatNorwegianAddress';
@@ -269,7 +269,7 @@ export default function BookingFlow() {
       /* ── STRIPE CHECKOUT ── */
       try {
         const res = await fetch(
-          'https://jomhtghowrtegjfddite.databasepad.com/functions/v1/create-checkout-session',
+          supabaseFunctionUrl('create-checkout-session'),
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
