@@ -58,7 +58,7 @@ function GoogleIcon() {
 }
 
 export default function Header() {
-  const { profile, signOut, user } = useAuth();
+  const { profile, signOut, user, signInWithGoogle } = useAuth();
   const { setPage, currentPage } = useApp();
   const [mobileOpen,    setMobileOpen]    = useState(false);
   const [servicesOpen,  setServicesOpen]  = useState(false);
@@ -95,11 +95,7 @@ export default function Header() {
   function handleNav(page: Page) { setPage(page); setMobileOpen(false); closeAll(); }
 
   async function handleGoogleSignIn() {
-    const { supabase } = await import('../lib/supabase');
-    supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    });
+    await signInWithGoogle();
   }
 
   const chevron = (open: boolean) => (

@@ -50,6 +50,19 @@ export default function SEOServiceCityPage({ serviceSlug, citySlug }: SEOPagePro
   const city = SEO_CITIES.find(c => c.slug === citySlug);
   const service = SEO_SERVICES.find(s => s.slug === serviceSlug);
 
+  const pageTitle = service && city ? `${service.name} ${city.name} — From ${service.priceFrom} NOK/h` : '';
+  const metaDescription = service && city
+    ? `Book ${service.name.toLowerCase()} in ${city.name} from ${service.priceFrom} NOK/hour. ${city.drivers} verified drivers. Instant booking, secure payment. ${city.bookings} completed jobs.`
+    : '';
+
+  /* Update document title */
+  useEffect(() => {
+    if (!pageTitle) return;
+    document.title = `${pageTitle} | FlyttGo`;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) metaDesc.setAttribute('content', metaDescription);
+  }, [pageTitle, metaDescription]);
+
   /* 404 fallback */
   if (!city || !service) {
     return (
@@ -66,15 +79,6 @@ export default function SEOServiceCityPage({ serviceSlug, citySlug }: SEOPagePro
   }
 
   const relatedLinks = getRelatedServiceLinks(service, city);
-  const pageTitle = `${service.name} ${city.name} — From ${service.priceFrom} NOK/h`;
-  const metaDescription = `Book ${service.name.toLowerCase()} in ${city.name} from ${service.priceFrom} NOK/hour. ${city.drivers} verified drivers. Instant booking, secure payment. ${city.bookings} completed jobs.`;
-
-  /* Update document title */
-  useEffect(() => {
-    document.title = `${pageTitle} | FlyttGo`;
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) metaDesc.setAttribute('content', metaDescription);
-  }, [pageTitle, metaDescription]);
 
   return (
     <div className="min-h-screen bg-white">
