@@ -53,9 +53,16 @@ export default function BookingFlow() {
   const [step, setStep] = useState(1);
   const TOTAL_STEPS = 6;
 
-  /* ── Structured addresses (replaces old string fields) ── */
-  const [pickupAddress, setPickupAddress] = useState<StructuredAddress>(emptyAddress());
-  const [dropoffAddress, setDropoffAddress] = useState<StructuredAddress>(emptyAddress());
+  /* ── Structured addresses (replaces old string fields) ──
+   * Pre-fill from bookingData if the home page Booking Widget already
+   * captured a Norwegian address — that way customers don't have to
+   * re-type it after clicking "Book Now" from the home page. */
+  const [pickupAddress, setPickupAddress] = useState<StructuredAddress>(
+    () => (bookingData.pickupAddressData as StructuredAddress | undefined) ?? emptyAddress()
+  );
+  const [dropoffAddress, setDropoffAddress] = useState<StructuredAddress>(
+    () => (bookingData.dropoffAddressData as StructuredAddress | undefined) ?? emptyAddress()
+  );
 
   /* ── Move details ── */
   const [moveType, setMoveType] = useState(bookingData.moveType || '');
