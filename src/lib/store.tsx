@@ -22,12 +22,32 @@ interface AppState {
   resetBooking: () => void;
 }
 
+/**
+ * Structured Norwegian address — mirrors the shape returned by
+ * NorwayAddressAutocomplete.onSelect (Kartverket lookup). When the
+ * homepage Booking Widget produces one of these, we stash it in
+ * BookingData so BookingFlow can pre-fill its address fields without
+ * the customer having to re-enter anything.
+ */
+export interface NorwegianAddressData {
+  street_name: string;
+  house_number: string;
+  postcode: string;
+  city: string;
+  country: 'Norway';
+  lat: number | null;
+  lng: number | null;
+  formatted: string;
+}
+
 export interface BookingData {
   step: number;
   pickupAddress: string; pickupLat?: number | null; pickupLng?: number | null;
   pickupPostcode?: string; pickupCity?: string;
+  pickupAddressData?: NorwegianAddressData;
   dropoffAddress: string; dropoffLat?: number | null; dropoffLng?: number | null;
   dropoffPostcode?: string; dropoffCity?: string;
+  dropoffAddressData?: NorwegianAddressData;
   distanceKm?: number | null; durationMinutes?: number | null;
   moveType: string; propertyType: string; bedrooms: string;
   inventory: Record<string, number>; vanType: string; helpers: number;

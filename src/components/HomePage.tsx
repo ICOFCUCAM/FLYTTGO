@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { HERO_SLIDES, VAN_TYPES, CITIES, TESTIMONIALS, HOW_IT_WORKS, SUBSCRIPTION_PLANS, calculateCommission } from '../lib/constants';
+import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 
 /* ── HERO SLIDER ── */
 function HeroSlider() {
@@ -53,89 +54,85 @@ function HeroSlider() {
 }
 
 /* ── BOOKING WIDGET ── */
-declare global { interface Window { google: any; } }
 
 function BookingWidget() {
   const { setPage, setBookingData } = useApp();
-  const pickupRef  = useRef<HTMLInputElement>(null);
-  const dropoffRef = useRef<HTMLInputElement>(null);
-  const [pickup,  setPickup]  = useState('');
-  const [dropoff, setDropoff] = useState('');
-  const [pickupLat,  setPickupLat]  = useState<number | null>(null);
-  const [pickupLng,  setPickupLng]  = useState<number | null>(null);
-  const [pickupPostcode,  setPickupPostcode]  = useState('');
-  const [pickupCity,      setPickupCity]      = useState('');
-  const [dropoffLat,  setDropoffLat]  = useState<number | null>(null);
-  const [dropoffLng,  setDropoffLng]  = useState<number | null>(null);
-  const [dropoffPostcode, setDropoffPostcode] = useState('');
-  const [dropoffCity,     setDropoffCity]     = useState('');
-  const [moveType,  setMoveType]  = useState('apartment');
-  const [moveDate,  setMoveDate]  = useState('');
-  const [distanceKm,      setDistanceKm]      = useState<number | null>(null);
-  const [durationMinutes, setDurationMinutes] = useState<number | null>(null);
-  const [estimatedPrice,  setEstimatedPrice]  = useState<number | null>(null);
+  /* Structured Norwegian addresses from Kartverket (same component the
+   * booking flow uses). Stored as full objects so we can pass them
+   * straight through to bookingData and the booking flow can pre-fill
+   * its own state without forcing the customer to re-enter anything. */
+  const [pickup,  setPickup]  = useState<NorwegianAddress | null>(null);
+  const [dropoff, setDropoff] = useState<NorwegianAddress | null>(null);
+  const [moveType, setMoveType] = useState('apartment');
+  const [moveDate, setMoveDate] = useState('');
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+  const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
 
+  /* Haversine distance whenever both addresses have coordinates. Same
+   * formula BookingFlow uses, so the home widget and the booking flow
+   * agree on what they show the customer. */
   useEffect(() => {
-    if (!window.google) return;
-    function extractParts(place: any) {
-      let postcode = '', city = '';
-      place.address_components?.forEach((c: any) => {
-        if (c.types.includes('postal_code')) postcode = c.long_name;
-        if (c.types.includes('postal_town') || c.types.includes('locality')) city = c.long_name;
-      });
-      return { postcode, city };
+    if (pickup?.lat == null || pickup?.lng == null || dropoff?.lat == null || dropoff?.lng == null) {
+      setDistanceKm(null);
+      return;
     }
-    const pAC = new window.google.maps.places.Autocomplete(pickupRef.current!, { types: ['address'], componentRestrictions: { country: 'no' } });
-    pAC.addListener('place_changed', () => {
-      const place = pAC.getPlace();
-      if (!place.geometry) return;
-      setPickup(place.formatted_address);
-      setPickupLat(place.geometry.location.lat()); setPickupLng(place.geometry.location.lng());
-      const { postcode, city } = extractParts(place);
-      setPickupPostcode(postcode); setPickupCity(city);
-    });
-    const dAC = new window.google.maps.places.Autocomplete(dropoffRef.current!, { types: ['address'], componentRestrictions: { country: 'no' } });
-    dAC.addListener('place_changed', () => {
-      const place = dAC.getPlace();
-      if (!place.geometry) return;
-      setDropoff(place.formatted_address);
-      setDropoffLat(place.geometry.location.lat()); setDropoffLng(place.geometry.location.lng());
-      const { postcode, city } = extractParts(place);
-      setDropoffPostcode(postcode); setDropoffCity(city);
-    });
-  }, []);
+    const R = 6371;
+    const dLat = (dropoff.lat - pickup.lat) * Math.PI / 180;
+    const dLon = (dropoff.lng - pickup.lng) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(pickup.lat * Math.PI / 180) *
+      Math.cos(dropoff.lat * Math.PI / 180) *
+      Math.sin(dLon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    setDistanceKm(Math.round(R * c));
+  }, [pickup, dropoff]);
 
-  useEffect(() => {
-    if (!pickupLat || !dropoffLat || !window.google) return;
-    const svc = new window.google.maps.DistanceMatrixService();
-    svc.getDistanceMatrix(
-      { origins: [{ lat: pickupLat, lng: pickupLng as number }], destinations: [{ lat: dropoffLat, lng: dropoffLng as number }], travelMode: 'DRIVING', unitSystem: window.google.maps.UnitSystem.METRIC },
-      (response: any, status: string) => {
-        if (status !== 'OK') return;
-        const el = response.rows[0].elements[0];
-        if (!el.distance || !el.duration) return;
-        setDistanceKm(el.distance.value / 1000);
-        setDurationMinutes(Math.round(el.duration.value / 60));
-      }
-    );
-  }, [pickupLat, dropoffLat]);
+  /* Approximate driving duration from distance — ~70 km/h average,
+   * good enough for a "minutes drive" hint on the widget. */
+  const durationMinutes = distanceKm != null ? Math.round(distanceKm * 0.86) : null;
 
   const handleEstimate = () => {
-    if (!pickup || !dropoff) return;
+    if (!pickup?.formatted || !dropoff?.formatted) return;
     const base: Record<string, number> = { 'single-item': 850, 'student': 1150, 'apartment': 1500, 'house': 2400, 'office': 3200 };
     const km = distanceKm ?? 0;
     setEstimatedPrice(Math.round((base[moveType] || 1500) + km * 12));
   };
 
   const handleBookNow = () => {
-    setBookingData({ pickupAddress: pickup, pickupLat, pickupLng, pickupPostcode, pickupCity, dropoffAddress: dropoff, dropoffLat, dropoffLng, dropoffPostcode, dropoffCity, distanceKm, durationMinutes, moveType, moveDate, step: 2 });
+    setBookingData({
+      /* Flat fields — preserved for backward compat with anything else
+       * reading bookingData.pickupAddress as a string. */
+      pickupAddress: pickup?.formatted ?? '',
+      pickupLat: pickup?.lat ?? null,
+      pickupLng: pickup?.lng ?? null,
+      pickupPostcode: pickup?.postcode ?? '',
+      pickupCity: pickup?.city ?? '',
+      /* Structured field — used by BookingFlow to pre-fill its own
+       * NorwegianAddress state on mount. */
+      pickupAddressData: pickup ?? undefined,
+      dropoffAddress: dropoff?.formatted ?? '',
+      dropoffLat: dropoff?.lat ?? null,
+      dropoffLng: dropoff?.lng ?? null,
+      dropoffPostcode: dropoff?.postcode ?? '',
+      dropoffCity: dropoff?.city ?? '',
+      dropoffAddressData: dropoff ?? undefined,
+      distanceKm,
+      durationMinutes,
+      moveType,
+      moveDate,
+      step: 2,
+    });
     setPage('booking');
   };
 
   return (
     <section className="relative -mt-20 z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-        <div className="bg-gradient-to-r from-[#1A365D] to-[#2D4A7A] px-6 sm:px-8 py-5 flex items-center justify-between">
+      {/* No overflow-hidden on the card — the address autocomplete
+       * dropdown needs to escape the card boundary. The header below
+       * gets explicit rounded-t-2xl so the corners still look right. */}
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100">
+        <div className="bg-gradient-to-r from-[#1A365D] to-[#2D4A7A] rounded-t-2xl px-6 sm:px-8 py-5 flex items-center justify-between">
           <div>
             <h2 className="text-white text-xl font-bold">Get an Instant Moving Quote</h2>
             <p className="text-white/60 text-sm mt-0.5">Norway-wide · free estimate · no commitment</p>
@@ -155,17 +152,21 @@ function BookingWidget() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Pickup</label>
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="12" r="3"/></svg>
-                <input ref={pickupRef} type="text" value={pickup} onChange={e => setPickup(e.target.value)} placeholder="Pickup address" className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm"/>
-              </div>
+              <NorwayAddressAutocomplete
+                value={pickup?.formatted ?? ''}
+                onSelect={setPickup}
+                placeholder="Pickup address"
+                id="home-pickup"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Delivery</label>
-              <div className="relative">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="12" r="3"/></svg>
-                <input ref={dropoffRef} type="text" value={dropoff} onChange={e => setDropoff(e.target.value)} placeholder="Delivery address" className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm"/>
-              </div>
+              <NorwayAddressAutocomplete
+                value={dropoff?.formatted ?? ''}
+                onSelect={setDropoff}
+                placeholder="Delivery address"
+                id="home-dropoff"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Move Type</label>
