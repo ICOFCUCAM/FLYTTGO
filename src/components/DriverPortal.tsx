@@ -199,12 +199,12 @@ export default function DriverPortal() {
       }
       const payload = { type: 'subscription', planId, planLabel: plan.label, driverId: driver.id, userId: user.id, amount: totalAmount, amountExVat, vatAmount, billing: plan.billing, prorationNote, proration: proration ? { creditApplied: proration.creditExVat, daysRemaining: proration.daysRemaining, daysInMonth: proration.daysInMonth, fromPlan: 'pro', fromPlanFullCost: 1500 } : null, description: proration ? `FlyttGo ${plan.label} (prorated ${proration.daysRemaining}d, incl. 25% MVA)` : `FlyttGo ${plan.label} Subscription (incl. 25% MVA)` };
       if (method === 'vipps') {
-        const res = await fetch('https://jomtghowrtegjfddite.databasepad.com/functions/v1/create-vipps-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const res = await fetch(supabaseFunctionUrl('create-vipps-session'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const vipps = await res.json();
         if (!vipps.redirectUrl) { alert('Unable to start Vipps payment. Please use card instead.'); setChangingPlan(null); return; }
         window.location.href = vipps.redirectUrl;
       } else {
-        const res = await fetch('https://jomtghowrtegjfddite.databasepad.com/functions/v1/create-checkout-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const res = await fetch(supabaseFunctionUrl('create-checkout-session'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const checkout = await res.json();
         if (!checkout.url) { alert('Unable to start payment session. Please try again.'); setChangingPlan(null); return; }
         window.location.href = checkout.url;
