@@ -4,6 +4,7 @@ import { useApp } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { HERO_SLIDES, VAN_TYPES, CITIES, TESTIMONIALS, HOW_IT_WORKS, SUBSCRIPTION_PLANS, calculateCommission } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
+import { getRouteDistance } from '../lib/routing';
 
 /* ── HERO SLIDER ── */
 function HeroSlider() {
@@ -74,32 +75,32 @@ function BookingWidget() {
   const [dropoff, setDropoff] = useState<NorwegianAddress | null>(null);
   const [moveType, setMoveType] = useState('apartment');
   const [moveDate, setMoveDate] = useState('');
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
+  const [distanceKm,      setDistanceKm]      = useState<number | null>(null);
+  const [durationMinutes, setDurationMinutes] = useState<number | null>(null);
+  const [estimatedPrice,  setEstimatedPrice]  = useState<number | null>(null);
 
-  /* Haversine distance whenever both addresses have coordinates. Same
-   * formula BookingFlow uses, so the home widget and the booking flow
-   * agree on what they show the customer. */
+  /* Real driving distance + duration via the route-distance edge
+   * function (OSRM). Falls back to Haversine + 70 km/h in
+   * lib/routing.ts when the edge function isn't reachable, so the
+   * widget never stalls on the customer. */
   useEffect(() => {
+    let cancelled = false;
     if (pickup?.lat == null || pickup?.lng == null || dropoff?.lat == null || dropoff?.lng == null) {
       setDistanceKm(null);
+      setDurationMinutes(null);
       return;
     }
-    const R = 6371;
-    const dLat = (dropoff.lat - pickup.lat) * Math.PI / 180;
-    const dLon = (dropoff.lng - pickup.lng) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(pickup.lat * Math.PI / 180) *
-      Math.cos(dropoff.lat * Math.PI / 180) *
-      Math.sin(dLon / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    setDistanceKm(Math.round(R * c));
+    (async () => {
+      const res = await getRouteDistance(
+        { lat: pickup.lat!, lng: pickup.lng! },
+        { lat: dropoff.lat!, lng: dropoff.lng! },
+      );
+      if (cancelled || !res) return;
+      setDistanceKm(res.distanceKm);
+      setDurationMinutes(res.durationMinutes);
+    })();
+    return () => { cancelled = true; };
   }, [pickup, dropoff]);
-
-  /* Approximate driving duration from distance — ~70 km/h average,
-   * good enough for a "minutes drive" hint on the widget. */
-  const durationMinutes = distanceKm != null ? Math.round(distanceKm * 0.86) : null;
 
   const handleEstimate = () => {
     if (!pickup?.formatted || !dropoff?.formatted) return;

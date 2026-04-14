@@ -6,6 +6,7 @@ import { supabase, supabaseFunctionUrl } from '../lib/supabase';
 import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, calculatePrice, recommendVan } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { formatNorwegianAddress, validateNorwegianAddress } from '../utils/formatNorwegianAddress';
+import { getRouteDistance } from '../lib/routing';
 import { CustomerLegalAcceptance } from './LegalAcceptance';
 
 /* ─────────────────────────────────────────────
@@ -105,21 +106,22 @@ export default function BookingFlow() {
     additionalServices
   );
 
-  /* Auto-calculate distance when both addresses have coords */
+  /* Auto-calculate distance when both addresses have coords. Uses
+   * the route-distance edge function (OSRM) for real driving
+   * distance, with a Haversine fallback baked into the helper so
+   * the flow never stalls. */
   useEffect(() => {
-    if (pickupAddress.lat && pickupAddress.lng && dropoffAddress.lat && dropoffAddress.lng) {
-      const R = 6371;
-      const dLat = (dropoffAddress.lat - pickupAddress.lat) * Math.PI / 180;
-      const dLon = (dropoffAddress.lng - pickupAddress.lng) * Math.PI / 180;
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(pickupAddress.lat * Math.PI / 180) *
-        Math.cos(dropoffAddress.lat * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      const km = Math.round(R * c);
-      setDistanceKm(km);
-    }
+    let cancelled = false;
+    if (!pickupAddress.lat || !pickupAddress.lng || !dropoffAddress.lat || !dropoffAddress.lng) return;
+    (async () => {
+      const res = await getRouteDistance(
+        { lat: pickupAddress.lat!, lng: pickupAddress.lng! },
+        { lat: dropoffAddress.lat!, lng: dropoffAddress.lng! },
+      );
+      if (cancelled || !res) return;
+      setDistanceKm(res.distanceKm);
+    })();
+    return () => { cancelled = true; };
   }, [pickupAddress.lat, pickupAddress.lng, dropoffAddress.lat, dropoffAddress.lng]);
 
   /* ── INVENTORY helpers ── */
