@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../lib/store';
 import { useAuth } from '../lib/auth';
-import { HERO_SLIDES, VAN_TYPES, CITIES, TESTIMONIALS, HOW_IT_WORKS, SUBSCRIPTION_PLANS, SERVICES, calculateCommission } from '../lib/constants';
+import { HERO_SLIDES, VAN_TYPES, CITIES, TESTIMONIALS, HOW_IT_WORKS, SUBSCRIPTION_PLANS, calculateCommission } from '../lib/constants';
 
 /* ── HERO SLIDER ── */
 function HeroSlider() {
@@ -248,32 +248,34 @@ function StatsSection() {
 /* ── SERVICES SECTION ── */
 function ServicesSection() {
   const { setPage } = useApp();
-  const icons: Record<string, string> = {
-    home:       'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
-    sofa:       'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10',
-    building:   'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
-    graduation: 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z',
-    clock:      'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-    truck:      'M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0',
-    fridge:     'M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4',
-    box:        'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
-  };
+  const services = [
+    { name: 'Moving Services',     desc: 'Full house and apartment moving with professional movers and vehicles.', image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254153053_d6599513.jpg', iconPath: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+    { name: 'Furniture Transport', desc: 'Safe transport for individual furniture pieces and sets.', image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254286622_a82a1d1b.jpg', iconPath: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+    { name: 'Office Relocation',   desc: 'Complete office moving with minimal business disruption.', image: 'https://d64gsuwffb70l.cloudfront.net/69b4405628b40c8fdc7aad59_1773420953628_819790d3.png', iconPath: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+    { name: 'Same-Day Delivery',   desc: 'Urgent deliveries completed within the same day.', image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254193383_798495ed.jpg', iconPath: 'M13 10V3L4 14h7v7l9-11h-7z' },
+    { name: 'Student Moving',      desc: 'Affordable moving packages designed for students.', image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254266530_893474f8.jpg', iconPath: 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z' },
+    { name: 'Cargo Delivery',      desc: 'Commercial cargo and goods transportation services.', image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254050705_a292f56d.jpg', iconPath: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+  ];
+
   return (
-    <section id="services-section" className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900">Our Moving Services</h2>
-          <p className="text-gray-500 mt-3 max-w-2xl mx-auto">Professional logistics solutions for every need. From single items to full house moves, we&apos;ve got you covered.</p>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {SERVICES.map(s => (
-            <button key={s.name} onClick={() => setPage('booking')} className="group p-6 rounded-2xl border border-gray-100 hover:border-[#0A2463]/20 hover:shadow-lg transition text-left bg-white">
-              <div className="w-12 h-12 bg-blue-50 group-hover:bg-[#0A2463] rounded-xl flex items-center justify-center transition mb-4">
-                <svg className="w-6 h-6 text-[#0A2463] group-hover:text-white transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={icons[s.icon] || icons.truck} /></svg>
+    <section id="services-section" className="py-20 bg-gray-50">
+      <div className="max-w-6xl mx-auto px-4">
+        <h2 className="text-3xl font-bold text-center mb-4">Our Services</h2>
+        <p className="text-gray-600 max-w-2xl mx-auto text-lg text-center mb-12">From single item deliveries to full office relocations, FlyttGo connects you with verified drivers for all your logistics needs.</p>
+        <div className="grid md:grid-cols-3 gap-6">
+          {services.map(service => (
+            <div key={service.name} className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 group cursor-pointer" onClick={() => setPage('booking')}>
+              <div className="relative h-44 overflow-hidden">
+                <img src={service.image} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+                <div className="absolute bottom-3 left-3 w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-md">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={service.iconPath}/></svg>
+                </div>
               </div>
-              <h3 className="font-bold text-gray-900 mb-2">{s.name}</h3>
-              <p className="text-sm text-gray-500">{s.description}</p>
-            </button>
+              <div className="p-5">
+                <h3 className="font-semibold text-lg mb-2">{service.name}</h3>
+                <p className="text-gray-600 text-sm">{service.desc}</p>
+              </div>
+            </div>
           ))}
         </div>
       </div>
