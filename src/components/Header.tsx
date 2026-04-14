@@ -219,8 +219,6 @@ export default function Header() {
                 </div>
               ))}
 
-              <button onClick={() => handleNav('home')} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition">{t.pricing}</button>
-              <button onClick={() => handleNav('home')} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition">{t.cities}</button>
               <button onClick={() => handleNav('driver-onboarding')} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition">{t.becomeDriver}</button>
 
               {/* Companies */}
@@ -254,7 +252,6 @@ export default function Header() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
-              <button onClick={() => handleNav('van-guide')} className="hidden xl:flex items-center gap-1.5 px-4 py-2 border border-emerald-600 text-emerald-600 rounded-lg text-sm font-semibold hover:bg-emerald-50 transition">{t.vanCalc}</button>
               <button onClick={() => handleNav('booking')} className="hidden sm:flex items-center gap-1.5 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition shadow-sm">{t.bookNow}</button>
 
               {user && profile ? (
@@ -315,7 +312,7 @@ export default function Header() {
             <div className="max-w-7xl mx-auto px-4 pt-3 space-y-1">
               {([
                 [t.home, 'home'], [t.services, 'services'], [t.becomeDriver, 'driver-onboarding'],
-                [t.companies, 'corporate'], [t.vanCalc, 'van-guide'], ['Moving Checklist', 'checklist'],
+                [t.companies, 'corporate'], ['Moving Checklist', 'checklist'],
               ] as [string, Page][]).map(([label, page]) => (
                 <button key={page} onClick={() => handleNav(page)}
                   className={`block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg ${currentPage === page ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'}`}>
