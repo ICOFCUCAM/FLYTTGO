@@ -14,7 +14,7 @@ interface UserProfile {
   email: string;
   first_name?: string;
   last_name?: string;
-  role: "customer" | "driver" | "admin";
+  role: "customer" | "driver" | "business" | "admin";
   phone?: string;
   avatar_url?: string;
 }
@@ -38,7 +38,8 @@ interface AuthContextType {
   ) => Promise<{ error: any }>;
 
   signInWithGoogle: () => Promise<{ error: any }>;
-resetPassword: (email: string) => Promise<{ error: any }>;
+  signInWithApple: () => Promise<{ error: any }>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
 
   signOut: () => Promise<void>;
 
@@ -247,6 +248,17 @@ async function signInWithGoogle() {
   return { error };
 }
 
+async function signInWithApple() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "apple",
+    options: {
+      redirectTo: window.location.origin,
+    },
+  });
+
+  return { error };
+}
+
 /* ================= SIGNOUT ================= */
 
   async function signOut() {
@@ -297,6 +309,7 @@ value={{
   signUp,
   signIn,
   signInWithGoogle,
+  signInWithApple,
   resetPassword,
   signOut,
   updateProfile,
