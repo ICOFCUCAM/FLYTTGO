@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseFunctionUrl } from '../lib/supabase';
 
 function safeNumber(value: any): number {
   const n = Number(value ?? 0);
@@ -101,10 +101,16 @@ export default function DriverPortal() {
 
   async function enforceSubscriptionExpiry() {
     if (!user) return;
-    const { data: sub } = await supabase.from('driver_subscriptions').select('driver_id,end_date,status').eq('driver_id', user.id).eq('status', 'active').single();
+    // driver_subscriptions column is `subscription_status`, not `status`.
+    const { data: sub } = await supabase
+      .from('driver_subscriptions')
+      .select('driver_id, end_date, subscription_status')
+      .eq('driver_id', user.id)
+      .eq('subscription_status', 'active')
+      .maybeSingle();
     if (!sub) return;
     if (sub.end_date && new Date(sub.end_date) < new Date()) {
-      await supabase.from('driver_subscriptions').update({ status: 'expired' }).eq('driver_id', user.id);
+      await supabase.from('driver_subscriptions').update({ subscription_status: 'cancelled' }).eq('driver_id', user.id);
       await supabase.from('driver_profiles').update({ status: 'suspended' }).eq('user_id', user.id);
     }
   }
@@ -122,7 +128,8 @@ export default function DriverPortal() {
   }
 
   async function loadJobs() {
-    const { data } = await supabase.from('bookings').select('*').or(`status.eq.awaiting_driver,driver_id.eq.${driver.id}`);
+    // 'pending' is the valid CHECK-constraint value for unassigned bookings.
+    const { data } = await supabase.from('bookings').select('*').or(`status.eq.pending,driver_id.eq.${driver.id}`);
     if (!data) return;
     setJobs(driver.subscription_plan === 'Free' ? data.filter((j: any) => safeNumber(j.price_estimate) <= 500) : data);
   }
@@ -201,15 +208,18 @@ export default function DriverPortal() {
   async function acceptJob(job: any) { await supabase.from('bookings').update({ driver_id: driver.id, status: 'driver_assigned' }).eq('id', job.id); loadJobs(); }
   async function startJob(jobId: string) { await supabase.from('bookings').update({ status: 'in_transit', start_time: new Date().toISOString() }).eq('id', jobId); loadJobs(); }
   async function finishJob(jobId: string) {
-    await supabase.from('bookings').update({ status: 'completed_by_driver', end_time: new Date().toISOString() }).eq('id', jobId);
-    await fetch('https://jomhtghowrtegjfddite.databasepad.com/functions/v1/process-payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'recalculate_price', bookingId: jobId }) });
+    // 'completed' is the only valid end state in the bookings status CHECK
+    // constraint. The dual-confirmation flow uses the driver_confirmation /
+    // customer_confirmation boolean flags, not a separate status value.
+    await supabase.from('bookings').update({ status: 'completed', end_time: new Date().toISOString() }).eq('id', jobId);
+    await fetch(supabaseFunctionUrl('process-payment'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'recalculate_price', bookingId: jobId }) });
     loadJobs();
   }
   async function confirmCompletion(jobId: string) {
     await supabase.from('bookings').update({ driver_confirmation: true }).eq('id', jobId);
     const { data: booking } = await supabase.from('bookings').select('customer_confirmation').eq('id', jobId).single();
     if (booking?.customer_confirmation === true) {
-      await fetch('https://jomhtghowrtegjfddite.databasepad.com/functions/v1/process-payment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'release_escrow', bookingId: jobId }) });
+      await fetch(supabaseFunctionUrl('process-payment'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'release_escrow', bookingId: jobId }) });
       alert('Payment released to your wallet!');
     } else { alert('Confirmed! Waiting for customer confirmation.'); }
     loadJobs();
@@ -316,7 +326,7 @@ export default function DriverPortal() {
                     {job.status === 'awaiting_driver' && <button onClick={() => acceptJob(job)} className="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium">Accept Job</button>}
                     {job.status === 'driver_assigned' && <button onClick={() => startJob(job.id)} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">Start Job</button>}
                     {job.status === 'in_transit' && <button onClick={() => finishJob(job.id)} className="bg-red-600 text-white px-4 py-2 rounded text-sm font-medium">Finish Job</button>}
-                    {job.status === 'completed_by_driver' && !job.driver_confirmation && <button onClick={() => confirmCompletion(job.id)} className="bg-purple-600 text-white px-4 py-2 rounded text-sm font-medium">Confirm Completion</button>}
+                    {job.status === 'completed' && !job.driver_confirmation && <button onClick={() => confirmCompletion(job.id)} className="bg-purple-600 text-white px-4 py-2 rounded text-sm font-medium">Confirm Completion</button>}
                   </div>
                 </div>
               );

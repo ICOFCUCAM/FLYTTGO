@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../lib/auth";
 import { useApp } from "../lib/store";
-import { supabase } from "../lib/supabase";
+import { supabase, supabaseFunctionUrl } from "../lib/supabase";
 
 function fmt(value: any): string {
   const n = Number(value ?? 0);
@@ -46,10 +46,14 @@ export default function CustomerDashboard() {
   }
 
   async function confirmCompletion(bookingId: string) {
-    await supabase.from("bookings").update({ customer_confirmation: true, status: "customer_confirmed" }).eq("id", bookingId);
+    // Only toggle the confirmation flag — the bookings.status CHECK
+    // constraint doesn't have a 'customer_confirmed' value. The dual-
+    // confirmation logic lives in the customer_confirmation /
+    // driver_confirmation booleans, which a trigger uses to release escrow.
+    await supabase.from("bookings").update({ customer_confirmation: true }).eq("id", bookingId);
     const { data: booking } = await supabase.from("bookings").select("driver_confirmation").eq("id", bookingId).single();
     if (booking?.driver_confirmation === true) {
-      await fetch("https://jomhtghowrtegjfddite.databasepad.com/functions/v1/process-payment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "release_escrow", bookingId }) });
+      await fetch(supabaseFunctionUrl("process-payment"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "release_escrow", bookingId }) });
       alert("Job complete! Payment released to driver.");
     } else { alert("Confirmed! Waiting for driver confirmation."); }
     loadData();

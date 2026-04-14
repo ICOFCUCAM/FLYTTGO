@@ -53,30 +53,42 @@ export default function DriverOnboarding() {
     setError('');
 
     try {
-      // Insert driver application
+      /* driver_applications columns per schema:
+       *   user_id, email, first_name, last_name, phone, address,
+       *   license_number, license_expiry, years_experience,
+       *   vehicle_type, vehicle_model, vehicle_year (int),
+       *   vehicle_registration, cargo_capacity, city, zone, status.
+       * The UI collects make + model separately; we concatenate
+       * them into the single `vehicle_model` column. */
       const { error: appError } = await supabase
         .from('driver_applications')
         .insert({
           user_id: user.id,
+          email: user.email ?? null,
           first_name: firstName,
           last_name: lastName,
           phone,
           city,
           vehicle_type: vehicleType,
-          vehicle_make: vehicleMake,
-          vehicle_model: vehicleModel,
-          vehicle_year: vehicleYear,
-          license_plate: licensePlate,
+          vehicle_model: `${vehicleMake} ${vehicleModel}`.trim(),
+          vehicle_year: vehicleYear ? parseInt(vehicleYear, 10) : null,
+          vehicle_registration: licensePlate,
           status: 'pending',
         });
 
       if (appError) throw appError;
 
-      // Update profile role to driver
-      await supabase
-        .from('profiles')
-        .update({ role: 'driver', phone })
-        .eq('user_id', user.id);
+      /* Best-effort profile role update. RLS on `profiles` currently
+       * has no UPDATE policy, so this may be rejected — that's fine,
+       * the application row is what matters for admin review. */
+      try {
+        await supabase
+          .from('profiles')
+          .update({ role: 'driver', phone })
+          .eq('user_id', user.id);
+      } catch (_profileErr) {
+        /* swallow — RLS denial shouldn't block the submission */
+      }
 
       setSubmitted(true);
     } catch (e: any) {
@@ -194,7 +206,14 @@ export default function DriverOnboarding() {
                 </div>
               </div>
               <button
-                onClick={() => { if (firstName && lastName && phone && city) setStep(2); else setError('Please fill in all fields.'); setError(''); }}
+                onClick={() => {
+                  if (firstName && lastName && phone && city) {
+                    setError('');
+                    setStep(2);
+                  } else {
+                    setError('Please fill in all fields.');
+                  }
+                }}
                 className="w-full mt-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition"
               >
                 Continue
@@ -249,7 +268,19 @@ export default function DriverOnboarding() {
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={() => setStep(1)} className="px-6 py-3 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition">Back</button>
-                <button onClick={() => setStep(3)} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition">Continue</button>
+                <button
+                  onClick={() => {
+                    if (vehicleType && vehicleMake && vehicleModel && vehicleYear && licensePlate) {
+                      setError('');
+                      setStep(3);
+                    } else {
+                      setError('Please fill in all vehicle details.');
+                    }
+                  }}
+                  className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition"
+                >
+                  Continue
+                </button>
               </div>
             </div>
           )}

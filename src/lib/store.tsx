@@ -7,7 +7,8 @@ export type Page =
   | 'checklist' | 'driver-onboarding' | 'terms' | 'privacy'
   | 'liability' | 'driver-terms' | 'services' | 'corporate'
   | 'bulk-booking' | 'recurring-deliveries' | 'company-dashboard-info'
-  | 'invoice-billing' | 'corporate-api-access' | 'corporate-dashboard';
+  | 'invoice-billing' | 'corporate-api-access' | 'corporate-dashboard'
+  | 'profile';
 
 interface AppState {
   currentPage: Page;

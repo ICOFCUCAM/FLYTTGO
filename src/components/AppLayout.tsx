@@ -25,6 +25,7 @@ const RecurringDeliveriesPage   = lazy(() => import('../pages/RecurringDeliverie
 const CompanyDashboardInfoPage  = lazy(() => import('../pages/CompanyDashboardInfoPage'));
 const InvoiceBillingPage        = lazy(() => import('../pages/InvoiceBillingPage'));
 const CorporateApiAccessPage    = lazy(() => import('../pages/CorporateApiAccessPage'));
+const ProfilePage        = lazy(() => import('../pages/ProfilePage'));
 const Footer             = lazy(() => import('./Footer'));
 
 function Loading() {
@@ -66,6 +67,7 @@ export default function AppLayout() {
       case 'company-dashboard-info': return <CompanyDashboardInfoPage />;
       case 'invoice-billing':        return <InvoiceBillingPage />;
       case 'corporate-api-access':   return <CorporateApiAccessPage />;
+      case 'profile':                return <ProfilePage />;
       default:                       return <HomePage />;
     }
   };

@@ -6,7 +6,7 @@ export default function Footer() {
   return (
     <footer className="bg-gray-900 text-gray-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
           {/* Brand col */}
           <div className="col-span-2 md:col-span-1 lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
@@ -44,7 +44,7 @@ export default function Footer() {
             <h4 className="text-white font-semibold mb-4">Cities</h4>
             <ul className="space-y-2 text-sm">
               {['Oslo','Bergen','Trondheim','Stavanger','Drammen','Fredrikstad'].map(c => (
-                <li key={c}><button onClick={() => setPage('home')} className="hover:text-emerald-400 transition">Flyttehjelp {c}</button></li>
+                <li key={c}><button onClick={() => setPage('services')} className="hover:text-emerald-400 transition">Flyttehjelp {c}</button></li>
               ))}
             </ul>
           </div>

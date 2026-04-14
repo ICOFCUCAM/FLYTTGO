@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
 import { useApp, Page } from '../lib/store';
+import { LogIn, Bell, User as UserIcon } from 'lucide-react';
 
 const T = {
   EN: {
@@ -10,6 +11,7 @@ const T = {
     dashboard: 'Dashboard', myBookings: 'My Bookings', driverPortal: 'Driver Portal',
     adminDash: 'Admin Dashboard', signOut: 'Sign Out', tagline: 'Smart Moving & Transport Services',
     corporate: 'Corporate Logistics Portal', createCorp: 'Create Corporate Account →',
+    profile: 'Profile',
   },
   NO: {
     home: 'Hjem', services: 'Tjenester', movingTools: 'Verktøy', pricing: 'Priser',
@@ -18,18 +20,11 @@ const T = {
     dashboard: 'Kontrollpanel', myBookings: 'Mine bestillinger', driverPortal: 'Sjåførportal',
     adminDash: 'Admin-panel', signOut: 'Logg ut', tagline: 'Smart moving og transporttjenester',
     corporate: 'Bedriftslogistikkportal', createCorp: 'Opprett bedriftskonto →',
+    profile: 'Profil',
   },
 } as const;
 type Lang = 'EN' | 'NO';
-
-const SERVICES = [
-  { label: 'Furniture Moving',   icon: '🛋️', page: 'services' as Page },
-  { label: 'House Moving',       icon: '🏠', page: 'services' as Page },
-  { label: 'Appliance Delivery', icon: '🔌', page: 'services' as Page },
-  { label: 'Cargo Transport',    icon: '📦', page: 'services' as Page },
-  { label: 'Store Delivery',     icon: '🏪', page: 'services' as Page },
-  { label: 'Business Logistics', icon: '🏢', page: 'corporate' as Page },
-];
+const LANG_STORAGE_KEY = 'flyttgo_lang';
 
 const MOVING_TOOLS = [
   { label: 'Van Size Calculator', desc: 'Find the right van for your move', page: 'van-guide' as Page },
@@ -42,35 +37,40 @@ const CORPORATE_LINKS = [
   { label: 'Recurring Deliveries',    desc: 'Daily, weekly or monthly scheduling',   page: 'recurring-deliveries' as Page },
   { label: 'Company Dashboard Info',  desc: 'Track spending & delivery performance', page: 'company-dashboard-info' as Page },
   { label: 'Invoice & Billing',       desc: 'Consolidated monthly invoices',         page: 'invoice-billing' as Page },
-  { label: 'Corporate API Access',    desc: 'Integrate FlyttGo into your systems',  page: 'corporate-api-access' as Page },
+  { label: 'Corporate API Access',    desc: 'Integrate FlyttGo into your systems',   page: 'corporate-api-access' as Page },
   { label: 'Corporate Dashboard',     desc: 'Enterprise logistics command center',   page: 'corporate-dashboard' as Page },
 ];
 
-function GoogleIcon() {
-  return (
-    <svg className="w-4 h-4" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    </svg>
-  );
+function readStoredLang(): Lang {
+  if (typeof window === 'undefined') return 'EN';
+  const stored = window.localStorage.getItem(LANG_STORAGE_KEY);
+  return stored === 'NO' ? 'NO' : 'EN';
 }
 
 export default function Header() {
   const { profile, signOut, user } = useAuth();
-  const { setPage, currentPage } = useApp();
+  const { setPage, currentPage, setShowAuthModal, setAuthMode } = useApp();
   const [mobileOpen,    setMobileOpen]    = useState(false);
-  const [servicesOpen,  setServicesOpen]  = useState(false);
   const [toolsOpen,     setToolsOpen]     = useState(false);
   const [companiesOpen, setCompaniesOpen] = useState(false);
   const [langOpen,      setLangOpen]      = useState(false);
   const [userMenuOpen,  setUserMenuOpen]  = useState(false);
-  const [lang,          setLang]          = useState<Lang>('EN');
+  const [notifOpen,     setNotifOpen]     = useState(false);
+  const [lang,          setLang]          = useState<Lang>(readStoredLang);
+  const [scrolled,      setScrolled]      = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const langRef   = useRef<HTMLDivElement>(null);
   const t = T[lang];
 
+  // Scroll-aware top strip (shrinks after 40px)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Outside-click closes all open dropdowns
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (headerRef.current && !headerRef.current.contains(e.target as Node)) closeAll();
@@ -81,25 +81,38 @@ export default function Header() {
   }, []);
 
   function closeAll() {
-    setServicesOpen(false); setToolsOpen(false);
+    setToolsOpen(false);
     setCompaniesOpen(false); setUserMenuOpen(false);
+    setNotifOpen(false);
   }
 
-  function toggle(which: 'services' | 'tools' | 'companies' | 'user') {
-    setServicesOpen(which === 'services' ? (s) => !s : false);
-    setToolsOpen(which === 'tools' ? (s) => !s : false);
-    setCompaniesOpen(which === 'companies' ? (s) => !s : false);
-    setUserMenuOpen(which === 'user' ? (s) => !s : false);
+  function toggle(which: 'tools' | 'companies' | 'user' | 'notif') {
+    setToolsOpen(which === 'tools'        ? (s) => !s : false);
+    setCompaniesOpen(which === 'companies'? (s) => !s : false);
+    setUserMenuOpen(which === 'user'      ? (s) => !s : false);
+    setNotifOpen(which === 'notif'        ? (s) => !s : false);
   }
 
   function handleNav(page: Page) { setPage(page); setMobileOpen(false); closeAll(); }
 
-  async function handleGoogleSignIn() {
-    const { supabase } = await import('../lib/supabase');
-    supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    });
+  function openSignIn() {
+    setAuthMode('signin');
+    setShowAuthModal(true);
+    setMobileOpen(false);
+    closeAll();
+  }
+
+  function openSignUp() {
+    setAuthMode('signup');
+    setShowAuthModal(true);
+    setMobileOpen(false);
+    closeAll();
+  }
+
+  function chooseLang(l: Lang) {
+    setLang(l);
+    setLangOpen(false);
+    if (typeof window !== 'undefined') window.localStorage.setItem(LANG_STORAGE_KEY, l);
   }
 
   const chevron = (open: boolean) => (
@@ -120,7 +133,7 @@ export default function Header() {
   const dropdown = (
     open: boolean,
     label: string,
-    which: 'services' | 'tools' | 'companies' | 'user',
+    which: 'tools' | 'companies' | 'user',
     children: React.ReactNode,
     alignRight = false
   ) => (
@@ -140,14 +153,27 @@ export default function Header() {
   );
 
   return (
+    <>
+    {/* Mobile menu backdrop — dims page beneath the header when menu is open */}
+    {mobileOpen && (
+      <div
+        className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-30 transition-opacity"
+        onClick={() => setMobileOpen(false)}
+        aria-hidden="true"
+      />
+    )}
     <header ref={headerRef} className="sticky top-0 z-40 shadow-md">
 
-      {/* TOP BAR */}
-      <div className="bg-[#1A365D] text-white">
+      {/* TOP BAR — collapses on scroll */}
+      <div
+        className={`bg-[#1A365D] text-white overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
+          scrolled ? 'max-h-0 opacity-0' : 'max-h-12 opacity-100'
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-9 text-xs">
             <div className="flex items-center gap-4">
-              <a href="tel:+4474321124438" className="flex items-center gap-1.5 text-white/80 hover:text-white transition">
+              <a href="tel:+447432112438" className="flex items-center gap-1.5 text-white/80 hover:text-white transition">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
                 </svg>
@@ -167,7 +193,7 @@ export default function Header() {
               {langOpen && (
                 <div className="absolute right-0 top-full mt-2 w-32 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
                   {(['EN', 'NO'] as Lang[]).map((l) => (
-                    <button key={l} onClick={() => { setLang(l); setLangOpen(false); }}
+                    <button key={l} onClick={() => chooseLang(l)}
                       className={`w-full text-left px-4 py-2 text-sm transition ${lang === l ? 'text-emerald-600 font-semibold bg-emerald-50' : 'text-gray-700 hover:bg-gray-50'}`}>
                       {l === 'EN' ? '🇬🇧 English' : '🇳🇴 Norsk'}
                     </button>
@@ -197,18 +223,7 @@ export default function Header() {
             {/* Desktop nav */}
             <nav className="hidden lg:flex items-center gap-0.5">
               {navBtn(t.home, 'home')}
-
-              {/* Services */}
-              {dropdown(servicesOpen, t.services, 'services', (
-                <div className="w-52 py-2">
-                  {SERVICES.map((s) => (
-                    <button key={s.label} onClick={() => handleNav(s.page)}
-                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition flex items-center gap-3">
-                      <span>{s.icon}</span>{s.label}
-                    </button>
-                  ))}
-                </div>
-              ))}
+              {navBtn(t.services, 'services')}
 
               {/* Moving Tools */}
               {dropdown(toolsOpen, t.movingTools, 'tools', (
@@ -223,8 +238,6 @@ export default function Header() {
                 </div>
               ))}
 
-              <button onClick={() => handleNav('home')} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition">{t.pricing}</button>
-              <button onClick={() => handleNav('home')} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition">{t.cities}</button>
               <button onClick={() => handleNav('driver-onboarding')} className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition">{t.becomeDriver}</button>
 
               {/* Companies */}
@@ -258,8 +271,34 @@ export default function Header() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
-              <button onClick={() => handleNav('van-guide')} className="hidden xl:flex items-center gap-1.5 px-4 py-2 border border-emerald-600 text-emerald-600 rounded-lg text-sm font-semibold hover:bg-emerald-50 transition">{t.vanCalc}</button>
               <button onClick={() => handleNav('booking')} className="hidden sm:flex items-center gap-1.5 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition shadow-sm">{t.bookNow}</button>
+
+              {/* Notifications bell — signed-in only */}
+              {user && profile && (
+                <div className="relative">
+                  <button
+                    onClick={() => toggle('notif')}
+                    className="p-2 rounded-lg hover:bg-gray-100 transition relative"
+                    aria-label="Notifications"
+                  >
+                    <Bell className="w-5 h-5 text-gray-600" />
+                  </button>
+                  {notifOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                        <h3 className="text-sm font-bold text-gray-900">Notifications</h3>
+                      </div>
+                      <div className="py-10 px-4 text-center">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <Bell className="w-5 h-5 text-gray-400" />
+                        </div>
+                        <p className="text-sm text-gray-500">You&apos;re all caught up</p>
+                        <p className="text-xs text-gray-400 mt-1">New booking updates will appear here.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {user && profile ? (
                 <div className="relative">
@@ -273,13 +312,20 @@ export default function Header() {
                     {chevron(userMenuOpen)}
                   </button>
                   {userMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50">
                       <div className="px-4 py-3 border-b border-gray-100">
-                        <p className="text-sm font-bold text-gray-900">
+                        <p className="text-sm font-bold text-gray-900 truncate">
                           {profile.role === 'admin' ? 'FLYTTGO Dashboard' : `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User'}
                         </p>
-                        <p className="text-xs text-gray-500 capitalize mt-0.5">{profile.role}</p>
+                        <p className="text-xs text-gray-500 truncate mt-0.5">{profile.email}</p>
+                        <span className="inline-block mt-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-semibold rounded uppercase tracking-wide">
+                          {profile.role}
+                        </span>
                       </div>
+                      <button onClick={() => handleNav('profile')} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">
+                        <UserIcon className="w-4 h-4 text-gray-500" />
+                        {t.profile}
+                      </button>
                       {profile.role === 'customer' && (<>
                         <button onClick={() => handleNav('customer-dashboard')} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">{t.dashboard}</button>
                         <button onClick={() => handleNav('my-bookings')} className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition">{t.myBookings}</button>
@@ -296,10 +342,21 @@ export default function Header() {
                   )}
                 </div>
               ) : (
-                <button onClick={handleGoogleSignIn}
-                  className="hidden sm:flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm">
-                  <GoogleIcon/>{t.signIn} with Google
-                </button>
+                <>
+                  <button
+                    onClick={openSignIn}
+                    className="hidden sm:flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    {t.signIn}
+                  </button>
+                  <button
+                    onClick={openSignUp}
+                    className="hidden sm:flex items-center gap-1.5 px-4 py-2 border border-emerald-600 text-emerald-600 rounded-lg text-sm font-semibold hover:bg-emerald-50 transition shadow-sm"
+                  >
+                    Sign Up
+                  </button>
+                </>
               )}
 
               <button onClick={() => setMobileOpen((o) => !o)} className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition">
@@ -313,29 +370,45 @@ export default function Header() {
           </div>
         </div>
 
-        {/* MOBILE MENU */}
-        {mobileOpen && (
-          <div className="lg:hidden border-t border-gray-100 bg-white pb-4">
-            <div className="max-w-7xl mx-auto px-4 pt-3 space-y-1">
-              {([
-                [t.home, 'home'], [t.services, 'services'], [t.becomeDriver, 'driver-onboarding'],
-                [t.companies, 'corporate'], [t.vanCalc, 'van-guide'], ['Moving Checklist', 'checklist'],
-              ] as [string, Page][]).map(([label, page]) => (
-                <button key={page} onClick={() => handleNav(page)}
-                  className={`block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg ${currentPage === page ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'}`}>
-                  {label}
+        {/* MOBILE MENU — slide down with dim backdrop */}
+        <div
+          className={`lg:hidden border-t border-gray-100 bg-white overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
+            mobileOpen ? 'max-h-[28rem] opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className="max-w-7xl mx-auto px-4 pt-3 pb-4 space-y-1">
+            {([
+              [t.home, 'home'], [t.services, 'services'], [t.becomeDriver, 'driver-onboarding'],
+              [t.companies, 'corporate'], ['Moving Checklist', 'checklist'],
+            ] as [string, Page][]).map(([label, page]) => (
+              <button key={page} onClick={() => handleNav(page)}
+                className={`block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg ${currentPage === page ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'}`}>
+                {label}
+              </button>
+            ))}
+            {!user && (
+              <>
+                <button
+                  onClick={openSignIn}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 mt-2"
+                >
+                  <LogIn className="w-4 h-4" />
+                  {t.signIn}
                 </button>
-              ))}
-              {!user && (
-                <button onClick={handleGoogleSignIn} className="w-full flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 mt-2">
-                  <GoogleIcon/>{t.signIn} with Google
+                <button
+                  onClick={openSignUp}
+                  className="w-full py-2.5 border border-emerald-600 text-emerald-600 rounded-lg text-sm font-semibold mt-1 hover:bg-emerald-50 transition"
+                >
+                  Sign Up
                 </button>
-              )}
-              <button onClick={() => handleNav('booking')} className="block w-full py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-semibold text-center mt-1">{t.bookNow}</button>
-            </div>
+              </>
+            )}
+            <button onClick={() => handleNav('booking')} className="block w-full py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-semibold text-center mt-1">{t.bookNow}</button>
           </div>
-        )}
+        </div>
       </div>
+
     </header>
+    </>
   );
 }
