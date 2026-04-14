@@ -15,13 +15,27 @@ function formatDuration(start?: string | null, end?: string | null) {
   return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
 }
 
+/* Commission brackets — keyed on the lowercase plan IDs stored in
+ * driver_subscriptions.plan. Previously this function compared
+ * against display names ('Basic', 'Pro Mini', ...) which meant it
+ * silently returned 0 commission whenever the plan came from the
+ * DB (which uses lowercase snake_case IDs). Now aligned with the
+ * canonical source of truth. */
 function calcCommission(price: number, plan: string) {
   const p = isNaN(price) ? 0 : price;
   if (p <= 500) return { rate: 0, commission: 0, earning: p };
   let rate = 0;
-  if (plan === 'Basic') { if (p <= 1500) rate = 0.2; else if (p <= 5000) rate = 0.15; else rate = 0.1; }
-  if (plan === 'Pro Mini' || plan === 'Pro') { if (p <= 1500) rate = 0.1; else if (p <= 5000) rate = 0.05; else rate = 0.04; }
-  if (plan === 'Unlimited') rate = 0;
+  if (plan === 'basic') {
+    if (p <= 1500)      rate = 0.2;
+    else if (p <= 5000) rate = 0.15;
+    else                rate = 0.1;
+  }
+  if (plan === 'pro_mini' || plan === 'pro') {
+    if (p <= 1500)      rate = 0.1;
+    else if (p <= 5000) rate = 0.05;
+    else                rate = 0.04;
+  }
+  if (plan === 'unlimited') rate = 0;
   const commission = p * rate;
   return { rate, commission, earning: p - commission };
 }
@@ -47,7 +61,8 @@ function Card({ title, value }: any) {
 function EarningsCalculator({ plan }: { plan: string }) {
   const [jobPrice, setJobPrice] = React.useState(1000);
   const [hours, setHours] = React.useState(2);
-  const rates: Record<string, number> = { Free: 0, Basic: 0.2, 'Pro Mini': 0.1, Pro: 0.1, Unlimited: 0 };
+  /* Keyed on lowercase plan IDs to match driver_subscriptions.plan. */
+  const rates: Record<string, number> = { free: 0, basic: 0.2, pro_mini: 0.1, pro: 0.1, unlimited: 0 };
   const rate = rates[plan] ?? 0.2;
   const commission = jobPrice * rate;
   const earning = jobPrice - commission;
@@ -107,20 +122,41 @@ export default function DriverPortal() {
    * watch is torn down the moment no jobs are in flight. */
   useDriverLocationBeacon({ driverId: user?.id ?? null, jobs });
 
+  /* Client-side opportunistic expiry check. The real enforcement lives
+   * in the pg_cron job defined in docs/subscription-expiry-cron.sql,
+   * which runs hourly regardless of whether the driver visits the
+   * portal. This function only exists so a driver who IS visiting gets
+   * their state updated immediately rather than waiting up to an hour
+   * for the cron to catch up.
+   *
+   * Behaviour matches the cron: mark expired active subs as 'expired',
+   * then insert a fresh 'free'/'active' row. The driver is NOT suspended
+   * — they just lose paid-tier perks until they re-subscribe. */
   async function enforceSubscriptionExpiry() {
     if (!user) return;
-    // driver_subscriptions column is `subscription_status`, not `status`.
     const { data: sub } = await supabase
       .from('driver_subscriptions')
-      .select('driver_id, end_date, subscription_status')
+      .select('id, driver_id, end_date, subscription_status')
       .eq('driver_id', user.id)
       .eq('subscription_status', 'active')
       .maybeSingle();
     if (!sub) return;
-    if (sub.end_date && new Date(sub.end_date) < new Date()) {
-      await supabase.from('driver_subscriptions').update({ subscription_status: 'cancelled' }).eq('driver_id', user.id);
-      await supabase.from('driver_profiles').update({ status: 'suspended' }).eq('user_id', user.id);
-    }
+    if (!sub.end_date) return;
+    if (new Date(sub.end_date) >= new Date()) return;
+
+    await supabase
+      .from('driver_subscriptions')
+      .update({ subscription_status: 'expired' })
+      .eq('id', sub.id);
+    await supabase
+      .from('driver_subscriptions')
+      .insert({
+        driver_id:           user.id,
+        plan:                'free',
+        subscription_status: 'active',
+        start_date:          new Date().toISOString(),
+        end_date:            null,
+      });
   }
 
   async function loadDriver() {
@@ -139,7 +175,12 @@ export default function DriverPortal() {
     // 'pending' is the valid CHECK-constraint value for unassigned bookings.
     const { data } = await supabase.from('bookings').select('*').or(`status.eq.pending,driver_id.eq.${driver.id}`);
     if (!data) return;
-    setJobs(driver.subscription_plan === 'Free' ? data.filter((j: any) => safeNumber(j.price_estimate) <= 500) : data);
+    /* Free-tier drivers can only see jobs ≤ 500 NOK. We now read
+     * the plan from driver_subscriptions (single source of truth)
+     * rather than the stale 'Free' capitalized value that used to
+     * live on driver_profiles.subscription_plan. */
+    const currentPlan = subscription?.plan ?? 'free';
+    setJobs(currentPlan === 'free' ? data.filter((j: any) => safeNumber(j.price_estimate) <= 500) : data);
   }
 
   async function loadTransactions() {
@@ -339,7 +380,7 @@ export default function DriverPortal() {
             {jobs.length === 0 && <div className="text-center py-12 text-gray-500">No jobs available right now</div>}
             {jobs.map(job => {
               const price = safeNumber(job.final_price ?? job.original_price ?? job.price_estimate);
-              const comm = calcCommission(price, driver.subscription_plan ?? 'Basic');
+              const comm = calcCommission(price, subscription?.plan ?? 'basic');
               return (
                 <div key={job.id} className="bg-white p-5 rounded-xl shadow-sm border">
                   <div className="flex justify-between items-start mb-3">
@@ -405,7 +446,7 @@ export default function DriverPortal() {
             <div className="bg-white p-6 rounded-xl border">
               <h2 className="font-bold text-lg mb-1">Earnings Calculator</h2>
               <p className="text-sm text-gray-500 mb-5">Estimate your net earnings for any job before you accept.</p>
-              <EarningsCalculator plan={driver?.subscription_plan ?? 'Basic'}/>
+              <EarningsCalculator plan={subscription?.plan ?? 'basic'}/>
             </div>
           </div>
         )}

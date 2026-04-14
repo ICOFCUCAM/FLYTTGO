@@ -204,10 +204,35 @@ async function markBookingPaid(bookingId: string, sessionId: string) {
  * subscription row to status='active' and leave the plan transition
  * details to ops / a separate activation function.
  *
+ * The `end_date` is computed from each plan's billing cadence —
+ * without this, paid subscriptions land with no expiration and the
+ * pg_cron auto-downgrade job (docs/subscription-expiry-cron.sql)
+ * has nothing to act on. The free plan has no expiration because
+ * there's nothing to downgrade to.
+ *
  * If FlyttGo wants more sophisticated subscription handling
  * (renewals, proration, dunning) it belongs in a dedicated
  * activate-subscription Edge Function.
  */
+
+/* How long each paid plan stays active after a successful payment.
+ * Free and Basic are free-tier and never expire — there's nothing
+ * lower to downgrade them to. Pro Mini bills daily, Pro and
+ * Unlimited bill monthly (30 days). */
+const PLAN_DURATION_DAYS: Record<string, number> = {
+  free:      0,    // no expiry
+  basic:     0,    // no expiry (free tier with commission)
+  pro_mini:  1,
+  pro:       30,
+  unlimited: 30,
+};
+
+function computeEndDate(planId: string): string | null {
+  const days = PLAN_DURATION_DAYS[planId] ?? 0;
+  if (days <= 0) return null;
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
 async function markSubscriptionPaid(
   driverId: string,
   planId:   string,
@@ -230,20 +255,38 @@ async function markSubscriptionPaid(
     return { ok: true, idempotent: true, plan: planId };
   }
 
+  /* Fresh activation window: start_date = now, end_date = now + plan
+   * duration. Writing both on every activation means the pg_cron
+   * auto-downgrade job can treat end_date as the only source of
+   * truth for "is this subscription live?". */
+  const nowIso  = new Date().toISOString();
+  const endDate = computeEndDate(planId);
+
   if (existing) {
     const { error: updErr } = await supabase
       .from('driver_subscriptions')
-      .update({ plan: planId, subscription_status: 'active' })
+      .update({
+        plan:                planId,
+        subscription_status: 'active',
+        start_date:          nowIso,
+        end_date:            endDate,
+      })
       .eq('id', existing.id);
     if (updErr) throw new Error(`subscription update failed: ${updErr.message}`);
   } else {
     const { error: insErr } = await supabase
       .from('driver_subscriptions')
-      .insert({ driver_id: driverId, plan: planId, subscription_status: 'active' });
+      .insert({
+        driver_id:           driverId,
+        plan:                planId,
+        subscription_status: 'active',
+        start_date:          nowIso,
+        end_date:            endDate,
+      });
     if (insErr) throw new Error(`subscription insert failed: ${insErr.message}`);
   }
 
-  return { ok: true, idempotent: false, plan: planId, sessionId };
+  return { ok: true, idempotent: false, plan: planId, sessionId, endDate };
 }
 
 /* ─── Event router ─────────────────────────────────────────────── */
