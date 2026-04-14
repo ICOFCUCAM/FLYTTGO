@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 
 const SERVICES = [
@@ -69,6 +70,7 @@ const colorMap: Record<string, { bg: string; badge: string; btn: string; icon: s
 
 export default function ServicesPage() {
   const { setPage } = useApp();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-white">
@@ -77,30 +79,30 @@ export default function ServicesPage() {
       <section className="bg-gradient-to-br from-[#0B2E59] to-[#1a4a8a] text-white py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-white/10 text-white/80 text-xs font-medium px-4 py-2 rounded-full mb-6">
-            🚐 Norway&apos;s #1 Moving Marketplace · 25,000+ Jobs Completed
+            🚐 {t('services.heroBadge')}
           </div>
           <h1 className="text-5xl font-extrabold mb-4 leading-tight">
-            Every Moving Service<br/><span className="text-[#F2B705]">Across Norway</span>
+            {t('services.heroTitle1')}<br/><span className="text-[#F2B705]">{t('services.heroTitle2')}</span>
           </h1>
           <p className="text-white/70 text-lg max-w-2xl mx-auto mb-8">
-            Book verified, insured transport providers for any move. Transparent pricing, real-time tracking, and secure escrow payment.
+            {t('services.heroSubtitle')}
           </p>
           <div className="flex flex-wrap justify-center gap-3 mb-8">
-            {['✅ Verified companies only', '🔒 Escrow payment', '📍 GPS tracking', '⭐ 4.8/5 rating'].map(b => (
+            {[t('services.badge1'), t('services.badge2'), t('services.badge3'), t('services.badge4')].map(b => (
               <span key={b} className="bg-white/10 text-white/80 text-sm px-4 py-2 rounded-full">{b}</span>
             ))}
           </div>
           <button onClick={() => setPage('booking')}
             className="px-10 py-4 bg-[#F2B705] text-[#0B2E59] rounded-xl font-bold text-lg hover:bg-[#F2B705]/90 transition shadow-lg">
-            Get Instant Prices →
+            {t('services.cta')}
           </button>
         </div>
       </section>
 
       {/* SERVICES GRID */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">Our Services</h2>
-        <p className="text-gray-500 text-center mb-12 max-w-xl mx-auto">All services delivered by registered Norwegian companies with mandatory goods-in-transit insurance.</p>
+        <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">{t('services.sectionTitle')}</h2>
+        <p className="text-gray-500 text-center mb-12 max-w-xl mx-auto">{t('services.sectionSubtitle')}</p>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {SERVICES.map(svc => {
             const c = colorMap[svc.color];
@@ -130,11 +132,11 @@ export default function ServicesPage() {
                         <div className="font-bold text-gray-900 text-sm">{svc.price}</div>
                         <div className="text-xs text-gray-400">{svc.time}</div>
                       </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${c.badge}`}>Available now</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${c.badge}`}>{t('services.availableNow')}</span>
                     </div>
                     <button onClick={() => setPage('booking')}
                       className={`w-full py-2.5 ${c.btn} text-white rounded-xl text-sm font-semibold transition`}>
-                      Book {svc.title} →
+                      {t('services.bookPrefix')} {svc.title} →
                     </button>
                   </div>
                 </div>
@@ -147,12 +149,12 @@ export default function ServicesPage() {
       {/* HOW IT WORKS */}
       <section className="bg-gray-50 py-16">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-3xl font-extrabold text-[#0B2E59] mb-10">How It Works</h2>
+          <h2 className="text-3xl font-extrabold text-[#0B2E59] mb-10">{t('services.howTitle')}</h2>
           <div className="grid sm:grid-cols-3 gap-8">
             {[
-              { step: '1', title: 'Book Online', desc: 'Enter your addresses, choose a service, pick a time. Takes under 3 minutes.' },
-              { step: '2', title: 'Get Matched', desc: 'A verified, insured driver near you accepts your job and confirms details.' },
-              { step: '3', title: 'Move Safely', desc: 'Track in real time. Payment held in escrow — only released on delivery confirmation.' },
+              { step: '1', title: t('services.how1Title'), desc: t('services.how1Desc') },
+              { step: '2', title: t('services.how2Title'), desc: t('services.how2Desc') },
+              { step: '3', title: t('services.how3Title'), desc: t('services.how3Desc') },
             ].map(item => (
               <div key={item.step} className="text-center">
                 <div className="w-12 h-12 bg-[#0B2E59] text-white rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">{item.step}</div>
@@ -167,11 +169,11 @@ export default function ServicesPage() {
       {/* CTA */}
       <section className="bg-gradient-to-r from-[#0B2E59] to-[#1a4a8a] py-16">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-3xl font-extrabold text-white mb-4">Ready to Move?</h2>
-          <p className="text-white/70 mb-8">Book any service in under 3 minutes. Verified drivers, secure payment.</p>
+          <h2 className="text-3xl font-extrabold text-white mb-4">{t('services.ctaTitle')}</h2>
+          <p className="text-white/70 mb-8">{t('services.ctaSubtitle')}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button onClick={() => setPage('booking')} className="px-10 py-4 bg-[#F2B705] text-[#0B2E59] rounded-xl font-bold text-base hover:bg-[#F2B705]/90 transition shadow-lg">Book Now — Instant Prices</button>
-            <button onClick={() => setPage('van-guide')} className="px-10 py-4 bg-white/10 text-white rounded-xl font-semibold text-base hover:bg-white/20 transition">Which Van Do I Need?</button>
+            <button onClick={() => setPage('booking')} className="px-10 py-4 bg-[#F2B705] text-[#0B2E59] rounded-xl font-bold text-base hover:bg-[#F2B705]/90 transition shadow-lg">{t('services.ctaBookNow')}</button>
+            <button onClick={() => setPage('van-guide')} className="px-10 py-4 bg-white/10 text-white rounded-xl font-semibold text-base hover:bg-white/20 transition">{t('services.ctaWhichVan')}</button>
           </div>
         </div>
       </section>

@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { HERO_SLIDES, VAN_TYPES, CITIES, TESTIMONIALS, HOW_IT_WORKS, SUBSCRIPTION_PLANS, calculateCommission } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
+import { getRouteDistance } from '../lib/routing';
 
 /* ── HERO SLIDER ── */
 function HeroSlider() {
   const [idx, setIdx] = useState(0);
   const { setPage } = useApp();
+  const { t } = useTranslation();
   useEffect(() => {
     const t = setInterval(() => setIdx(p => (p + 1) % HERO_SLIDES.length), 5000);
     return () => clearInterval(t);
@@ -32,7 +35,7 @@ function HeroSlider() {
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 bg-emerald-600/20 backdrop-blur-sm border border-emerald-500/30 rounded-full px-4 py-1.5 mb-6">
               <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-              <span className="text-emerald-300 text-sm font-medium">Norway's #1 Moving Platform</span>
+              <span className="text-emerald-300 text-sm font-medium">{t('home.heroBadge')}</span>
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">{slide.title}</h1>
             <p className="text-lg text-gray-200 mb-8 max-w-lg">{slide.subtitle}</p>
@@ -43,7 +46,7 @@ function HeroSlider() {
               </button>
               <button onClick={() => setPage('van-guide')}
                 className="px-8 py-3.5 bg-white/10 backdrop-blur-sm text-white rounded-xl font-semibold hover:bg-white/20 transition border border-white/20">
-                Van Size Guide
+                {t('home.vanSizeGuide')}
               </button>
             </div>
           </div>
@@ -63,6 +66,7 @@ function HeroSlider() {
 
 function BookingWidget() {
   const { setPage, setBookingData } = useApp();
+  const { t } = useTranslation();
   /* Structured Norwegian addresses from Kartverket (same component the
    * booking flow uses). Stored as full objects so we can pass them
    * straight through to bookingData and the booking flow can pre-fill
@@ -71,32 +75,32 @@ function BookingWidget() {
   const [dropoff, setDropoff] = useState<NorwegianAddress | null>(null);
   const [moveType, setMoveType] = useState('apartment');
   const [moveDate, setMoveDate] = useState('');
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
-  const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
+  const [distanceKm,      setDistanceKm]      = useState<number | null>(null);
+  const [durationMinutes, setDurationMinutes] = useState<number | null>(null);
+  const [estimatedPrice,  setEstimatedPrice]  = useState<number | null>(null);
 
-  /* Haversine distance whenever both addresses have coordinates. Same
-   * formula BookingFlow uses, so the home widget and the booking flow
-   * agree on what they show the customer. */
+  /* Real driving distance + duration via the route-distance edge
+   * function (OSRM). Falls back to Haversine + 70 km/h in
+   * lib/routing.ts when the edge function isn't reachable, so the
+   * widget never stalls on the customer. */
   useEffect(() => {
+    let cancelled = false;
     if (pickup?.lat == null || pickup?.lng == null || dropoff?.lat == null || dropoff?.lng == null) {
       setDistanceKm(null);
+      setDurationMinutes(null);
       return;
     }
-    const R = 6371;
-    const dLat = (dropoff.lat - pickup.lat) * Math.PI / 180;
-    const dLon = (dropoff.lng - pickup.lng) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(pickup.lat * Math.PI / 180) *
-      Math.cos(dropoff.lat * Math.PI / 180) *
-      Math.sin(dLon / 2) ** 2;
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    setDistanceKm(Math.round(R * c));
+    (async () => {
+      const res = await getRouteDistance(
+        { lat: pickup.lat!, lng: pickup.lng! },
+        { lat: dropoff.lat!, lng: dropoff.lng! },
+      );
+      if (cancelled || !res) return;
+      setDistanceKm(res.distanceKm);
+      setDurationMinutes(res.durationMinutes);
+    })();
+    return () => { cancelled = true; };
   }, [pickup, dropoff]);
-
-  /* Approximate driving duration from distance — ~70 km/h average,
-   * good enough for a "minutes drive" hint on the widget. */
-  const durationMinutes = distanceKm != null ? Math.round(distanceKm * 0.86) : null;
 
   const handleEstimate = () => {
     if (!pickup?.formatted || !dropoff?.formatted) return;
@@ -140,13 +144,13 @@ function BookingWidget() {
       <div className="bg-white rounded-2xl shadow-2xl border border-gray-100">
         <div className="bg-gradient-to-r from-[#1A365D] to-[#2D4A7A] rounded-t-2xl px-6 sm:px-8 py-5 flex items-center justify-between">
           <div>
-            <h2 className="text-white text-xl font-bold">Get an Instant Moving Quote</h2>
-            <p className="text-white/60 text-sm mt-0.5">Norway-wide · free estimate · no commitment</p>
+            <h2 className="text-white text-xl font-bold">{t('home.quoteTitle')}</h2>
+            <p className="text-white/60 text-sm mt-0.5">{t('home.quoteSubtitle')}</p>
           </div>
           <div className="hidden sm:flex items-center gap-5 text-sm text-white/70">
-            {[['Insured', 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'],
-               ['2hr min', 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'],
-               ['MVA incl.', 'M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2-1 2 1 2-1 2 1 2-1zm0 0l2 1 2-1 2 1V6a1 1 0 00-1-1h-4']].map(([label, path]) => (
+            {[[t('home.insured'), 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'],
+               [t('home.twoHrMin'), 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'],
+               [t('home.mvaIncl'), 'M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2-1 2 1 2-1 2 1 2-1zm0 0l2 1 2-1 2 1V6a1 1 0 00-1-1h-4']].map(([label, path]) => (
               <span key={label} className="flex items-center gap-1.5">
                 <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path}/></svg>
                 {label}
@@ -157,38 +161,38 @@ function BookingWidget() {
         <div className="px-6 sm:px-8 py-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Pickup</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('home.pickup')}</label>
               <NorwayAddressAutocomplete
                 value={pickup?.formatted ?? ''}
                 onSelect={setPickup}
-                placeholder="Pickup address"
+                placeholder={t('home.pickupAddress')}
                 id="home-pickup"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Delivery</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('home.delivery')}</label>
               <NorwayAddressAutocomplete
                 value={dropoff?.formatted ?? ''}
                 onSelect={setDropoff}
-                placeholder="Delivery address"
+                placeholder={t('home.deliveryAddress')}
                 id="home-dropoff"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Move Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('home.moveType')}</label>
               <div className="relative">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                 <select value={moveType} onChange={e => setMoveType(e.target.value)} className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm appearance-none bg-white">
-                  <option value="single-item">Single Item</option>
-                  <option value="student">Student Move</option>
-                  <option value="apartment">Apartment Move</option>
-                  <option value="house">House Move</option>
-                  <option value="office">Office Relocation</option>
+                  <option value="single-item">{t('home.moveSingleItem')}</option>
+                  <option value="student">{t('home.moveStudent')}</option>
+                  <option value="apartment">{t('home.moveApartment')}</option>
+                  <option value="house">{t('home.moveHouse')}</option>
+                  <option value="office">{t('home.moveOffice')}</option>
                 </select>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Moving Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('home.movingDate')}</label>
               <div className="relative">
                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                 <input type="date" value={moveDate} onChange={e => setMoveDate(e.target.value)} className="w-full pl-9 pr-3 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm"/>
@@ -206,13 +210,13 @@ function BookingWidget() {
             <div className="flex items-center gap-3">
               {estimatedPrice && (
                 <div className="text-right mr-1">
-                  <div className="text-xs text-gray-400">Est. from</div>
+                  <div className="text-xs text-gray-400">{t('home.estFrom')}</div>
                   <div className="text-xl font-bold text-[#1A365D]">{estimatedPrice.toLocaleString()} <span className="text-sm font-normal">NOK</span></div>
                 </div>
               )}
-              <button onClick={handleEstimate} className="px-5 py-3 bg-[#1A365D] text-white rounded-xl font-semibold hover:bg-[#2D4A7A] transition text-sm">Get Estimate</button>
+              <button onClick={handleEstimate} className="px-5 py-3 bg-[#1A365D] text-white rounded-xl font-semibold hover:bg-[#2D4A7A] transition text-sm">{t('home.getEstimate')}</button>
               <button onClick={handleBookNow} className="group px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-semibold hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-500/25 transition flex items-center gap-2 text-sm">
-                Book Now
+                {t('home.bookNow')}
                 <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
               </button>
             </div>
@@ -228,19 +232,20 @@ function BookingWidget() {
  * first thing the customer sees after the hero, so it does the heavy
  * lifting on perceived legitimacy. */
 function TrustBar() {
+  const { t } = useTranslation();
   const items = [
     { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
-      title: 'Verified drivers',
-      desc:  'Every driver passes ID + insurance checks' },
+      title: t('home.trustVerifiedTitle'),
+      desc:  t('home.trustVerifiedDesc') },
     { icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
-      title: 'Secure escrow',
-      desc:  'Payment held until delivery confirmed' },
+      title: t('home.trustEscrowTitle'),
+      desc:  t('home.trustEscrowDesc') },
     { icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
-      title: 'Insured deliveries',
-      desc:  'Goods-in-transit cover up to 500 000 NOK' },
+      title: t('home.trustInsuredTitle'),
+      desc:  t('home.trustInsuredDesc') },
     { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
-      title: 'Brønnøysund-registered',
-      desc:  'Norwegian companies only · MVA included' },
+      title: t('home.trustRegisteredTitle'),
+      desc:  t('home.trustRegisteredDesc') },
   ];
 
   return (
@@ -266,11 +271,12 @@ function TrustBar() {
 
 /* ── STATS ── */
 function StatsSection() {
+  const { t } = useTranslation();
   return (
     <section className="py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-          {[{ value: '25,000+', label: 'Deliveries Completed' }, { value: '560+', label: 'Verified Drivers' }, { value: '4.8/5', label: 'Average Rating' }, { value: '15+', label: 'Cities Covered' }].map(s => (
+          {[{ value: '25,000+', label: t('home.statDeliveries') }, { value: '560+', label: t('home.statDrivers') }, { value: '4.8/5', label: t('home.statRating') }, { value: '15+', label: t('home.statCities') }].map(s => (
             <div key={s.label} className="text-center">
               <p className="text-3xl sm:text-4xl font-bold text-emerald-600 mb-1">{s.value}</p>
               <p className="text-sm text-gray-600">{s.label}</p>
@@ -278,10 +284,10 @@ function StatsSection() {
           ))}
         </div>
         <div className="border-t border-gray-100 mt-8 pt-5 flex flex-wrap justify-center gap-6 text-xs text-gray-400">
-          {[['Verified Drivers', 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'],
-             ['Secure Payments', 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'],
-             ['Dispute Protection', 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3'],
-             ['In-App Chat Only', 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z']].map(([label, path]) => (
+          {[[t('home.badgeVerifiedDrivers'), 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'],
+             [t('home.badgeSecurePay'), 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'],
+             [t('home.badgeDispute'), 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3'],
+             [t('home.badgeChatOnly'), 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z']].map(([label, path]) => (
             <span key={label} className="flex items-center gap-1.5">
               <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={path}/></svg>
               {label}
@@ -333,12 +339,13 @@ function ServicesSection() {
 
 /* ── HOW IT WORKS ── */
 function HowItWorks() {
+  const { t } = useTranslation();
   return (
     <section className="py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">How FlyttGo Works</h2>
-          <p className="text-lg text-gray-600">Book your move in under 60 seconds</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{t('home.howTitle')}</h2>
+          <p className="text-lg text-gray-600">{t('home.howSubtitle')}</p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {HOW_IT_WORKS.map(item => (
@@ -598,22 +605,30 @@ function CorporateCTA() {
 /* ── DRIVER CTA ── */
 function DriverCTA() {
   const { setShowAuthModal, setAuthMode } = useApp();
+  const { t } = useTranslation();
+  const features = [
+    t('home.driverFeature1'),
+    t('home.driverFeature2'),
+    t('home.driverFeature3'),
+    t('home.driverFeature4'),
+    t('home.driverFeature5'),
+  ];
   return (
     <section className="py-20 bg-gradient-to-r from-emerald-700 to-emerald-900 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">Become a FlyttGo Driver</h2>
-            <p className="text-lg text-emerald-100 mb-6">Earn money on your own schedule. Join thousands of drivers across Norway.</p>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">{t('home.driverCtaTitle')}</h2>
+            <p className="text-lg text-emerald-100 mb-6">{t('home.driverCtaSubtitle')}</p>
             <ul className="space-y-3 mb-8">
-              {['Flexible working hours', 'Earn up to 30,000 NOK/month', 'Weekly payouts via Stripe', 'Choose your own jobs', 'Free to join — upgrade anytime'].map(f => (
+              {features.map(f => (
                 <li key={f} className="flex items-center gap-3">
                   <svg className="w-5 h-5 text-emerald-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
                   <span>{f}</span>
                 </li>
               ))}
             </ul>
-            <button onClick={() => { setAuthMode('driver-signup'); setShowAuthModal(true); }} className="px-8 py-3.5 bg-white text-emerald-700 rounded-xl font-semibold hover:bg-emerald-50 transition shadow-lg">Apply Now</button>
+            <button onClick={() => { setAuthMode('driver-signup'); setShowAuthModal(true); }} className="px-8 py-3.5 bg-white text-emerald-700 rounded-xl font-semibold hover:bg-emerald-50 transition shadow-lg">{t('home.applyNow')}</button>
           </div>
           <div>
             <img src="https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766976394_04c23eab.jpg" alt="FlyttGo Driver" width={800} height={800} loading="lazy" decoding="async" className="rounded-2xl shadow-2xl w-full"/>

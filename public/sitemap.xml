@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  FlyttGo sitemap.
-  Note: this is a single-page-app; URLs below correspond to the in-app
-  Page enum (lib/store.tsx). When the app moves to react-router or
-  uses real URL paths, regenerate this file from the route table.
+  FlyttGo sitemap — generated from src/lib/pageRoutes.ts.
+  Every path here matches the Page ↔ path map in that file.
+  Regenerate when you add a new Page entry.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- Core marketing / booking -->
   <url>
     <loc>https://flyttgo.no/</loc>
     <changefreq>weekly</changefreq>
@@ -17,60 +18,121 @@
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://flyttgo.no/booking</loc>
+    <loc>https://flyttgo.no/book</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://flyttgo.no/van-guide</loc>
+    <loc>https://flyttgo.no/track</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/payment</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/van-size-guide</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/moving-checklist</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://flyttgo.no/checklist</loc>
+    <loc>https://flyttgo.no/about</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/contact</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/faq</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://flyttgo.no/subscriptions</loc>
+    <loc>https://flyttgo.no/help</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/safety</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/careers</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/press</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/sustainability</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Driver funnel -->
+  <url>
+    <loc>https://flyttgo.no/become-a-driver</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/driver-subscriptions</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Business funnel -->
+  <url>
+    <loc>https://flyttgo.no/business</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/business/dashboard</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://flyttgo.no/business/bulk-booking</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://flyttgo.no/driver-onboarding</loc>
+    <loc>https://flyttgo.no/business/recurring-deliveries</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://flyttgo.no/corporate</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://flyttgo.no/corporate-dashboard</loc>
+    <loc>https://flyttgo.no/business/about-dashboard</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://flyttgo.no/bulk-booking</loc>
+    <loc>https://flyttgo.no/business/invoicing</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://flyttgo.no/recurring-deliveries</loc>
+    <loc>https://flyttgo.no/business/api</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
-  <url>
-    <loc>https://flyttgo.no/invoice-billing</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://flyttgo.no/corporate-api-access</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
+
+  <!-- Legal -->
   <url>
     <loc>https://flyttgo.no/terms</loc>
     <changefreq>yearly</changefreq>
@@ -91,4 +153,5 @@
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
+
 </urlset>
