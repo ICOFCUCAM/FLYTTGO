@@ -32,7 +32,7 @@ function AppleIcon() {
 
 export default function AuthModal() {
   const { showAuthModal, setShowAuthModal, authMode, setAuthMode } = useApp();
-  const { signIn, signUp, signInWithGoogle, signInWithApple } = useAuth();
+  const { signIn, signUp, signInWithGoogle, signInWithApple, resetPassword } = useAuth();
 
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
@@ -46,6 +46,10 @@ export default function AuthModal() {
   const [signupStep, setSignupStep]   = useState<'choose' | 'form'>('choose');
   const [selectedRole, setSelectedRole] = useState<Role>('customer');
 
+  // Forgot password sub-flow (lives under the 'signin' auth mode).
+  const [forgotMode, setForgotMode] = useState(false);
+  const [resetSent, setResetSent]   = useState(false);
+
   // Reset transient state every time the modal is (re-)opened.
   useEffect(() => {
     if (showAuthModal) {
@@ -53,6 +57,8 @@ export default function AuthModal() {
       setLoading(false);
       setShowPass(false);
       setSignupStep('choose');
+      setForgotMode(false);
+      setResetSent(false);
     }
   }, [showAuthModal, authMode]);
 
@@ -91,6 +97,19 @@ export default function AuthModal() {
     }
   }
 
+  async function handleForgotSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const { error } = await resetPassword(email);
+      if (error) { setError(error.message); return; }
+      setResetSent(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const fieldCls =
     'w-full px-4 py-3 bg-[#1E293B] border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition';
 
@@ -109,7 +128,7 @@ export default function AuthModal() {
         </button>
 
         {/* ══════════ SIGN IN ══════════ */}
-        {isSignIn && (
+        {isSignIn && !forgotMode && (
           <>
             <h2 className="text-2xl font-bold mb-1">Sign In</h2>
             <p className="text-gray-400 text-sm mb-6">Welcome back to FlyttGo.</p>
@@ -157,7 +176,16 @@ export default function AuthModal() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Password</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-gray-300">Password</label>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotMode(true); setError(''); setResetSent(false); }}
+                    className="text-xs text-cyan-400 hover:underline"
+                  >
+                    Forgot?
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type={showPass ? 'text' : 'password'}
@@ -192,6 +220,56 @@ export default function AuthModal() {
                 Sign Up
               </button>
             </p>
+          </>
+        )}
+
+        {/* ══════════ FORGOT PASSWORD ══════════ */}
+        {isSignIn && forgotMode && (
+          <>
+            <button
+              type="button"
+              onClick={() => { setForgotMode(false); setError(''); setResetSent(false); }}
+              className="flex items-center gap-1 text-gray-400 hover:text-white mb-4 text-sm transition"
+            >
+              <ArrowLeft className="w-4 h-4" /> Back to sign in
+            </button>
+
+            <h2 className="text-2xl font-bold mb-1">Reset password</h2>
+            <p className="text-gray-400 text-sm mb-6">
+              Enter your email and we&apos;ll send you a link to reset your password.
+            </p>
+
+            {error && (
+              <div className="bg-red-950/50 border border-red-500/30 text-red-300 rounded-xl p-3 text-sm mb-4">
+                {error}
+              </div>
+            )}
+
+            {resetSent ? (
+              <div className="bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 rounded-xl p-4 text-sm">
+                <p className="font-semibold mb-1">Check your inbox</p>
+                <p className="text-emerald-300/80">
+                  If an account exists for <span className="font-mono">{email}</span>, a reset link is on its way.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                    placeholder="you@example.com"
+                    className={fieldCls}
+                  />
+                </div>
+                <button type="submit" disabled={loading} className={gradientBtnCls}>
+                  {loading ? 'Sending…' : 'Send reset link'}
+                </button>
+              </form>
+            )}
           </>
         )}
 
