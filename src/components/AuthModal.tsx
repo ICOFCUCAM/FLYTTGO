@@ -111,17 +111,17 @@ export default function AuthModal() {
   }
 
   const fieldCls =
-    'w-full px-4 py-3 bg-[#1E293B] border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none transition';
+    'w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition';
 
-  const gradientBtnCls =
-    'w-full py-3 bg-gradient-to-r from-cyan-400 via-sky-500 to-purple-500 text-white rounded-xl font-semibold hover:from-cyan-500 hover:via-sky-600 hover:to-purple-600 transition disabled:opacity-60 shadow-lg shadow-cyan-500/10';
+  const primaryBtnCls =
+    'w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition disabled:opacity-60 shadow-sm';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-[#0B1220] border border-white/10 rounded-2xl shadow-2xl w-full max-w-md p-8 relative text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-2xl w-full max-w-md p-8 relative text-gray-900">
         <button
           onClick={() => setShowAuthModal(false)}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
@@ -130,14 +130,19 @@ export default function AuthModal() {
         {/* ══════════ SIGN IN ══════════ */}
         {isSignIn && !forgotMode && (
           <>
-            <h2 className="text-2xl font-bold mb-1">Sign In</h2>
-            <p className="text-gray-400 text-sm mb-6">Welcome back to FlyttGo.</p>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <span className="text-lg">👋</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Sign In</h2>
+            </div>
+            <p className="text-gray-500 text-sm mb-6">Welcome back to FlyttGo.</p>
 
             <button
               type="button"
               onClick={() => handleOAuth('google')}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-3 bg-white text-gray-900 rounded-xl font-semibold mb-3 hover:bg-gray-100 transition disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-3 py-3 bg-white text-gray-700 border border-gray-200 rounded-xl font-semibold mb-3 hover:bg-gray-50 hover:border-gray-300 transition disabled:opacity-60 shadow-sm"
             >
               <GoogleIcon /> Sign in with Google
             </button>
@@ -146,26 +151,26 @@ export default function AuthModal() {
               type="button"
               onClick={() => handleOAuth('apple')}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-3 bg-black text-white border border-white/10 rounded-xl font-semibold hover:bg-gray-900 transition disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-3 py-3 bg-gray-900 text-white border border-gray-900 rounded-xl font-semibold hover:bg-black transition disabled:opacity-60 shadow-sm"
             >
               <AppleIcon /> Sign in with Apple
             </button>
 
             <div className="flex items-center gap-3 my-6">
-              <div className="flex-1 h-px bg-white/10" />
-              <span className="text-xs text-gray-500">or continue with email</span>
-              <div className="flex-1 h-px bg-white/10" />
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400">or continue with email</span>
+              <div className="flex-1 h-px bg-gray-200" />
             </div>
 
             {error && (
-              <div className="bg-red-950/50 border border-red-500/30 text-red-300 rounded-xl p-3 text-sm mb-4">
+              <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-sm mb-4">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
                 <input
                   type="email"
                   value={email}
@@ -177,11 +182,11 @@ export default function AuthModal() {
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-sm font-medium text-gray-300">Password</label>
+                  <label className="block text-sm font-medium text-gray-700">Password</label>
                   <button
                     type="button"
                     onClick={() => { setForgotMode(true); setError(''); setResetSent(false); }}
-                    className="text-xs text-cyan-400 hover:underline"
+                    className="text-xs text-emerald-600 hover:underline font-medium"
                   >
                     Forgot?
                   </button>
@@ -198,24 +203,24 @@ export default function AuthModal() {
                   <button
                     type="button"
                     onClick={() => setShowPass(!showPass)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     aria-label={showPass ? 'Hide password' : 'Show password'}
                   >
                     {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-              <button type="submit" disabled={loading} className={gradientBtnCls}>
+              <button type="submit" disabled={loading} className={primaryBtnCls}>
                 {loading ? 'Please wait…' : 'Sign In'}
               </button>
             </form>
 
-            <p className="text-center text-sm text-gray-400 mt-6">
+            <p className="text-center text-sm text-gray-500 mt-6">
               Don&apos;t have an account?{' '}
               <button
                 type="button"
                 onClick={() => { setAuthMode('signup'); setError(''); setSignupStep('choose'); }}
-                className="text-cyan-400 font-semibold hover:underline"
+                className="text-emerald-600 font-semibold hover:underline"
               >
                 Sign Up
               </button>
@@ -229,33 +234,38 @@ export default function AuthModal() {
             <button
               type="button"
               onClick={() => { setForgotMode(false); setError(''); setResetSent(false); }}
-              className="flex items-center gap-1 text-gray-400 hover:text-white mb-4 text-sm transition"
+              className="flex items-center gap-1 text-gray-500 hover:text-gray-900 mb-4 text-sm transition"
             >
               <ArrowLeft className="w-4 h-4" /> Back to sign in
             </button>
 
-            <h2 className="text-2xl font-bold mb-1">Reset password</h2>
-            <p className="text-gray-400 text-sm mb-6">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <span className="text-lg">🔑</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Reset password</h2>
+            </div>
+            <p className="text-gray-500 text-sm mb-6">
               Enter your email and we&apos;ll send you a link to reset your password.
             </p>
 
             {error && (
-              <div className="bg-red-950/50 border border-red-500/30 text-red-300 rounded-xl p-3 text-sm mb-4">
+              <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-sm mb-4">
                 {error}
               </div>
             )}
 
             {resetSent ? (
-              <div className="bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 rounded-xl p-4 text-sm">
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 text-sm">
                 <p className="font-semibold mb-1">Check your inbox</p>
-                <p className="text-emerald-300/80">
+                <p className="text-emerald-700">
                   If an account exists for <span className="font-mono">{email}</span>, a reset link is on its way.
                 </p>
               </div>
             ) : (
               <form onSubmit={handleForgotSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
                   <input
                     type="email"
                     value={email}
@@ -265,7 +275,7 @@ export default function AuthModal() {
                     className={fieldCls}
                   />
                 </div>
-                <button type="submit" disabled={loading} className={gradientBtnCls}>
+                <button type="submit" disabled={loading} className={primaryBtnCls}>
                   {loading ? 'Sending…' : 'Send reset link'}
                 </button>
               </form>
@@ -276,8 +286,13 @@ export default function AuthModal() {
         {/* ══════════ SIGN UP — ROLE CHOOSER ══════════ */}
         {!isSignIn && signupStep === 'choose' && (
           <>
-            <h2 className="text-2xl font-bold mb-1">Create Account</h2>
-            <p className="text-gray-400 text-sm mb-6">Choose your account type to get started.</p>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <span className="text-lg">✨</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Create Account</h2>
+            </div>
+            <p className="text-gray-500 text-sm mb-6">Choose your account type to get started.</p>
 
             <div className="space-y-3">
               {ROLE_OPTIONS.map(option => (
@@ -285,26 +300,26 @@ export default function AuthModal() {
                   key={option.id}
                   type="button"
                   onClick={() => { setSelectedRole(option.id); setSignupStep('form'); setError(''); }}
-                  className="w-full flex items-center gap-4 p-4 bg-[#1E293B] border border-white/10 rounded-xl text-left hover:border-cyan-500/60 hover:bg-[#1E293B]/80 transition group"
+                  className="w-full flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl text-left hover:border-emerald-500 hover:bg-emerald-50/40 transition group"
                 >
-                  <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-cyan-500/20 transition">
+                  <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-emerald-100 transition">
                     {option.icon}
                   </div>
                   <div className="flex-1">
-                    <div className="font-semibold text-white">{option.title}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{option.desc}</div>
+                    <div className="font-semibold text-gray-900">{option.title}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{option.desc}</div>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-gray-500 group-hover:text-cyan-400 flex-shrink-0 transition" />
+                  <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-600 flex-shrink-0 transition" />
                 </button>
               ))}
             </div>
 
-            <p className="text-center text-sm text-gray-400 mt-6">
+            <p className="text-center text-sm text-gray-500 mt-6">
               Already have an account?{' '}
               <button
                 type="button"
                 onClick={() => { setAuthMode('signin'); setError(''); }}
-                className="text-cyan-400 font-semibold hover:underline"
+                className="text-emerald-600 font-semibold hover:underline"
               >
                 Sign In
               </button>
@@ -318,13 +333,22 @@ export default function AuthModal() {
             <button
               type="button"
               onClick={() => { setSignupStep('choose'); setError(''); }}
-              className="flex items-center gap-1 text-gray-400 hover:text-white mb-4 text-sm transition"
+              className="flex items-center gap-1 text-gray-500 hover:text-gray-900 mb-4 text-sm transition"
             >
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
 
-            <h2 className="text-2xl font-bold mb-1">Create Account</h2>
-            <p className="text-gray-400 text-sm mb-6">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <span className="text-lg">
+                  {selectedRole === 'customer' && '🏠'}
+                  {selectedRole === 'driver'   && '🚐'}
+                  {selectedRole === 'business' && '🏢'}
+                </span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Create Account</h2>
+            </div>
+            <p className="text-gray-500 text-sm mb-6">
               {selectedRole === 'customer' && 'Join as a personal customer.'}
               {selectedRole === 'driver'   && 'Start earning with FlyttGo.'}
               {selectedRole === 'business' && 'Set up your corporate account.'}
@@ -334,7 +358,7 @@ export default function AuthModal() {
               type="button"
               onClick={() => handleOAuth('google')}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-3 bg-white text-gray-900 rounded-xl font-semibold mb-3 hover:bg-gray-100 transition disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-3 py-3 bg-white text-gray-700 border border-gray-200 rounded-xl font-semibold mb-3 hover:bg-gray-50 hover:border-gray-300 transition disabled:opacity-60 shadow-sm"
             >
               <GoogleIcon /> Continue with Google
             </button>
@@ -343,19 +367,19 @@ export default function AuthModal() {
               type="button"
               onClick={() => handleOAuth('apple')}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-3 bg-black text-white border border-white/10 rounded-xl font-semibold hover:bg-gray-900 transition disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-3 py-3 bg-gray-900 text-white border border-gray-900 rounded-xl font-semibold hover:bg-black transition disabled:opacity-60 shadow-sm"
             >
               <AppleIcon /> Continue with Apple
             </button>
 
             <div className="flex items-center gap-3 my-6">
-              <div className="flex-1 h-px bg-white/10" />
-              <span className="text-xs text-gray-500">or continue with email</span>
-              <div className="flex-1 h-px bg-white/10" />
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400">or continue with email</span>
+              <div className="flex-1 h-px bg-gray-200" />
             </div>
 
             {error && (
-              <div className="bg-red-950/50 border border-red-500/30 text-red-300 rounded-xl p-3 text-sm mb-4">
+              <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-sm mb-4">
                 {error}
               </div>
             )}
@@ -363,7 +387,7 @@ export default function AuthModal() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">First name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">First name</label>
                   <input
                     value={firstName}
                     onChange={e => setFirstName(e.target.value)}
@@ -373,7 +397,7 @@ export default function AuthModal() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Last name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Last name</label>
                   <input
                     value={lastName}
                     onChange={e => setLastName(e.target.value)}
@@ -384,7 +408,7 @@ export default function AuthModal() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
                 <input
                   type="email"
                   value={email}
@@ -395,7 +419,7 @@ export default function AuthModal() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1.5">Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
                 <div className="relative">
                   <input
                     type={showPass ? 'text' : 'password'}
@@ -408,24 +432,24 @@ export default function AuthModal() {
                   <button
                     type="button"
                     onClick={() => setShowPass(!showPass)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     aria-label={showPass ? 'Hide password' : 'Show password'}
                   >
                     {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-              <button type="submit" disabled={loading} className={gradientBtnCls}>
+              <button type="submit" disabled={loading} className={primaryBtnCls}>
                 {loading ? 'Please wait…' : 'Create Account'}
               </button>
             </form>
 
-            <p className="text-center text-sm text-gray-400 mt-6">
+            <p className="text-center text-sm text-gray-500 mt-6">
               Already have an account?{' '}
               <button
                 type="button"
                 onClick={() => { setAuthMode('signin'); setError(''); }}
-                className="text-cyan-400 font-semibold hover:underline"
+                className="text-emerald-600 font-semibold hover:underline"
               >
                 Sign In
               </button>

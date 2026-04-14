@@ -374,7 +374,7 @@ export default function Header() {
                   </button>
                   <button
                     onClick={openSignUp}
-                    className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-lg text-sm font-semibold hover:from-cyan-600 hover:to-purple-600 transition shadow-sm"
+                    className="hidden sm:flex items-center gap-1.5 px-4 py-2 border border-emerald-600 text-emerald-600 rounded-lg text-sm font-semibold hover:bg-emerald-50 transition shadow-sm"
                   >
                     Sign Up
                   </button>
@@ -419,7 +419,7 @@ export default function Header() {
                 </button>
                 <button
                   onClick={openSignUp}
-                  className="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-lg text-sm font-semibold mt-1"
+                  className="w-full py-2.5 border border-emerald-600 text-emerald-600 rounded-lg text-sm font-semibold mt-1 hover:bg-emerald-50 transition"
                 >
                   Sign Up
                 </button>
