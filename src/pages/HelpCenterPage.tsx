@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApp, Page } from '../lib/store';
 
 interface Topic {
@@ -79,6 +80,7 @@ const TOPICS: Topic[] = [
 
 export default function HelpCenterPage() {
   const { setPage } = useApp();
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
 
   const filtered = search
@@ -95,16 +97,16 @@ export default function HelpCenterPage() {
       <section className="bg-gradient-to-br from-[#0B2E59] to-[#1a4a8a] text-white py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-white/10 text-white/80 text-xs font-medium px-4 py-2 rounded-full mb-6">
-            📚 Help Center
+            📚 {t('help.heroBadge')}
           </div>
-          <h1 className="text-5xl font-extrabold mb-5 leading-tight">How can we help?</h1>
-          <p className="text-white/75 text-lg mb-8">Search our knowledge base or browse by topic.</p>
+          <h1 className="text-5xl font-extrabold mb-5 leading-tight">{t('help.heroTitle')}</h1>
+          <p className="text-white/75 text-lg mb-8">{t('help.heroSubtitle')}</p>
           <div className="relative max-w-xl mx-auto">
             <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search for articles…"
+              placeholder={t('help.searchPlaceholder')}
               className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white text-gray-900 placeholder-gray-400 focus:ring-4 focus:ring-emerald-400 outline-none shadow-xl"/>
           </div>
         </div>
@@ -143,16 +145,16 @@ export default function HelpCenterPage() {
       {/* CONTACT CTA */}
       <section className="bg-gray-50 py-16">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-2xl font-extrabold text-[#0B2E59] mb-2">Still need help?</h2>
-          <p className="text-gray-600 mb-6">We&apos;re here seven days a week.</p>
+          <h2 className="text-2xl font-extrabold text-[#0B2E59] mb-2">{t('help.stillTitle')}</h2>
+          <p className="text-gray-600 mb-6">{t('help.stillBody')}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button onClick={() => setPage('contact')}
               className="px-7 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition shadow-lg">
-              Contact Support
+              {t('help.contactCta')}
             </button>
             <button onClick={() => setPage('faq')}
               className="px-7 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:border-gray-300 transition">
-              Browse FAQ
+              {t('help.faqCta')}
             </button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 
 interface FaqItem { q: string; a: string; }
@@ -93,6 +94,7 @@ function AccordionItem({ item, open, onClick }: { item: FaqItem; open: boolean; 
 
 export default function FaqPage() {
   const { setPage } = useApp();
+  const { t } = useTranslation();
   const [openId, setOpenId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
@@ -115,10 +117,10 @@ export default function FaqPage() {
       <section className="bg-gradient-to-br from-[#0B2E59] to-[#1a4a8a] text-white py-20">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-white/10 text-white/80 text-xs font-medium px-4 py-2 rounded-full mb-6">
-            ❓ Frequently Asked Questions
+            ❓ {t('faq.heroBadge')}
           </div>
-          <h1 className="text-5xl font-extrabold mb-5 leading-tight">How can we help?</h1>
-          <p className="text-white/75 text-lg mb-8">Answers to the most common questions about booking, payment, drivers and more.</p>
+          <h1 className="text-5xl font-extrabold mb-5 leading-tight">{t('faq.heroTitle')}</h1>
+          <p className="text-white/75 text-lg mb-8">{t('faq.heroSubtitle')}</p>
           <div className="relative max-w-xl mx-auto">
             <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
@@ -127,7 +129,7 @@ export default function FaqPage() {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search questions…"
+              placeholder={t('faq.searchPlaceholder')}
               className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white text-gray-900 placeholder-gray-400 focus:ring-4 focus:ring-emerald-400 outline-none shadow-xl"
             />
           </div>
@@ -138,8 +140,8 @@ export default function FaqPage() {
       <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {filtered.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-gray-500 mb-4">No questions matched your search.</p>
-            <button onClick={() => setSearch('')} className="text-emerald-700 text-sm font-semibold hover:underline">Clear search</button>
+            <p className="text-gray-500 mb-4">{t('faq.noResults')}</p>
+            <button onClick={() => setSearch('')} className="text-emerald-700 text-sm font-semibold hover:underline">{t('faq.clearSearch')}</button>
           </div>
         ) : (
           filtered.map(section => (
@@ -162,16 +164,16 @@ export default function FaqPage() {
       {/* STILL STUCK */}
       <section className="bg-gray-50 py-16">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-2xl font-extrabold text-[#0B2E59] mb-2">Still have questions?</h2>
-          <p className="text-gray-600 mb-6">Our support team is available seven days a week.</p>
+          <h2 className="text-2xl font-extrabold text-[#0B2E59] mb-2">{t('faq.stillTitle')}</h2>
+          <p className="text-gray-600 mb-6">{t('faq.stillBody')}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button onClick={() => setPage('contact')}
               className="px-7 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition shadow-lg">
-              Contact Support
+              {t('faq.contactCta')}
             </button>
             <button onClick={() => setPage('help')}
               className="px-7 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:border-gray-300 transition">
-              Visit Help Center
+              {t('faq.helpCta')}
             </button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 
 const COVERAGE = [
@@ -9,17 +10,18 @@ const COVERAGE = [
   { outlet: 'NRK',             title: 'Gig-economy drivers earn more with transparent pricing',      date: 'Jun 2025', url: '#' },
 ];
 
-const FACTS = [
-  { label: 'Founded',              value: '2024' },
-  { label: 'Headquarters',         value: 'Oslo, Norway' },
-  { label: 'Employees',            value: '42' },
-  { label: 'Verified carriers',    value: '500+' },
-  { label: 'Cities served',        value: '40+' },
-  { label: 'Completed jobs',       value: '25,000+' },
-];
-
 export default function PressPage() {
   const { setPage } = useApp();
+  const { t } = useTranslation();
+
+  const facts = [
+    { label: t('press.factFounded'),   value: '2024' },
+    { label: t('press.factHq'),        value: 'Oslo, Norway' },
+    { label: t('press.factEmployees'), value: '42' },
+    { label: t('press.factCarriers'),  value: '500+' },
+    { label: t('press.factCities'),    value: '40+' },
+    { label: t('press.factJobs'),      value: '25,000+' },
+  ];
 
   return (
     <div className="min-h-screen bg-white">
@@ -28,12 +30,11 @@ export default function PressPage() {
       <section className="bg-gradient-to-br from-[#0B2E59] to-[#1a4a8a] text-white py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-white/10 text-white/80 text-xs font-medium px-4 py-2 rounded-full mb-6">
-            📰 Press & Media
+            📰 {t('press.heroBadge')}
           </div>
-          <h1 className="text-5xl font-extrabold mb-5 leading-tight">Press room</h1>
+          <h1 className="text-5xl font-extrabold mb-5 leading-tight">{t('press.heroTitle')}</h1>
           <p className="text-white/75 text-lg max-w-2xl mx-auto">
-            Everything you need to write about FlyttGo — company facts, logos, executive bios and
-            a direct line to our press team.
+            {t('press.heroSubtitle')}
           </p>
         </div>
       </section>
@@ -41,9 +42,9 @@ export default function PressPage() {
       {/* QUICK FACTS */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-10">
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-emerald-600 mb-5">Quick facts</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-emerald-600 mb-5">{t('press.factsTitle')}</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-            {FACTS.map(f => (
+            {facts.map(f => (
               <div key={f.label}>
                 <div className="text-2xl font-extrabold text-[#0B2E59]">{f.value}</div>
                 <div className="text-xs text-gray-500 uppercase tracking-wide mt-1">{f.label}</div>
@@ -55,8 +56,8 @@ export default function PressPage() {
 
       {/* IN THE NEWS */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">In the news</h2>
-        <p className="text-gray-500 text-center mb-12">Recent coverage of FlyttGo from Norwegian and international press.</p>
+        <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">{t('press.coverageTitle')}</h2>
+        <p className="text-gray-500 text-center mb-12">{t('press.coverageBody')}</p>
         <div className="space-y-3">
           {COVERAGE.map(c => (
             <a key={c.title} href={c.url}
@@ -76,8 +77,8 @@ export default function PressPage() {
       {/* BRAND ASSETS */}
       <section className="bg-gray-50 py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">Brand assets</h2>
-          <p className="text-gray-500 text-center mb-10">Our logo in every format, brand colours and typography guidelines.</p>
+          <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">{t('press.assetsTitle')}</h2>
+          <p className="text-gray-500 text-center mb-10">{t('press.assetsBody')}</p>
           <div className="grid sm:grid-cols-3 gap-4">
             {[
               { title: 'Logo (SVG + PNG)',   size: '1.2 MB' },
@@ -103,13 +104,13 @@ export default function PressPage() {
 
       {/* CONTACT */}
       <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <h2 className="text-2xl font-extrabold text-[#0B2E59] mb-2">Press enquiries</h2>
-        <p className="text-gray-600 mb-2">For interviews, executive commentary or background briefings:</p>
+        <h2 className="text-2xl font-extrabold text-[#0B2E59] mb-2">{t('press.enquiriesTitle')}</h2>
+        <p className="text-gray-600 mb-2">{t('press.enquiriesBody1')}</p>
         <a href="mailto:press@flyttgo.no" className="text-lg font-bold text-emerald-700 hover:underline">press@flyttgo.no</a>
         <div className="mt-8">
           <button onClick={() => setPage('contact')}
             className="px-7 py-3 bg-[#0B2E59] text-white rounded-xl font-semibold hover:bg-[#1a4a8a] transition shadow-lg">
-            Contact Form
+            {t('press.contactForm')}
           </button>
         </div>
       </section>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 
 const PERKS = [
@@ -27,6 +28,7 @@ const OPENINGS = [
 
 export default function CareersPage() {
   const { setPage } = useApp();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-white">
@@ -35,12 +37,11 @@ export default function CareersPage() {
       <section className="bg-gradient-to-br from-[#0B2E59] to-[#1a4a8a] text-white py-24">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-xs font-medium px-4 py-2 rounded-full mb-6">
-            💼 We&apos;re hiring
+            💼 {t('careers.heroBadge')}
           </div>
-          <h1 className="text-5xl sm:text-6xl font-extrabold mb-5 leading-tight">Build the future of moving.</h1>
+          <h1 className="text-5xl sm:text-6xl font-extrabold mb-5 leading-tight">{t('careers.heroTitle')}</h1>
           <p className="text-white/75 text-lg max-w-2xl mx-auto">
-            FlyttGo is small, profitable, and growing fast. If you like building things that
-            thousands of Norwegians rely on — and you&apos;d rather ship than meet — come join us.
+            {t('careers.heroSubtitle')}
           </p>
         </div>
       </section>
@@ -48,9 +49,9 @@ export default function CareersPage() {
       {/* WHY US */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">Why FlyttGo</div>
-          <h2 className="text-3xl font-extrabold text-[#0B2E59] mb-3">The things we&apos;re proud of</h2>
-          <p className="text-gray-500 max-w-2xl mx-auto">Our team is the most important thing we&apos;ll ever build. Here&apos;s what we do to take care of it.</p>
+          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">{t('careers.whyLabel')}</div>
+          <h2 className="text-3xl font-extrabold text-[#0B2E59] mb-3">{t('careers.whyTitle')}</h2>
+          <p className="text-gray-500 max-w-2xl mx-auto">{t('careers.whyBody')}</p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {PERKS.map(p => (
@@ -70,8 +71,8 @@ export default function CareersPage() {
       {/* OPENINGS */}
       <section className="bg-gray-50 py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">Open roles</h2>
-          <p className="text-gray-500 text-center mb-12">Don&apos;t see your role? We&apos;re always open to talented people — send us a note.</p>
+          <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">{t('careers.openTitle')}</h2>
+          <p className="text-gray-500 text-center mb-12">{t('careers.openBody')}</p>
           <div className="space-y-3">
             {OPENINGS.map(job => (
               <div key={job.title}
@@ -89,7 +90,7 @@ export default function CareersPage() {
                 </div>
                 <button onClick={() => setPage('contact')}
                   className="flex items-center gap-2 text-sm font-semibold text-emerald-700 hover:gap-3 transition-all">
-                  Apply
+                  {t('careers.applyBtn')}
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
                 </button>
               </div>
@@ -101,13 +102,12 @@ export default function CareersPage() {
       {/* DRIVER CTA */}
       <section className="bg-white py-20">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">Not an office role?</div>
-          <h2 className="text-3xl font-extrabold text-[#0B2E59] mb-4">Join as a driver instead</h2>
-          <p className="text-gray-600 mb-8">Have a van and a registered Norwegian business? Drive for FlyttGo — flexible hours,
-            weekly payouts, and lower commission the more you drive.</p>
+          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">{t('careers.driverLabel')}</div>
+          <h2 className="text-3xl font-extrabold text-[#0B2E59] mb-4">{t('careers.driverTitle')}</h2>
+          <p className="text-gray-600 mb-8">{t('careers.driverBody')}</p>
           <button onClick={() => setPage('driver-onboarding')}
             className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition shadow-lg">
-            Apply as a Driver
+            {t('careers.driverCta')}
           </button>
         </div>
       </section>

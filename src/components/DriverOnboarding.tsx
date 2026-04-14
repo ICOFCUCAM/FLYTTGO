@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
 import { supabase } from '../lib/supabase';
-
-const STEPS = [
-  { id: 1, title: 'Personal Info', desc: 'Tell us about yourself' },
-  { id: 2, title: 'Vehicle Details', desc: 'Your van or truck info' },
-  { id: 3, title: 'Documents', desc: 'Upload required documents' },
-  { id: 4, title: 'Review', desc: 'Submit your application' },
-];
 
 const VEHICLE_TYPES = [
   { id: 'small_van', label: 'Small Van (3–4 m³)', examples: 'Ford Transit Connect, VW Caddy' },
@@ -20,6 +14,16 @@ const VEHICLE_TYPES = [
 export default function DriverOnboarding() {
   const { user, profile } = useAuth();
   const { setPage } = useApp();
+  const { t } = useTranslation();
+
+  /* Steps list — built inside the component so titles translate
+   * when the language changes. */
+  const STEPS = [
+    { id: 1, title: t('driverOnboarding.stepPersonal'),   desc: t('driverOnboarding.stepPersonalDesc') },
+    { id: 2, title: t('driverOnboarding.stepVehicle'),    desc: t('driverOnboarding.stepVehicleDesc') },
+    { id: 3, title: t('driverOnboarding.stepDocuments'),  desc: t('driverOnboarding.stepDocumentsDesc') },
+    { id: 4, title: t('driverOnboarding.stepReview'),     desc: t('driverOnboarding.stepReviewDesc') },
+  ];
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -106,24 +110,24 @@ export default function DriverOnboarding() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Application Submitted!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">{t('driverOnboarding.successTitle')}</h2>
           <p className="text-gray-600 mb-6">
-            Thank you for applying to become a FlyttGo driver. Our team will review your application and get back to you within 1–2 business days.
+            {t('driverOnboarding.successBody')}
           </p>
           <div className="bg-emerald-50 rounded-xl p-4 mb-6 text-sm text-emerald-700">
-            <p className="font-semibold mb-1">What happens next?</p>
+            <p className="font-semibold mb-1">{t('driverOnboarding.successWhatNext')}</p>
             <ul className="space-y-1 text-left list-disc pl-4">
-              <li>We review your application and documents</li>
-              <li>Background check is conducted</li>
-              <li>You'll receive an email with the decision</li>
-              <li>Once approved, choose your subscription plan</li>
+              <li>{t('driverOnboarding.successStep1')}</li>
+              <li>{t('driverOnboarding.successStep2')}</li>
+              <li>{t('driverOnboarding.successStep3')}</li>
+              <li>{t('driverOnboarding.successStep4')}</li>
             </ul>
           </div>
           <button
             onClick={() => setPage('home')}
             className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition"
           >
-            Back to Home
+            {t('driverOnboarding.backHome')}
           </button>
         </div>
       </div>
@@ -135,8 +139,8 @@ export default function DriverOnboarding() {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#1A365D] to-[#2D4A7A] text-white py-10">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h1 className="text-3xl font-bold mb-2">Become a FlyttGo Driver</h1>
-          <p className="text-white/70">Complete your application in just 4 steps</p>
+          <h1 className="text-3xl font-bold mb-2">{t('driverOnboarding.heroTitle')}</h1>
+          <p className="text-white/70">{t('driverOnboarding.heroSubtitle')}</p>
         </div>
       </div>
 
@@ -174,31 +178,31 @@ export default function DriverOnboarding() {
           {/* STEP 1 — Personal Info */}
           {step === 1 && (
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Personal Information</h2>
-              <p className="text-gray-500 text-sm mb-6">Tell us a bit about yourself</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">{t('driverOnboarding.personalTitle')}</h2>
+              <p className="text-gray-500 text-sm mb-6">{t('driverOnboarding.personalSubtitle')}</p>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('driverOnboarding.firstName')}</label>
                     <input value={firstName} onChange={e => setFirstName(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('driverOnboarding.lastName')}</label>
                     <input value={lastName} onChange={e => setLastName(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('driverOnboarding.phoneLabel')}</label>
                   <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+47 XXX XX XXX"
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('driverOnboarding.cityLabel')}</label>
                   <select value={city} onChange={e => setCity(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm bg-white">
-                    <option value="">Select your city</option>
+                    <option value="">{t('driverOnboarding.citySelect')}</option>
                     {['Oslo', 'Bergen', 'Trondheim', 'Stavanger', 'Drammen', 'Fredrikstad', 'Kristiansand', 'Tromsø'].map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))}
@@ -211,12 +215,12 @@ export default function DriverOnboarding() {
                     setError('');
                     setStep(2);
                   } else {
-                    setError('Please fill in all fields.');
+                    setError(t('driverOnboarding.errFillAll'));
                   }
                 }}
                 className="w-full mt-6 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition"
               >
-                Continue
+                {t('driverOnboarding.continueBtn')}
               </button>
             </div>
           )}
@@ -224,11 +228,11 @@ export default function DriverOnboarding() {
           {/* STEP 2 — Vehicle */}
           {step === 2 && (
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Vehicle Details</h2>
-              <p className="text-gray-500 text-sm mb-6">Tell us about your vehicle</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">{t('driverOnboarding.vehicleTitle')}</h2>
+              <p className="text-gray-500 text-sm mb-6">{t('driverOnboarding.vehicleSubtitle')}</p>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle Type</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('driverOnboarding.vehicleType')}</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {VEHICLE_TYPES.map(v => (
                       <button key={v.id} onClick={() => setVehicleType(v.id)}
@@ -243,43 +247,43 @@ export default function DriverOnboarding() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Make</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('driverOnboarding.vehicleMake')}</label>
                     <input value={vehicleMake} onChange={e => setVehicleMake(e.target.value)} placeholder="e.g. Mercedes"
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('driverOnboarding.vehicleModel')}</label>
                     <input value={vehicleModel} onChange={e => setVehicleModel(e.target.value)} placeholder="e.g. Sprinter"
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('driverOnboarding.vehicleYear')}</label>
                     <input value={vehicleYear} onChange={e => setVehicleYear(e.target.value)} placeholder="e.g. 2020"
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">License Plate</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('driverOnboarding.licensePlate')}</label>
                     <input value={licensePlate} onChange={e => setLicensePlate(e.target.value)} placeholder="e.g. AB 12345"
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm" />
                   </div>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
-                <button onClick={() => setStep(1)} className="px-6 py-3 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition">Back</button>
+                <button onClick={() => setStep(1)} className="px-6 py-3 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition">{t('driverOnboarding.backBtn')}</button>
                 <button
                   onClick={() => {
                     if (vehicleType && vehicleMake && vehicleModel && vehicleYear && licensePlate) {
                       setError('');
                       setStep(3);
                     } else {
-                      setError('Please fill in all vehicle details.');
+                      setError(t('driverOnboarding.errFillVehicle'));
                     }
                   }}
                   className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition"
                 >
-                  Continue
+                  {t('driverOnboarding.continueBtn')}
                 </button>
               </div>
             </div>
@@ -307,12 +311,12 @@ export default function DriverOnboarding() {
                 ))}
               </div>
               <div className="flex gap-3 mt-6">
-                <button onClick={() => setStep(2)} className="px-6 py-3 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition">Back</button>
+                <button onClick={() => setStep(2)} className="px-6 py-3 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition">{t('driverOnboarding.backBtn')}</button>
                 <button
                   onClick={() => { if (hasLicense && hasInsurance && hasRegistration) { setStep(4); setError(''); } else setError('Please confirm all required documents.'); }}
                   className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition"
                 >
-                  Continue
+                  {t('driverOnboarding.continueBtn')}
                 </button>
               </div>
             </div>
@@ -350,13 +354,13 @@ export default function DriverOnboarding() {
                 </label>
               </div>
               <div className="flex gap-3 mt-6">
-                <button onClick={() => setStep(3)} className="px-6 py-3 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition">Back</button>
+                <button onClick={() => setStep(3)} className="px-6 py-3 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition">{t('driverOnboarding.backBtn')}</button>
                 <button
                   onClick={() => { if (acceptedTerms) handleSubmit(); else setError('Please accept the terms to continue.'); }}
                   disabled={loading}
                   className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition disabled:opacity-50"
                 >
-                  {loading ? 'Submitting...' : 'Submit Application'}
+                  {loading ? t('driverOnboarding.submittingBtn') : t('driverOnboarding.submitBtn')}
                 </button>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 
 const INITIATIVES = [
@@ -48,6 +49,7 @@ const INITIATIVES = [
 
 export default function SustainabilityPage() {
   const { setPage } = useApp();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-white">
@@ -60,12 +62,11 @@ export default function SustainabilityPage() {
         </div>
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 text-xs font-medium px-4 py-2 rounded-full mb-6">
-            🌱 Moving, but greener
+            🌱 {t('sustainability.heroBadge')}
           </div>
-          <h1 className="text-5xl sm:text-6xl font-extrabold mb-5 leading-tight">A lighter footprint.</h1>
+          <h1 className="text-5xl sm:text-6xl font-extrabold mb-5 leading-tight">{t('sustainability.heroTitle')}</h1>
           <p className="text-white/75 text-lg sm:text-xl max-w-2xl mx-auto">
-            A logistics platform should leave things in better shape than it found them — the
-            streets, the climate, and the driver earning a living on them.
+            {t('sustainability.heroSubtitle')}
           </p>
         </div>
       </section>
@@ -75,10 +76,10 @@ export default function SustainabilityPage() {
         <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-10 border border-gray-100">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[
-              { v: '1,240 t', l: 'CO\u2082 avoided since 2024' },
-              { v: '34%',      l: 'EV / hybrid fleet share' },
-              { v: '1,000+',   l: 'Reusable moving kits in use' },
-              { v: '1%',       l: 'of revenue offset' },
+              { v: '1,240 t', l: t('sustainability.statCo2') },
+              { v: '34%',      l: t('sustainability.statEv') },
+              { v: '1,000+',   l: t('sustainability.statKits') },
+              { v: '1%',       l: t('sustainability.statOffset') },
             ].map(s => (
               <div key={s.l}>
                 <div className="text-3xl sm:text-4xl font-extrabold text-emerald-600 mb-1">{s.v}</div>
@@ -91,8 +92,8 @@ export default function SustainabilityPage() {
 
       {/* INITIATIVES */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">What we actually do</h2>
-        <p className="text-gray-500 text-center mb-12 max-w-xl mx-auto">No greenwashing — here are the six initiatives in place today and the numbers backing them up.</p>
+        <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">{t('sustainability.initiativesTitle')}</h2>
+        <p className="text-gray-500 text-center mb-12 max-w-xl mx-auto">{t('sustainability.initiativesBody')}</p>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {INITIATIVES.map(i => (
             <div key={i.title} className="bg-gray-50 rounded-2xl p-6 hover:shadow-xl hover:bg-white hover:border-emerald-200 border border-transparent transition">
@@ -117,12 +118,11 @@ export default function SustainabilityPage() {
       {/* CTA */}
       <section className="bg-emerald-50 py-16">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-2xl font-extrabold text-[#0B2E59] mb-3">Move with a lighter footprint</h2>
-          <p className="text-gray-600 mb-6">Every booking on FlyttGo is a little greener by default — and you can tick the
-            EV-only option at checkout to make sure your driver arrives in an electric van.</p>
+          <h2 className="text-2xl font-extrabold text-[#0B2E59] mb-3">{t('sustainability.ctaTitle')}</h2>
+          <p className="text-gray-600 mb-6">{t('sustainability.ctaBody')}</p>
           <button onClick={() => setPage('booking')}
             className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition shadow-lg">
-            Book a Greener Move
+            {t('sustainability.ctaBtn')}
           </button>
         </div>
       </section>

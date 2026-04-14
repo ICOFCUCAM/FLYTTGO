@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
 import { supabase, supabaseFunctionUrl } from '../lib/supabase';
@@ -49,6 +50,7 @@ function safeNum(v: any): number {
 export default function BookingFlow() {
   const { profile, user } = useAuth();
   const { bookingData, setBookingData, setPage } = useApp();
+  const { t } = useTranslation();
 
   const [step, setStep] = useState(1);
   const TOTAL_STEPS = 6;
@@ -317,7 +319,14 @@ export default function BookingFlow() {
   };
 
   /* ─── STEP LABELS ─── */
-  const stepLabels = ['Addresses', 'Move Details', 'Inventory', 'Schedule', 'Summary', 'Confirm'];
+  const stepLabels = [
+    t('booking.stepAddresses'),
+    t('booking.stepDetails'),
+    t('booking.stepInventory'),
+    t('booking.stepSchedule'),
+    t('booking.stepSummary'),
+    t('booking.stepConfirm'),
+  ];
 
   /* ─── RENDER ─── */
   return (
@@ -325,8 +334,8 @@ export default function BookingFlow() {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#0B2E59] to-[#1a4a8a] text-white py-10">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h1 className="text-3xl font-extrabold mb-2">Book Your Move</h1>
-          <p className="text-white/70">Instant prices · Verified drivers · Secure escrow payment</p>
+          <h1 className="text-3xl font-extrabold mb-2">{t('booking.heroTitle')}</h1>
+          <p className="text-white/70">{t('booking.heroSubtitle')}</p>
         </div>
       </div>
 
@@ -377,17 +386,17 @@ export default function BookingFlow() {
         ═══════════════════════════════════════════ */}
         {step === 1 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">Where are you moving?</h2>
-            <p className="text-gray-500 text-sm mb-6">Start typing to search the official Norwegian address registry</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">{t('booking.addrTitle')}</h2>
+            <p className="text-gray-500 text-sm mb-6">{t('booking.addrSubtitle')}</p>
 
             <div className="space-y-6">
               {/* PICKUP */}
               <div>
                 <NorwayAddressAutocomplete
                   id="pickup-address"
-                  label="Pickup Address"
+                  label={t('booking.addrPickupLabel')}
                   value={pickupAddress.formatted}
-                  placeholder="e.g. Karl Johans gate 12, Oslo"
+                  placeholder={t('booking.addrPickupPlaceholder')}
                   required
                   error={addressErrors.pickup}
                   onSelect={(addr: NorwegianAddress) => {
@@ -422,7 +431,7 @@ export default function BookingFlow() {
               <div>
                 <NorwayAddressAutocomplete
                   id="dropoff-address"
-                  label="Delivery Address"
+                  label={t('booking.addrDropoffLabel')}
                   value={dropoffAddress.formatted}
                   placeholder="e.g. Aker Brygge 1, Oslo"
                   required
@@ -475,8 +484,8 @@ export default function BookingFlow() {
         ═══════════════════════════════════════════ */}
         {step === 2 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">What are you moving?</h2>
-            <p className="text-gray-500 text-sm mb-6">This helps us match the right van and driver</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">{t('booking.moveTitle')}</h2>
+            <p className="text-gray-500 text-sm mb-6">{t('booking.moveSubtitle')}</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[
                 { id: 'apartment', label: 'Apartment', icon: '🏢' },
@@ -501,7 +510,7 @@ export default function BookingFlow() {
 
             {moveType && (
               <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Van Size</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('booking.vanSizeLabel')}</label>
                 <div className="grid grid-cols-2 gap-3">
                   {VAN_TYPES.map(van => (
                     <button key={van.id} type="button"
@@ -519,14 +528,14 @@ export default function BookingFlow() {
             )}
 
             <div className="mt-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Additional Helpers</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('booking.helpersLabel')}</label>
               <div className="flex items-center gap-4">
                 <button type="button" onClick={() => setHelpers(h => Math.max(0, h - 1))}
                   className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">−</button>
                 <span className="text-xl font-bold text-gray-800 w-8 text-center">{helpers}</span>
                 <button type="button" onClick={() => setHelpers(h => Math.min(3, h + 1))}
                   className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">+</button>
-                <span className="text-sm text-gray-500">× 350 NOK/hr each</span>
+                <span className="text-sm text-gray-500">{t('booking.helpersPerHour')}</span>
               </div>
             </div>
           </div>
@@ -537,12 +546,12 @@ export default function BookingFlow() {
         ═══════════════════════════════════════════ */}
         {step === 3 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">What items are you moving?</h2>
-            <p className="text-gray-500 text-sm mb-6">This helps us recommend the right van size</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">{t('booking.inventoryTitle')}</h2>
+            <p className="text-gray-500 text-sm mb-6">{t('booking.inventorySubtitle')}</p>
 
             {/* Property preset buttons */}
             <div className="mb-6">
-              <p className="text-sm font-medium text-gray-700 mb-2">Quick fill by property type:</p>
+              <p className="text-sm font-medium text-gray-700 mb-2">{t('booking.inventoryPreset')}</p>
               <div className="flex flex-wrap gap-2">
                 {Object.keys(PROPERTY_PRESETS).map(preset => (
                   <button key={preset} type="button"
@@ -601,18 +610,18 @@ export default function BookingFlow() {
         ═══════════════════════════════════════════ */}
         {step === 4 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-1">When is your move?</h2>
-            <p className="text-gray-500 text-sm mb-6">Choose your preferred date and time</p>
+            <h2 className="text-xl font-bold text-gray-900 mb-1">{t('booking.scheduleTitle')}</h2>
+            <p className="text-gray-500 text-sm mb-6">{t('booking.scheduleSubtitle')}</p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Move Date <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('booking.dateLabel')} <span className="text-red-500">*</span></label>
                 <input type="date" value={moveDate}
                   min={new Date().toISOString().split('T')[0]}
                   onChange={e => { setMoveDate(e.target.value); setError(''); }}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0B2E59]/20 outline-none" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Preferred Start Time</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('booking.timeLabel')}</label>
                 <select value={moveTime} onChange={e => setMoveTime(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0B2E59]/20 outline-none bg-white">
                   {['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'].map(t => (
@@ -621,7 +630,7 @@ export default function BookingFlow() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Estimated Duration (hours)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('booking.durationLabel')}</label>
                 <div className="flex items-center gap-4">
                   <button type="button" onClick={() => setEstimatedHours(h => Math.max(2, h - 0.5))}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">−</button>
@@ -629,7 +638,7 @@ export default function BookingFlow() {
                   <button type="button" onClick={() => setEstimatedHours(h => Math.min(12, h + 0.5))}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">+</button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">Minimum 2 hours. Final price may adjust based on actual time.</p>
+                <p className="text-xs text-gray-500 mt-2">{t('booking.durationHint')}</p>
               </div>
             </div>
           </div>
@@ -641,30 +650,30 @@ export default function BookingFlow() {
         {step === 5 && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Your Contact Details</h2>
-              <p className="text-gray-500 text-sm mb-6">So your driver can reach you</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">{t('booking.contactTitle')}</h2>
+              <p className="text-gray-500 text-sm mb-6">{t('booking.contactSubtitle')}</p>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('booking.nameLabel')}</label>
                   <input value={name} onChange={e => setName(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0B2E59]/20 outline-none" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('booking.phoneLabel')}</label>
                     <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+47 XXX XX XXX"
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0B2E59]/20 outline-none" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('booking.emailLabel')}</label>
                     <input value={email} onChange={e => setEmail(e.target.value)} type="email"
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0B2E59]/20 outline-none" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Special Instructions (optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('booking.notesLabel')}</label>
                   <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
-                    placeholder="e.g. 3rd floor, no lift. Fragile items need extra care."
+                    placeholder={t('booking.notesPlaceholder')}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0B2E59]/20 outline-none resize-none" />
                 </div>
               </div>
@@ -672,14 +681,14 @@ export default function BookingFlow() {
 
             {/* Booking summary */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-              <h3 className="font-bold text-gray-800 mb-4">Booking Summary</h3>
+              <h3 className="font-bold text-gray-800 mb-4">{t('booking.summaryTitle')}</h3>
               <div className="space-y-3 text-sm">
                 {/* Addresses in official Norwegian format */}
                 <div className="bg-gray-50 rounded-xl p-4">
                   <div className="flex gap-3 mb-3">
                     <div className="w-2 h-2 bg-emerald-500 rounded-full mt-1.5 flex-shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-400 mb-0.5">PICKUP</p>
+                      <p className="text-xs text-gray-400 mb-0.5">{t('booking.summaryPickup')}</p>
                       {formatNorwegianAddress(pickupAddress).line1 && (
                         <p className="font-medium text-gray-800">{formatNorwegianAddress(pickupAddress).line1}</p>
                       )}
@@ -692,7 +701,7 @@ export default function BookingFlow() {
                   <div className="flex gap-3">
                     <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0" />
                     <div>
-                      <p className="text-xs text-gray-400 mb-0.5">DELIVERY</p>
+                      <p className="text-xs text-gray-400 mb-0.5">{t('booking.summaryDelivery')}</p>
                       {formatNorwegianAddress(dropoffAddress).line1 && (
                         <p className="font-medium text-gray-800">{formatNorwegianAddress(dropoffAddress).line1}</p>
                       )}
@@ -706,19 +715,19 @@ export default function BookingFlow() {
 
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-gray-500 text-xs">Van</p>
-                    <p className="font-medium">{VAN_TYPES.find(v => v.id === vanType)?.name || 'TBD'}</p>
+                    <p className="text-gray-500 text-xs">{t('booking.summaryVan')}</p>
+                    <p className="font-medium">{VAN_TYPES.find(v => v.id === vanType)?.name || t('booking.summaryTbd')}</p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-gray-500 text-xs">Date</p>
-                    <p className="font-medium">{moveDate || 'TBD'} {moveTime}</p>
+                    <p className="text-gray-500 text-xs">{t('booking.summaryDate')}</p>
+                    <p className="font-medium">{moveDate || t('booking.summaryTbd')} {moveTime}</p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-gray-500 text-xs">Duration</p>
-                    <p className="font-medium">{estimatedHours}h estimated</p>
+                    <p className="text-gray-500 text-xs">{t('booking.summaryDuration')}</p>
+                    <p className="font-medium">{estimatedHours}{t('booking.summaryHoursEst')}</p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-gray-500 text-xs">Distance</p>
+                    <p className="text-gray-500 text-xs">{t('booking.summaryDistance')}</p>
                     <p className="font-medium">~{distanceKm} km</p>
                   </div>
                 </div>
@@ -726,27 +735,27 @@ export default function BookingFlow() {
                 {/* Price breakdown */}
                 <div className="border-t pt-3 space-y-2">
                   <div className="flex justify-between text-sm text-gray-600">
-                    <span>Base ({estimatedHours}h × {VAN_TYPES.find(v => v.id === vanType)?.pricePerHour || 850} NOK/h)</span>
+                    <span>{t('booking.priceBase')} ({estimatedHours}h × {VAN_TYPES.find(v => v.id === vanType)?.pricePerHour || 850} NOK/h)</span>
                     <span>{safeNum(pricing.basePrice).toFixed(0)} NOK</span>
                   </div>
                   {safeNum(pricing.distanceCharge) > 0 && (
                     <div className="flex justify-between text-sm text-gray-600">
-                      <span>Distance charge</span>
+                      <span>{t('booking.priceDistance')}</span>
                       <span>{safeNum(pricing.distanceCharge).toFixed(0)} NOK</span>
                     </div>
                   )}
                   {safeNum(pricing.helpersCharge) > 0 && (
                     <div className="flex justify-between text-sm text-gray-600">
-                      <span>Helpers ({helpers})</span>
+                      <span>{t('booking.priceHelpers')} ({helpers})</span>
                       <span>{safeNum(pricing.helpersCharge).toFixed(0)} NOK</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm text-gray-600">
-                    <span>VAT (25% MVA)</span>
+                    <span>{t('booking.priceVat')}</span>
                     <span>{safeNum(pricing.vat).toFixed(0)} NOK</span>
                   </div>
                   <div className="flex justify-between text-base font-bold text-gray-900 border-t pt-2">
-                    <span>Total (incl. VAT)</span>
+                    <span>{t('booking.priceTotal')}</span>
                     <span className="text-emerald-700">{safeNum(pricing.total).toFixed(0)} NOK</span>
                   </div>
                 </div>
@@ -761,8 +770,8 @@ export default function BookingFlow() {
         {step === 6 && (
           <div className="space-y-6">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Legal Agreements</h2>
-              <p className="text-gray-500 text-sm mb-6">Please review and accept before confirming your booking</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">{t('booking.legalTitle')}</h2>
+              <p className="text-gray-500 text-sm mb-6">{t('booking.legalSubtitle')}</p>
               <CustomerLegalAcceptance onAccepted={setLegalAccepted} />
             </div>
 
@@ -770,12 +779,12 @@ export default function BookingFlow() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="font-bold text-gray-900 text-lg">Total: {safeNum(pricing.total).toFixed(0)} NOK</p>
-                  <p className="text-gray-500 text-xs">Held in escrow until delivery confirmed</p>
+                  <p className="font-bold text-gray-900 text-lg">{t('booking.totalLabel')} {safeNum(pricing.total).toFixed(0)} NOK</p>
+                  <p className="text-gray-500 text-xs">{t('booking.escrowNote')}</p>
                 </div>
                 <div className="text-right text-xs text-gray-400">
-                  <p>Pickup: {formatNorwegianAddress(pickupAddress).short}</p>
-                  <p>Delivery: {formatNorwegianAddress(dropoffAddress).short}</p>
+                  <p>{t('booking.summaryPickup')}: {formatNorwegianAddress(pickupAddress).short}</p>
+                  <p>{t('booking.summaryDelivery')}: {formatNorwegianAddress(dropoffAddress).short}</p>
                 </div>
               </div>
               <button
@@ -789,16 +798,16 @@ export default function BookingFlow() {
                     <svg className="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
                       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 70" />
                     </svg>
-                    Processing...
+                    {t('booking.processing')}
                   </>
                 ) : (
                   <>
-                    🔒 Confirm & Pay {safeNum(pricing.total).toFixed(0)} NOK
+                    🔒 {t('booking.confirmPayBtn')} {safeNum(pricing.total).toFixed(0)} NOK
                   </>
                 )}
               </button>
               {!legalAccepted && (
-                <p className="text-center text-xs text-red-500 mt-2">Please tick all boxes above to continue</p>
+                <p className="text-center text-xs text-red-500 mt-2">{t('booking.tickBoxes')}</p>
               )}
             </div>
           </div>
@@ -808,12 +817,12 @@ export default function BookingFlow() {
         <div className="flex items-center justify-between mt-8">
           <button type="button" onClick={goBack}
             className={`px-6 py-3 border border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition ${step === 1 ? 'invisible' : ''}`}>
-            ← Back
+            ← {t('booking.navBack')}
           </button>
           {step < TOTAL_STEPS && (
             <button type="button" onClick={goNext}
               className="px-8 py-3 bg-[#0B2E59] text-white rounded-xl font-semibold hover:bg-[#0B2E59]/90 transition">
-              Continue →
+              {t('booking.navContinue')} →
             </button>
           )}
         </div>
