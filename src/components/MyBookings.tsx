@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { supabase, supabaseFunctionUrl } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { useApp } from "../lib/store";
+
+/* Lazy-load Leaflet so the map bundle (~150 KB) is only fetched on
+ * pages that actually have an in-transit booking to track. */
+const DriverTrackingMap = lazy(() => import("./DriverTrackingMap"));
 
 function safeNumber(value: any): number {
   const n = Number(value ?? 0);
@@ -18,6 +22,9 @@ function formatDuration(start?: string | null, end?: string | null) {
 
 interface Booking {
   id: string; pickup_address: string | null; dropoff_address: string | null;
+  pickup_lat?: number | null; pickup_lng?: number | null;
+  dropoff_lat?: number | null; dropoff_lng?: number | null;
+  driver_id?: string | null;
   van_type: string | null; status: string | null; payment_status: string | null;
   price_estimate: number | null; original_price?: number | null; final_price?: number | null;
   estimated_hours?: number | null; actual_hours?: number | null;
@@ -104,7 +111,23 @@ export default function MyBookings() {
             <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded text-sm ${filter === f ? "bg-emerald-600 text-white" : "bg-white border"}`}>{f.replace(/_/g, " ")}</button>
           ))}
         </div>
-        {loading ? <div className="text-center py-12 text-gray-500">Loading bookings...</div>
+        {loading ? (
+          <div className="space-y-4 animate-pulse">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="bg-white p-6 rounded-xl border border-gray-100">
+                <div className="flex gap-2 mb-3">
+                  <div className="h-5 w-20 bg-gray-200 rounded-full" />
+                  <div className="h-5 w-16 bg-gray-200 rounded-full" />
+                </div>
+                <div className="h-3 w-16 bg-gray-200 rounded mb-1" />
+                <div className="h-4 w-1/2 bg-gray-200 rounded mb-3" />
+                <div className="h-3 w-16 bg-gray-200 rounded mb-1" />
+                <div className="h-4 w-2/3 bg-gray-200 rounded mb-4" />
+                <div className="h-6 w-32 bg-gray-200 rounded" />
+              </div>
+            ))}
+          </div>
+        )
         : filtered.length === 0 ? <div className="text-center py-12 text-gray-500">No bookings found</div>
         : filtered.map(booking => {
           const escrow = escrowMap[booking.id];
@@ -120,6 +143,23 @@ export default function MyBookings() {
                 <p className="text-sm text-gray-500">Pickup</p><p className="font-medium">{booking.pickup_address}</p>
                 <p className="text-sm text-gray-500 mt-1">Delivery</p><p className="font-medium">{booking.dropoff_address}</p>
               </div>
+
+              {/* Live driver-tracking map — only rendered when the booking
+               * is in flight and we have valid coordinates for both ends.
+               * The map subscribes to driver_locations via Supabase
+               * Realtime; if no driver position has been pushed yet, it
+               * still shows pickup → delivery pins. */}
+              {(booking.status === 'driver_assigned' || booking.status === 'pickup_arrived' || booking.status === 'loading' || booking.status === 'in_transit') &&
+                booking.pickup_lat && booking.pickup_lng && booking.dropoff_lat && booking.dropoff_lng && (
+                  <Suspense fallback={<div className="h-72 rounded-xl bg-gray-100 animate-pulse mb-3" />}>
+                    <DriverTrackingMap
+                      pickup={{ lat: Number(booking.pickup_lat), lng: Number(booking.pickup_lng) }}
+                      dropoff={{ lat: Number(booking.dropoff_lat), lng: Number(booking.dropoff_lng) }}
+                      driverId={booking.driver_id}
+                      className="mb-3"
+                    />
+                  </Suspense>
+              )}
               {booking.move_date && <p className="text-sm text-gray-500 mb-2">Move date: <span className="font-medium">{booking.move_date}</span></p>}
               <div className="text-sm text-gray-600 mb-1">Timer: {formatDuration(booking.start_time, booking.end_time)}</div>
               <div className="text-sm text-gray-600 mb-3">Estimated: {booking.estimated_hours ?? "-"} hrs | Actual: {booking.actual_hours ?? "Running"}</div>

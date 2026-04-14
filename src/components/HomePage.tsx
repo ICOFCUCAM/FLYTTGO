@@ -17,7 +17,13 @@ function HeroSlider() {
   return (
     <div className="relative h-[80vh] min-h-[560px] w-full overflow-hidden">
       {HERO_SLIDES.map((s, i) => (
+        /* Hero stays eager — the carousel cycles every 5s and we want
+         * every slide ready ahead of time so the cross-fade is clean. */
         <img key={i} src={s.image} alt={s.title}
+          width={1920} height={1080}
+          loading={i === 0 ? 'eager' : 'eager'}
+          fetchPriority={i === 0 ? 'high' : 'auto'}
+          decoding="async"
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${i === idx ? 'opacity-100' : 'opacity-0'}`} />
       ))}
       <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
@@ -217,6 +223,47 @@ function BookingWidget() {
   );
 }
 
+/* ── TRUST BAR ──
+ * Sits between the booking widget and the stats section. It's the
+ * first thing the customer sees after the hero, so it does the heavy
+ * lifting on perceived legitimacy. */
+function TrustBar() {
+  const items = [
+    { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+      title: 'Verified drivers',
+      desc:  'Every driver passes ID + insurance checks' },
+    { icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z',
+      title: 'Secure escrow',
+      desc:  'Payment held until delivery confirmed' },
+    { icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+      title: 'Insured deliveries',
+      desc:  'Goods-in-transit cover up to 500 000 NOK' },
+    { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+      title: 'Brønnøysund-registered',
+      desc:  'Norwegian companies only · MVA included' },
+  ];
+
+  return (
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {items.map(item => (
+          <div key={item.title} className="flex items-start gap-3 bg-white border border-gray-100 rounded-xl px-4 py-3 shadow-sm">
+            <div className="w-9 h-9 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-gray-900 leading-tight">{item.title}</div>
+              <div className="text-xs text-gray-500 mt-0.5 leading-snug">{item.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* ── STATS ── */
 function StatsSection() {
   return (
@@ -267,7 +314,7 @@ function ServicesSection() {
           {services.map(service => (
             <div key={service.name} className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 group cursor-pointer" onClick={() => setPage('booking')}>
               <div className="relative h-44 overflow-hidden">
-                <img src={service.image} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+                <img src={service.image} alt={service.name} width={600} height={352} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
                 <div className="absolute bottom-3 left-3 w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-md">
                   <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={service.iconPath}/></svg>
                 </div>
@@ -321,7 +368,7 @@ function VanTypesSection() {
           {VAN_TYPES.map(van => (
             <div key={van.id} className="bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-xl transition group">
               <div className="aspect-[4/3] overflow-hidden">
-                <img src={van.image} alt={van.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
+                <img src={van.image} alt={van.name} width={600} height={450} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
               </div>
               <div className="p-5">
                 <h3 className="text-lg font-bold text-gray-900 mb-1">{van.name}</h3>
@@ -394,7 +441,7 @@ function CitiesSection() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {CITIES.map(city => (
             <button key={city.slug} onClick={() => setPage('booking')} className="relative rounded-xl overflow-hidden group aspect-[4/3]">
-              <img src={city.image} alt={city.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-700"/>
+              <img src={city.image} alt={city.name} width={600} height={450} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-110 transition duration-700"/>
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"/>
               <div className="absolute bottom-0 left-0 right-0 p-5">
                 <h3 className="text-xl font-bold text-white mb-1">Flyttehjelp {city.name}</h3>
@@ -569,7 +616,7 @@ function DriverCTA() {
             <button onClick={() => { setAuthMode('driver-signup'); setShowAuthModal(true); }} className="px-8 py-3.5 bg-white text-emerald-700 rounded-xl font-semibold hover:bg-emerald-50 transition shadow-lg">Apply Now</button>
           </div>
           <div>
-            <img src="https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766976394_04c23eab.jpg" alt="FlyttGo Driver" className="rounded-2xl shadow-2xl w-full"/>
+            <img src="https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766976394_04c23eab.jpg" alt="FlyttGo Driver" width={800} height={800} loading="lazy" decoding="async" className="rounded-2xl shadow-2xl w-full"/>
           </div>
         </div>
       </div>
@@ -583,6 +630,7 @@ export default function HomePage() {
     <div>
       <HeroSlider />
       <BookingWidget />
+      <TrustBar />
       <StatsSection />
       <ServicesSection />
       <HowItWorks />

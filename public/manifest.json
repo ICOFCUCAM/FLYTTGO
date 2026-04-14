@@ -1,0 +1,36 @@
+{
+  "name": "FlyttGo — Norwegian Moving & Logistics Marketplace",
+  "short_name": "FlyttGo",
+  "description": "Book professional movers and cargo transport in Norway. Verified drivers, real-time tracking, secure escrow payment.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#059669",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "180x180",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "lifestyle", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Book a move",
+      "short_name": "Book",
+      "description": "Get an instant moving quote",
+      "url": "/?action=booking",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    }
+  ]
+}

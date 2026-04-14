@@ -107,7 +107,7 @@ export default function ServicesPage() {
             return (
               <div key={svc.slug} className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition group flex flex-col">
                 <div className="relative h-48 overflow-hidden">
-                  <img src={svc.image} alt={svc.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={svc.image} alt={svc.title} width={600} height={384} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-3 left-3 w-11 h-11 bg-white/95 backdrop-blur rounded-xl flex items-center justify-center shadow-md text-2xl">
                     {svc.icon}
                   </div>
