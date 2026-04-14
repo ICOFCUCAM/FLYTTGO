@@ -4,6 +4,7 @@ import { useApp } from '../lib/store';
 const SERVICES = [
   {
     icon: '🛋️', title: 'Furniture Moving', slug: 'furniture',
+    image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254286622_a82a1d1b.jpg',
     tagline: 'Your furniture, handled with care',
     desc: 'Professional furniture movers across Norway. We disassemble, wrap, transport, and reassemble your furniture — from single items to full home contents.',
     features: ['Disassembly & reassembly', 'Protective wrapping', 'Multi-floor buildings', 'Same-day availability'],
@@ -12,6 +13,7 @@ const SERVICES = [
   },
   {
     icon: '🏠', title: 'House Moving', slug: 'house',
+    image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254153053_d6599513.jpg',
     tagline: 'Full home relocations, stress-free',
     desc: 'Complete house and apartment moving service. Our verified drivers handle everything from packing assistance to final placement in your new home.',
     features: ['Full inventory management', 'Long-distance moves', 'Storage options', 'Insurance covered'],
@@ -20,6 +22,7 @@ const SERVICES = [
   },
   {
     icon: '🔌', title: 'Appliance Delivery', slug: 'appliance',
+    image: 'https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766826645_9815a390.jpg',
     tagline: 'Heavy appliances delivered safely',
     desc: 'White-glove delivery for washing machines, fridges, dishwashers, and large electronics. Includes installation positioning and packaging removal.',
     features: ['Stair carry included', 'Packaging removal', 'Installation positioning', 'Same-day slots'],
@@ -28,6 +31,7 @@ const SERVICES = [
   },
   {
     icon: '📦', title: 'Cargo Transport', slug: 'cargo',
+    image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254050705_a292f56d.jpg',
     tagline: 'Reliable cargo, any size',
     desc: 'Commercial and personal cargo transport across Norway. From small parcels to full van loads — tracked, insured, on time.',
     features: ['Real-time GPS tracking', 'Commercial freight', 'Pallet capable', 'Proof of delivery'],
@@ -36,6 +40,7 @@ const SERVICES = [
   },
   {
     icon: '🏪', title: 'Store Delivery', slug: 'store',
+    image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254193383_798495ed.jpg',
     tagline: 'Retail to door, last-mile sorted',
     desc: 'Last-mile delivery for furniture stores, IKEA runs, and online retailers. We collect from any store and deliver to your address.',
     features: ['Store collection', 'IKEA compatible', 'Assembly on request', 'Flexible time slots'],
@@ -44,6 +49,7 @@ const SERVICES = [
   },
   {
     icon: '🏢', title: 'Business Logistics', slug: 'business',
+    image: 'https://d64gsuwffb70l.cloudfront.net/69b4405628b40c8fdc7aad59_1773420953628_819790d3.png',
     tagline: 'Office moves & B2B freight',
     desc: 'Corporate office relocation, regular B2B freight runs, and warehouse-to-customer delivery. Dedicated account managers for business clients.',
     features: ['Dedicated account manager', 'Recurring bookings', 'Invoicing available', 'Priority dispatch'],
@@ -99,30 +105,39 @@ export default function ServicesPage() {
           {SERVICES.map(svc => {
             const c = colorMap[svc.color];
             return (
-              <div key={svc.slug} className={`${c.bg} rounded-2xl p-6 border border-white hover:shadow-lg transition group`}>
-                <div className="text-4xl mb-4">{svc.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{svc.title}</h3>
-                <p className={`text-xs font-semibold mb-3 ${c.icon}`}>{svc.tagline}</p>
-                <p className="text-gray-600 text-sm leading-relaxed mb-4">{svc.desc}</p>
-                <ul className="space-y-1.5 mb-5">
-                  {svc.features.map(f => (
-                    <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
-                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-white text-xs ${c.btn.split(' ')[0]}`}>✓</span>
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <div className="font-bold text-gray-900 text-sm">{svc.price}</div>
-                    <div className="text-xs text-gray-400">{svc.time}</div>
+              <div key={svc.slug} className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl transition group flex flex-col">
+                <div className="relative h-48 overflow-hidden">
+                  <img src={svc.image} alt={svc.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute top-3 left-3 w-11 h-11 bg-white/95 backdrop-blur rounded-xl flex items-center justify-center shadow-md text-2xl">
+                    {svc.icon}
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${c.badge}`}>Available now</span>
                 </div>
-                <button onClick={() => setPage('booking')}
-                  className={`w-full py-2.5 ${c.btn} text-white rounded-xl text-sm font-semibold transition`}>
-                  Book {svc.title} →
-                </button>
+                <div className={`${c.bg} p-6 flex-1 flex flex-col`}>
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">{svc.title}</h3>
+                  <p className={`text-xs font-semibold mb-3 ${c.icon}`}>{svc.tagline}</p>
+                  <p className="text-gray-600 text-sm leading-relaxed mb-4">{svc.desc}</p>
+                  <ul className="space-y-1.5 mb-5">
+                    {svc.features.map(f => (
+                      <li key={f} className="flex items-center gap-2 text-xs text-gray-600">
+                        <span className={`w-4 h-4 rounded-full flex items-center justify-center text-white text-xs ${c.btn.split(' ')[0]}`}>✓</span>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-auto">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <div className="font-bold text-gray-900 text-sm">{svc.price}</div>
+                        <div className="text-xs text-gray-400">{svc.time}</div>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${c.badge}`}>Available now</span>
+                    </div>
+                    <button onClick={() => setPage('booking')}
+                      className={`w-full py-2.5 ${c.btn} text-white rounded-xl text-sm font-semibold transition`}>
+                      Book {svc.title} →
+                    </button>
+                  </div>
+                </div>
               </div>
             );
           })}
