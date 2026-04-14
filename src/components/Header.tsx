@@ -26,15 +26,6 @@ const T = {
 type Lang = 'EN' | 'NO';
 const LANG_STORAGE_KEY = 'flyttgo_lang';
 
-const SERVICES = [
-  { label: 'Furniture Moving',   icon: '🛋️', page: 'services' as Page },
-  { label: 'House Moving',       icon: '🏠', page: 'services' as Page },
-  { label: 'Appliance Delivery', icon: '🔌', page: 'services' as Page },
-  { label: 'Cargo Transport',    icon: '📦', page: 'services' as Page },
-  { label: 'Store Delivery',     icon: '🏪', page: 'services' as Page },
-  { label: 'Business Logistics', icon: '🏢', page: 'corporate' as Page },
-];
-
 const MOVING_TOOLS = [
   { label: 'Van Size Calculator', desc: 'Find the right van for your move', page: 'van-guide' as Page },
   { label: 'Moving Checklist',    desc: 'Step-by-step packing guide',       page: 'checklist' as Page },
@@ -60,7 +51,6 @@ export default function Header() {
   const { profile, signOut, user } = useAuth();
   const { setPage, currentPage, setShowAuthModal, setAuthMode } = useApp();
   const [mobileOpen,    setMobileOpen]    = useState(false);
-  const [servicesOpen,  setServicesOpen]  = useState(false);
   const [toolsOpen,     setToolsOpen]     = useState(false);
   const [companiesOpen, setCompaniesOpen] = useState(false);
   const [langOpen,      setLangOpen]      = useState(false);
@@ -91,13 +81,12 @@ export default function Header() {
   }, []);
 
   function closeAll() {
-    setServicesOpen(false); setToolsOpen(false);
+    setToolsOpen(false);
     setCompaniesOpen(false); setUserMenuOpen(false);
     setNotifOpen(false);
   }
 
-  function toggle(which: 'services' | 'tools' | 'companies' | 'user' | 'notif') {
-    setServicesOpen(which === 'services'  ? (s) => !s : false);
+  function toggle(which: 'tools' | 'companies' | 'user' | 'notif') {
     setToolsOpen(which === 'tools'        ? (s) => !s : false);
     setCompaniesOpen(which === 'companies'? (s) => !s : false);
     setUserMenuOpen(which === 'user'      ? (s) => !s : false);
@@ -144,7 +133,7 @@ export default function Header() {
   const dropdown = (
     open: boolean,
     label: string,
-    which: 'services' | 'tools' | 'companies' | 'user',
+    which: 'tools' | 'companies' | 'user',
     children: React.ReactNode,
     alignRight = false
   ) => (
@@ -234,18 +223,7 @@ export default function Header() {
             {/* Desktop nav */}
             <nav className="hidden lg:flex items-center gap-0.5">
               {navBtn(t.home, 'home')}
-
-              {/* Services */}
-              {dropdown(servicesOpen, t.services, 'services', (
-                <div className="w-52 py-2">
-                  {SERVICES.map((s) => (
-                    <button key={s.label} onClick={() => handleNav(s.page)}
-                      className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition flex items-center gap-3">
-                      <span>{s.icon}</span>{s.label}
-                    </button>
-                  ))}
-                </div>
-              ))}
+              {navBtn(t.services, 'services')}
 
               {/* Moving Tools */}
               {dropdown(toolsOpen, t.movingTools, 'tools', (

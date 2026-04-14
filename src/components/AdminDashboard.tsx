@@ -13,13 +13,19 @@ function safeNumber(value: any): number {
 function calculateRefundAmount(booking: any) {
   const price = safeNumber(booking.price_estimate);
   if (booking.manual_refund_percent != null) return price * (booking.manual_refund_percent / 100);
+  // status values come from the bookings CHECK constraint:
+  //   pending | confirmed | driver_assigned | pickup_arrived |
+  //   loading | in_transit | completed | cancelled
   switch (booking.status) {
-    case "awaiting_payment": case "pending": return price;
-    case "confirmed": return price * 0.9;
-    case "driver_assigned": return price * 0.8;
-    case "in_transit": return price * 0.5;
-    case "completed": return 0;
-    default: return 0;
+    case "pending":                        return price;
+    case "confirmed":                      return price * 0.9;
+    case "driver_assigned":                return price * 0.8;
+    case "pickup_arrived":
+    case "loading":                        return price * 0.7;
+    case "in_transit":                     return price * 0.5;
+    case "completed":                      return 0;
+    case "cancelled":                      return 0;
+    default:                               return 0;
   }
 }
 
@@ -92,12 +98,22 @@ export default function AdminDashboard() {
   }, [profile, loading]);
 
   async function enforceSubscriptionExpiry() {
-    const { data } = await supabase.from("driver_subscriptions").select("driver_id, end_date").eq("status", "active");
+    // driver_subscriptions table column is `subscription_status`, not `status`.
+    const { data } = await supabase
+      .from("driver_subscriptions")
+      .select("driver_id, end_date")
+      .eq("subscription_status", "active");
     if (!data) return;
     for (const sub of data) {
       if (sub.end_date && new Date(sub.end_date) < new Date()) {
-        await supabase.from("driver_subscriptions").update({ status: "expired" }).eq("driver_id", sub.driver_id);
-        await supabase.from("driver_profiles").update({ status: "suspended" }).eq("user_id", sub.driver_id);
+        await supabase
+          .from("driver_subscriptions")
+          .update({ subscription_status: "cancelled" })
+          .eq("driver_id", sub.driver_id);
+        await supabase
+          .from("driver_profiles")
+          .update({ status: "suspended" })
+          .eq("user_id", sub.driver_id);
       }
     }
   }
@@ -150,7 +166,10 @@ export default function AdminDashboard() {
         setApplicationDocStatus(docMap);
       }
 
-      const { data: subs } = await supabase.from("driver_subscriptions").select("driver_id, end_date, plan, status").eq("status", "active");
+      const { data: subs } = await supabase
+        .from("driver_subscriptions")
+        .select("driver_id, end_date, plan_id, subscription_status")
+        .eq("subscription_status", "active");
       if (subs) {
         const expiryMap: Record<string, string | null> = {};
         subs.forEach((s: any) => { expiryMap[s.driver_id] = s.end_date ?? null; });
@@ -170,10 +189,11 @@ export default function AdminDashboard() {
       const online = driversOnline || 0; const jobs = activeJobs || 0;
       if (online >= jobs) setFleetCapacity("HIGH"); else if (online >= jobs * 0.5) setFleetCapacity("MEDIUM"); else setFleetCapacity("LOW");
 
-      const { data: commissionRows } = await supabase.from("commission_ledger").select("amount");
+      // commission_ledger column is `commission_amount`, not `amount`.
+      const { data: commissionRows } = await supabase.from("commission_ledger").select("commission_amount");
       const { data: subscriptionPaymentRows } = await supabase.from("subscription_payments").select("amount");
       let revenueSum = 0;
-      commissionRows?.forEach((r: any) => { revenueSum += safeNumber(r.amount); });
+      commissionRows?.forEach((r: any) => { revenueSum += safeNumber(r.commission_amount); });
       subscriptionPaymentRows?.forEach((r: any) => { revenueSum += safeNumber(r.amount); });
       setTotalRevenue(revenueSum);
 
@@ -192,23 +212,25 @@ export default function AdminDashboard() {
   }
 
   async function loadRevenueStats() {
-    const { data: ledgerData } = await supabase.from("commission_ledger").select("*, created_at");
+    const { data: ledgerData } = await supabase.from("commission_ledger").select("commission_amount, created_at");
     const { data: subPayData } = await supabase.from("subscription_payments").select("amount, created_at");
     const { data: escrowData } = await supabase.from("escrow_payments").select("status, driver_earning, created_at");
     const today = new Date();
+    const sameMonthYear = (a: Date, b: Date) =>
+      a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
     let todayRevenue = 0, weekRevenue = 0, monthRevenue = 0, commission = 0, pending = 0, released = 0;
     ledgerData?.forEach((p: any) => {
-      const created = new Date(p.created_at); const amt = safeNumber(p.amount);
+      const created = new Date(p.created_at); const amt = safeNumber(p.commission_amount);
       if (created.toDateString() === today.toDateString()) todayRevenue += amt;
       if (today.getTime() - created.getTime() < 7 * 86400000) weekRevenue += amt;
-      if (created.getMonth() === today.getMonth()) monthRevenue += amt;
+      if (sameMonthYear(created, today)) monthRevenue += amt;
       commission += amt;
     });
     subPayData?.forEach((p: any) => {
       const created = new Date(p.created_at); const amt = safeNumber(p.amount);
       if (created.toDateString() === today.toDateString()) todayRevenue += amt;
       if (today.getTime() - created.getTime() < 7 * 86400000) weekRevenue += amt;
-      if (created.getMonth() === today.getMonth()) monthRevenue += amt;
+      if (sameMonthYear(created, today)) monthRevenue += amt;
     });
     escrowData?.forEach((p: any) => {
       if (p.status === "escrow") pending += safeNumber(p.driver_earning);
@@ -221,8 +243,9 @@ export default function AdminDashboard() {
     let events: any[] = [];
     const { data: bookingUpdates } = await supabase.from("booking_updates").select("status, created_at").eq("booking_id", bookingId);
     bookingUpdates?.forEach((u: any) => events.push({ time: u.created_at, message: `📋 Booking status → ${u.status}` }));
-    const { data: dispatchEvents } = await supabase.from("dispatch_logs").select("event_type, created_at").eq("booking_id", bookingId);
-    dispatchEvents?.forEach((d: any) => events.push({ time: d.created_at, message: `🚚 Dispatch: ${d.event_type}` }));
+    // dispatch_logs schema has `response` (driver's response), not `event_type`.
+    const { data: dispatchEvents } = await supabase.from("dispatch_logs").select("response, created_at").eq("booking_id", bookingId);
+    dispatchEvents?.forEach((d: any) => events.push({ time: d.created_at, message: `🚚 Dispatch: ${d.response ?? "notified"}` }));
     const { data: escrowEvents } = await supabase.from("escrow_payments").select("status, created_at").eq("booking_id", bookingId);
     escrowEvents?.forEach((e: any) => events.push({ time: e.created_at, message: `🔐 Escrow: ${e.status}` }));
     events.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
@@ -254,7 +277,9 @@ export default function AdminDashboard() {
 
   async function releasePayment(booking: any) {
     const driverId = booking.driver_id; const driverEarning = safeNumber(booking.price_estimate);
-    await supabase.rpc("increment_driver_wallet", { driver_id: driverId, amount: driverEarning });
+    // RPC parameter names per schema: p_driver_id, p_amount.
+    const { error: rpcErr } = await supabase.rpc("increment_driver_wallet", { p_driver_id: driverId, p_amount: driverEarning });
+    if (rpcErr) { alert("Release failed: " + rpcErr.message); return; }
     await supabase.from("driver_wallet_transactions").insert({ driver_id: driverId, booking_id: booking.id, type: "escrow_release", amount: driverEarning });
     await supabase.from("escrow_payments").update({ status: "released" }).eq("booking_id", booking.id);
     await supabase.from("bookings").update({ payment_status: "released" }).eq("id", booking.id);
@@ -264,7 +289,8 @@ export default function AdminDashboard() {
   async function refundPayment(booking: any) {
     const refundAmount = calculateRefundAmount(booking); const driverId = booking.driver_id;
     if (refundAmount === 0) { alert("Refund not allowed"); return; }
-    await supabase.rpc("decrement_driver_wallet", { driver_id: driverId, amount: refundAmount });
+    const { error: rpcErr } = await supabase.rpc("decrement_driver_wallet", { p_driver_id: driverId, p_amount: refundAmount });
+    if (rpcErr) { alert("Refund failed: " + rpcErr.message); return; }
     await supabase.from("driver_wallet_transactions").insert({ driver_id: driverId, booking_id: booking.id, type: "refund_reversal", amount: refundAmount });
     await supabase.from("escrow_payments").update({ status: "refunded", refund_amount: refundAmount }).eq("booking_id", booking.id);
     alert("Refund processed safely"); loadData();
@@ -290,7 +316,14 @@ export default function AdminDashboard() {
   }
 
   async function loadApplicationDocuments(applicationId: string) {
-    const { data, error } = await supabase.from("driver_documents").select("id, document_type, file_url, verification_status, created_at").eq("application_id", applicationId).order("created_at", { ascending: true });
+    // driver_documents is keyed by driver_id (the auth user's id), not application_id.
+    const app = applications.find((a: any) => a.id === applicationId);
+    if (!app?.user_id) { setAppDocuments([]); return; }
+    const { data, error } = await supabase
+      .from("driver_documents")
+      .select("id, document_type, file_url, verification_status, uploaded_at")
+      .eq("driver_id", app.user_id)
+      .order("uploaded_at", { ascending: true });
     setAppDocuments(error || !data ? [] : data);
   }
 

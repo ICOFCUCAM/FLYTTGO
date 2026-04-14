@@ -60,7 +60,9 @@ export default function MyBookings() {
   }
 
   async function confirmCompletion(bookingId: string) {
-    await supabase.from("bookings").update({ customer_confirmation: true, status: "customer_confirmed" }).eq("id", bookingId);
+    // 'customer_confirmed' is not in the bookings.status CHECK constraint —
+    // rely on the customer_confirmation boolean + DB trigger instead.
+    await supabase.from("bookings").update({ customer_confirmation: true }).eq("id", bookingId);
     const { data: booking } = await supabase.from("bookings").select("driver_confirmation").eq("id", bookingId).single();
     if (booking?.driver_confirmation === true) {
       await fetch(supabaseFunctionUrl("process-payment"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "release_escrow", bookingId }) });
@@ -81,14 +83,15 @@ export default function MyBookings() {
 
   const filtered = filter === "all" ? bookings : bookings.filter(b => b.status === filter);
 
+  // Keys mirror the bookings.status CHECK constraint values.
   const statusColors: Record<string, string> = {
-    awaiting_payment: "bg-gray-100 text-gray-600", awaiting_driver: "bg-yellow-100 text-yellow-700",
-    driver_assigned: "bg-indigo-100 text-indigo-700", in_progress: "bg-purple-100 text-purple-700",
-    completed_by_driver: "bg-orange-100 text-orange-700", customer_confirmed: "bg-blue-100 text-blue-700",
+    pending: "bg-yellow-100 text-yellow-700", confirmed: "bg-blue-100 text-blue-700",
+    driver_assigned: "bg-indigo-100 text-indigo-700", pickup_arrived: "bg-sky-100 text-sky-700",
+    loading: "bg-cyan-100 text-cyan-700", in_transit: "bg-purple-100 text-purple-700",
     completed: "bg-emerald-100 text-emerald-700", cancelled: "bg-red-100 text-red-700",
   };
   const paymentColors: Record<string, string> = {
-    pending: "bg-gray-100 text-gray-600", escrow: "bg-blue-100 text-blue-700",
+    pending: "bg-gray-100 text-gray-600", paid: "bg-blue-100 text-blue-700", escrow: "bg-blue-100 text-blue-700",
     released: "bg-emerald-100 text-emerald-700", refunded: "bg-red-100 text-red-700",
   };
 
@@ -97,7 +100,7 @@ export default function MyBookings() {
       <div className="max-w-5xl mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">My Bookings</h1>
         <div className="flex flex-wrap gap-2 mb-6">
-          {["all","awaiting_payment","awaiting_driver","in_progress","completed_by_driver","completed","cancelled"].map(f => (
+          {["all","pending","driver_assigned","in_transit","completed","cancelled"].map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded text-sm ${filter === f ? "bg-emerald-600 text-white" : "bg-white border"}`}>{f.replace(/_/g, " ")}</button>
           ))}
         </div>
@@ -124,8 +127,8 @@ export default function MyBookings() {
               {booking.price_adjusted && <div className="bg-orange-50 border border-orange-200 rounded p-3 mb-3"><p className="text-orange-700 text-sm font-semibold">Extra time added — price updated</p></div>}
               {escrow?.adjustment_required && !escrow.adjustment_approved && <button onClick={() => approveAdjustment(escrow.id)} className="mb-3 bg-orange-600 text-white px-4 py-2 rounded text-sm">Approve additional charge</button>}
               <div className="flex gap-3 flex-wrap">
-                {booking.status === "awaiting_driver" && <button onClick={() => cancelBooking(booking.id)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">Cancel</button>}
-                {booking.status === "completed_by_driver" && !booking.customer_confirmation && <button onClick={() => confirmCompletion(booking.id)} className="px-4 py-2 bg-emerald-600 text-white rounded text-sm">Confirm Completion</button>}
+                {booking.status === "pending" && <button onClick={() => cancelBooking(booking.id)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">Cancel</button>}
+                {booking.status === "completed" && !booking.customer_confirmation && <button onClick={() => confirmCompletion(booking.id)} className="px-4 py-2 bg-emerald-600 text-white rounded text-sm">Confirm Completion</button>}
                 <button onClick={() => repeatBooking(booking)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">Repeat Booking</button>
               </div>
               <div className="text-xs text-gray-400 mt-3">Loyalty points earned: {Math.floor(Number(price || 0) / 100)}</div>

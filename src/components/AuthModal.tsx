@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../lib/store';
 import { useAuth } from '../lib/auth';
-import { X, Eye, EyeOff, ArrowRight, ArrowLeft } from 'lucide-react';
+import { X, Eye, EyeOff, ArrowRight, ArrowLeft, LogIn, KeyRound, UserPlus, Home, Truck, Building2 } from 'lucide-react';
 
 type Role = 'customer' | 'driver' | 'business';
 
-const ROLE_OPTIONS: { id: Role; title: string; desc: string; icon: string }[] = [
-  { id: 'customer', title: 'Personal',  desc: 'Book moves and deliveries for yourself', icon: '🏠' },
-  { id: 'driver',   title: 'Driver',    desc: 'Earn money with your van',               icon: '🚐' },
-  { id: 'business', title: 'Business',  desc: 'Corporate logistics at scale',           icon: '🏢' },
+const ROLE_OPTIONS: {
+  id: Role;
+  title: string;
+  desc: string;
+  Icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { id: 'customer', title: 'Personal',  desc: 'Book moves and deliveries for yourself', Icon: Home },
+  { id: 'driver',   title: 'Driver',    desc: 'Earn money with your van',               Icon: Truck },
+  { id: 'business', title: 'Business',  desc: 'Corporate logistics at scale',           Icon: Building2 },
 ];
 
 function GoogleIcon() {
@@ -132,7 +137,7 @@ export default function AuthModal() {
           <>
             <div className="flex items-center gap-2 mb-1">
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <span className="text-lg">👋</span>
+                <LogIn className="w-4 h-4 text-emerald-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900">Sign In</h2>
             </div>
@@ -241,7 +246,7 @@ export default function AuthModal() {
 
             <div className="flex items-center gap-2 mb-1">
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <span className="text-lg">🔑</span>
+                <KeyRound className="w-4 h-4 text-emerald-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900">Reset password</h2>
             </div>
@@ -288,30 +293,33 @@ export default function AuthModal() {
           <>
             <div className="flex items-center gap-2 mb-1">
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <span className="text-lg">✨</span>
+                <UserPlus className="w-4 h-4 text-emerald-600" />
               </div>
               <h2 className="text-2xl font-bold text-gray-900">Create Account</h2>
             </div>
             <p className="text-gray-500 text-sm mb-6">Choose your account type to get started.</p>
 
             <div className="space-y-3">
-              {ROLE_OPTIONS.map(option => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => { setSelectedRole(option.id); setSignupStep('form'); setError(''); }}
-                  className="w-full flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl text-left hover:border-emerald-500 hover:bg-emerald-50/40 transition group"
-                >
-                  <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-emerald-100 transition">
-                    {option.icon}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900">{option.title}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">{option.desc}</div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-600 flex-shrink-0 transition" />
-                </button>
-              ))}
+              {ROLE_OPTIONS.map(option => {
+                const Icon = option.Icon;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => { setSelectedRole(option.id); setSignupStep('form'); setError(''); }}
+                    className="w-full flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl text-left hover:border-emerald-500 hover:bg-emerald-50/40 transition group"
+                  >
+                    <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-100 transition">
+                      <Icon className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-900">{option.title}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{option.desc}</div>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-600 flex-shrink-0 transition" />
+                  </button>
+                );
+              })}
             </div>
 
             <p className="text-center text-sm text-gray-500 mt-6">
@@ -340,11 +348,9 @@ export default function AuthModal() {
 
             <div className="flex items-center gap-2 mb-1">
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <span className="text-lg">
-                  {selectedRole === 'customer' && '🏠'}
-                  {selectedRole === 'driver'   && '🚐'}
-                  {selectedRole === 'business' && '🏢'}
-                </span>
+                {selectedRole === 'customer' && <Home      className="w-4 h-4 text-emerald-600" />}
+                {selectedRole === 'driver'   && <Truck     className="w-4 h-4 text-emerald-600" />}
+                {selectedRole === 'business' && <Building2 className="w-4 h-4 text-emerald-600" />}
               </div>
               <h2 className="text-2xl font-bold text-gray-900">Create Account</h2>
             </div>

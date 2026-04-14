@@ -46,7 +46,11 @@ export default function CustomerDashboard() {
   }
 
   async function confirmCompletion(bookingId: string) {
-    await supabase.from("bookings").update({ customer_confirmation: true, status: "customer_confirmed" }).eq("id", bookingId);
+    // Only toggle the confirmation flag — the bookings.status CHECK
+    // constraint doesn't have a 'customer_confirmed' value. The dual-
+    // confirmation logic lives in the customer_confirmation /
+    // driver_confirmation booleans, which a trigger uses to release escrow.
+    await supabase.from("bookings").update({ customer_confirmation: true }).eq("id", bookingId);
     const { data: booking } = await supabase.from("bookings").select("driver_confirmation").eq("id", bookingId).single();
     if (booking?.driver_confirmation === true) {
       await fetch(supabaseFunctionUrl("process-payment"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "release_escrow", bookingId }) });

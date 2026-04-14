@@ -192,62 +192,69 @@ export default function BookingFlow() {
       setError('Please sign in to complete your booking.');
       return;
     }
+    if (!name.trim() || !phone.trim() || !email.trim()) {
+      setError('Please fill in your name, phone, and email before submitting.');
+      return;
+    }
+    if (!moveType) {
+      setError('Please choose a move type before submitting.');
+      return;
+    }
+    if (!pickupAddress?.formatted || !dropoffAddress?.formatted) {
+      setError('Please set both pickup and drop-off addresses.');
+      return;
+    }
 
     setSaving(true);
     setError('');
 
     try {
-      /* ── STRUCTURED address insert (replaces old string-based insert) ── */
+      /* Use the simple flat columns the bookings table actually has —
+       * the table stores one address per location (pickup_address /
+       * dropoff_address) plus postcode/city/lat/lng as flat columns.
+       * `status` must be a value that satisfies the CHECK constraint
+       * ('pending','confirmed','driver_assigned','pickup_arrived',
+       *  'loading','in_transit','completed','cancelled'). */
       const { data: booking, error: bookingError } = await supabase
         .from('bookings')
         .insert({
-          user_id: user.id,
+          customer_id: user.id,
           customer_email: email,
           customer_name: name,
           customer_phone: phone,
 
-          /* STRUCTURED PICKUP — replaces pickup_address: string */
-          pickup_street: pickupAddress.street_name,
-          pickup_house_number: pickupAddress.house_number,
+          pickup_address: pickupAddress.formatted || formatNorwegianAddress(pickupAddress).oneLine,
           pickup_postcode: pickupAddress.postcode,
           pickup_city: pickupAddress.city,
           pickup_lat: pickupAddress.lat,
           pickup_lng: pickupAddress.lng,
-          /* Legacy compatibility field */
-          pickup_address: pickupAddress.formatted || formatNorwegianAddress(pickupAddress).oneLine,
 
-          /* STRUCTURED DELIVERY — replaces dropoff_address: string */
-          delivery_street: dropoffAddress.street_name,
-          delivery_house_number: dropoffAddress.house_number,
-          delivery_postcode: dropoffAddress.postcode,
-          delivery_city: dropoffAddress.city,
-          delivery_lat: dropoffAddress.lat,
-          delivery_lng: dropoffAddress.lng,
-          /* Legacy compatibility field */
           dropoff_address: dropoffAddress.formatted || formatNorwegianAddress(dropoffAddress).oneLine,
+          dropoff_postcode: dropoffAddress.postcode,
+          dropoff_city: dropoffAddress.city,
+          dropoff_lat: dropoffAddress.lat,
+          dropoff_lng: dropoffAddress.lng,
 
           /* Move details */
           move_type: moveType,
-          property_type: propertyType,
           van_type: vanType || recommendVan(totalVolume),
-          helpers_count: helpers,
+          helpers,
           additional_services: additionalServices,
-          inventory_items: inventory,
+          items: inventory,
 
           /* Schedule */
-          move_date: moveDate,
-          move_time: moveTime,
-          notes,
+          move_date: moveDate || null,
+          move_time: moveTime || null,
+          customer_notes: notes,
 
           /* Pricing */
           distance_km: distanceKm,
           estimated_hours: estimatedHours,
           price_estimate: safeNum(pricing.total),
           original_price: safeNum(pricing.total),
-          subtotal: safeNum(pricing.subtotal),
-          vat_amount: safeNum(pricing.vat),
 
-          status: 'awaiting_driver',
+          status: 'pending',
+          payment_status: 'pending',
         })
         .select()
         .single();
@@ -259,9 +266,9 @@ export default function BookingFlow() {
         .from('escrow_payments')
         .insert({
           booking_id: booking.id,
-          user_id: user.id,
           amount: safeNum(pricing.total),
-          status: 'pending',
+          original_amount: safeNum(pricing.total),
+          status: 'held',
         });
 
       if (escrowError) console.warn('Escrow insert failed:', escrowError);
