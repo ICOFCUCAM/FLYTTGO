@@ -36,6 +36,7 @@ const PressPage          = lazy(() => import('../pages/PressPage'));
 const SustainabilityPage = lazy(() => import('../pages/SustainabilityPage'));
 const TrackingPage       = lazy(() => import('../pages/TrackingPage'));
 const PaymentPage        = lazy(() => import('../pages/PaymentPage'));
+const NotFoundPage       = lazy(() => import('../pages/NotFoundPage'));
 const Footer             = lazy(() => import('./Footer'));
 
 function Loading() {
@@ -97,7 +98,8 @@ export default function AppLayout() {
       case 'sustainability':         return <SustainabilityPage />;
       case 'tracking':               return <TrackingPage />;
       case 'payment':                return <PaymentPage />;
-      default:                       return <HomePage />;
+      case 'not-found':              return <NotFoundPage />;
+      default:                       return <NotFoundPage />;
     }
   };
 

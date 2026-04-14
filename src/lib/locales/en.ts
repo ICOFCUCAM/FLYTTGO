@@ -503,6 +503,17 @@ export const en = {
     backToHome: 'Back to home',
     contact:    'If this keeps happening, contact',
   },
+
+  /* ─── 404 Not Found ─── */
+  notFound: {
+    code:        '404',
+    title:       'This page has moved out.',
+    subtitle:    "We couldn't find what you were looking for. Maybe it's been delivered somewhere else — or the link is a few boxes behind. Let's get you back on track.",
+    backHome:    'Back to Home',
+    browseServices: 'Browse Services',
+    popularTitle:'Popular pages',
+    searchHint:  'Or try one of these:',
+  },
 };
 
 /**
