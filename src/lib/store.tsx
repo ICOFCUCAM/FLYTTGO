@@ -12,7 +12,9 @@ export type Page =
   | 'profile'
   /* Informational / marketing pages referenced from the footer. */
   | 'about' | 'contact' | 'faq' | 'help' | 'safety'
-  | 'careers' | 'press' | 'sustainability';
+  | 'careers' | 'press' | 'sustainability'
+  /* Real-time delivery tracking + payment/escrow checkout. */
+  | 'tracking' | 'payment';
 
 interface AppState {
   currentPage: Page;

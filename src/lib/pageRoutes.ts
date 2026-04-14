@@ -18,6 +18,8 @@ const PAGE_TO_PATH: Record<Page, string> = {
   /* Core flows */
   'home':                    '/',
   'booking':                 '/book',
+  'payment':                 '/payment',
+  'tracking':                '/track',
   'services':                '/services',
   'van-guide':               '/van-size-guide',
   'checklist':               '/moving-checklist',
@@ -79,6 +81,8 @@ export interface PageMeta {
 const PAGE_TITLES: Record<Page, string> = {
   'home':                    'FlyttGo — Norway\u2019s #1 Moving Marketplace',
   'booking':                 'Book a Move · FlyttGo',
+  'payment':                 'Secure Payment · FlyttGo',
+  'tracking':                'Track Your Delivery · FlyttGo',
   'services':                'Services · FlyttGo',
   'van-guide':               'Van Size Guide · FlyttGo',
   'checklist':               'Moving Checklist · FlyttGo',
@@ -120,6 +124,10 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     "Book verified, insured movers and cargo drivers across Norway. Real-time tracking, transparent pricing, escrow payment. Oslo, Bergen, Trondheim and more.",
   'booking':
     'Book your next move in under 3 minutes. Get an instant quote, pick a verified driver, and track your delivery live — all with escrow payment built in.',
+  'payment':
+    'Secure escrow checkout for your FlyttGo booking. Pay with card, Vipps, Google Pay or corporate invoice — money is held until the delivery is confirmed.',
+  'tracking':
+    'Track your FlyttGo delivery in real time. Live driver location, ETA, progress timeline and in-app chat with your driver.',
   'services':
     'From single-item deliveries to full office relocations — every FlyttGo service is run by registered Norwegian carriers with goods-in-transit insurance.',
   'van-guide':

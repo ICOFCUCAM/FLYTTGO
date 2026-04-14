@@ -34,6 +34,8 @@ const SafetyPage         = lazy(() => import('../pages/SafetyPage'));
 const CareersPage        = lazy(() => import('../pages/CareersPage'));
 const PressPage          = lazy(() => import('../pages/PressPage'));
 const SustainabilityPage = lazy(() => import('../pages/SustainabilityPage'));
+const TrackingPage       = lazy(() => import('../pages/TrackingPage'));
+const PaymentPage        = lazy(() => import('../pages/PaymentPage'));
 const Footer             = lazy(() => import('./Footer'));
 
 function Loading() {
@@ -93,6 +95,8 @@ export default function AppLayout() {
       case 'careers':                return <CareersPage />;
       case 'press':                  return <PressPage />;
       case 'sustainability':         return <SustainabilityPage />;
+      case 'tracking':               return <TrackingPage />;
+      case 'payment':                return <PaymentPage />;
       default:                       return <HomePage />;
     }
   };
