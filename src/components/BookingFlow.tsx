@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, calculatePrice, recommendVan } from '../lib/constants';
+import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, recommendVan } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { formatNorwegianAddress, validateNorwegianAddress } from '../utils/formatNorwegianAddress';
-import { getRouteDistance } from '../lib/routing';
+import { fetchServerPrice, ServerPriceResult } from '../lib/calculatePrice';
 import { CustomerLegalAcceptance } from './LegalAcceptance';
 
 /* ─────────────────────────────────────────────
@@ -83,9 +83,30 @@ export default function BookingFlow() {
   const [email, setEmail] = useState(user?.email || '');
   const [notes, setNotes] = useState('');
 
-  /* ── Pricing ── */
-  const [distanceKm, setDistanceKm] = useState(bookingData.distanceKm || 10);
+  /* ── Pricing (server-authoritative) ──
+   * We used to run OSRM in the browser and then compute the price
+   * locally with calculatePrice(). The browser is no longer
+   * trusted for either — both the driving distance AND the final
+   * price now come from the calculate-price Edge Function, which
+   * hits OSRM itself and runs the pricing formula server-side
+   * before we insert the booking. The frontend only passes raw
+   * coordinates + move choices. */
   const [estimatedHours, setEstimatedHours] = useState(2);
+  const [serverPrice, setServerPrice]       = useState<ServerPriceResult | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingError, setPricingError]     = useState<string | null>(null);
+
+  /* Convenience accessors so the JSX below doesn't have to check
+   * for null on every render. Defaults to zeros until the first
+   * server response lands, at which point the summary step
+   * re-renders with the real numbers. */
+  const distanceKm     = serverPrice?.distance_km ?? 0;
+  const priceTotal     = serverPrice?.price_total ?? 0;
+  const priceSubtotal  = serverPrice?.price_subtotal ?? 0;
+  const vatAmount      = serverPrice?.vat_amount ?? 0;
+  const basePrice      = serverPrice?.breakdown?.base_price ?? 0;
+  const distanceCharge = serverPrice?.breakdown?.distance_charge ?? 0;
+  const helpersCharge  = serverPrice?.breakdown?.helpers_charge ?? 0;
 
   /* ── Validation ── */
   const [addressErrors, setAddressErrors] = useState<{ pickup?: string; dropoff?: string }>({});
@@ -97,32 +118,45 @@ export default function BookingFlow() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  /* Calculate price */
-  const pricing = calculatePrice(
-    vanType || 'medium_van',
-    estimatedHours,
-    safeNum(distanceKm),
-    helpers,
-    additionalServices
-  );
-
-  /* Auto-calculate distance when both addresses have coords. Uses
-   * the route-distance edge function (OSRM) for real driving
-   * distance, with a Haversine fallback baked into the helper so
-   * the flow never stalls. */
+  /* Fetch server-authoritative distance + price whenever any
+   * pricing input changes. Debounced naturally by the step flow:
+   * the customer rarely changes all six inputs in rapid succession,
+   * and when they do we cancel stale requests via the `cancelled`
+   * flag. All computation happens inside the calculate-price edge
+   * function; the browser only sends coordinates. */
   useEffect(() => {
     let cancelled = false;
-    if (!pickupAddress.lat || !pickupAddress.lng || !dropoffAddress.lat || !dropoffAddress.lng) return;
+    if (!pickupAddress.lat || !pickupAddress.lng || !dropoffAddress.lat || !dropoffAddress.lng) {
+      setServerPrice(null);
+      return;
+    }
+    setPricingLoading(true);
+    setPricingError(null);
     (async () => {
-      const res = await getRouteDistance(
-        { lat: pickupAddress.lat!, lng: pickupAddress.lng! },
-        { lat: dropoffAddress.lat!, lng: dropoffAddress.lng! },
-      );
-      if (cancelled || !res) return;
-      setDistanceKm(res.distanceKm);
+      try {
+        const res = await fetchServerPrice({
+          pickupLat:           pickupAddress.lat!,
+          pickupLng:           pickupAddress.lng!,
+          dropoffLat:          dropoffAddress.lat!,
+          dropoffLng:          dropoffAddress.lng!,
+          vanType:             vanType || 'medium_van',
+          helpers,
+          additionalServices,
+          estimatedHours,
+        });
+        if (!cancelled) setServerPrice(res);
+      } catch (err) {
+        if (!cancelled) setPricingError((err as Error).message);
+      } finally {
+        if (!cancelled) setPricingLoading(false);
+      }
     })();
     return () => { cancelled = true; };
-  }, [pickupAddress.lat, pickupAddress.lng, dropoffAddress.lat, dropoffAddress.lng]);
+  }, [
+    pickupAddress.lat, pickupAddress.lng,
+    dropoffAddress.lat, dropoffAddress.lng,
+    vanType, helpers, additionalServices, estimatedHours,
+  ]);
 
   /* ── INVENTORY helpers ── */
   const totalVolume = Object.entries(inventory).reduce((sum, [name, qty]) => {
@@ -216,6 +250,21 @@ export default function BookingFlow() {
       return;
     }
 
+    /* Refuse to submit without a server-calculated price. The
+     * browser is no longer allowed to decide what to charge —
+     * every insert must use the authoritative numbers returned
+     * by the calculate-price edge function. If that function is
+     * unreachable the booking blocks rather than inserting a
+     * tampered or zero price. */
+    if (!serverPrice) {
+      setError(
+        pricingError
+          ? `Pricing service unavailable: ${pricingError}`
+          : 'Calculating price... please wait a moment and try again.',
+      );
+      return;
+    }
+
     setSaving(true);
     setError('');
 
@@ -258,11 +307,15 @@ export default function BookingFlow() {
           move_time: moveTime || null,
           customer_notes: notes,
 
-          /* Pricing */
-          distance_km: distanceKm,
+          /* Pricing — all fields come from the calculate-price
+           * edge function, NOT from any browser computation. The
+           * distance_km is the real OSRM driving distance the
+           * server resolved; price_estimate / original_price is
+           * the final total returned by the server-side formula. */
+          distance_km:     serverPrice.distance_km,
           estimated_hours: estimatedHours,
-          price_estimate: safeNum(pricing.total),
-          original_price: safeNum(pricing.total),
+          price_estimate:  serverPrice.price_total,
+          original_price:  serverPrice.price_total,
 
           status: 'pending',
           payment_status: 'pending',
@@ -276,10 +329,10 @@ export default function BookingFlow() {
       const { error: escrowError } = await supabase
         .from('escrow_payments')
         .insert({
-          booking_id: booking.id,
-          amount: safeNum(pricing.total),
-          original_amount: safeNum(pricing.total),
-          status: 'held',
+          booking_id:      booking.id,
+          amount:          serverPrice.price_total,
+          original_amount: serverPrice.price_total,
+          status:          'held',
         });
 
       if (escrowError) console.warn('Escrow insert failed:', escrowError);
@@ -714,32 +767,45 @@ export default function BookingFlow() {
                   </div>
                 </div>
 
-                {/* Price breakdown */}
+                {/* Price breakdown — 100% server-side numbers */}
                 <div className="border-t pt-3 space-y-2">
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>{t('booking.priceBase')} ({estimatedHours}h × {VAN_TYPES.find(v => v.id === vanType)?.pricePerHour || 850} NOK/h)</span>
-                    <span>{safeNum(pricing.basePrice).toFixed(0)} NOK</span>
-                  </div>
-                  {safeNum(pricing.distanceCharge) > 0 && (
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>{t('booking.priceDistance')}</span>
-                      <span>{safeNum(pricing.distanceCharge).toFixed(0)} NOK</span>
-                    </div>
+                  {pricingLoading && !serverPrice ? (
+                    <p className="text-center text-xs text-gray-400 py-4">Calculating price…</p>
+                  ) : pricingError && !serverPrice ? (
+                    <p className="text-center text-xs text-red-500 py-4">Pricing service error — please try again</p>
+                  ) : (
+                    <>
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>{t('booking.priceBase')} ({estimatedHours}h × {VAN_TYPES.find(v => v.id === vanType)?.pricePerHour || 850} NOK/h)</span>
+                        <span>{basePrice.toFixed(0)} NOK</span>
+                      </div>
+                      {distanceCharge > 0 && (
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>{t('booking.priceDistance')}</span>
+                          <span>{distanceCharge.toFixed(0)} NOK</span>
+                        </div>
+                      )}
+                      {helpersCharge > 0 && (
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>{t('booking.priceHelpers')} ({helpers})</span>
+                          <span>{helpersCharge.toFixed(0)} NOK</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>{t('booking.priceVat')}</span>
+                        <span>{vatAmount.toFixed(0)} NOK</span>
+                      </div>
+                      <div className="flex justify-between text-base font-bold text-gray-900 border-t pt-2">
+                        <span>{t('booking.priceTotal')}</span>
+                        <span className="text-emerald-700">{priceTotal.toFixed(0)} NOK</span>
+                      </div>
+                      {serverPrice && (
+                        <p className="text-[10px] text-gray-400 text-center pt-1">
+                          Distance + price calculated server-side ({serverPrice.routing_provider})
+                        </p>
+                      )}
+                    </>
                   )}
-                  {safeNum(pricing.helpersCharge) > 0 && (
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>{t('booking.priceHelpers')} ({helpers})</span>
-                      <span>{safeNum(pricing.helpersCharge).toFixed(0)} NOK</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>{t('booking.priceVat')}</span>
-                    <span>{safeNum(pricing.vat).toFixed(0)} NOK</span>
-                  </div>
-                  <div className="flex justify-between text-base font-bold text-gray-900 border-t pt-2">
-                    <span>{t('booking.priceTotal')}</span>
-                    <span className="text-emerald-700">{safeNum(pricing.total).toFixed(0)} NOK</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -761,7 +827,7 @@ export default function BookingFlow() {
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="font-bold text-gray-900 text-lg">{t('booking.totalLabel')} {safeNum(pricing.total).toFixed(0)} NOK</p>
+                  <p className="font-bold text-gray-900 text-lg">{t('booking.totalLabel')} {priceTotal.toFixed(0)} NOK</p>
                   <p className="text-gray-500 text-xs">{t('booking.escrowNote')}</p>
                 </div>
                 <div className="text-right text-xs text-gray-400">
@@ -772,7 +838,7 @@ export default function BookingFlow() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={saving || !legalAccepted}
+                disabled={saving || !legalAccepted || !serverPrice || pricingLoading}
                 className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold text-base hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {saving ? (
@@ -782,9 +848,11 @@ export default function BookingFlow() {
                     </svg>
                     {t('booking.processing')}
                   </>
+                ) : pricingLoading || !serverPrice ? (
+                  <>Calculating price…</>
                 ) : (
                   <>
-                    🔒 {t('booking.confirmPayBtn')} {safeNum(pricing.total).toFixed(0)} NOK
+                    🔒 {t('booking.confirmPayBtn')} {priceTotal.toFixed(0)} NOK
                   </>
                 )}
               </button>
