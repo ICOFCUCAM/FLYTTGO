@@ -1,5 +1,6 @@
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { pageToPath, pathToPage, pageTitle } from './pageRoutes';
 
 export type Page =
   | 'home' | 'booking' | 'subscriptions' | 'customer-dashboard'
@@ -72,10 +73,49 @@ const defaultBooking: BookingData = {
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [currentPage, setPage] = useState<Page>('home');
+  /* Seed the page state from the URL so deep links / browser refresh
+   * / share links open the right view instead of always booting to
+   * the home page. SSR-safe: falls back to 'home' outside the
+   * browser. */
+  const initialPage: Page =
+    typeof window !== 'undefined' ? pathToPage(window.location.pathname) : 'home';
+
+  const [currentPage, setCurrentPage] = useState<Page>(initialPage);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'driver-signup'>('signin');
   const [bookingData, setBookingDataState] = useState<BookingData>(defaultBooking);
+
+  /* setPage acts as a navigation call: it updates the in-memory
+   * page state AND pushes a history entry so the URL changes, the
+   * back button works, and the page is shareable. Components don't
+   * have to know anything about routing — they still call setPage. */
+  const setPage = useCallback((page: Page) => {
+    setCurrentPage(page);
+    if (typeof window !== 'undefined') {
+      const path = pageToPath(page);
+      if (window.location.pathname !== path) {
+        window.history.pushState({ page }, '', path);
+      }
+    }
+  }, []);
+
+  /* Back / forward button handling — sync our page state from the
+   * URL that the browser navigates to. We never pushState from here
+   * to avoid feedback loops. */
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onPop = () => setCurrentPage(pathToPage(window.location.pathname));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  /* Keep <title> in sync with the current page so browser tabs /
+   * bookmarks / screen readers see the right label. */
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = pageTitle(currentPage);
+    }
+  }, [currentPage]);
 
   const setBookingData = (data: Partial<BookingData>) => {
     setBookingDataState(prev => ({ ...prev, ...data }));
