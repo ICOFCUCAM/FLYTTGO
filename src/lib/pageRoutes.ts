@@ -64,9 +64,18 @@ const PATH_TO_PAGE: Record<string, Page> = Object.entries(PAGE_TO_PATH)
     return acc;
   }, {});
 
-/* Per-page <title> strings. Kept next to the routes so new pages
- * get a proper tab title by default — you still have to remember to
- * add an entry but at least the lookup is in one place. */
+/**
+ * Per-page SEO metadata — title, meta description and a dedicated
+ * OG image where we have one (otherwise we fall back to /og.svg in
+ * applyPageMeta below). Everything here feeds straight into the
+ * <meta> tags on navigation.
+ */
+export interface PageMeta {
+  title:       string;
+  description: string;
+  image?:      string;
+}
+
 const PAGE_TITLES: Record<Page, string> = {
   'home':                    'FlyttGo — Norway\u2019s #1 Moving Marketplace',
   'booking':                 'Book a Move · FlyttGo',
@@ -101,9 +110,142 @@ const PAGE_TITLES: Record<Page, string> = {
   'sustainability':          'Sustainability · FlyttGo',
 };
 
+/**
+ * Per-page meta description, keyed off the same Page id. These are
+ * the strings Google, LinkedIn, WhatsApp and X use when someone
+ * shares a FlyttGo link — keep them honest, specific and ~155 chars.
+ */
+const PAGE_DESCRIPTIONS: Record<Page, string> = {
+  'home':
+    "Book verified, insured movers and cargo drivers across Norway. Real-time tracking, transparent pricing, escrow payment. Oslo, Bergen, Trondheim and more.",
+  'booking':
+    'Book your next move in under 3 minutes. Get an instant quote, pick a verified driver, and track your delivery live — all with escrow payment built in.',
+  'services':
+    'From single-item deliveries to full office relocations — every FlyttGo service is run by registered Norwegian carriers with goods-in-transit insurance.',
+  'van-guide':
+    'Not sure what size van you need? Compare Small, Medium, Large and Luton options side-by-side and get an instant recommendation for your move.',
+  'checklist':
+    'The complete moving checklist for Norway. Timeline, packing order, utilities, address change — everything you need for a stress-free move.',
+  'subscriptions':
+    'Drive for FlyttGo and keep more of what you earn. Pick a subscription that matches your volume — lower commission, higher dispatch priority.',
+  'driver-onboarding':
+    'Apply to become a FlyttGo driver. Flexible hours, weekly payouts, verified jobs across Norway. Requirements, fees and application walkthrough inside.',
+  'customer-dashboard':
+    'Your FlyttGo dashboard — active bookings, past moves, receipts and driver tracking all in one place.',
+  'my-bookings':
+    'View, track and manage every FlyttGo booking from one place — with live driver location, receipts and dispute tools.',
+  'driver-portal':
+    'The FlyttGo driver portal — active jobs, earnings, payouts and subscription settings.',
+  'admin':
+    'Internal FlyttGo admin dashboard.',
+  'profile':
+    'Manage your FlyttGo profile, notification settings and language preferences.',
+  'corporate':
+    'FlyttGo for businesses — bulk booking, recurring deliveries, consolidated invoicing and API access for Norwegian companies at every scale.',
+  'corporate-dashboard':
+    'The FlyttGo corporate dashboard — track delivery volume, spending and performance across your whole organisation.',
+  'bulk-booking':
+    'Upload multiple delivery jobs at once. Perfect for retailers, warehouses and event logistics managing dozens of drops in a single run.',
+  'recurring-deliveries':
+    'Set up daily, weekly or monthly delivery runs with automatic driver assignment. Ideal for scheduled freight, laundry, catering and more.',
+  'company-dashboard-info':
+    'Take the tour of the FlyttGo corporate dashboard — reporting, user management, invoicing and analytics.',
+  'invoice-billing':
+    'Consolidated monthly invoicing, MVA-compliant receipts and flexible payment terms for FlyttGo business customers.',
+  'corporate-api-access':
+    'The FlyttGo REST API — create bookings, track deliveries and reconcile invoices straight from your ERP, WMS or e-commerce platform.',
+  'terms':
+    'FlyttGo\u2019s Terms of Service — the rules that govern using the FlyttGo marketplace as a customer or business.',
+  'privacy':
+    "FlyttGo\u2019s Privacy Policy. How we collect, use and protect your data under Norwegian and EU privacy law (GDPR).",
+  'liability':
+    'FlyttGo\u2019s liability terms — goods in transit cover, claim process, driver responsibilities and dispute resolution.',
+  'driver-terms':
+    'The FlyttGo Driver Agreement — commission, commitments, conduct and the rules for accepting jobs on the FlyttGo platform.',
+  'about':
+    'FlyttGo is Norway\u2019s #1 moving marketplace. Verified drivers, escrow payment, real-time tracking — built in Oslo, run by Norwegians.',
+  'contact':
+    'Get in touch with FlyttGo — phone, email, WhatsApp, office address and a contact form. Support available 7 days a week, 08:00\u201322:00.',
+  'faq':
+    'Answers to the most common questions about booking, payment, drivers, insurance and cancellations on FlyttGo.',
+  'help':
+    'Browse help articles and guides for booking, payment, safety, account management and using FlyttGo for business.',
+  'safety':
+    'How FlyttGo keeps you safe — 6-step driver vetting, mandatory goods-in-transit insurance, escrow payments and our damage claims process.',
+  'careers':
+    'Join the FlyttGo team. Open roles in engineering, design, operations, support and marketing — plus how to apply as a driver.',
+  'press':
+    'Press & media kit for FlyttGo — quick facts, executive bios, brand assets and press contact.',
+  'sustainability':
+    'How FlyttGo makes moving greener — shared routes, EV fleet incentives, reusable moving kits and carbon offset on every booking.',
+};
+
 /** Page id → canonical URL path. */
 export function pageToPath(page: Page): string {
   return PAGE_TO_PATH[page] ?? '/';
+}
+
+/** Page id → meta description. */
+export function pageDescription(page: Page): string {
+  return PAGE_DESCRIPTIONS[page] ?? PAGE_DESCRIPTIONS.home;
+}
+
+/** Page id → structured SEO meta bundle (title + description). */
+export function pageMeta(page: Page): PageMeta {
+  return {
+    title:       pageTitle(page),
+    description: pageDescription(page),
+  };
+}
+
+/**
+ * Apply page meta to the document head. Updates <title>, meta
+ * description, canonical link, OpenGraph and Twitter tags in place.
+ * Creates missing tags if they're not already in index.html so
+ * deep-linked pages still get the right head from a cold load.
+ */
+export function applyPageMeta(page: Page): void {
+  if (typeof document === 'undefined') return;
+  const meta  = pageMeta(page);
+  const path  = pageToPath(page);
+  const url   = `https://flyttgo.no${path === '/' ? '' : path}`;
+  const image = 'https://flyttgo.no/og.svg';
+
+  document.title = meta.title;
+  upsertMeta('name',     'description',      meta.description);
+  upsertLink('canonical', url);
+
+  upsertMeta('property', 'og:title',        meta.title);
+  upsertMeta('property', 'og:description',  meta.description);
+  upsertMeta('property', 'og:url',          url);
+  upsertMeta('property', 'og:image',        image);
+  upsertMeta('property', 'og:type',         'website');
+  upsertMeta('property', 'og:site_name',    'FlyttGo');
+
+  upsertMeta('name',     'twitter:card',        'summary_large_image');
+  upsertMeta('name',     'twitter:title',        meta.title);
+  upsertMeta('name',     'twitter:description',  meta.description);
+  upsertMeta('name',     'twitter:image',        image);
+}
+
+function upsertMeta(keyAttr: 'name' | 'property', keyValue: string, content: string) {
+  let el = document.querySelector<HTMLMetaElement>(`meta[${keyAttr}="${keyValue}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(keyAttr, keyValue);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
+
+function upsertLink(rel: string, href: string) {
+  let el = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+  if (!el) {
+    el = document.createElement('link');
+    el.setAttribute('rel', rel);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('href', href);
 }
 
 /**

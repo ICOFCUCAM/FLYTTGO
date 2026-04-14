@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { pageToPath, pathToPage, pageTitle } from './pageRoutes';
+import { pageToPath, pathToPage, applyPageMeta } from './pageRoutes';
 
 export type Page =
   | 'home' | 'booking' | 'subscriptions' | 'customer-dashboard'
@@ -109,12 +109,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  /* Keep <title> in sync with the current page so browser tabs /
-   * bookmarks / screen readers see the right label. */
+  /* Keep SEO meta (<title>, meta description, canonical link,
+   * OpenGraph and Twitter cards) in sync with the current page so
+   * browser tabs, link previews on Slack/WhatsApp/LinkedIn, and
+   * search-engine snippets all pick up the right copy per route. */
   useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.title = pageTitle(currentPage);
-    }
+    applyPageMeta(currentPage);
   }, [currentPage]);
 
   const setBookingData = (data: Partial<BookingData>) => {
