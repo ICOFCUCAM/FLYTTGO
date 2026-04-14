@@ -67,7 +67,7 @@ export default function VanGuide() {
               {VAN_TYPES.map(van => (
                 <div key={van.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl transition group">
                   <div className="aspect-[4/3] overflow-hidden">
-                    <img src={van.image} alt={van.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                    <img src={van.image} alt={van.name} width={600} height={450} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                   </div>
                   <div className="p-5">
                     <h3 className="text-xl font-bold text-gray-900 mb-2">{van.name}</h3>
@@ -158,7 +158,7 @@ export default function VanGuide() {
                 <h3 className="font-bold text-gray-900 mb-4">Van Recommendation</h3>
                 {recVanData && (
                   <>
-                    <img src={recVanData.image} alt={recVanData.name} className="w-full rounded-lg mb-4" />
+                    <img src={recVanData.image} alt={recVanData.name} width={600} height={450} loading="lazy" decoding="async" className="w-full rounded-lg mb-4" />
                     <h4 className="text-xl font-bold text-emerald-600 mb-1">{recVanData.name}</h4>
                     <p className="text-sm text-gray-500 mb-4">Capacity: {recVanData.capacity}</p>
                     <div className="space-y-3 mb-4">

@@ -1,0 +1,16 @@
+# FlyttGo — robots.txt
+# https://flyttgo.no
+#
+# Allow all search engines to crawl public pages.
+# Block authentication / dashboard surfaces from being indexed.
+
+User-agent: *
+Allow: /
+Disallow: /customer-dashboard
+Disallow: /driver-portal
+Disallow: /admin
+Disallow: /my-bookings
+Disallow: /profile
+
+# Sitemap
+Sitemap: https://flyttgo.no/sitemap.xml

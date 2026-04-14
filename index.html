@@ -2,18 +2,124 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FlyttGo — Norwegian Moving & Logistics Marketplace</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#059669" />
+
+    <title>FlyttGo — Norwegian Moving &amp; Logistics Marketplace</title>
     <meta name="description" content="Book professional movers and cargo transport in Norway. Verified drivers, real-time tracking, secure escrow payment. Available in Oslo, Bergen, Trondheim and more." />
-    <link rel="icon" type="image/svg+xml" href="/placeholder.svg" />
+    <meta name="keywords" content="flyttebyrå, flyttehjelp, moving Norway, Oslo movers, Bergen movers, Trondheim movers, cargo transport Norway" />
+    <link rel="canonical" href="https://flyttgo.no/" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
 
-    <meta property="og:title" content="FlyttGo — Norwegian Moving & Logistics Marketplace" />
-    <meta property="og:description" content="Book professional movers and cargo transport in Norway. Verified drivers, real-time tracking, secure escrow payment." />
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/og.jpg" />
+    <meta property="og:site_name" content="FlyttGo" />
+    <meta property="og:locale" content="en_GB" />
+    <meta property="og:locale:alternate" content="nb_NO" />
+    <meta property="og:url" content="https://flyttgo.no/" />
+    <meta property="og:title" content="FlyttGo — Norwegian Moving &amp; Logistics Marketplace" />
+    <meta property="og:description" content="Book professional movers and cargo transport in Norway. Verified drivers, real-time tracking, secure escrow payment." />
+    <meta property="og:image" content="https://flyttgo.no/og.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="FlyttGo — Norway's #1 Moving &amp; Logistics Marketplace" />
 
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="/og.jpg" />
+    <meta name="twitter:title" content="FlyttGo — Norwegian Moving &amp; Logistics Marketplace" />
+    <meta name="twitter:description" content="Book professional movers and cargo transport in Norway. Verified drivers, real-time tracking, secure escrow payment." />
+    <meta name="twitter:image" content="https://flyttgo.no/og.svg" />
+    <meta name="twitter:image:alt" content="FlyttGo — Norway's #1 Moving &amp; Logistics Marketplace" />
+
+    <!-- JSON-LD: LocalBusiness -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "MovingCompany",
+      "@id": "https://flyttgo.no/#organization",
+      "name": "FlyttGo",
+      "alternateName": "FlyttGo AS",
+      "description": "Norway's marketplace for professional moving and cargo transport services. Verified drivers, real-time tracking, secure escrow payment.",
+      "url": "https://flyttgo.no/",
+      "logo": "https://flyttgo.no/apple-touch-icon.svg",
+      "image": "https://flyttgo.no/og.svg",
+      "telephone": "+47-XXX-XX-XXX",
+      "email": "support@flyttgo.no",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "TODO — set Brønnøysund-registered address",
+        "addressLocality": "Oslo",
+        "postalCode": "0150",
+        "addressCountry": "NO"
+      },
+      "areaServed": [
+        { "@type": "City", "name": "Oslo" },
+        { "@type": "City", "name": "Bergen" },
+        { "@type": "City", "name": "Trondheim" },
+        { "@type": "City", "name": "Stavanger" },
+        { "@type": "City", "name": "Drammen" },
+        { "@type": "City", "name": "Fredrikstad" }
+      ],
+      "priceRange": "850-2449 NOK",
+      "currenciesAccepted": "NOK",
+      "paymentAccepted": "Credit Card, Vipps, Stripe",
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+        "opens": "00:00",
+        "closes": "23:59"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "reviewCount": "25000",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "sameAs": []
+    }
+    </script>
+
+    <!-- JSON-LD: WebSite + SearchAction -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "@id": "https://flyttgo.no/#website",
+      "url": "https://flyttgo.no/",
+      "name": "FlyttGo",
+      "publisher": { "@id": "https://flyttgo.no/#organization" },
+      "inLanguage": ["en", "nb-NO"]
+    }
+    </script>
+
+    <!-- JSON-LD: Service catalog -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "serviceType": "Moving and cargo transport",
+      "provider": { "@id": "https://flyttgo.no/#organization" },
+      "areaServed": { "@type": "Country", "name": "Norway" },
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "FlyttGo services",
+        "itemListElement": [
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Furniture Moving" }, "priceCurrency": "NOK", "price": "850" },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "House Moving"     }, "priceCurrency": "NOK", "price": "1150" },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Appliance Delivery"}, "priceCurrency": "NOK", "price": "650" },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Cargo Transport"  }, "priceCurrency": "NOK", "price": "750" },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Store Delivery"   }, "priceCurrency": "NOK", "price": "550" },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Business Logistics"}, "priceCurrency": "NOK", "price": "1500" }
+        ]
+      }
+    }
+    </script>
 
     <!-- Scroll precision fix for sticky header offset -->
     <style>

@@ -79,10 +79,30 @@ export default function CustomerDashboard() {
   );
 
   if (loading) return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-gray-500">Loading your dashboard...</p>
+    <div className="min-h-screen bg-gray-50 py-10">
+      <div className="max-w-5xl mx-auto px-4 animate-pulse">
+        {/* Title skeleton */}
+        <div className="h-7 w-56 bg-gray-200 rounded-md mb-2" />
+        <div className="h-4 w-72 bg-gray-200 rounded-md mb-8" />
+        {/* Stat cards row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="bg-white rounded-xl border border-gray-100 p-5">
+              <div className="h-3 w-20 bg-gray-200 rounded mb-3" />
+              <div className="h-7 w-16 bg-gray-200 rounded" />
+            </div>
+          ))}
+        </div>
+        {/* Recent bookings skeleton */}
+        <div className="bg-white rounded-xl border border-gray-100 p-6">
+          <div className="h-5 w-40 bg-gray-200 rounded mb-4" />
+          {[0, 1, 2].map(i => (
+            <div key={i} className="border-b border-gray-100 last:border-0 py-4">
+              <div className="h-4 w-1/2 bg-gray-200 rounded mb-2" />
+              <div className="h-3 w-1/3 bg-gray-200 rounded" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

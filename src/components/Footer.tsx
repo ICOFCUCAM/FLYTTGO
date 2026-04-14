@@ -83,12 +83,48 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-500">&copy; 2026 FlyttGo. All rights reserved.</p>
+        {/* Norwegian regulatory block — required on customer-facing
+         * pages for any registered Norwegian business. Replace the
+         * three TODO values once the company is officially registered
+         * with Brønnøysund Register Centre. */}
+        <div className="border-t border-gray-800 mt-12 pt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6 text-xs text-gray-500">
+          <div>
+            <div className="text-gray-400 font-semibold uppercase tracking-wide mb-1">Company</div>
+            <div className="leading-relaxed">
+              FlyttGo AS<br/>
+              Org. nr. <span className="font-mono">{/* TODO: real Brønnøysund nr */}NO 000 000 000</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-400 font-semibold uppercase tracking-wide mb-1">VAT</div>
+            <div className="leading-relaxed">
+              MVA registered<br/>
+              <span className="font-mono">{/* TODO: real MVA number */}NO 000 000 000 MVA</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-400 font-semibold uppercase tracking-wide mb-1">Insurance</div>
+            <div className="leading-relaxed">
+              {/* TODO: real carrier name (Gjensidige, If, Tryg, …) */}
+              Goods-in-transit cover<br/>
+              up to 500 000 NOK per booking
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-400 font-semibold uppercase tracking-wide mb-1">Support</div>
+            <div className="leading-relaxed">
+              <a href="mailto:support@flyttgo.no" className="hover:text-gray-300">support@flyttgo.no</a><br/>
+              Mon–Sun · 08:00–22:00
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-800 mt-8 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-gray-500">&copy; 2026 FlyttGo AS. All rights reserved.</p>
           <div className="flex gap-6 text-sm text-gray-500">
             <button onClick={() => setPage('privacy')} className="hover:text-gray-300">Privacy Policy</button>
             <button onClick={() => setPage('terms')} className="hover:text-gray-300">Terms of Service</button>
-            <button onClick={() => setPage('terms')} className="hover:text-gray-300">Cookie Policy</button>
+            <button onClick={() => setPage('liability')} className="hover:text-gray-300">Liability</button>
           </div>
         </div>
       </div>
