@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../lib/store';
 import { useAuth } from '../lib/auth';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseFunctionUrl } from '../lib/supabase';
 
 type PayMethod = 'card' | 'vipps' | 'google_pay' | 'invoice';
 
@@ -42,12 +42,15 @@ export default function PaymentPage() {
   const [booking, setBooking] = useState<any>(null);
   const isCorporate = profile?.role === 'customer'; // extend when corporate role exists
 
-  /* Load latest booking for this user */
+  /* Load the latest booking that's waiting for payment.
+   * BookingFlow inserts rows with payment_status='pending', and
+   * this page is the one that flips it to 'paid' once a provider
+   * (Stripe Checkout, Vipps, etc.) confirms. */
   useEffect(() => {
     if (!user) return;
     supabase.from('bookings').select('*')
       .eq('customer_id', user.id)
-      .eq('payment_status', 'awaiting_payment')
+      .eq('payment_status', 'pending')
       .order('created_at', { ascending: false })
       .limit(1)
       .then(({ data }) => { if (data?.[0]) setBooking(data[0]); });
@@ -74,7 +77,7 @@ export default function PaymentPage() {
     setProcessing(true);
     try {
       if (method === 'vipps') {
-        const res = await fetch('https://jomhtghowrtegjfddite.databasepad.com/functions/v1/create-vipps-session', {
+        const res = await fetch(supabaseFunctionUrl('create-vipps-session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bookingId: booking?.id, amount: total }),
         });
@@ -82,20 +85,26 @@ export default function PaymentPage() {
         if (d.redirectUrl) { window.location.href = d.redirectUrl; return; }
       }
       if (method === 'google_pay' || method === 'card') {
-        const res = await fetch('https://jomhtghowrtegjfddite.databasepad.com/functions/v1/create-checkout-session', {
+        const res = await fetch(supabaseFunctionUrl('create-checkout-session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ bookingId: booking?.id, amount: total, method }),
         });
         const d = await res.json();
         if (d.url) { window.location.href = d.url; return; }
       }
-      /* Fallback — mark escrow directly */
+      /* Fallback — mark the booking as paid-into-escrow directly.
+       * BookingFlow already inserted a 'held' row in escrow_payments
+       * when the booking was submitted, so we just update that row
+       * (by booking_id) with the driver earning and flip it to
+       * 'escrow' once a provider has captured the funds. The
+       * bookings.payment_status goes to 'escrow' to match. */
       if (booking?.id) {
-        await supabase.from('bookings').update({ payment_status: 'escrow' }).eq('id', booking.id);
-        await supabase.from('escrow_payments').insert({
-          booking_id: booking.id, driver_id: booking.driver_id,
-          amount: total, driver_earning: price * 0.8, status: 'escrow',
-        });
+        await supabase.from('bookings')
+          .update({ payment_status: 'escrow' })
+          .eq('id', booking.id);
+        await supabase.from('escrow_payments')
+          .update({ driver_earning: price * 0.8, status: 'escrow' })
+          .eq('booking_id', booking.id);
       }
       setSuccess(true);
     } catch (e) {
