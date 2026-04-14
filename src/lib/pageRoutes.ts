@@ -57,6 +57,11 @@ const PAGE_TO_PATH: Record<Page, string> = {
   'careers':                 '/careers',
   'press':                   '/press',
   'sustainability':          '/sustainability',
+
+  /* Fallback for unknown routes. No real path — pathToPage() returns
+   * this id for anything it can't match. setPage('not-found') still
+   * updates history.pushState to whatever URL triggered the fallback. */
+  'not-found':               '/404',
 };
 
 /* Inverted lookup. Built once at module load. */
@@ -112,6 +117,7 @@ const PAGE_TITLES: Record<Page, string> = {
   'careers':                 'Careers · FlyttGo',
   'press':                   'Press & Media · FlyttGo',
   'sustainability':          'Sustainability · FlyttGo',
+  'not-found':               'Page Not Found · FlyttGo',
 };
 
 /**
@@ -186,6 +192,8 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     'Press & media kit for FlyttGo — quick facts, executive bios, brand assets and press contact.',
   'sustainability':
     'How FlyttGo makes moving greener — shared routes, EV fleet incentives, reusable moving kits and carbon offset on every booking.',
+  'not-found':
+    "The page you were looking for doesn't exist. Find what you need from the FlyttGo homepage, or book a move from any of our services.",
 };
 
 /** Page id → canonical URL path. */
@@ -264,7 +272,11 @@ function upsertLink(rel: string, href: string) {
 export function pathToPage(path: string): Page {
   if (!path) return 'home';
   const normalised = path === '/' ? '/' : path.replace(/\/+$/, '');
-  return PATH_TO_PAGE[normalised] ?? 'home';
+  /* Unknown paths resolve to 'not-found' rather than silently
+   * serving the homepage. NotFoundPage sets robots=noindex so
+   * Google doesn't index the garbage URL, and the user sees a
+   * proper 404 instead of a confusing home view. */
+  return PATH_TO_PAGE[normalised] ?? 'not-found';
 }
 
 /** Page id → browser tab title. */

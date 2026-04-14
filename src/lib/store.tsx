@@ -14,7 +14,9 @@ export type Page =
   | 'about' | 'contact' | 'faq' | 'help' | 'safety'
   | 'careers' | 'press' | 'sustainability'
   /* Real-time delivery tracking + payment/escrow checkout. */
-  | 'tracking' | 'payment';
+  | 'tracking' | 'payment'
+  /* Fallback for URLs that don't match any known route. */
+  | 'not-found';
 
 interface AppState {
   currentPage: Page;
@@ -94,6 +96,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setPage = useCallback((page: Page) => {
     setCurrentPage(page);
     if (typeof window !== 'undefined') {
+      /* Don't rewrite the URL when showing the 404 page — the user's
+       * original URL should stay in the address bar so they can copy
+       * it into a bug report and so a refresh hits the same path. */
+      if (page === 'not-found') return;
       const path = pageToPath(page);
       if (window.location.pathname !== path) {
         window.history.pushState({ page }, '', path);

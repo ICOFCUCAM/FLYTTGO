@@ -505,4 +505,15 @@ export const no: TranslationKeys = {
     backToHome: 'Tilbake til hjem',
     contact:    'Hvis dette fortsetter, kontakt',
   },
+
+  /* ─── 404 Not Found ─── */
+  notFound: {
+    code:        '404',
+    title:       'Denne siden har flyttet ut.',
+    subtitle:    'Vi fant ikke det du lette etter. Kanskje det er levert et annet sted — eller lenken er noen esker bak. La oss få deg på rett spor igjen.',
+    backHome:    'Tilbake til hjem',
+    browseServices: 'Utforsk tjenester',
+    popularTitle:'Populære sider',
+    searchHint:  'Eller prøv en av disse:',
+  },
 };
