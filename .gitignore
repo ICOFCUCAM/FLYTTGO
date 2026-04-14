@@ -31,5 +31,11 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Vercel
-.vercel
+# Vercel — ignore everything inside .vercel/ except project.json,
+# which pins the repo to the canonical Vercel project.
+# (.vercel/.env.* — pulled by `vercel env pull` — stays ignored.)
+# Note: must use `.vercel/*` (not `.vercel`) so the `!` exception
+# below can re-include a single file. Git refuses to re-include a
+# child of a fully-ignored directory.
+.vercel/*
+!.vercel/project.json
