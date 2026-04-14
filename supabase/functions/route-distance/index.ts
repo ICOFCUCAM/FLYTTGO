@@ -2,39 +2,55 @@
 // FlyttGo — route-distance Edge Function
 // ============================================================================
 //
-// Returns real driving distance + duration between two coordinates using
-// OSRM (Open Source Routing Machine). The public demo server is free and
-// does not require an API key, but is rate-limited (~1 req/s) and has no
-// SLA. For production, point ROUTE_PROVIDER_URL at either a self-hosted
-// OSRM instance, OpenRouteService, Mapbox or Google Directions.
+// Returns real driving distance + duration between two coordinates.
+//
+// Supports two providers out of the box, selectable via env vars:
+//
+//   • OSRM (default)             — free, no API key, OpenStreetMap data.
+//                                  Public demo is rate-limited and has no
+//                                  SLA; for production point
+//                                  ROUTE_PROVIDER_URL at a self-hosted
+//                                  OSRM instance.
+//
+//   • OpenRouteService (ORS)     — free 2 000 req/day, paid tiers. Needs
+//                                  an API key. Set
+//                                  ROUTE_PROVIDER_KIND=ors
+//                                  ROUTE_PROVIDER_URL=https://api.openrouteservice.org
+//                                  ROUTE_PROVIDER_KEY=<your-key>
+//
+// You can add Mapbox, GraphHopper or Google by extending the switch in
+// routeFor() and writing a small parser for their response shape — the
+// public API to the FlyttGo frontend stays the same.
 //
 // DEPLOY:
 //   supabase functions deploy route-distance --no-verify-jwt
 //
-// SECRETS (optional — only needed when switching to OpenRouteService /
-// Mapbox; leave unset to use the free public OSRM demo):
-//   ROUTE_PROVIDER_URL  — defaults to 'https://router.project-osrm.org'
-//   ROUTE_PROVIDER_KEY  — API key passed via ?key=…, unused for OSRM
+// SET SECRETS (never commit the key!):
+//   supabase secrets set ROUTE_PROVIDER_KIND=ors
+//   supabase secrets set ROUTE_PROVIDER_URL=https://api.openrouteservice.org
+//   supabase secrets set ROUTE_PROVIDER_KEY=<your-fresh-ORS-key>
 //
 // REQUEST:
 //   POST /functions/v1/route-distance
 //   { "from": { "lat": 59.91, "lng": 10.75 },
-//     "to":   { "lat": 60.39, "lng": 5.32  } }
+//     "to":   { "lat": 60.39, "lng":  5.32 } }
 //
 // RESPONSE (200):
-//   { "distanceKm": 458.2, "durationMinutes": 408, "provider": "osrm" }
+//   { "distanceKm": 458.2, "durationMinutes": 408, "provider": "ors" }
 //
-// The frontend helper (src/lib/routing.ts) falls back to Haversine if this
-// function is unreachable, so the booking flow never stalls.
+// The frontend helper (src/lib/routing.ts) falls back to Haversine if
+// this function is unreachable, so the booking flow never stalls.
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 
 interface LatLng { lat: number; lng: number }
 interface RouteRequest { from: LatLng; to: LatLng }
+type ProviderKind = 'osrm' | 'ors';
 
-const PROVIDER_URL = Deno.env.get('ROUTE_PROVIDER_URL') ?? 'https://router.project-osrm.org';
-const PROVIDER_KEY = Deno.env.get('ROUTE_PROVIDER_KEY') ?? '';
+const PROVIDER_KIND = ((Deno.env.get('ROUTE_PROVIDER_KIND') ?? 'osrm').toLowerCase() as ProviderKind);
+const PROVIDER_URL  = Deno.env.get('ROUTE_PROVIDER_URL') ?? 'https://router.project-osrm.org';
+const PROVIDER_KEY  = Deno.env.get('ROUTE_PROVIDER_KEY') ?? '';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -58,27 +74,84 @@ function isValidCoord(p: unknown): p is LatLng {
   );
 }
 
+/* ── Providers ─────────────────────────────────────────────────── */
+
+/**
+ * OSRM URL:  /route/v1/driving/{from_lng},{from_lat};{to_lng},{to_lat}
+ * Note the lng-first ordering — this is the OSRM convention.
+ */
 async function osrmRoute(from: LatLng, to: LatLng): Promise<{ distanceKm: number; durationMinutes: number }> {
-  /* OSRM URL:  /route/v1/driving/{from_lng},{from_lat};{to_lng},{to_lat}
-   * Note the lng-first ordering — this is the OSRM convention. */
   const coords = `${from.lng},${from.lat};${to.lng},${to.lat}`;
-  const url    = `${PROVIDER_URL}/route/v1/driving/${coords}?overview=false&alternatives=false&steps=false${PROVIDER_KEY ? `&key=${PROVIDER_KEY}` : ''}`;
+  const base   = PROVIDER_URL.replace(/\/$/, '');
+  const url    = `${base}/route/v1/driving/${coords}?overview=false&alternatives=false&steps=false${PROVIDER_KEY ? `&key=${encodeURIComponent(PROVIDER_KEY)}` : ''}`;
 
   const res = await fetch(url, {
     headers: { 'User-Agent': 'FlyttGo/1.0 (+https://flyttgo.no)' },
   });
-  if (!res.ok) throw new Error(`provider ${res.status}`);
+  if (!res.ok) throw new Error(`osrm ${res.status}`);
   const data = await res.json();
 
   const route = data?.routes?.[0];
   if (!route || typeof route.distance !== 'number' || typeof route.duration !== 'number') {
-    throw new Error('provider returned no route');
+    throw new Error('osrm returned no route');
   }
   return {
     distanceKm:      Math.round((route.distance / 1000) * 10) / 10, // metres → km, 1 dp
     durationMinutes: Math.round(route.duration / 60),
   };
 }
+
+/**
+ * OpenRouteService URL:  POST /v2/directions/driving-car
+ * Body is coordinates lng-first (same as OSRM), units metres.
+ * Requires Authorization: <api_key> header.
+ */
+async function orsRoute(from: LatLng, to: LatLng): Promise<{ distanceKm: number; durationMinutes: number }> {
+  if (!PROVIDER_KEY) throw new Error('ORS key missing — set ROUTE_PROVIDER_KEY');
+  const base = PROVIDER_URL.replace(/\/$/, '');
+  const url  = `${base}/v2/directions/driving-car`;
+
+  const res = await fetch(url, {
+    method:  'POST',
+    headers: {
+      'Authorization': PROVIDER_KEY,
+      'Content-Type':  'application/json',
+      'Accept':        'application/json',
+      'User-Agent':    'FlyttGo/1.0 (+https://flyttgo.no)',
+    },
+    body: JSON.stringify({
+      coordinates: [[from.lng, from.lat], [to.lng, to.lat]],
+      units:       'm',
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`ors ${res.status}${detail ? `: ${detail.slice(0, 200)}` : ''}`);
+  }
+  const data = await res.json();
+
+  /* ORS /v2/directions/driving-car (JSON) returns
+   * { routes: [ { summary: { distance, duration } }, ... ] }
+   * distance in metres, duration in seconds. */
+  const summary = data?.routes?.[0]?.summary;
+  if (!summary || typeof summary.distance !== 'number' || typeof summary.duration !== 'number') {
+    throw new Error('ors returned no route summary');
+  }
+  return {
+    distanceKm:      Math.round((summary.distance / 1000) * 10) / 10,
+    durationMinutes: Math.round(summary.duration / 60),
+  };
+}
+
+async function routeFor(kind: ProviderKind, from: LatLng, to: LatLng) {
+  switch (kind) {
+    case 'ors':  return await orsRoute(from, to);
+    case 'osrm':
+    default:     return await osrmRoute(from, to);
+  }
+}
+
+/* ── Handler ───────────────────────────────────────────────────── */
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
@@ -96,8 +169,8 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { distanceKm, durationMinutes } = await osrmRoute(body.from, body.to);
-    return json({ distanceKm, durationMinutes, provider: 'osrm' });
+    const { distanceKm, durationMinutes } = await routeFor(PROVIDER_KIND, body.from, body.to);
+    return json({ distanceKm, durationMinutes, provider: PROVIDER_KIND });
   } catch (err) {
     /* Let the frontend fall back to Haversine. 502 so it's obvious this
      * was a provider error, not a bad request. */
