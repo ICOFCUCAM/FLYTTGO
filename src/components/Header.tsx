@@ -49,8 +49,13 @@ export default function Header() {
   const [notifOpen,     setNotifOpen]     = useState(false);
   const [scrolled,      setScrolled]      = useState(false);
   const lang: Lang = (i18nInstance.language === 'no' ? 'no' : 'en');
-  const headerRef = useRef<HTMLDivElement>(null);
-  const langRef   = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+  /* Two refs for the language switcher: the button lives inside the
+   * scroll-collapsing top bar (overflow-hidden), while the popover is
+   * rendered as a sibling of that bar so it escapes the clip. Outside
+   * click detection has to check both nodes. */
+  const langBtnRef = useRef<HTMLButtonElement>(null);
+  const langPopRef = useRef<HTMLDivElement>(null);
 
   /* Real-time notifications for the bell icon. Returns an empty list
    * silently if the notifications table / RLS / publication aren't
@@ -59,7 +64,13 @@ export default function Header() {
 
   // Scroll-aware top strip (shrinks after 40px)
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const onScroll = () => {
+      const s = window.scrollY > 40;
+      setScrolled(s);
+      /* When the top bar collapses out of view, force-close any open
+       * language dropdown so its popover doesn't hang in mid-air. */
+      if (s) setLangOpen(false);
+    };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -75,8 +86,11 @@ export default function Header() {
   // Outside-click closes all open dropdowns
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (headerRef.current && !headerRef.current.contains(e.target as Node)) closeAll();
-      if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
+      const target = e.target as Node;
+      if (headerRef.current && !headerRef.current.contains(target)) closeAll();
+      const inLangBtn = langBtnRef.current?.contains(target) ?? false;
+      const inLangPop = langPopRef.current?.contains(target) ?? false;
+      if (!inLangBtn && !inLangPop) setLangOpen(false);
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -170,45 +184,67 @@ export default function Header() {
     )}
     <header ref={headerRef} className="sticky top-0 z-40 shadow-md">
 
-      {/* TOP BAR — collapses on scroll */}
-      <div
-        className={`bg-[#1A365D] text-white overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
-          scrolled ? 'max-h-0 opacity-0' : 'max-h-12 opacity-100'
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-9 text-xs">
-            <div className="flex items-center gap-4">
-              <a href="tel:+447432112438" className="flex items-center gap-1.5 text-white/80 hover:text-white transition">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
-                </svg>
-                +44 7432 112438
-              </a>
-              <span className="text-white/30 hidden sm:block">|</span>
-              <span className="text-white/70 hidden sm:block">{t('header.tagline')}</span>
-            </div>
-            <div className="relative" ref={langRef}>
-              <button onClick={() => setLangOpen((o) => !o)} className="flex items-center gap-1 text-white/70 hover:text-white transition text-xs">
+      {/* Wrapper hosts the top bar AND the language popover as
+       * siblings, so the popover escapes the top bar's overflow-hidden
+       * clip. Relative so the popover can absolutely position itself
+       * beneath the top bar. */}
+      <div className="relative">
+        {/* TOP BAR — collapses on scroll */}
+        <div
+          className={`bg-[#1A365D] text-white overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
+            scrolled ? 'max-h-0 opacity-0' : 'max-h-12 opacity-100'
+          }`}
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-9 text-xs">
+              <div className="flex items-center gap-4">
+                <a href="tel:+447432112438" className="flex items-center gap-1.5 text-white/80 hover:text-white transition">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                  </svg>
+                  +44 7432 112438
+                </a>
+                <span className="text-white/30 hidden sm:block">|</span>
+                <span className="text-white/70 hidden sm:block">{t('header.tagline')}</span>
+              </div>
+              <button
+                ref={langBtnRef}
+                onClick={() => setLangOpen((o) => !o)}
+                className="flex items-center gap-1 text-white/70 hover:text-white transition text-xs"
+              >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/>
                 </svg>
                 {lang === 'en' ? '🇬🇧 EN' : '🇳🇴 NO'}
                 {chevron(langOpen)}
               </button>
-              {langOpen && (
-                <div className="absolute right-0 top-full mt-2 w-32 bg-white rounded-xl shadow-lg border border-gray-100 py-1 z-50">
-                  {(['en', 'no'] as Lang[]).map((l) => (
-                    <button key={l} onClick={() => chooseLang(l)}
-                      className={`w-full text-left px-4 py-2 text-sm transition ${lang === l ? 'text-emerald-600 font-semibold bg-emerald-50' : 'text-gray-700 hover:bg-gray-50'}`}>
-                      {l === 'en' ? '🇬🇧 English' : '🇳🇴 Norsk'}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
+
+        {/* Language popover — sibling of the collapsing bar so
+         * overflow-hidden can't clip it. We reuse the same
+         * max-w-7xl padding layout to right-align against the
+         * button on every viewport width. */}
+        {langOpen && !scrolled && (
+          <div ref={langPopRef} className="absolute inset-x-0 top-9 z-50 pointer-events-none">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-end">
+              <div className="pointer-events-auto w-32 bg-white rounded-xl shadow-lg border border-gray-100 py-1 mt-1">
+                {(['en', 'no'] as Lang[]).map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => chooseLang(l)}
+                    className={`w-full text-left px-4 py-2 text-sm transition ${
+                      lang === l ? 'text-emerald-600 font-semibold bg-emerald-50' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {l === 'en' ? '🇬🇧 English' : '🇳🇴 Norsk'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* MAIN NAV */}
