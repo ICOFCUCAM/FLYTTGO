@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
 import { supabase, supabaseFunctionUrl } from '../lib/supabase';
+import { useDriverLocationBeacon } from '../hooks/useDriverLocationBeacon';
 
 function safeNumber(value: any): number {
   const n = Number(value ?? 0);
@@ -98,6 +99,13 @@ export default function DriverPortal() {
 
   useEffect(() => { if (!profile) return; enforceSubscriptionExpiry(); loadDriver(); }, [profile]);
   useEffect(() => { if (!driver) return; loadWallet(); loadJobs(); loadTransactions(); loadSubscription(); }, [driver]);
+
+  /* Push the driver's GPS position to driver_locations every ~10s
+   * while there's an active job in flight. The customer's
+   * MyBookings → DriverTrackingMap subscribes to that table over
+   * Realtime and renders the moving marker. Battery-friendly: the
+   * watch is torn down the moment no jobs are in flight. */
+  useDriverLocationBeacon({ driverId: user?.id ?? null, jobs });
 
   async function enforceSubscriptionExpiry() {
     if (!user) return;

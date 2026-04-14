@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
 import { useApp, Page } from '../lib/store';
 import { LogIn, Bell, User as UserIcon } from 'lucide-react';
+import { useNotifications } from '../hooks/useNotifications';
+import type { Page as PageType } from '../lib/store';
 
 const T = {
   EN: {
@@ -47,6 +49,19 @@ function readStoredLang(): Lang {
   return stored === 'NO' ? 'NO' : 'EN';
 }
 
+/* Tiny "5m ago" / "2h ago" / "3d ago" formatter for the notifications
+ * dropdown. Avoids pulling in date-fns just for one string. */
+function relativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return '';
+  const diffSec = Math.floor((Date.now() - then) / 1000);
+  if (diffSec < 60)        return 'just now';
+  if (diffSec < 3600)      return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86_400)    return `${Math.floor(diffSec / 3600)}h ago`;
+  if (diffSec < 604_800)   return `${Math.floor(diffSec / 86_400)}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
 export default function Header() {
   const { profile, signOut, user } = useAuth();
   const { setPage, currentPage, setShowAuthModal, setAuthMode } = useApp();
@@ -61,6 +76,11 @@ export default function Header() {
   const headerRef = useRef<HTMLDivElement>(null);
   const langRef   = useRef<HTMLDivElement>(null);
   const t = T[lang];
+
+  /* Real-time notifications for the bell icon. Returns an empty list
+   * silently if the notifications table / RLS / publication aren't
+   * applied yet (see docs/notifications-migration.sql). */
+  const { notifications, unreadCount, markAllRead } = useNotifications(user?.id ?? null);
 
   // Scroll-aware top strip (shrinks after 40px)
   useEffect(() => {
@@ -273,28 +293,63 @@ export default function Header() {
             <div className="flex items-center gap-2">
               <button onClick={() => handleNav('booking')} className="hidden sm:flex items-center gap-1.5 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition shadow-sm">{t.bookNow}</button>
 
-              {/* Notifications bell — signed-in only */}
+              {/* Notifications bell — signed-in only. Subscribes to
+               * the notifications table over Supabase Realtime; flips
+               * a red dot on the bell when there's anything unread. */}
               {user && profile && (
                 <div className="relative">
                   <button
-                    onClick={() => toggle('notif')}
+                    onClick={() => {
+                      const willOpen = !notifOpen;
+                      toggle('notif');
+                      if (willOpen) markAllRead();
+                    }}
                     className="p-2 rounded-lg hover:bg-gray-100 transition relative"
-                    aria-label="Notifications"
+                    aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
                   >
                     <Bell className="w-5 h-5 text-gray-600" />
+                    {unreadCount > 0 && (
+                      <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+                    )}
                   </button>
                   {notifOpen && (
                     <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
                       <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
                         <h3 className="text-sm font-bold text-gray-900">Notifications</h3>
+                        {notifications.length > 0 && (
+                          <span className="text-[10px] text-gray-400">{notifications.length} most recent</span>
+                        )}
                       </div>
-                      <div className="py-10 px-4 text-center">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <Bell className="w-5 h-5 text-gray-400" />
+                      {notifications.length === 0 ? (
+                        <div className="py-10 px-4 text-center">
+                          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Bell className="w-5 h-5 text-gray-400" />
+                          </div>
+                          <p className="text-sm text-gray-500">You&apos;re all caught up</p>
+                          <p className="text-xs text-gray-400 mt-1">New booking updates will appear here.</p>
                         </div>
-                        <p className="text-sm text-gray-500">You&apos;re all caught up</p>
-                        <p className="text-xs text-gray-400 mt-1">New booking updates will appear here.</p>
-                      </div>
+                      ) : (
+                        <ul className="max-h-96 overflow-y-auto divide-y divide-gray-100">
+                          {notifications.map((n) => (
+                            <li key={n.id}>
+                              <button
+                                onClick={() => {
+                                  if (n.link_page) handleNav(n.link_page as PageType);
+                                  else closeAll();
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 transition flex items-start gap-3"
+                              >
+                                <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${n.read_at ? 'bg-transparent' : 'bg-emerald-500'}`} />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm font-semibold text-gray-900 truncate">{n.title}</div>
+                                  {n.body && <div className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.body}</div>}
+                                  <div className="text-[10px] text-gray-400 mt-1">{relativeTime(n.created_at)}</div>
+                                </div>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
                   )}
                 </div>
