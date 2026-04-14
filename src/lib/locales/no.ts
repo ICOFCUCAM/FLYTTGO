@@ -1,0 +1,209 @@
+import type { TranslationKeys } from './en';
+
+/**
+ * FlyttGo — Norwegian (Bokmål) translations.
+ *
+ * Mirrors the shape of en.ts. If a key is missing here, i18next falls
+ * back to the English value, so adding new English strings without
+ * Norwegian doesn't break the site — it just shows English in those
+ * spots until you add the translation.
+ */
+export const no: TranslationKeys = {
+  /* ─── Header / nav ─── */
+  header: {
+    home:         'Hjem',
+    services:     'Tjenester',
+    movingTools:  'Verktøy',
+    becomeDriver: 'Bli sjåfør',
+    companies:    'Bedrifter',
+    bookNow:      'Bestill nå',
+    signIn:       'Logg inn',
+    signUp:       'Registrer deg',
+    dashboard:    'Kontrollpanel',
+    myBookings:   'Mine bestillinger',
+    driverPortal: 'Sjåførportal',
+    adminDash:    'Admin-panel',
+    signOut:      'Logg ut',
+    profile:      'Profil',
+    notifications: 'Varsler',
+    notificationsEmpty: 'Du er à jour',
+    notificationsHint:  'Nye bestillingsoppdateringer dukker opp her.',
+    tagline:      'Smart flytting og transporttjenester',
+    corporate:    'Bedriftslogistikkportal',
+    createCorp:   'Opprett bedriftskonto →',
+  },
+
+  /* ─── Footer ─── */
+  footer: {
+    services:    'Tjenester',
+    cities:      'Byer',
+    company:     'Selskap',
+    corporateCol:'Bedrift',
+    companyLabel:    'Selskap',
+    vatLabel:        'MVA',
+    insuranceLabel:  'Forsikring',
+    supportLabel:    'Kundestøtte',
+    mvaRegistered:   'MVA-registrert',
+    insuranceLine1:  'Godsforsikring under transport',
+    insuranceLine2:  'inntil 500 000 kr per bestilling',
+    supportHours:    'Man–Søn · 08:00–22:00',
+    rights:          '© 2026 FlyttGo AS. Alle rettigheter forbeholdt.',
+    privacy:         'Personvernerklæring',
+    terms:           'Vilkår for bruk',
+    liability:       'Ansvar',
+    chatWithUs:      'Chat med oss',
+    norwayMarketplace: 'Norges nr. 1 flytteplattform. Smart flytting og transporttjenester som kobler deg med verifiserte sjåfører.',
+  },
+
+  /* ─── Auth modal ─── */
+  auth: {
+    signInTitle:    'Logg inn',
+    signInWelcome:  'Velkommen tilbake til FlyttGo.',
+    signInWithGoogle: 'Logg inn med Google',
+    signInWithApple:  'Logg inn med Apple',
+    continueWithGoogle: 'Fortsett med Google',
+    continueWithApple:  'Fortsett med Apple',
+    orContinueEmail: 'eller fortsett med e-post',
+    email:        'E-post',
+    password:     'Passord',
+    forgot:       'Glemt?',
+    signInBtn:    'Logg inn',
+    pleaseWait:   'Vent litt…',
+    noAccount:    'Har du ikke konto?',
+    haveAccount:  'Har du allerede konto?',
+    createAccount:    'Opprett konto',
+    chooseAccountType: 'Velg kontotype for å komme i gang.',
+    rolePersonal:     'Privat',
+    rolePersonalDesc: 'Bestill flytting og levering for deg selv',
+    roleDriver:       'Sjåfør',
+    roleDriverDesc:   'Tjen penger med varebilen din',
+    roleBusiness:     'Bedrift',
+    roleBusinessDesc: 'Bedriftslogistikk i stor skala',
+    joinPersonal:    'Bli med som privatkunde.',
+    joinDriver:      'Begynn å tjene med FlyttGo.',
+    joinBusiness:    'Sett opp bedriftskontoen din.',
+    firstName:    'Fornavn',
+    lastName:     'Etternavn',
+    createBtn:    'Opprett konto',
+    back:         'Tilbake',
+    backToSignIn: 'Tilbake til innlogging',
+    resetTitle:   'Tilbakestill passord',
+    resetIntro:   'Skriv inn e-posten din, så sender vi deg en lenke for å tilbakestille passordet.',
+    sending:      'Sender…',
+    sendResetLink: 'Send tilbakestillingslenke',
+    resetSentTitle: 'Sjekk innboksen',
+    resetSentBody1: 'Hvis det finnes en konto for',
+    resetSentBody2: 'er en tilbakestillingslenke på vei.',
+  },
+
+  /* ─── Home page ─── */
+  home: {
+    /* Hero */
+    heroBadge:    'Norges nr. 1 flytteplattform',
+    vanSizeGuide: 'Bilstørrelse-guide',
+
+    /* Booking widget */
+    quoteTitle:   'Få et øyeblikkelig flyttetilbud',
+    quoteSubtitle:'Hele Norge · gratis estimat · uten forpliktelser',
+    insured:      'Forsikret',
+    twoHrMin:     '2t minimum',
+    mvaIncl:      'MVA inkl.',
+    pickup:       'Henting',
+    delivery:     'Levering',
+    moveType:     'Type flytting',
+    movingDate:   'Flyttedato',
+    pickupAddress:   'Hentingsadresse',
+    deliveryAddress: 'Leveringsadresse',
+    moveSingleItem: 'Enkeltgjenstand',
+    moveStudent:    'Studentflytting',
+    moveApartment:  'Leilighetsflytting',
+    moveHouse:      'Husflytting',
+    moveOffice:     'Kontorflytting',
+    estFrom:       'Fra',
+    getEstimate:   'Få estimat',
+    bookNow:       'Bestill nå',
+
+    /* Trust bar */
+    trustVerifiedTitle: 'Verifiserte sjåfører',
+    trustVerifiedDesc:  'Hver sjåfør gjennomgår ID- og forsikringskontroll',
+    trustEscrowTitle:   'Sikker escrow',
+    trustEscrowDesc:    'Betaling holdes til levering er bekreftet',
+    trustInsuredTitle:  'Forsikret levering',
+    trustInsuredDesc:   'Godsforsikring inntil 500 000 kr',
+    trustRegisteredTitle: 'Brønnøysund-registrert',
+    trustRegisteredDesc:  'Kun norske selskaper · MVA inkludert',
+
+    /* Stats */
+    statDeliveries: 'Fullførte leveringer',
+    statDrivers:    'Verifiserte sjåfører',
+    statRating:     'Gjennomsnittlig vurdering',
+    statCities:     'Byer dekket',
+    badgeVerifiedDrivers: 'Verifiserte sjåfører',
+    badgeSecurePay:       'Sikker betaling',
+    badgeDispute:         'Tvistebeskyttelse',
+    badgeChatOnly:        'Kun chat i appen',
+
+    /* How it works */
+    howTitle:    'Slik fungerer FlyttGo',
+    howSubtitle: 'Bestill flyttingen din på under 60 sekunder',
+
+    /* Driver CTA */
+    driverCtaTitle:    'Bli en FlyttGo-sjåfør',
+    driverCtaSubtitle: 'Tjen penger på dine egne premisser. Bli med tusenvis av sjåfører over hele Norge.',
+    driverFeature1:    'Fleksible arbeidstider',
+    driverFeature2:    'Tjen opptil 30 000 kr/måned',
+    driverFeature3:    'Ukentlige utbetalinger via Stripe',
+    driverFeature4:    'Velg dine egne jobber',
+    driverFeature5:    'Gratis å bli med — oppgrader når som helst',
+    applyNow:          'Søk nå',
+  },
+
+  /* ─── Services page ─── */
+  services: {
+    heroBadge:   'Norges nr. 1 flyttemarkedsplass · 25 000+ jobber utført',
+    heroTitle1:  'Alle flyttetjenester',
+    heroTitle2:  'i hele Norge',
+    heroSubtitle:'Bestill verifiserte og forsikrede transportleverandører for enhver flytting. Gjennomsiktig prising, sanntidssporing og sikker escrow-betaling.',
+    badge1:  '✅ Kun verifiserte selskaper',
+    badge2:  '🔒 Escrow-betaling',
+    badge3:  '📍 GPS-sporing',
+    badge4:  '⭐ 4,8/5 vurdering',
+    cta:     'Få umiddelbare priser →',
+    sectionTitle:    'Våre tjenester',
+    sectionSubtitle: 'Alle tjenester leveres av registrerte norske selskaper med obligatorisk godsforsikring.',
+    availableNow:    'Tilgjengelig nå',
+    bookPrefix:      'Bestill',
+    howTitle:        'Slik fungerer det',
+    how1Title:       'Bestill på nett',
+    how1Desc:        'Skriv inn adressene dine, velg en tjeneste og tidspunkt. Tar under 3 minutter.',
+    how2Title:       'Få en sjåfør',
+    how2Desc:        'En verifisert og forsikret sjåfør i nærheten aksepterer jobben og bekrefter detaljene.',
+    how3Title:       'Flytt trygt',
+    how3Desc:        'Følg med i sanntid. Betaling holdes i escrow — frigis kun ved bekreftet levering.',
+    ctaTitle:        'Klar til å flytte?',
+    ctaSubtitle:     'Bestill enhver tjeneste på under 3 minutter. Verifiserte sjåfører, sikker betaling.',
+    ctaBookNow:      'Bestill nå — umiddelbare priser',
+    ctaWhichVan:     'Hvilken bil trenger jeg?',
+  },
+
+  /* ─── Cookie consent ─── */
+  cookies: {
+    title:   'Vi bruker informasjonskapsler',
+    body:    'FlyttGo bruker nødvendige informasjonskapsler for å holde deg innlogget og bestillingsflyten i gang. Vi vil også bruke analyse-kapsler for å forstå hvordan kunder bruker nettstedet, så vi kan gjøre det bedre. Du kan endre valget ditt når som helst.',
+    essential: 'Kun nødvendige',
+    accept:    'Godta alle',
+    seeMore:   'Se vår',
+    privacyPolicy: 'personvernerklæring',
+    forDetails: 'for detaljer.',
+    rejectAria: 'Avvis ikke-nødvendige informasjonskapsler',
+  },
+
+  /* ─── Error boundary ─── */
+  errors: {
+    title:   'Noe gikk galt',
+    body:    'FlyttGo støtte på en uventet feil. Å laste inn siden på nytt skal løse det.',
+    reload:  'Last inn på nytt',
+    backToHome: 'Tilbake til hjem',
+    contact:    'Hvis dette fortsetter, kontakt',
+  },
+};

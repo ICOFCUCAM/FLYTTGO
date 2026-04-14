@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { X, Eye, EyeOff, ArrowRight, ArrowLeft, LogIn, KeyRound, UserPlus, Home, Truck, Building2 } from 'lucide-react';
 
 type Role = 'customer' | 'driver' | 'business';
 
+/* Each role's title and desc come from translations at render time
+ * so the chooser switches language with the rest of the modal. The
+ * Icon component stays static. */
 const ROLE_OPTIONS: {
   id: Role;
-  title: string;
-  desc: string;
+  titleKey: string;
+  descKey: string;
   Icon: React.ComponentType<{ className?: string }>;
 }[] = [
-  { id: 'customer', title: 'Personal',  desc: 'Book moves and deliveries for yourself', Icon: Home },
-  { id: 'driver',   title: 'Driver',    desc: 'Earn money with your van',               Icon: Truck },
-  { id: 'business', title: 'Business',  desc: 'Corporate logistics at scale',           Icon: Building2 },
+  { id: 'customer', titleKey: 'auth.rolePersonal', descKey: 'auth.rolePersonalDesc', Icon: Home },
+  { id: 'driver',   titleKey: 'auth.roleDriver',   descKey: 'auth.roleDriverDesc',   Icon: Truck },
+  { id: 'business', titleKey: 'auth.roleBusiness', descKey: 'auth.roleBusinessDesc', Icon: Building2 },
 ];
 
 function GoogleIcon() {
@@ -38,6 +42,7 @@ function AppleIcon() {
 export default function AuthModal() {
   const { showAuthModal, setShowAuthModal, authMode, setAuthMode } = useApp();
   const { signIn, signUp, signInWithGoogle, signInWithApple, resetPassword } = useAuth();
+  const { t } = useTranslation();
 
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
@@ -139,9 +144,9 @@ export default function AuthModal() {
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
                 <LogIn className="w-4 h-4 text-emerald-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Sign In</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{t('auth.signInTitle')}</h2>
             </div>
-            <p className="text-gray-500 text-sm mb-6">Welcome back to FlyttGo.</p>
+            <p className="text-gray-500 text-sm mb-6">{t('auth.signInWelcome')}</p>
 
             <button
               type="button"
@@ -149,7 +154,7 @@ export default function AuthModal() {
               disabled={loading}
               className="w-full flex items-center justify-center gap-3 py-3 bg-white text-gray-700 border border-gray-200 rounded-xl font-semibold mb-3 hover:bg-gray-50 hover:border-gray-300 transition disabled:opacity-60 shadow-sm"
             >
-              <GoogleIcon /> Sign in with Google
+              <GoogleIcon /> {t('auth.signInWithGoogle')}
             </button>
 
             <button
@@ -158,12 +163,12 @@ export default function AuthModal() {
               disabled={loading}
               className="w-full flex items-center justify-center gap-3 py-3 bg-gray-900 text-white border border-gray-900 rounded-xl font-semibold hover:bg-black transition disabled:opacity-60 shadow-sm"
             >
-              <AppleIcon /> Sign in with Apple
+              <AppleIcon /> {t('auth.signInWithApple')}
             </button>
 
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-xs text-gray-400">or continue with email</span>
+              <span className="text-xs text-gray-400">{t('auth.orContinueEmail')}</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
@@ -175,7 +180,7 @@ export default function AuthModal() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.email')}</label>
                 <input
                   type="email"
                   value={email}
@@ -187,13 +192,13 @@ export default function AuthModal() {
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-sm font-medium text-gray-700">Password</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('auth.password')}</label>
                   <button
                     type="button"
                     onClick={() => { setForgotMode(true); setError(''); setResetSent(false); }}
                     className="text-xs text-emerald-600 hover:underline font-medium"
                   >
-                    Forgot?
+                    {t('auth.forgot')}
                   </button>
                 </div>
                 <div className="relative">
@@ -216,18 +221,18 @@ export default function AuthModal() {
                 </div>
               </div>
               <button type="submit" disabled={loading} className={primaryBtnCls}>
-                {loading ? 'Please wait…' : 'Sign In'}
+                {loading ? t('auth.pleaseWait') : t('auth.signInBtn')}
               </button>
             </form>
 
             <p className="text-center text-sm text-gray-500 mt-6">
-              Don&apos;t have an account?{' '}
+              {t('auth.noAccount')}{' '}
               <button
                 type="button"
                 onClick={() => { setAuthMode('signup'); setError(''); setSignupStep('choose'); }}
                 className="text-emerald-600 font-semibold hover:underline"
               >
-                Sign Up
+                {t('header.signUp')}
               </button>
             </p>
           </>
@@ -241,17 +246,17 @@ export default function AuthModal() {
               onClick={() => { setForgotMode(false); setError(''); setResetSent(false); }}
               className="flex items-center gap-1 text-gray-500 hover:text-gray-900 mb-4 text-sm transition"
             >
-              <ArrowLeft className="w-4 h-4" /> Back to sign in
+              <ArrowLeft className="w-4 h-4" /> {t('auth.backToSignIn')}
             </button>
 
             <div className="flex items-center gap-2 mb-1">
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
                 <KeyRound className="w-4 h-4 text-emerald-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Reset password</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{t('auth.resetTitle')}</h2>
             </div>
             <p className="text-gray-500 text-sm mb-6">
-              Enter your email and we&apos;ll send you a link to reset your password.
+              {t('auth.resetIntro')}
             </p>
 
             {error && (
@@ -262,15 +267,15 @@ export default function AuthModal() {
 
             {resetSent ? (
               <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 text-sm">
-                <p className="font-semibold mb-1">Check your inbox</p>
+                <p className="font-semibold mb-1">{t('auth.resetSentTitle')}</p>
                 <p className="text-emerald-700">
-                  If an account exists for <span className="font-mono">{email}</span>, a reset link is on its way.
+                  {t('auth.resetSentBody1')} <span className="font-mono">{email}</span>, {t('auth.resetSentBody2')}
                 </p>
               </div>
             ) : (
               <form onSubmit={handleForgotSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.email')}</label>
                   <input
                     type="email"
                     value={email}
@@ -281,7 +286,7 @@ export default function AuthModal() {
                   />
                 </div>
                 <button type="submit" disabled={loading} className={primaryBtnCls}>
-                  {loading ? 'Sending…' : 'Send reset link'}
+                  {loading ? t('auth.sending') : t('auth.sendResetLink')}
                 </button>
               </form>
             )}
@@ -295,9 +300,9 @@ export default function AuthModal() {
               <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
                 <UserPlus className="w-4 h-4 text-emerald-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Create Account</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{t('auth.createAccount')}</h2>
             </div>
-            <p className="text-gray-500 text-sm mb-6">Choose your account type to get started.</p>
+            <p className="text-gray-500 text-sm mb-6">{t('auth.chooseAccountType')}</p>
 
             <div className="space-y-3">
               {ROLE_OPTIONS.map(option => {
@@ -313,8 +318,8 @@ export default function AuthModal() {
                       <Icon className="w-5 h-5 text-emerald-600" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-gray-900">{option.title}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{option.desc}</div>
+                      <div className="font-semibold text-gray-900">{t(option.titleKey)}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{t(option.descKey)}</div>
                     </div>
                     <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-emerald-600 flex-shrink-0 transition" />
                   </button>
@@ -323,13 +328,13 @@ export default function AuthModal() {
             </div>
 
             <p className="text-center text-sm text-gray-500 mt-6">
-              Already have an account?{' '}
+              {t('auth.haveAccount')}{' '}
               <button
                 type="button"
                 onClick={() => { setAuthMode('signin'); setError(''); }}
                 className="text-emerald-600 font-semibold hover:underline"
               >
-                Sign In
+                {t('header.signIn')}
               </button>
             </p>
           </>
@@ -343,7 +348,7 @@ export default function AuthModal() {
               onClick={() => { setSignupStep('choose'); setError(''); }}
               className="flex items-center gap-1 text-gray-500 hover:text-gray-900 mb-4 text-sm transition"
             >
-              <ArrowLeft className="w-4 h-4" /> Back
+              <ArrowLeft className="w-4 h-4" /> {t('auth.back')}
             </button>
 
             <div className="flex items-center gap-2 mb-1">
@@ -352,12 +357,12 @@ export default function AuthModal() {
                 {selectedRole === 'driver'   && <Truck     className="w-4 h-4 text-emerald-600" />}
                 {selectedRole === 'business' && <Building2 className="w-4 h-4 text-emerald-600" />}
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Create Account</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{t('auth.createAccount')}</h2>
             </div>
             <p className="text-gray-500 text-sm mb-6">
-              {selectedRole === 'customer' && 'Join as a personal customer.'}
-              {selectedRole === 'driver'   && 'Start earning with FlyttGo.'}
-              {selectedRole === 'business' && 'Set up your corporate account.'}
+              {selectedRole === 'customer' && t('auth.joinPersonal')}
+              {selectedRole === 'driver'   && t('auth.joinDriver')}
+              {selectedRole === 'business' && t('auth.joinBusiness')}
             </p>
 
             <button
@@ -366,7 +371,7 @@ export default function AuthModal() {
               disabled={loading}
               className="w-full flex items-center justify-center gap-3 py-3 bg-white text-gray-700 border border-gray-200 rounded-xl font-semibold mb-3 hover:bg-gray-50 hover:border-gray-300 transition disabled:opacity-60 shadow-sm"
             >
-              <GoogleIcon /> Continue with Google
+              <GoogleIcon /> {t('auth.continueWithGoogle')}
             </button>
 
             <button
@@ -375,12 +380,12 @@ export default function AuthModal() {
               disabled={loading}
               className="w-full flex items-center justify-center gap-3 py-3 bg-gray-900 text-white border border-gray-900 rounded-xl font-semibold hover:bg-black transition disabled:opacity-60 shadow-sm"
             >
-              <AppleIcon /> Continue with Apple
+              <AppleIcon /> {t('auth.continueWithApple')}
             </button>
 
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-xs text-gray-400">or continue with email</span>
+              <span className="text-xs text-gray-400">{t('auth.orContinueEmail')}</span>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
@@ -393,7 +398,7 @@ export default function AuthModal() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">First name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.firstName')}</label>
                   <input
                     value={firstName}
                     onChange={e => setFirstName(e.target.value)}
@@ -403,7 +408,7 @@ export default function AuthModal() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Last name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.lastName')}</label>
                   <input
                     value={lastName}
                     onChange={e => setLastName(e.target.value)}
@@ -414,7 +419,7 @@ export default function AuthModal() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.email')}</label>
                 <input
                   type="email"
                   value={email}
@@ -425,7 +430,7 @@ export default function AuthModal() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('auth.password')}</label>
                 <div className="relative">
                   <input
                     type={showPass ? 'text' : 'password'}
@@ -446,18 +451,18 @@ export default function AuthModal() {
                 </div>
               </div>
               <button type="submit" disabled={loading} className={primaryBtnCls}>
-                {loading ? 'Please wait…' : 'Create Account'}
+                {loading ? t('auth.pleaseWait') : t('auth.createBtn')}
               </button>
             </form>
 
             <p className="text-center text-sm text-gray-500 mt-6">
-              Already have an account?{' '}
+              {t('auth.haveAccount')}{' '}
               <button
                 type="button"
                 onClick={() => { setAuthMode('signin'); setError(''); }}
                 className="text-emerald-600 font-semibold hover:underline"
               >
-                Sign In
+                {t('header.signIn')}
               </button>
             </p>
           </>
