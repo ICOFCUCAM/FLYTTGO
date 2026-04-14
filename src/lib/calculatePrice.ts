@@ -60,35 +60,70 @@ export interface ServerPriceResult {
  * validation errors — callers should handle failure and fall back
  * to disabling the submit button so a booking is never inserted
  * with an unknown price.
+ *
+ * Errors are also logged to the DevTools console (with the exact
+ * URL and request body) so debugging is possible without touching
+ * the code. The thrown message is surfaced to the customer via
+ * BookingFlow's pricingError state.
  */
 export async function fetchServerPrice(input: ServerPriceInput): Promise<ServerPriceResult> {
-  const res = await fetch(supabaseFunctionUrl('calculate-price'), {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      pickup_lat:           input.pickupLat,
-      pickup_lng:           input.pickupLng,
-      dropoff_lat:          input.dropoffLat,
-      dropoff_lng:          input.dropoffLng,
-      van_type:             input.vanType,
-      helpers:              input.helpers,
-      additional_services:  input.additionalServices,
-      estimated_hours:      input.estimatedHours,
-    }),
-  });
+  const url  = supabaseFunctionUrl('calculate-price');
+  const body = {
+    pickup_lat:           input.pickupLat,
+    pickup_lng:           input.pickupLng,
+    dropoff_lat:          input.dropoffLat,
+    dropoff_lng:          input.dropoffLng,
+    van_type:             input.vanType,
+    helpers:              input.helpers,
+    additional_services:  input.additionalServices,
+    estimated_hours:      input.estimatedHours,
+  };
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(body),
+    });
+  } catch (networkErr) {
+    /* Total network failure — DNS, CORS, offline, etc. */
+    const msg = `Network error calling calculate-price at ${url}: ${(networkErr as Error).message}`;
+    console.error('[fetchServerPrice]', msg);
+    throw new Error(msg);
+  }
 
   if (!res.ok) {
     let detail = '';
     try { detail = JSON.stringify(await res.json()); } catch { /* ignore */ }
-    throw new Error(`calculate-price ${res.status}${detail ? `: ${detail}` : ''}`);
+    const base = `calculate-price HTTP ${res.status}${detail ? ` — ${detail}` : ''}`;
+    console.error('[fetchServerPrice]', base, 'url:', url, 'body:', body);
+    /* The most common failure mode: the calculate-price function
+     * isn't deployed, OR was deployed as the legacy multi-action
+     * version that doesn't understand the coordinate-based
+     * request shape. Make that obvious in the error message. */
+    if (res.status === 400 || res.status === 404) {
+      throw new Error(
+        `${base}. Hint: the calculate-price Edge Function is probably not deployed or is the legacy version. Run:  supabase functions deploy calculate-price --no-verify-jwt`,
+      );
+    }
+    throw new Error(base);
   }
 
-  const data = (await res.json()) as ServerPriceResult;
+  let data: ServerPriceResult;
+  try {
+    data = (await res.json()) as ServerPriceResult;
+  } catch {
+    throw new Error('calculate-price returned non-JSON response');
+  }
+
   if (
     typeof data?.distance_km !== 'number' ||
     typeof data?.price_total !== 'number'
   ) {
-    throw new Error('calculate-price returned an unexpected response shape');
+    console.error('[fetchServerPrice] Unexpected response shape:', data);
+    throw new Error('calculate-price returned an unexpected response shape (check DevTools console)');
   }
+
   return data;
 }

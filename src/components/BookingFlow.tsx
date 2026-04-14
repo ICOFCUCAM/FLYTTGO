@@ -498,18 +498,85 @@ export default function BookingFlow() {
                 )}
               </div>
 
-              {/* Distance indicator */}
-              {pickupAddress.lat && dropoffAddress.lat && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3">
-                  <svg className="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  </svg>
-                  <div>
-                    <p className="text-emerald-800 text-sm font-semibold">Distance calculated: ~{distanceKm} km</p>
-                    <p className="text-emerald-600 text-xs">Using GPS coordinates from Kartverket</p>
+              {/* Distance indicator — surfaces the three states of the
+               * calculate-price edge function call so the customer (and
+               * debugging devs) can tell what's happening. Before this
+               * change the pill always showed "~0 km" when serverPrice
+               * was null, which looked like a silent bug. */}
+              {pickupAddress.lat && dropoffAddress.lat && (() => {
+                /* Loading state */
+                if (pricingLoading && !serverPrice) {
+                  return (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0"/>
+                      <div>
+                        <p className="text-blue-800 text-sm font-semibold">Calculating driving distance…</p>
+                        <p className="text-blue-600 text-xs">Querying OSRM server-side via calculate-price</p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                /* Error state — the fetch failed or returned garbage.
+                 * Most common cause: the calculate-price Edge Function
+                 * isn't deployed yet. Surface the real error message
+                 * instead of rendering ~0 km silently. */
+                if (pricingError && !serverPrice) {
+                  return (
+                    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                      <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-red-800 text-sm font-semibold">Distance calculation failed</p>
+                        <p className="text-red-600 text-xs mt-0.5 break-words">{pricingError}</p>
+                        <p className="text-red-500 text-[10px] mt-1">
+                          If this persists, deploy the calculate-price Edge Function:
+                          <code className="ml-1 font-mono bg-red-100 px-1 rounded">supabase functions deploy calculate-price --no-verify-jwt</code>
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                /* Success state — show the server-calculated driving
+                 * distance with the provider label, and the duration
+                 * if we have it. */
+                if (serverPrice && serverPrice.distance_km > 0) {
+                  const providerLabel = serverPrice.routing_provider === 'OSRM'
+                    ? 'via OSRM'
+                    : 'via Haversine × 1.4 fallback';
+                  const mins = serverPrice.duration_minutes;
+                  const durationText =
+                    mins >= 60
+                      ? `${Math.floor(mins / 60)}h ${mins % 60}m`
+                      : `${mins}m`;
+                  return (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                      <svg className="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                      </svg>
+                      <div>
+                        <p className="text-emerald-800 text-sm font-semibold">
+                          {serverPrice.distance_km.toFixed(1)} km · ~{durationText} drive
+                        </p>
+                        <p className="text-emerald-600 text-xs">Calculated server-side {providerLabel}</p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                /* Fallback — we have coordinates but no response yet
+                 * and no error. Rare (tight race between address
+                 * selection and useEffect firing). Show a neutral
+                 * placeholder. */
+                return (
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin flex-shrink-0"/>
+                    <p className="text-gray-700 text-sm font-semibold">Preparing route calculation…</p>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         )}
