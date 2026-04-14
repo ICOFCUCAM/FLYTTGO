@@ -26,6 +26,14 @@ const CompanyDashboardInfoPage  = lazy(() => import('../pages/CompanyDashboardIn
 const InvoiceBillingPage        = lazy(() => import('../pages/InvoiceBillingPage'));
 const CorporateApiAccessPage    = lazy(() => import('../pages/CorporateApiAccessPage'));
 const ProfilePage        = lazy(() => import('../pages/ProfilePage'));
+const AboutUsPage        = lazy(() => import('../pages/AboutUsPage'));
+const ContactPage        = lazy(() => import('../pages/ContactPage'));
+const FaqPage            = lazy(() => import('../pages/FaqPage'));
+const HelpCenterPage     = lazy(() => import('../pages/HelpCenterPage'));
+const SafetyPage         = lazy(() => import('../pages/SafetyPage'));
+const CareersPage        = lazy(() => import('../pages/CareersPage'));
+const PressPage          = lazy(() => import('../pages/PressPage'));
+const SustainabilityPage = lazy(() => import('../pages/SustainabilityPage'));
 const Footer             = lazy(() => import('./Footer'));
 
 function Loading() {
@@ -77,6 +85,14 @@ export default function AppLayout() {
       case 'invoice-billing':        return <InvoiceBillingPage />;
       case 'corporate-api-access':   return <CorporateApiAccessPage />;
       case 'profile':                return <ProfilePage />;
+      case 'about':                  return <AboutUsPage />;
+      case 'contact':                return <ContactPage />;
+      case 'faq':                    return <FaqPage />;
+      case 'help':                   return <HelpCenterPage />;
+      case 'safety':                 return <SafetyPage />;
+      case 'careers':                return <CareersPage />;
+      case 'press':                  return <PressPage />;
+      case 'sustainability':         return <SustainabilityPage />;
       default:                       return <HomePage />;
     }
   };

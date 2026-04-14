@@ -8,7 +8,10 @@ export type Page =
   | 'liability' | 'driver-terms' | 'services' | 'corporate'
   | 'bulk-booking' | 'recurring-deliveries' | 'company-dashboard-info'
   | 'invoice-billing' | 'corporate-api-access' | 'corporate-dashboard'
-  | 'profile';
+  | 'profile'
+  /* Informational / marketing pages referenced from the footer. */
+  | 'about' | 'contact' | 'faq' | 'help' | 'safety'
+  | 'careers' | 'press' | 'sustainability';
 
 interface AppState {
   currentPage: Page;

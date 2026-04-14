@@ -39,22 +39,53 @@ void i18n
     detection: {
       order: ['localStorage', 'navigator'],
       lookupLocalStorage: LANG_STORAGE_KEY,
-      caches: ['localStorage'],
+      /* We persist through Header.chooseLang() and only on an
+       * explicit user choice — auto-picked browser values stay
+       * in-memory so they don't freeze over-time. */
+      caches: [],
     },
   });
 
-/* The Header used to store the language as 'EN' / 'NO' (uppercase
- * two-letter codes). i18next expects lowercase IETF-ish codes. If the
- * stored value is the legacy uppercase form, normalise it once on
- * boot so we don't have a mismatch. */
+/**
+ * Browser language → FlyttGo language code.
+ *
+ * Matches anything that starts with `no`, `nb` (Norwegian Bokmål),
+ * `nn` (Nynorsk) or `se` (Northern Sami — Norwegian indigenous
+ * language) to the 'no' bundle. Everything else falls back to 'en'.
+ * Handles both `nb-NO` and `nb_NO` separator styles.
+ */
+function normaliseBrowserLang(raw: string | undefined | null): 'en' | 'no' {
+  if (!raw) return 'en';
+  const head = raw.toLowerCase().split(/[-_]/)[0];
+  if (head === 'no' || head === 'nb' || head === 'nn' || head === 'se') return 'no';
+  return 'en';
+}
+
 if (typeof window !== 'undefined') {
   const stored = window.localStorage.getItem(LANG_STORAGE_KEY);
+
+  /* The Header used to store 'EN'/'NO' (uppercase). Normalise the
+   * legacy form once on boot so i18next doesn't mismatch. */
   if (stored === 'EN') {
     window.localStorage.setItem(LANG_STORAGE_KEY, 'en');
     void i18n.changeLanguage('en');
   } else if (stored === 'NO') {
     window.localStorage.setItem(LANG_STORAGE_KEY, 'no');
     void i18n.changeLanguage('no');
+  } else if (!stored) {
+    /* First visit — pick a language from the browser. i18next's
+     * LanguageDetector only picks it up when the navigator string
+     * is literally 'en' or 'no', which misses `nb-NO`, `nn-NO`,
+     * `en-US`, `en-GB` etc. Normalise ourselves so Norwegian
+     * visitors land on the Norwegian site automatically. */
+    const fromNav = typeof navigator !== 'undefined'
+      ? (navigator.languages && navigator.languages[0]) || navigator.language
+      : 'en';
+    const picked = normaliseBrowserLang(fromNav);
+    void i18n.changeLanguage(picked);
+    /* Do NOT persist the auto-picked value — we only cache it once
+     * the user explicitly chooses via the header toggle, so that
+     * visitors on a different device still get fresh detection. */
   }
 }
 

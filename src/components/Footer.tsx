@@ -1,31 +1,150 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp, Page } from '../lib/store';
+
+interface LinkItem { label: string; page: Page; }
 
 export default function Footer() {
   const { setPage } = useApp();
   const { t } = useTranslation();
+  const [email, setEmail]         = useState('');
+  const [subscribed, setSubscribed] = useState(false);
+
+  function handleSubscribe(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || !/.+@.+\..+/.test(email)) return;
+    /* Client stub — we don't have an email list wired yet. When we
+     * do, POST to /functions/v1/subscribe-newsletter from here. */
+    setSubscribed(true);
+    setEmail('');
+  }
+
+  /* --- Column data ---------------------------------------------- */
+  const services: LinkItem[] = [
+    { label: 'Moving Services',      page: 'services' },
+    { label: 'Furniture Transport',  page: 'services' },
+    { label: 'Office Relocation',    page: 'services' },
+    { label: 'Student Moving',       page: 'services' },
+    { label: 'Same-Day Delivery',    page: 'services' },
+    { label: 'Van Size Guide',       page: 'van-guide' },
+  ];
+
+  const cities: LinkItem[] = [
+    { label: 'Flyttehjelp Oslo',        page: 'services' },
+    { label: 'Flyttehjelp Bergen',      page: 'services' },
+    { label: 'Flyttehjelp Trondheim',   page: 'services' },
+    { label: 'Flyttehjelp Stavanger',   page: 'services' },
+    { label: 'Flyttehjelp Drammen',     page: 'services' },
+    { label: 'Flyttehjelp Fredrikstad', page: 'services' },
+  ];
+
+  const company: LinkItem[] = [
+    { label: 'About FlyttGo',       page: 'about' },
+    { label: 'Careers',             page: 'careers' },
+    { label: 'Press & Media',       page: 'press' },
+    { label: 'Sustainability',      page: 'sustainability' },
+    { label: 'For Drivers',         page: 'driver-onboarding' },
+    { label: 'Driver Subscriptions',page: 'subscriptions' },
+  ];
+
+  const resources: LinkItem[] = [
+    { label: 'Help Center',         page: 'help' },
+    { label: 'FAQ',                 page: 'faq' },
+    { label: 'Safety & Insurance',  page: 'safety' },
+    { label: 'Moving Checklist',    page: 'checklist' },
+    { label: 'Van Size Calculator', page: 'van-guide' },
+    { label: 'Contact Us',          page: 'contact' },
+  ];
+
+  const corporate: LinkItem[] = [
+    { label: 'FlyttGo for Business', page: 'corporate' },
+    { label: 'Bulk Booking',          page: 'bulk-booking' },
+    { label: 'Recurring Deliveries',  page: 'recurring-deliveries' },
+    { label: 'Invoice & Billing',     page: 'invoice-billing' },
+    { label: 'API Access',            page: 'corporate-api-access' },
+    { label: 'Corporate Dashboard',   page: 'corporate-dashboard' },
+  ];
+
   return (
     <footer className="bg-gray-900 text-gray-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
-          {/* Brand col */}
-          <div className="col-span-2 md:col-span-1 lg:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 bg-emerald-600 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+
+      {/* NEWSLETTER BAR */}
+      <div className="border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <div>
+              <h3 className="text-white text-xl font-bold mb-1">{t('footer.newsletterTitle')}</h3>
+              <p className="text-sm text-gray-400 max-w-md">{t('footer.newsletterDesc')}</p>
+            </div>
+            {subscribed ? (
+              <div className="flex items-center gap-2 text-emerald-300 text-sm font-semibold bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/>
+                </svg>
+                {t('footer.subscribed')}
+              </div>
+            ) : (
+              <form onSubmit={handleSubscribe} className="flex w-full lg:w-auto gap-2 lg:gap-3 max-w-md">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder={t('footer.newsletterPlaceholder')}
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition"
+                  aria-label={t('footer.newsletterPlaceholder')}
+                />
+                <button type="submit"
+                  className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition whitespace-nowrap shadow-lg">
+                  {t('footer.subscribe')}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN LINKS */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-10">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8">
+          {/* Brand col — spans two cells */}
+          <div className="col-span-2 lg:col-span-2">
+            <button onClick={() => setPage('home')} className="flex items-center gap-2 mb-4">
+              <div className="w-9 h-9 bg-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                </svg>
               </div>
               <span className="text-xl font-bold text-white">Flytt<span className="text-emerald-400">Go</span></span>
+            </button>
+            <p className="text-sm text-gray-400 mb-5 max-w-xs leading-relaxed">{t('footer.norwayMarketplace')}</p>
+
+            {/* Contact summary */}
+            <div className="space-y-2 text-xs mb-5">
+              <a href="tel:+447432112438" className="flex items-center gap-2 text-gray-400 hover:text-emerald-400 transition">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                +44 7432 112438
+              </a>
+              <a href="mailto:support@flyttgo.no" className="flex items-center gap-2 text-gray-400 hover:text-emerald-400 transition">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                support@flyttgo.no
+              </a>
+              <div className="flex items-start gap-2 text-gray-400">
+                <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span>Karl Johans gate 1<br/>0154 Oslo, Norway</span>
+              </div>
             </div>
-            <p className="text-sm text-gray-400 mb-4 max-w-xs">{t('footer.norwayMarketplace')}</p>
-            <div className="flex gap-3">
+
+            {/* Social */}
+            <div className="flex gap-2">
               {[
-                'M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z',
-                'M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z',
-                'M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z',
-              ].map((d, i) => (
-                <a key={i} href="#" className="w-9 h-9 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-emerald-600 transition">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={d} /></svg>
+                { name: 'Twitter',   d: 'M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z' },
+                { name: 'Facebook',  d: 'M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z' },
+                { name: 'LinkedIn',  d: 'M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z' },
+                { name: 'Instagram', d: 'M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37zm1.5-4.87h.01' },
+              ].map(s => (
+                <a key={s.name} href="#" aria-label={s.name}
+                  className="w-9 h-9 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-emerald-600 transition">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={s.d}/></svg>
                 </a>
               ))}
             </div>
@@ -33,63 +152,102 @@ export default function Footer() {
 
           {/* Services */}
           <div>
-            <h4 className="text-white font-semibold mb-4">{t('footer.services')}</h4>
-            <ul className="space-y-2 text-sm">
-              {['Moving Services','Furniture Transport','Office Relocation','Student Moving','Same-Day Delivery'].map(s => (
-                <li key={s}><button onClick={() => setPage('services')} className="hover:text-emerald-400 transition">{s}</button></li>
+            <h4 className="text-white font-semibold mb-4 text-sm">{t('footer.services')}</h4>
+            <ul className="space-y-2.5 text-sm">
+              {services.map(item => (
+                <li key={item.label}>
+                  <button onClick={() => setPage(item.page)} className="text-gray-400 hover:text-emerald-400 transition text-left">{item.label}</button>
+                </li>
               ))}
             </ul>
           </div>
 
           {/* Cities */}
           <div>
-            <h4 className="text-white font-semibold mb-4">{t('footer.cities')}</h4>
-            <ul className="space-y-2 text-sm">
-              {['Oslo','Bergen','Trondheim','Stavanger','Drammen','Fredrikstad'].map(c => (
-                <li key={c}><button onClick={() => setPage('services')} className="hover:text-emerald-400 transition">Flyttehjelp {c}</button></li>
+            <h4 className="text-white font-semibold mb-4 text-sm">{t('footer.cities')}</h4>
+            <ul className="space-y-2.5 text-sm">
+              {cities.map(item => (
+                <li key={item.label}>
+                  <button onClick={() => setPage(item.page)} className="text-gray-400 hover:text-emerald-400 transition text-left">{item.label}</button>
+                </li>
               ))}
             </ul>
           </div>
 
           {/* Company */}
           <div>
-            <h4 className="text-white font-semibold mb-4">{t('footer.company')}</h4>
-            <ul className="space-y-2 text-sm">
-              {([
-                { label: 'About FlyttGo',   page: 'home' },
-                { label: 'For Drivers',     page: 'subscriptions' },
-                { label: 'Van Size Guide',  page: 'van-guide' },
-                { label: 'Moving Checklist',page: 'checklist' },
-                { label: 'Terms',           page: 'terms' },
-                { label: 'Privacy Policy',  page: 'privacy' },
-              ] as {label:string; page:Page}[]).map(item => (
-                <li key={item.label}><button onClick={() => setPage(item.page)} className="hover:text-emerald-400 transition">{item.label}</button></li>
+            <h4 className="text-white font-semibold mb-4 text-sm">{t('footer.company')}</h4>
+            <ul className="space-y-2.5 text-sm">
+              {company.map(item => (
+                <li key={item.label}>
+                  <button onClick={() => setPage(item.page)} className="text-gray-400 hover:text-emerald-400 transition text-left">{item.label}</button>
+                </li>
               ))}
             </ul>
           </div>
 
-          {/* Corporate — NEW column */}
+          {/* Resources */}
           <div>
-            <h4 className="text-white font-semibold mb-4">{t('footer.corporateCol')}</h4>
-            <ul className="space-y-2 text-sm">
-              {([
-                { label: 'Corporate Dashboard', page: 'corporate-dashboard' },
-                { label: 'Bulk Booking',         page: 'bulk-booking' },
-                { label: 'Recurring Deliveries', page: 'recurring-deliveries' },
-                { label: 'Invoice & Billing',    page: 'invoice-billing' },
-                { label: 'API Access',           page: 'corporate-api-access' },
-              ] as {label:string; page:Page}[]).map(item => (
-                <li key={item.label}><button onClick={() => setPage(item.page)} className="hover:text-emerald-400 transition">{item.label}</button></li>
+            <h4 className="text-white font-semibold mb-4 text-sm">{t('footer.resources')}</h4>
+            <ul className="space-y-2.5 text-sm">
+              {resources.map(item => (
+                <li key={item.label}>
+                  <button onClick={() => setPage(item.page)} className="text-gray-400 hover:text-emerald-400 transition text-left">{item.label}</button>
+                </li>
               ))}
             </ul>
+          </div>
+
+          {/* Corporate column (spans full row on small screens) */}
+          <div className="col-span-2 sm:col-span-3 lg:col-span-6">
+            <div className="border-t border-gray-800 pt-8">
+              <h4 className="text-white font-semibold mb-4 text-sm">{t('footer.corporateCol')}</h4>
+              <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-y-2.5 gap-x-6 text-sm">
+                {corporate.map(item => (
+                  <li key={item.label}>
+                    <button onClick={() => setPage(item.page)} className="text-gray-400 hover:text-emerald-400 transition text-left">{item.label}</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 
-        {/* Norwegian regulatory block — required on customer-facing
-         * pages for any registered Norwegian business. Replace the
-         * three TODO values once the company is officially registered
-         * with Brønnøysund Register Centre. */}
-        <div className="border-t border-gray-800 mt-12 pt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6 text-xs text-gray-500">
+        {/* TRUST BADGES + PAYMENT METHODS */}
+        <div className="mt-10 pt-8 border-t border-gray-800 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">{t('footer.paymentsAccepted')}</p>
+            <div className="flex flex-wrap gap-2">
+              {['Visa', 'Mastercard', 'Amex', 'Vipps', 'Apple Pay', 'Google Pay', 'Invoice'].map(p => (
+                <span key={p} className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-300 font-medium">
+                  {p}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">{t('footer.appStoreCta')}</p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: 'App Store', sub: 'iOS' },
+                { label: 'Google Play', sub: 'Android' },
+              ].map(a => (
+                <span key={a.label} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-xs text-gray-300 font-medium flex items-center gap-2 opacity-70">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                  </svg>
+                  <span>
+                    <span className="block text-[9px] text-gray-500 uppercase leading-none">Download</span>
+                    <span className="block font-semibold">{a.label}</span>
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* REGULATORY BLOCK */}
+        <div className="border-t border-gray-800 mt-10 pt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-6 text-xs text-gray-500">
           <div>
             <div className="text-gray-400 font-semibold uppercase tracking-wide mb-1">{t('footer.companyLabel')}</div>
             <div className="leading-relaxed">
@@ -121,12 +279,18 @@ export default function Footer() {
           </div>
         </div>
 
+        {/* BOTTOM STRIP */}
         <div className="border-t border-gray-800 mt-8 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-gray-500">{t('footer.rights')}</p>
-          <div className="flex gap-6 text-sm text-gray-500">
-            <button onClick={() => setPage('privacy')} className="hover:text-gray-300">{t('footer.privacy')}</button>
-            <button onClick={() => setPage('terms')} className="hover:text-gray-300">{t('footer.terms')}</button>
-            <button onClick={() => setPage('liability')} className="hover:text-gray-300">{t('footer.liability')}</button>
+          <p className="text-xs text-gray-500 text-center md:text-left">
+            {t('footer.rights')} · <span className="text-gray-600">{t('footer.builtIn')}</span>
+          </p>
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-gray-500">
+            <button onClick={() => setPage('privacy')}   className="hover:text-gray-300 transition">{t('footer.privacy')}</button>
+            <button onClick={() => setPage('terms')}     className="hover:text-gray-300 transition">{t('footer.terms')}</button>
+            <button onClick={() => setPage('liability')} className="hover:text-gray-300 transition">{t('footer.liability')}</button>
+            <button onClick={() => setPage('privacy')}   className="hover:text-gray-300 transition">{t('footer.cookies')}</button>
+            <button onClick={() => setPage('safety')}    className="hover:text-gray-300 transition">Safety</button>
+            <button onClick={() => setPage('contact')}   className="hover:text-gray-300 transition">Contact</button>
           </div>
         </div>
       </div>
