@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
-import { supabase, supabaseFunctionUrl } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, calculatePrice, recommendVan } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { formatNorwegianAddress, validateNorwegianAddress } from '../utils/formatNorwegianAddress';
@@ -284,33 +284,13 @@ export default function BookingFlow() {
 
       if (escrowError) console.warn('Escrow insert failed:', escrowError);
 
-      /* ── STRIPE CHECKOUT ── */
-      try {
-        const res = await fetch(
-          supabaseFunctionUrl('create-checkout-session'),
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              bookingId: booking.id,
-              amount: safeNum(pricing.total),
-              pickupAddress: pickupAddress.formatted,
-              deliveryAddress: dropoffAddress.formatted,
-              customerEmail: email,
-            }),
-          }
-        );
-        const checkout = await res.json();
-        if (checkout.url) {
-          window.location.href = checkout.url;
-          return;
-        }
-      } catch (stripeErr) {
-        console.warn('Stripe checkout failed, redirecting to dashboard:', stripeErr);
-      }
-
-      /* Fallback: go to dashboard */
-      setPage('customer-dashboard');
+      /* ── Hand off to the PaymentPage. The booking row is now live
+       * with payment_status = 'pending', and escrow_payments has
+       * a matching 'held' row. PaymentPage picks the provider
+       * (Stripe Checkout / Vipps / Google Pay / Corporate Invoice)
+       * and fires the right Edge Function. On success it flips
+       * payment_status → 'paid' and escrow_payments → 'escrow'. */
+      setPage('payment');
 
     } catch (err: any) {
       console.error('Booking submission failed:', err);
