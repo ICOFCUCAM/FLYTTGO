@@ -35,16 +35,24 @@ export const SUPABASE_ANON_KEY = supabaseKey ?? '';
  *                           Supabase appends to the URL hash on email
  *                           confirmation + magic-link / OAuth callbacks
  *                           (this is what makes /auth/callback work)
- *   - flowType: 'pkce'    → PKCE code-exchange flow for OAuth and magic
- *                           links — safer than the implicit grant and the
- *                           Supabase-recommended default for SPAs
+ *   - flowType: 'implicit' → use the implicit grant so email-confirmation
+ *                           tokens are delivered directly in the URL hash
+ *                           and no client-side `code_verifier` lookup is
+ *                           needed. We'd prefer PKCE for security, but it
+ *                           requires the same browser session to complete
+ *                           the round-trip — if the user signs up in one
+ *                           incognito window, that window closes, and they
+ *                           click the confirmation link in a fresh window
+ *                           (which is exactly what happens in practice),
+ *                           localStorage has no code_verifier and Supabase
+ *                           returns otp_expired. Implicit survives that.
  */
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession:     true,
     autoRefreshToken:   true,
     detectSessionInUrl: true,
-    flowType:           'pkce',
+    flowType:           'implicit',
   },
 });
 

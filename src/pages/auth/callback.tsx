@@ -33,7 +33,7 @@
  * works on a cold load — not just on client-side navigation.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { useApp }  from '../../lib/store';
 
@@ -42,10 +42,60 @@ import { useApp }  from '../../lib/store';
  *  <100 ms, so 8 s is generous. */
 const SESSION_TIMEOUT_MS = 8000;
 
+/**
+ * Parse Supabase's `?error=access_denied&error_code=otp_expired&...`
+ * params and the hash variant (`#error=...`) that some flows use.
+ * Supabase uses both query string and hash fragment depending on
+ * whether the error happens server-side or client-side; we check
+ * both so the user sees a clear message either way.
+ */
+function readAuthError(): { code: string; description: string } | null {
+  if (typeof window === 'undefined') return null;
+
+  const query = new URLSearchParams(window.location.search);
+  const hash  = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+  const error       = query.get('error')             ?? hash.get('error');
+  const errorCode   = query.get('error_code')        ?? hash.get('error_code');
+  const description = query.get('error_description') ?? hash.get('error_description');
+
+  if (!error && !errorCode) return null;
+
+  return {
+    code:        errorCode ?? error ?? 'unknown',
+    description: description?.replace(/\+/g, ' ') ?? 'Something went wrong signing you in.',
+  };
+}
+
+/** Friendly copy for the error codes Supabase actually returns on
+ *  email-confirmation / magic-link failures. */
+function friendlyError(code: string): string {
+  switch (code) {
+    case 'otp_expired':
+      return 'The confirmation link has already been used, or it has expired. ' +
+             'Please sign up again to receive a fresh link — only the most recent ' +
+             'email in your inbox is valid.';
+    case 'access_denied':
+      return 'Your confirmation was rejected. Please try signing up again from ' +
+             'the home page.';
+    case 'server_error':
+      return 'Supabase couldn\u2019t complete the sign-in. Please try again in a ' +
+             'few seconds.';
+    default:
+      return 'We couldn\u2019t sign you in. The link may have expired, already been ' +
+             'used, or been opened on a different device than the one you signed ' +
+             'up from. You can try signing in again from the home page.';
+  }
+}
+
 export default function AuthCallbackPage() {
   const { user, profile, loading } = useAuth();
   const { setPage }                = useApp();
   const [timedOut, setTimedOut]    = useState(false);
+
+  /* Read Supabase's error params once on mount. Memoised so we don't
+   * re-parse on every render. */
+  const urlError = useMemo(readAuthError, []);
 
   /* Once Supabase lights up `user` (and we've finished fetching the
    * profile so we know the role), bounce the user into the right
@@ -65,14 +115,22 @@ export default function AuthCallbackPage() {
   }, [loading, user, profile, setPage]);
 
   /* Safety net — if no session ever materialises, surface an error
-   * instead of leaving the user spinning forever. */
+   * instead of leaving the user spinning forever. Skipped when we
+   * already know from the URL that this is an error callback. */
   useEffect(() => {
-    if (user) return;
+    if (user || urlError) return;
     const id = window.setTimeout(() => setTimedOut(true), SESSION_TIMEOUT_MS);
     return () => window.clearTimeout(id);
-  }, [user]);
+  }, [user, urlError]);
 
-  if (timedOut && !user) {
+  /* Show the error card immediately when Supabase redirected us here
+   * with an `error=` param. No reason to make the user wait 8 s
+   * staring at a spinner when we already know it failed. */
+  const showError = urlError !== null || (timedOut && !user);
+
+  if (showError) {
+    const code    = urlError?.code ?? 'timeout';
+    const message = friendlyError(code);
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -92,9 +150,7 @@ export default function AuthCallbackPage() {
             We couldn&rsquo;t sign you in
           </h1>
           <p className="text-sm text-gray-600 mb-6">
-            The confirmation link may have expired, already been used, or been
-            opened on a different device than the one you signed up from. You
-            can try signing in again from the home page.
+            {message}
           </p>
           <button
             type="button"
