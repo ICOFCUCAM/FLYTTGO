@@ -51,6 +51,9 @@ const PAGE_TO_PATH: Record<Page, string> = {
   /* Supabase auth callback (email confirmation, magic link, OAuth) */
   'auth-callback':           '/auth/callback',
 
+  /* Driver onboarding status (pending/approved/rejected) */
+  'driver-application-status': '/driver-application-status',
+
   /* Informational / marketing */
   'about':                   '/about',
   'contact':                 '/contact',
@@ -121,6 +124,7 @@ const PAGE_TITLES: Record<Page, string> = {
   'press':                   'Press & Media · FlyttGo',
   'sustainability':          'Sustainability · FlyttGo',
   'auth-callback':           'Signing you in… · FlyttGo',
+  'driver-application-status': 'Driver Application Status · FlyttGo',
   'not-found':               'Page Not Found · FlyttGo',
 };
 
@@ -198,6 +202,8 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     'How FlyttGo makes moving greener — shared routes, EV fleet incentives, reusable moving kits and carbon offset on every booking.',
   'auth-callback':
     'Confirming your FlyttGo account and signing you in. You\u2019ll be redirected to your dashboard automatically.',
+  'driver-application-status':
+    'Track the status of your FlyttGo driver application — pending review, approved, or rejected with next steps.',
   'not-found':
     "The page you were looking for doesn't exist. Find what you need from the FlyttGo homepage, or book a move from any of our services.",
 };

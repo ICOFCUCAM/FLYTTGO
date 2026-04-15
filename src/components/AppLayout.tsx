@@ -37,6 +37,7 @@ const SustainabilityPage = lazy(() => import('../pages/SustainabilityPage'));
 const TrackingPage       = lazy(() => import('../pages/TrackingPage'));
 const PaymentPage        = lazy(() => import('../pages/PaymentPage'));
 const AuthCallbackPage   = lazy(() => import('../pages/auth/callback'));
+const DriverApplicationStatusPage = lazy(() => import('../pages/DriverApplicationStatusPage'));
 const NotFoundPage       = lazy(() => import('../pages/NotFoundPage'));
 const Footer             = lazy(() => import('./Footer'));
 
@@ -103,6 +104,7 @@ export default function AppLayout() {
       case 'tracking':               return <TrackingPage />;
       case 'payment':                return <PaymentPage />;
       case 'auth-callback':          return <AuthCallbackPage />;
+      case 'driver-application-status': return <DriverApplicationStatusPage />;
       case 'not-found':              return <NotFoundPage />;
       default:                       return <NotFoundPage />;
     }

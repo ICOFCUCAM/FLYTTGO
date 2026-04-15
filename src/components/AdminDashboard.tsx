@@ -41,7 +41,7 @@ function Card({ title, value, isCurrency = true }: { title: string; value: numbe
 }
 
 export default function AdminDashboard() {
-  const { profile, loading } = useAuth();
+  const { profile, loading, user } = useAuth();
   const [tab, setTab] = useState<AdminTab>("overview");
   const [drivers, setDrivers] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
@@ -305,13 +305,49 @@ export default function AdminDashboard() {
   async function handleApplication(applicationId: string, action: string) {
     const { data: app } = await supabase.from("driver_applications").select("*").eq("id", applicationId).single();
     if (!app) return;
-    await supabase.from("driver_applications").update({ status: action }).eq("id", applicationId);
+
+    /* Rejections must capture a reason so the driver's status page
+     * can tell them what to fix. We prompt via window.prompt() for
+     * speed — a full modal would be nicer but this lands the feature
+     * in one line. Cancel / empty string aborts the rejection. */
+    let rejectionReason: string | null = null;
+    if (action === "rejected") {
+      const entered = window.prompt(
+        "Reason for rejection (visible to the driver on their status page):",
+        ""
+      );
+      if (entered === null) return;                 // cancel
+      if (entered.trim().length === 0) {
+        alert("Please enter a rejection reason so the driver knows what to fix.");
+        return;
+      }
+      rejectionReason = entered.trim();
+    }
+
+    /* Capture the audit trail: who reviewed + when. reviewed_by
+     * references auth.users; reviewed_at is a timestamptz. Both
+     * columns are added by docs/fix-driver-onboarding-pipeline.sql. */
+    const reviewPayload: Record<string, any> = {
+      status:      action,
+      reviewed_by: user?.id ?? null,
+      reviewed_at: new Date().toISOString(),
+    };
+    if (action === "rejected") {
+      reviewPayload.rejection_reason = rejectionReason;
+    } else {
+      /* Clear any previous rejection reason on re-approval. */
+      reviewPayload.rejection_reason = null;
+    }
+
+    await supabase.from("driver_applications").update(reviewPayload).eq("id", applicationId);
     if (action !== "approved") { loadData(); return; }
     const { data: docs } = await supabase.from("driver_documents").select("document_type, verification_status").eq("driver_id", app.user_id);
     const approvedDocs = (docs ?? []).filter((d: any) => d.verification_status === "approved").map((d: any) => d.document_type);
     const missingDocs = REQUIRED_DOCS.filter(doc => !approvedDocs.includes(doc));
     if (missingDocs.length > 0) { alert("Driver cannot be activated.\nMissing approvals for:\n" + missingDocs.map(d => DOCUMENT_TYPE_LABELS[d] ?? d).join(", ")); return; }
     await supabase.from("driver_profiles").insert({ user_id: app.user_id, full_name: `${app.first_name} ${app.last_name}`, phone: app.phone, status: "approved", online: false });
+    /* sync_profile_role_on_driver_approval trigger auto-flips
+     * profiles.role from 'customer' to 'driver' here. */
     alert("✅ Driver activated successfully."); loadData();
   }
 

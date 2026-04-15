@@ -11,6 +11,29 @@ const VEHICLE_TYPES = [
   { id: 'luton_van', label: 'Luton Van (18–20 m³)', examples: 'Luton Box Truck with Tail Lift' },
 ];
 
+/* ── Documents collected in step 3 ──────────────────────────────────
+ * Each key is the canonical document_type value we write to
+ * driver_documents. The admin dashboard approval flow already reads
+ * those exact strings (see AdminDashboard REQUIRED_DOCS), so we stay
+ * aligned by not renaming them. The fourth type (identity_document)
+ * is new — admin doesn't currently require it, but uploading it
+ * costs nothing and matches the spec. */
+const DOCUMENT_TYPES = [
+  { key: 'driver_license',       label: "Driver's License",   desc: 'Valid Norwegian or EU/EEA driver\u2019s license (front + back)' },
+  { key: 'insurance',             label: 'Vehicle Insurance',  desc: 'Comprehensive insurance covering commercial use' },
+  { key: 'vehicle_registration', label: 'Vehicle Registration', desc: 'Current vehicle registration document' },
+  { key: 'identity_document',    label: 'ID / Passport',      desc: 'Government-issued photo ID or passport' },
+] as const;
+type DocumentType = typeof DOCUMENT_TYPES[number]['key'];
+
+/** Sanitise a filename segment. We don't trust the uploader's filename
+ *  so we rebuild the storage path from {user_id}/{document_type}.{ext}
+ *  and only preserve the extension from the original name. */
+function extensionOf(name: string): string {
+  const m = /\.([a-z0-9]+)$/i.exec(name);
+  return m ? m[1].toLowerCase() : 'bin';
+}
+
 export default function DriverOnboarding() {
   const { user, profile } = useAuth();
   const { setPage } = useApp();
@@ -43,13 +66,62 @@ export default function DriverOnboarding() {
   const [vehicleYear, setVehicleYear] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
 
-  // Step 3 — Documents
-  const [hasLicense, setHasLicense] = useState(false);
-  const [hasInsurance, setHasInsurance] = useState(false);
-  const [hasRegistration, setHasRegistration] = useState(false);
+  // Step 3 — Documents (real file uploads, one per required type)
+  const [docFiles, setDocFiles] = useState<Record<DocumentType, File | null>>({
+    driver_license:       null,
+    insurance:            null,
+    vehicle_registration: null,
+    identity_document:    null,
+  });
 
   // Step 4 — Terms
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  function setDocFile(key: DocumentType, file: File | null) {
+    setDocFiles(prev => ({ ...prev, [key]: file }));
+  }
+
+  /* Upload every selected file to the driver-documents bucket under
+   * `${user.id}/${document_type}.${ext}`. Using the user id as the
+   * first folder segment matches the storage RLS policy installed
+   * in docs/fix-driver-onboarding-pipeline.sql (only the owning
+   * driver can write into their own folder). Returns a list of rows
+   * to insert into driver_documents afterwards. */
+  async function uploadDocuments(): Promise<{
+    document_type: DocumentType;
+    file_url: string;
+  }[]> {
+    if (!user) throw new Error('Not signed in');
+
+    const rows: { document_type: DocumentType; file_url: string }[] = [];
+
+    for (const doc of DOCUMENT_TYPES) {
+      const file = docFiles[doc.key];
+      if (!file) continue;
+
+      const path = `${user.id}/${doc.key}.${extensionOf(file.name)}`;
+
+      const { error: uploadError } = await supabase
+        .storage
+        .from('driver-documents')
+        .upload(path, file, {
+          upsert:       true,   // re-submission overwrites the previous file
+          cacheControl: '3600',
+        });
+
+      if (uploadError) throw uploadError;
+
+      /* We store the raw storage path in driver_documents.file_url
+       * rather than a signed / public URL, because the admin panel
+       * already resolves it via supabase.storage.from(bucket)
+       * .getPublicUrl(path) when rendering the preview. Keeping
+       * the path keeps the row agnostic to bucket visibility
+       * settings. */
+      rows.push({ document_type: doc.key, file_url: path });
+    }
+
+    return rows;
+  }
 
   async function handleSubmit() {
     if (!user) return;
@@ -57,13 +129,18 @@ export default function DriverOnboarding() {
     setError('');
 
     try {
-      /* driver_applications columns per schema:
-       *   user_id, email, first_name, last_name, phone, address,
-       *   license_number, license_expiry, years_experience,
-       *   vehicle_type, vehicle_model, vehicle_year (int),
-       *   vehicle_registration, cargo_capacity, city, zone, status.
-       * The UI collects make + model separately; we concatenate
-       * them into the single `vehicle_model` column. */
+      /* 1. Upload files to storage. Do this BEFORE inserting the
+       *    driver_applications row so a failed upload doesn't leave
+       *    an application row pointing at files that don't exist. */
+      const uploadedDocs = await uploadDocuments();
+
+      /* 2. Insert the application row. driver_applications columns:
+       *    user_id, email, first_name, last_name, phone, address,
+       *    license_number, license_expiry, years_experience,
+       *    vehicle_type, vehicle_model, vehicle_year (int),
+       *    vehicle_registration, cargo_capacity, city, zone, status.
+       *    UI collects make + model separately; we concatenate them
+       *    into the single `vehicle_model` column. */
       const { error: appError } = await supabase
         .from('driver_applications')
         .insert({
@@ -82,17 +159,30 @@ export default function DriverOnboarding() {
 
       if (appError) throw appError;
 
-      /* Best-effort profile role update. RLS on `profiles` currently
-       * has no UPDATE policy, so this may be rejected — that's fine,
-       * the application row is what matters for admin review. */
-      try {
-        await supabase
-          .from('profiles')
-          .update({ role: 'driver', phone })
-          .eq('user_id', user.id);
-      } catch (_profileErr) {
-        /* swallow — RLS denial shouldn't block the submission */
+      /* 3. Insert one driver_documents row per uploaded file so
+       *    the admin dashboard can review them. driver_documents is
+       *    keyed on driver_id = auth user id (see AdminDashboard),
+       *    not application_id, so we write user.id there. */
+      if (uploadedDocs.length > 0) {
+        const { error: docsError } = await supabase
+          .from('driver_documents')
+          .insert(
+            uploadedDocs.map(d => ({
+              driver_id:           user.id,
+              document_type:       d.document_type,
+              file_url:            d.file_url,
+              verification_status: 'pending',
+            }))
+          );
+
+        if (docsError) throw docsError;
       }
+
+      /* 4. profiles.role is NOT updated from the client anymore —
+       *    the sync_profile_role_on_driver_approval trigger on
+       *    driver_profiles now handles it automatically the moment
+       *    the admin approves the application. No more best-effort
+       *    client-side role update that silently fails under RLS. */
 
       setSubmitted(true);
     } catch (e: any) {
@@ -124,10 +214,10 @@ export default function DriverOnboarding() {
             </ul>
           </div>
           <button
-            onClick={() => setPage('home')}
+            onClick={() => setPage('driver-application-status')}
             className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition"
           >
-            {t('driverOnboarding.backHome')}
+            Check application status →
           </button>
         </div>
       </div>
@@ -289,31 +379,72 @@ export default function DriverOnboarding() {
             </div>
           )}
 
-          {/* STEP 3 — Documents */}
+          {/* STEP 3 — Documents (real file uploads) */}
           {step === 3 && (
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">Required Documents</h2>
-              <p className="text-gray-500 text-sm mb-6">Confirm you have the following documents ready. Our team will request them after approval.</p>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">Upload Documents</h2>
+              <p className="text-gray-500 text-sm mb-6">
+                Upload clear photos or scans of each document. Accepted formats: JPG, PNG, PDF. Max 10&nbsp;MB per file. Files are uploaded securely to your private folder and only reviewed by the FlyttGo approvals team.
+              </p>
               <div className="space-y-3">
-                {[
-                  { key: 'license', label: "Driver's License", desc: 'Valid Norwegian or EU/EEA driver\'s license', state: hasLicense, setter: setHasLicense },
-                  { key: 'insurance', label: 'Vehicle Insurance', desc: 'Comprehensive insurance covering commercial use', state: hasInsurance, setter: setHasInsurance },
-                  { key: 'registration', label: 'Vehicle Registration', desc: 'Current vehicle registration document', state: hasRegistration, setter: setHasRegistration },
-                ].map(doc => (
-                  <label key={doc.key} className="flex items-start gap-4 p-4 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer">
-                    <input type="checkbox" checked={doc.state} onChange={e => doc.setter(e.target.checked)}
-                      className="w-5 h-5 text-emerald-600 rounded mt-0.5 flex-shrink-0" />
-                    <div>
-                      <div className="font-medium text-gray-900 text-sm">{doc.label}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{doc.desc}</div>
+                {DOCUMENT_TYPES.map(doc => {
+                  const file = docFiles[doc.key];
+                  return (
+                    <div key={doc.key} className="p-4 rounded-xl border border-gray-200">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="min-w-0">
+                          <div className="font-medium text-gray-900 text-sm">{doc.label}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{doc.desc}</div>
+                        </div>
+                        {file && (
+                          <span className="flex-shrink-0 bg-emerald-50 text-emerald-700 text-xs font-semibold px-2 py-1 rounded">
+                            ✓ Ready
+                          </span>
+                        )}
+                      </div>
+                      <label className="block">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,application/pdf"
+                          onChange={e => {
+                            const f = e.target.files?.[0] ?? null;
+                            if (f && f.size > 10 * 1024 * 1024) {
+                              setError('File too large (max 10 MB). Please upload a smaller file.');
+                              return;
+                            }
+                            setError('');
+                            setDocFile(doc.key, f);
+                          }}
+                          className="block w-full text-sm text-gray-500
+                            file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0
+                            file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700
+                            hover:file:bg-emerald-100 cursor-pointer"
+                        />
+                        {file && (
+                          <div className="text-xs text-gray-500 mt-2 truncate">
+                            {file.name} &middot; {(file.size / 1024 / 1024).toFixed(2)}&nbsp;MB
+                          </div>
+                        )}
+                      </label>
                     </div>
-                  </label>
-                ))}
+                  );
+                })}
               </div>
               <div className="flex gap-3 mt-6">
                 <button onClick={() => setStep(2)} className="px-6 py-3 border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition">{t('driverOnboarding.backBtn')}</button>
                 <button
-                  onClick={() => { if (hasLicense && hasInsurance && hasRegistration) { setStep(4); setError(''); } else setError('Please confirm all required documents.'); }}
+                  onClick={() => {
+                    /* All four document types are required. Keep this
+                     * strict so the admin reviewer always has the full
+                     * package to look at. */
+                    const missing = DOCUMENT_TYPES.filter(d => !docFiles[d.key]).map(d => d.label);
+                    if (missing.length === 0) {
+                      setStep(4);
+                      setError('');
+                    } else {
+                      setError(`Please upload: ${missing.join(', ')}`);
+                    }
+                  }}
                   className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition"
                 >
                   {t('driverOnboarding.continueBtn')}

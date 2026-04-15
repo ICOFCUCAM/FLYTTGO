@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
 import { supabase, supabaseFunctionUrl } from '../lib/supabase';
 import { useDriverLocationBeacon } from '../hooks/useDriverLocationBeacon';
+
+/* Lazy-load the Leaflet-backed jobs map so drivers who never
+ * expand the map view don't pay the ~150 KB Leaflet + tile bundle. */
+const NearbyJobsMap = lazy(() => import('./NearbyJobsMap'));
 
 function safeNumber(value: any): number {
   const n = Number(value ?? 0);
@@ -99,21 +103,71 @@ function EarningsCalculator({ plan }: { plan: string }) {
   );
 }
 
+/** Gate states the DriverPortal can land in. Drives the state-machine
+ *  access control at the bottom of this component — we check them in
+ *  order and route the user to the right recovery page if anything
+ *  is missing. Approved + active subscription = full portal; anything
+ *  else = redirect or warning. */
+type PortalGate =
+  | 'loading'                // still fetching
+  | 'no-application'         // user has never applied
+  | 'application-pending'    // applied, waiting for admin review
+  | 'application-rejected'   // admin said no
+  | 'no-driver-profile'      // approved but admin didn't create the driver_profiles row
+  | 'suspended'              // admin explicitly suspended the driver
+  | 'subscription-needed'    // no active subscription → route to subscriptions
+  | 'ready';                 // all green, show the portal
+
 export default function DriverPortal() {
   const { profile, user } = useAuth();
   const { setPage } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
   const [online, setOnline] = useState(false);
   const [driver, setDriver] = useState<any>(null);
+  const [application, setApplication] = useState<any>(null);
   const [jobs, setJobs] = useState<any[]>([]);
   const [wallet, setWallet] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [subscription, setSubscription] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [changingPlan, setChangingPlan] = useState<string | null>(null);
+  const [showJobMap, setShowJobMap] = useState(true);
 
-  useEffect(() => { if (!profile) return; enforceSubscriptionExpiry(); loadDriver(); }, [profile]);
+  useEffect(() => {
+    if (!user) return;
+    enforceSubscriptionExpiry();
+    loadApplication();
+    loadDriver();
+  }, [user?.id]);
   useEffect(() => { if (!driver) return; loadWallet(); loadJobs(); loadTransactions(); loadSubscription(); }, [driver]);
+
+  /* Auto-flip to the subscription tab when a driver lands in the
+   * portal without an active subscription. They'll still see the
+   * portal chrome and can change tabs, but the first thing they
+   * see is the plan picker. */
+  useEffect(() => {
+    if (!driver || !subscription) return;
+    if (driver.status === 'suspended') return;
+    if (subscription.subscription_status !== 'active' && activeTab !== 'subscription') {
+      setActiveTab('subscription');
+    }
+    // Intentionally omit activeTab from deps — we only want this to
+    // fire when the driver / subscription loads, not on every tab
+    // change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [driver, subscription]);
+
+  async function loadApplication() {
+    if (!user) return;
+    const { data } = await supabase
+      .from('driver_applications')
+      .select('id, status, rejection_reason, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setApplication(data ?? null);
+  }
 
   /* Push the driver's GPS position to driver_locations every ~10s
    * while there's an active job in flight. The customer's
@@ -282,7 +336,41 @@ export default function DriverPortal() {
 
   const subExpiry = subscription ? daysLeft(subscription.end_date) : null;
 
-  if (loading) return (
+  /* Evaluate the gate. Order matters — we check from "hasn't
+   * started" all the way up to "ready to drive" so we surface the
+   * earliest unmet precondition to the user. */
+  function evaluateGate(): PortalGate {
+    if (loading) return 'loading';
+
+    /* Step 1 — must have applied. */
+    if (!application) return 'no-application';
+    if (application.status === 'pending')  return 'application-pending';
+    if (application.status === 'rejected') return 'application-rejected';
+
+    /* Step 2 — admin must have created the driver_profiles row.
+     * The sync_profile_role_on_driver_approval trigger takes care
+     * of profiles.role, but the driver_profiles row itself is
+     * inserted by AdminDashboard on approve. If it's missing the
+     * admin just hasn't finished processing yet. */
+    if (!driver) return 'no-driver-profile';
+
+    /* Step 3 — admin may have manually suspended the driver. */
+    if (driver.status === 'suspended') return 'suspended';
+
+    /* Step 4 — must have an active subscription. 'free' counts as
+     * active (it's a real row with subscription_status='active'),
+     * just with reduced job access. No subscription row at all
+     * means we need to get one before showing the portal. */
+    if (!subscription || subscription.subscription_status !== 'active') {
+      return 'subscription-needed';
+    }
+
+    return 'ready';
+  }
+
+  const gate = evaluateGate();
+
+  if (gate === 'loading') return (
     <div className="min-h-screen bg-gray-50 py-10">
       <div className="max-w-6xl mx-auto px-4 animate-pulse">
         <div className="h-7 w-48 bg-gray-200 rounded mb-2" />
@@ -307,8 +395,74 @@ export default function DriverPortal() {
       </div>
     </div>
   );
-  if (!driver) return <div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-center"><p className="text-gray-700 font-semibold mb-2">No driver profile found</p><p className="text-gray-500 text-sm">Please complete your driver application first.</p></div></div>;
-  if (driver.status === 'suspended') return (
+
+  /* Not-applied: bounce straight to the onboarding wizard. */
+  if (gate === 'no-application') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-8 max-w-md text-center shadow-sm border border-gray-100">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📋</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">You haven&rsquo;t applied yet</h2>
+          <p className="text-gray-600 text-sm mb-6">To use the FlyttGo Driver Portal you first need to apply and be approved by our team.</p>
+          <button onClick={() => setPage('driver-onboarding')} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition">
+            Start driver application →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* Pending / rejected: bounce to the status page which shows the
+   * exact state + next steps (including re-upload for rejections). */
+  if (gate === 'application-pending' || gate === 'application-rejected') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className={`bg-white rounded-2xl p-8 max-w-md text-center shadow-sm border ${
+          gate === 'application-rejected' ? 'border-red-100' : 'border-yellow-100'
+        }`}>
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl ${
+            gate === 'application-rejected' ? 'bg-red-100' : 'bg-yellow-100'
+          }`}>
+            {gate === 'application-rejected' ? '❌' : '⏳'}
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            {gate === 'application-rejected' ? 'Application not approved' : 'Application under review'}
+          </h2>
+          <p className="text-gray-600 text-sm mb-6">
+            {gate === 'application-rejected'
+              ? 'Check the review notes and re-upload updated documents on the status page.'
+              : 'Our team usually reviews new driver applications within 24 hours.'}
+          </p>
+          <button onClick={() => setPage('driver-application-status')} className="w-full py-3 bg-[#0B2E59] text-white rounded-xl font-semibold hover:bg-[#1a4a8a] transition">
+            View application status →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* Approved but admin hasn't finished processing. Rare — usually
+   * only happens in the few seconds between clicking approve and
+   * the driver_profiles row being inserted. Same status page. */
+  if (gate === 'no-driver-profile') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-8 max-w-md text-center shadow-sm border border-gray-100">
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">⏳</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Almost there</h2>
+          <p className="text-gray-600 text-sm mb-6">
+            Your application was approved but your driver profile is still being set up. This usually takes a few moments — try refreshing in a minute.
+          </p>
+          <button onClick={() => setPage('driver-application-status')} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition">
+            View status
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  /* Admin-suspended. Preserve existing copy + CTA. */
+  if (gate === 'suspended') return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-8 max-w-md text-center shadow-sm border border-red-100">
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><span className="text-2xl">🚫</span></div>
@@ -318,6 +472,12 @@ export default function DriverPortal() {
       </div>
     </div>
   );
+
+  /* gate === 'subscription-needed' falls through to render the full
+   * portal; the useEffect above has already flipped the active tab
+   * to 'subscription' so the driver lands directly on the plan
+   * picker. An inline yellow banner (see JSX below) tells them why
+   * they don't yet have access to the job pool. */
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -334,6 +494,18 @@ export default function DriverPortal() {
           {online ? '● Online' : '○ Offline'}
         </button>
       </div>
+
+      {/* Subscription-required banner — shown when the driver
+       * is approved but has no active subscription. Blocks access
+       * to the jobs tab (see jobs tab render below for the empty
+       * state). The useEffect above has also flipped the active
+       * tab to 'subscription' on first render. */}
+      {gate === 'subscription-needed' && (
+        <div className="px-6 py-3 text-sm font-medium flex items-center justify-between bg-yellow-50 text-yellow-800 border-b border-yellow-200">
+          <span>⚠️ You need an active subscription to receive job offers. Pick a plan below to get started.</span>
+          <button onClick={() => setActiveTab('subscription')} className="ml-4 underline text-xs font-semibold">View plans</button>
+        </div>
+      )}
 
       {subExpiry !== null && subExpiry <= 7 && subExpiry > 0 && (
         <div className={`px-6 py-3 text-sm font-medium flex items-center justify-between ${subExpiry <= 3 ? 'bg-red-50 text-red-700 border-b border-red-200' : 'bg-orange-50 text-orange-700 border-b border-orange-200'}`}>
@@ -377,6 +549,37 @@ export default function DriverPortal() {
 
         {activeTab === 'jobs' && (
           <div className="space-y-4">
+
+            {/* Nearby jobs map — shows the driver's current GPS
+             * position plus every pending job's pickup + dropoff
+             * as pins. Uses the same jobs array as the list below,
+             * no extra fetches. Collapsible so drivers who prefer
+             * the list can hide it. */}
+            {jobs.length > 0 && (
+              <div className="bg-white rounded-xl border p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-sm">📍 Map view</h3>
+                    <p className="text-xs text-gray-500">Tap a pin to see job details and accept.</p>
+                  </div>
+                  <button
+                    onClick={() => setShowJobMap(s => !s)}
+                    className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                  >
+                    {showJobMap ? 'Hide map' : 'Show map'}
+                  </button>
+                </div>
+                {showJobMap && (
+                  <Suspense fallback={<div className="h-96 rounded-2xl bg-gray-100 animate-pulse" />}>
+                    <NearbyJobsMap
+                      jobs={jobs.filter((j: any) => j.status === 'pending')}
+                      onAccept={(job) => acceptJob(job)}
+                    />
+                  </Suspense>
+                )}
+              </div>
+            )}
+
             {jobs.length === 0 && <div className="text-center py-12 text-gray-500">No jobs available right now</div>}
             {jobs.map(job => {
               const price = safeNumber(job.final_price ?? job.original_price ?? job.price_estimate);

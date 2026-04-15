@@ -17,6 +17,8 @@ export type Page =
   | 'tracking' | 'payment'
   /* Supabase auth post-confirmation / OAuth landing page. */
   | 'auth-callback'
+  /* Driver onboarding status (pending / approved / rejected). */
+  | 'driver-application-status'
   /* Fallback for URLs that don't match any known route. */
   | 'not-found';
 
