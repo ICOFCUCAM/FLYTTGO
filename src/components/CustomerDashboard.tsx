@@ -1,7 +1,22 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useAuth } from "../lib/auth";
 import { useApp } from "../lib/store";
 import { supabase, supabaseFunctionUrl } from "../lib/supabase";
+
+/* Lazy-load Leaflet so the ~150 KB map bundle is only fetched when
+ * there's actually an in-flight booking to render. MyBookings uses
+ * the same pattern. */
+const DriverTrackingMap = lazy(() => import("./DriverTrackingMap"));
+
+/** Booking status values where a driver is en route and a live map
+ *  is useful. Pending / confirmed / cancelled / completed don't get
+ *  one — either there's no driver assigned yet or the trip is over. */
+const IN_FLIGHT_STATUSES = new Set([
+  "driver_assigned",
+  "pickup_arrived",
+  "loading",
+  "in_transit",
+]);
 
 /**
  * SessionStorage key used to hand off a specific booking id to
@@ -182,10 +197,63 @@ export default function CustomerDashboard() {
                 : "Escrow protected until completion"}
             </p>
             <p className="text-lg font-bold mt-2">{fmt(activeBooking.final_price ?? activeBooking.original_price ?? activeBooking.price_estimate)} NOK</p>
-            {activeBooking.price_adjusted && (<div className="bg-orange-50 border border-orange-200 p-4 rounded mt-4"><p className="text-orange-700 font-semibold">Extra time detected</p><p className="text-sm text-orange-600">Final price updated automatically</p></div>)}
-            {escrowAdjustment?.adjustment_required && !escrowAdjustment.adjustment_approved && (<button onClick={() => approveAdjustment(escrowAdjustment.id)} className="mt-4 bg-orange-600 text-white px-4 py-2 rounded">Approve additional time charge</button>)}
-            {activeBooking.status === "completed_by_driver" && (<button onClick={() => confirmCompletion(activeBooking.id)} className="mt-4 bg-emerald-600 text-white px-4 py-2 rounded">Confirm Completion</button>)}
-            {activeBooking.status === "awaiting_driver" && (<button onClick={() => cancelBooking(activeBooking.id)} className="mt-4 bg-red-600 text-white px-4 py-2 rounded">Cancel Booking</button>)}
+
+            {/* LIVE MAP — only once a driver is actually en route. We
+             * don't show this for pending / confirmed bookings where
+             * no driver is assigned yet (the map would just be two
+             * static pins, not worth the 150 KB Leaflet load) and we
+             * also skip it for unpaid bookings since those are really
+             * drafts. Requires valid pickup + dropoff coordinates. */}
+            {IN_FLIGHT_STATUSES.has(activeBooking.status) &&
+              activeBooking.payment_status !== "pending" &&
+              activeBooking.pickup_lat && activeBooking.pickup_lng &&
+              activeBooking.dropoff_lat && activeBooking.dropoff_lng && (
+                <div className="mt-5">
+                  <Suspense fallback={<div className="h-72 rounded-xl bg-gray-100 animate-pulse" />}>
+                    <DriverTrackingMap
+                      pickup={{ lat: Number(activeBooking.pickup_lat), lng: Number(activeBooking.pickup_lng) }}
+                      dropoff={{ lat: Number(activeBooking.dropoff_lat), lng: Number(activeBooking.dropoff_lng) }}
+                      driverId={activeBooking.driver_id}
+                    />
+                  </Suspense>
+                </div>
+              )}
+
+            {/* Action row */}
+            <div className="flex flex-wrap gap-3 mt-5">
+              {/* Track Delivery — the primary action for any booking
+               * that's past the draft stage. Links into the dedicated
+               * TrackingPage which has the progress ring, timeline,
+               * chat, and ETA countdown. We hide it for unpaid
+               * drafts since there's nothing to track yet. */}
+              {activeBooking.payment_status !== "pending" &&
+                activeBooking.status !== "cancelled" &&
+                activeBooking.status !== "completed" && (
+                  <button
+                    onClick={() => setPage("tracking")}
+                    className="bg-[#0B2E59] hover:bg-[#1a4a8a] text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition flex items-center gap-2"
+                  >
+                    <span>📍</span>
+                    Track Delivery
+                  </button>
+                )}
+
+              {activeBooking.price_adjusted && (
+                <div className="bg-orange-50 border border-orange-200 p-4 rounded w-full">
+                  <p className="text-orange-700 font-semibold">Extra time detected</p>
+                  <p className="text-sm text-orange-600">Final price updated automatically</p>
+                </div>
+              )}
+              {escrowAdjustment?.adjustment_required && !escrowAdjustment.adjustment_approved && (
+                <button onClick={() => approveAdjustment(escrowAdjustment.id)} className="bg-orange-600 text-white px-4 py-2 rounded text-sm font-semibold">Approve additional time charge</button>
+              )}
+              {activeBooking.status === "completed_by_driver" && (
+                <button onClick={() => confirmCompletion(activeBooking.id)} className="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-semibold">Confirm Completion</button>
+              )}
+              {activeBooking.status === "awaiting_driver" && (
+                <button onClick={() => cancelBooking(activeBooking.id)} className="bg-red-600 text-white px-4 py-2 rounded text-sm font-semibold">Cancel Booking</button>
+              )}
+            </div>
           </div>
         )}
         <div className="grid sm:grid-cols-3 gap-4 mb-8">
@@ -212,6 +280,14 @@ export default function CustomerDashboard() {
                         className="block mt-2 text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
                       >
                         Complete Payment →
+                      </button>
+                    )}
+                    {IN_FLIGHT_STATUSES.has(b.status) && (
+                      <button
+                        onClick={() => setPage("tracking")}
+                        className="block mt-2 text-xs font-semibold text-[#0B2E59] hover:text-[#1a4a8a] hover:underline"
+                      >
+                        📍 Track →
                       </button>
                     )}
                   </div>
