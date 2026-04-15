@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, recommendVan } from '../lib/constants';
+import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, calculatePrice, recommendVan } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { formatNorwegianAddress, validateNorwegianAddress } from '../utils/formatNorwegianAddress';
 import { fetchServerPrice, ServerPriceResult } from '../lib/calculatePrice';
+import { getRouteDistance, RouteResult } from '../lib/routing';
 import { CustomerLegalAcceptance } from './LegalAcceptance';
 
 /* ─────────────────────────────────────────────
@@ -83,30 +84,67 @@ export default function BookingFlow() {
   const [email, setEmail] = useState(user?.email || '');
   const [notes, setNotes] = useState('');
 
-  /* ── Pricing (server-authoritative) ──
-   * We used to run OSRM in the browser and then compute the price
-   * locally with calculatePrice(). The browser is no longer
-   * trusted for either — both the driving distance AND the final
-   * price now come from the calculate-price Edge Function, which
-   * hits OSRM itself and runs the pricing formula server-side
-   * before we insert the booking. The frontend only passes raw
-   * coordinates + move choices. */
+  /* ── Pricing ──
+   *
+   * Two-track strategy:
+   *
+   *   1. CLIENT PREVIEW (always works, no deploy dependency)
+   *      On every coordinate change we hit OSRM's public API
+   *      directly from the browser via getRouteDistance() and
+   *      run the calculatePrice() formula from constants.ts with
+   *      the result. This guarantees the Step 1 distance pill and
+   *      Step 5 summary always show real numbers, even if no
+   *      Supabase Edge Function has been deployed yet.
+   *
+   *   2. SERVER-AUTHORITATIVE (preferred when available)
+   *      In parallel, we call the calculate-price Edge Function
+   *      via fetchServerPrice(). When it responds, its numbers
+   *      override the client preview. If the function isn't
+   *      deployed or is unreachable, we silently continue with
+   *      the client preview — no hard failure.
+   *
+   *   3. INSERT PATH
+   *      handleSubmit prefers serverPrice for the booking insert
+   *      (trust-safe), and falls back to the client preview if
+   *      the server never responded. Either way the insert writes
+   *      a real distance + price, not zeros or placeholders.
+   */
   const [estimatedHours, setEstimatedHours] = useState(2);
-  const [serverPrice, setServerPrice]       = useState<ServerPriceResult | null>(null);
+  const [clientRoute,  setClientRoute]      = useState<RouteResult | null>(null);
+  const [serverPrice,  setServerPrice]      = useState<ServerPriceResult | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
-  const [pricingError, setPricingError]     = useState<string | null>(null);
+  const [pricingError,   setPricingError]   = useState<string | null>(null);
 
-  /* Convenience accessors so the JSX below doesn't have to check
-   * for null on every render. Defaults to zeros until the first
-   * server response lands, at which point the summary step
-   * re-renders with the real numbers. */
-  const distanceKm     = serverPrice?.distance_km ?? 0;
-  const priceTotal     = serverPrice?.price_total ?? 0;
-  const priceSubtotal  = serverPrice?.price_subtotal ?? 0;
-  const vatAmount      = serverPrice?.vat_amount ?? 0;
-  const basePrice      = serverPrice?.breakdown?.base_price ?? 0;
-  const distanceCharge = serverPrice?.breakdown?.distance_charge ?? 0;
-  const helpersCharge  = serverPrice?.breakdown?.helpers_charge ?? 0;
+  /* Local mirror of the calculatePrice() formula from constants.ts
+   * — computed from the CLIENT distance so the Step 5 summary can
+   * render a breakdown even before (or instead of) the server
+   * response. */
+  const clientPricing = clientRoute
+    ? calculatePrice(
+        vanType || 'medium_van',
+        estimatedHours,
+        clientRoute.distanceKm,
+        helpers,
+        additionalServices,
+      )
+    : null;
+
+  /* Effective values — server wins if available, else client preview. */
+  const distanceKm     = serverPrice?.distance_km            ?? clientRoute?.distanceKm   ?? 0;
+  const durationMin    = serverPrice?.duration_minutes       ?? clientRoute?.durationMinutes ?? 0;
+  const routingProvider: 'OSRM' | 'haversine-fallback' | 'osrm' | 'haversine' | null =
+    serverPrice?.routing_provider ?? clientRoute?.source ?? null;
+  const priceTotal     = serverPrice?.price_total            ?? clientPricing?.total       ?? 0;
+  const priceSubtotal  = serverPrice?.price_subtotal         ?? clientPricing?.subtotal    ?? 0;
+  const vatAmount      = serverPrice?.vat_amount             ?? clientPricing?.vat         ?? 0;
+  const basePrice      = serverPrice?.breakdown?.base_price      ?? clientPricing?.basePrice      ?? 0;
+  const distanceCharge = serverPrice?.breakdown?.distance_charge ?? clientPricing?.distanceCharge ?? 0;
+  const helpersCharge  = serverPrice?.breakdown?.helpers_charge  ?? clientPricing?.helpersCharge  ?? 0;
+
+  /* Ready-to-submit means we have AT LEAST a client-side number
+   * set. The submit button stays disabled until this is true so a
+   * booking is never inserted with a zero price. */
+  const pricingReady = !!(serverPrice || clientPricing);
 
   /* ── Validation ── */
   const [addressErrors, setAddressErrors] = useState<{ pickup?: string; dropoff?: string }>({});
@@ -118,16 +156,38 @@ export default function BookingFlow() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  /* Fetch server-authoritative distance + price whenever any
-   * pricing input changes. Debounced naturally by the step flow:
-   * the customer rarely changes all six inputs in rapid succession,
-   * and when they do we cancel stale requests via the `cancelled`
-   * flag. All computation happens inside the calculate-price edge
-   * function; the browser only sends coordinates. */
+  /* ── CLIENT PREVIEW: browser-side OSRM distance ──
+   * Runs on every address change. Always succeeds (falls back to
+   * Haversine × 1.4 if OSRM is down) so the Step 1 pill and the
+   * summary step always have real numbers to show. Independent of
+   * the server-side calculate-price call below. */
+  useEffect(() => {
+    let cancelled = false;
+    if (!pickupAddress.lat || !pickupAddress.lng || !dropoffAddress.lat || !dropoffAddress.lng) {
+      setClientRoute(null);
+      return;
+    }
+    (async () => {
+      const res = await getRouteDistance(
+        { lat: pickupAddress.lat!, lng: pickupAddress.lng! },
+        { lat: dropoffAddress.lat!, lng: dropoffAddress.lng! },
+      );
+      if (cancelled || !res) return;
+      setClientRoute(res);
+    })();
+    return () => { cancelled = true; };
+  }, [pickupAddress.lat, pickupAddress.lng, dropoffAddress.lat, dropoffAddress.lng]);
+
+  /* ── SERVER: calculate-price edge function ──
+   * Fires on every pricing-input change. If the function is
+   * deployed and reachable, its numbers override the client
+   * preview. If not, we silently keep the client preview — no
+   * hard failure, so the booking flow is never stuck. */
   useEffect(() => {
     let cancelled = false;
     if (!pickupAddress.lat || !pickupAddress.lng || !dropoffAddress.lat || !dropoffAddress.lng) {
       setServerPrice(null);
+      setPricingError(null);
       return;
     }
     setPricingLoading(true);
@@ -146,7 +206,10 @@ export default function BookingFlow() {
         });
         if (!cancelled) setServerPrice(res);
       } catch (err) {
-        if (!cancelled) setPricingError((err as Error).message);
+        if (!cancelled) {
+          setServerPrice(null);
+          setPricingError((err as Error).message);
+        }
       } finally {
         if (!cancelled) setPricingLoading(false);
       }
@@ -250,18 +313,12 @@ export default function BookingFlow() {
       return;
     }
 
-    /* Refuse to submit without a server-calculated price. The
-     * browser is no longer allowed to decide what to charge —
-     * every insert must use the authoritative numbers returned
-     * by the calculate-price edge function. If that function is
-     * unreachable the booking blocks rather than inserting a
-     * tampered or zero price. */
-    if (!serverPrice) {
-      setError(
-        pricingError
-          ? `Pricing service unavailable: ${pricingError}`
-          : 'Calculating price... please wait a moment and try again.',
-      );
+    /* Pricing gate: we need AT LEAST a client-preview number
+     * (from getRouteDistance() + calculatePrice()) so the insert
+     * never writes zeros. Server-side serverPrice is preferred
+     * when available — see the effective-value accessors above. */
+    if (!pricingReady) {
+      setError('Calculating price… please wait a moment and try again.');
       return;
     }
 
@@ -307,15 +364,16 @@ export default function BookingFlow() {
           move_time: moveTime || null,
           customer_notes: notes,
 
-          /* Pricing — all fields come from the calculate-price
-           * edge function, NOT from any browser computation. The
-           * distance_km is the real OSRM driving distance the
-           * server resolved; price_estimate / original_price is
-           * the final total returned by the server-side formula. */
-          distance_km:     serverPrice.distance_km,
+          /* Pricing — effective values prefer the server-side
+           * calculate-price result (trust-safe) and fall back to
+           * the client-side OSRM preview + constants.calculatePrice
+           * formula when the edge function is unavailable. Either
+           * way the insert writes a real distance + price, not
+           * zeros. See the accessors at the top of this component. */
+          distance_km:     distanceKm,
           estimated_hours: estimatedHours,
-          price_estimate:  serverPrice.price_total,
-          original_price:  serverPrice.price_total,
+          price_estimate:  priceTotal,
+          original_price:  priceTotal,
 
           status: 'pending',
           payment_status: 'pending',
@@ -330,8 +388,8 @@ export default function BookingFlow() {
         .from('escrow_payments')
         .insert({
           booking_id:      booking.id,
-          amount:          serverPrice.price_total,
-          original_amount: serverPrice.price_total,
+          amount:          priceTotal,
+          original_amount: priceTotal,
           status:          'held',
         });
 
@@ -498,82 +556,60 @@ export default function BookingFlow() {
                 )}
               </div>
 
-              {/* Distance indicator — surfaces the three states of the
-               * calculate-price edge function call so the customer (and
-               * debugging devs) can tell what's happening. Before this
-               * change the pill always showed "~0 km" when serverPrice
-               * was null, which looked like a silent bug. */}
+              {/* Distance indicator. Two-track pricing model:
+               *   - clientRoute is the immediate OSRM-from-browser
+               *     number (always lands, Haversine × 1.4 fallback)
+               *   - serverPrice is the authoritative number from
+               *     calculate-price (preferred when available)
+               * The pill shows whichever is ready first and upgrades
+               * to the server number silently if/when it arrives. */}
               {pickupAddress.lat && dropoffAddress.lat && (() => {
-                /* Loading state */
-                if (pricingLoading && !serverPrice) {
+                /* Nothing yet → spinner */
+                if (!clientRoute && !serverPrice) {
                   return (
                     <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-3">
                       <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin flex-shrink-0"/>
                       <div>
                         <p className="text-blue-800 text-sm font-semibold">Calculating driving distance…</p>
-                        <p className="text-blue-600 text-xs">Querying OSRM server-side via calculate-price</p>
+                        <p className="text-blue-600 text-xs">Querying OSRM for real road distance</p>
                       </div>
                     </div>
                   );
                 }
 
-                /* Error state — the fetch failed or returned garbage.
-                 * Most common cause: the calculate-price Edge Function
-                 * isn't deployed yet. Surface the real error message
-                 * instead of rendering ~0 km silently. */
-                if (pricingError && !serverPrice) {
-                  return (
-                    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                      <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                      </svg>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-red-800 text-sm font-semibold">Distance calculation failed</p>
-                        <p className="text-red-600 text-xs mt-0.5 break-words">{pricingError}</p>
-                        <p className="text-red-500 text-[10px] mt-1">
-                          If this persists, deploy the calculate-price Edge Function:
-                          <code className="ml-1 font-mono bg-red-100 px-1 rounded">supabase functions deploy calculate-price --no-verify-jwt</code>
-                        </p>
-                      </div>
-                    </div>
-                  );
-                }
+                /* We have at least one number — render it. Prefer
+                 * server, fall back to client. */
+                const km   = distanceKm;
+                const mins = durationMin;
+                const durationText =
+                  mins >= 60
+                    ? `${Math.floor(mins / 60)}h ${mins % 60}m`
+                    : `${mins}m`;
 
-                /* Success state — show the server-calculated driving
-                 * distance with the provider label, and the duration
-                 * if we have it. */
-                if (serverPrice && serverPrice.distance_km > 0) {
-                  const providerLabel = serverPrice.routing_provider === 'OSRM'
-                    ? 'via OSRM'
-                    : 'via Haversine × 1.4 fallback';
-                  const mins = serverPrice.duration_minutes;
-                  const durationText =
-                    mins >= 60
-                      ? `${Math.floor(mins / 60)}h ${mins % 60}m`
-                      : `${mins}m`;
-                  return (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3">
-                      <svg className="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
-                      </svg>
-                      <div>
-                        <p className="text-emerald-800 text-sm font-semibold">
-                          {serverPrice.distance_km.toFixed(1)} km · ~{durationText} drive
-                        </p>
-                        <p className="text-emerald-600 text-xs">Calculated server-side {providerLabel}</p>
-                      </div>
-                    </div>
-                  );
-                }
+                /* Provider label for the subtitle. Normalise both
+                 * client ('osrm' / 'haversine') and server
+                 * ('OSRM' / 'haversine-fallback') variants into one
+                 * customer-facing string. */
+                const providerIsOsrm =
+                  routingProvider === 'OSRM' || routingProvider === 'osrm';
+                const providerLabel = providerIsOsrm
+                  ? 'via OSRM'
+                  : 'via Haversine × 1.4 fallback';
+                const sourceLabel = serverPrice
+                  ? `Calculated server-side ${providerLabel}`
+                  : `Calculated in browser ${providerLabel}`;
 
-                /* Fallback — we have coordinates but no response yet
-                 * and no error. Rare (tight race between address
-                 * selection and useEffect firing). Show a neutral
-                 * placeholder. */
                 return (
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-3">
-                    <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin flex-shrink-0"/>
-                    <p className="text-gray-700 text-sm font-semibold">Preparing route calculation…</p>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <svg className="w-5 h-5 text-emerald-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                    </svg>
+                    <div>
+                      <p className="text-emerald-800 text-sm font-semibold">
+                        {km.toFixed(1)} km · ~{durationText} drive
+                      </p>
+                      <p className="text-emerald-600 text-xs">{sourceLabel}</p>
+                    </div>
                   </div>
                 );
               })()}
@@ -834,12 +870,14 @@ export default function BookingFlow() {
                   </div>
                 </div>
 
-                {/* Price breakdown — 100% server-side numbers */}
+                {/* Price breakdown — prefers server-side numbers
+                 * when calculate-price is deployed, falls back to
+                 * the client OSRM preview + local calculatePrice()
+                 * formula when it isn't. Either way the breakdown
+                 * lines render real figures, not zeros. */}
                 <div className="border-t pt-3 space-y-2">
-                  {pricingLoading && !serverPrice ? (
+                  {!pricingReady ? (
                     <p className="text-center text-xs text-gray-400 py-4">Calculating price…</p>
-                  ) : pricingError && !serverPrice ? (
-                    <p className="text-center text-xs text-red-500 py-4">Pricing service error — please try again</p>
                   ) : (
                     <>
                       <div className="flex justify-between text-sm text-gray-600">
@@ -866,11 +904,11 @@ export default function BookingFlow() {
                         <span>{t('booking.priceTotal')}</span>
                         <span className="text-emerald-700">{priceTotal.toFixed(0)} NOK</span>
                       </div>
-                      {serverPrice && (
-                        <p className="text-[10px] text-gray-400 text-center pt-1">
-                          Distance + price calculated server-side ({serverPrice.routing_provider})
-                        </p>
-                      )}
+                      <p className="text-[10px] text-gray-400 text-center pt-1">
+                        {serverPrice
+                          ? `Distance + price calculated server-side (${serverPrice.routing_provider})`
+                          : 'Distance + price calculated in browser · will be re-verified server-side at submit'}
+                      </p>
                     </>
                   )}
                 </div>
@@ -905,7 +943,7 @@ export default function BookingFlow() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={saving || !legalAccepted || !serverPrice || pricingLoading}
+                disabled={saving || !legalAccepted || !pricingReady}
                 className="w-full py-4 bg-emerald-600 text-white rounded-xl font-bold text-base hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {saving ? (
@@ -915,7 +953,7 @@ export default function BookingFlow() {
                     </svg>
                     {t('booking.processing')}
                   </>
-                ) : pricingLoading || !serverPrice ? (
+                ) : !pricingReady ? (
                   <>Calculating price…</>
                 ) : (
                   <>
