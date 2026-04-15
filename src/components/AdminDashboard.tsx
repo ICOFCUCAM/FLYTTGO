@@ -1,9 +1,58 @@
 // FULL FINAL VERSION — PRODUCTION CONTROL CENTER BUILD
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 
-type AdminTab = "overview" | "drivers" | "bookings" | "applications" | "revenue" | "disputes" | "settings";
+/* Lazy-loaded Leaflet map — ~150 KB bundle is only paid when the
+ * admin actually opens the Fleet Map tab. */
+const FleetMap = lazy(() => import("./FleetMap"));
+
+type AdminTab =
+  | "overview"
+  | "fleet-map"
+  | "drivers"
+  | "bookings"
+  | "applications"
+  | "revenue"
+  | "disputes"
+  | "settings";
+
+/* ── CSV export helper ──────────────────────────────────────────
+ * Turns an array of rows into a CSV string and triggers a browser
+ * download. Quotes cell values and escapes embedded quotes so the
+ * resulting file opens cleanly in Excel / Google Sheets / Numbers.
+ * Used by the Drivers and Bookings tabs for the Export button. */
+function downloadCsv(filename: string, rows: Record<string, any>[]) {
+  if (rows.length === 0) {
+    alert("No rows to export.");
+    return;
+  }
+  const columns = Array.from(
+    rows.reduce<Set<string>>((acc, r) => {
+      Object.keys(r).forEach(k => acc.add(k));
+      return acc;
+    }, new Set())
+  );
+  const escape = (v: any): string => {
+    if (v === null || v === undefined) return "";
+    const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+    if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+  const header = columns.join(",");
+  const body = rows.map(r => columns.map(c => escape(r[c])).join(",")).join("\n");
+  const blob = new Blob([header + "\n" + body], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 function safeNumber(value: any): number {
   const n = Number(value ?? 0);
@@ -82,7 +131,25 @@ export default function AdminDashboard() {
     background_check: "Background Check",
   };
   const REQUIRED_DOCS = ["driver_license", "insurance", "vehicle_registration", "profile_photo"];
-  const tabs: AdminTab[] = ["overview", "drivers", "bookings", "applications", "revenue", "disputes", "settings"];
+  const tabs: AdminTab[] = [
+    "overview",
+    "fleet-map",
+    "drivers",
+    "bookings",
+    "applications",
+    "revenue",
+    "disputes",
+    "settings",
+  ];
+
+  /* ── Drivers tab filter/search state ──────────────────────── */
+  const [driverSearch, setDriverSearch] = useState("");
+  const [driverFilterStatus, setDriverFilterStatus] = useState<"all" | "approved" | "pending" | "suspended">("all");
+  const [driverFilterOnline, setDriverFilterOnline] = useState<"all" | "online" | "offline">("all");
+
+  /* ── Manual booking dispatch modal state ──────────────────── */
+  const [dispatchBooking, setDispatchBooking] = useState<any | null>(null);
+  const [dispatchDriverId, setDispatchDriverId] = useState<string>("");
 
   useEffect(() => {
     if (loading || !profile || profile.role !== "admin") return;
@@ -302,6 +369,77 @@ export default function AdminDashboard() {
     alert("Manual refund override applied"); setSelectedBooking(null); loadData();
   }
 
+  /* ── Filter helpers for the Drivers tab ──────────────────── */
+  const filteredDrivers = useMemo(() => {
+    const q = driverSearch.trim().toLowerCase();
+    return drivers.filter((d: any) => {
+      if (driverFilterStatus !== "all" && d.status !== driverFilterStatus) return false;
+      if (driverFilterOnline === "online"  && d.online !== true) return false;
+      if (driverFilterOnline === "offline" && d.online === true) return false;
+      if (q) {
+        const hay = `${d.full_name ?? ""} ${d.phone ?? ""} ${d.user_id ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [drivers, driverSearch, driverFilterStatus, driverFilterOnline]);
+
+  /* ── CSV export handlers ──────────────────────────────────── */
+  function exportDriversCsv() {
+    const rows = filteredDrivers.map((d: any) => ({
+      id:                 d.id,
+      user_id:            d.user_id,
+      full_name:          d.full_name,
+      phone:              d.phone,
+      status:             d.status,
+      online:             d.online,
+      subscription_plan:  d.driver_subscriptions?.[0]?.plan ?? null,
+      expiry:             driverSubExpiry[d.user_id ?? d.id] ?? null,
+    }));
+    downloadCsv(`flyttgo-drivers-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  }
+
+  function exportBookingsCsv() {
+    const rows = bookings.map((b: any) => ({
+      id:               b.id,
+      created_at:       b.created_at,
+      customer_id:      b.customer_id,
+      driver_id:        b.driver_id,
+      pickup_address:   b.pickup_address,
+      dropoff_address:  b.dropoff_address,
+      van_type:         b.van_type,
+      status:           b.status,
+      payment_status:   b.payment_status,
+      price_estimate:   b.price_estimate,
+      final_price:      b.final_price,
+      estimated_hours:  b.estimated_hours,
+      distance_km:      b.distance_km,
+    }));
+    downloadCsv(`flyttgo-bookings-${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  }
+
+  /* ── Manual booking dispatch ──────────────────────────────
+   * Admin picks a driver from a dropdown and force-assigns a
+   * pending booking to them. Sets bookings.driver_id and flips
+   * status to 'driver_assigned'. Skips the usual dispatch_logs
+   * flow because this is an admin override — the audit trail
+   * lives in bookings.updated_at / driver_id change. */
+  async function dispatchBookingToDriver() {
+    if (!dispatchBooking || !dispatchDriverId) return;
+    const { error } = await supabase
+      .from("bookings")
+      .update({ driver_id: dispatchDriverId, status: "driver_assigned" })
+      .eq("id", dispatchBooking.id);
+    if (error) {
+      alert("Dispatch failed: " + error.message);
+      return;
+    }
+    alert("Booking dispatched to driver.");
+    setDispatchBooking(null);
+    setDispatchDriverId("");
+    loadData();
+  }
+
   async function handleApplication(applicationId: string, action: string) {
     /* reviewed_by is a FK to auth.users(id), so we need a real
      * admin user id before we can write the review. If the session
@@ -458,13 +596,85 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        {tab === "fleet-map" && (
+          <div>
+            <Suspense fallback={
+              <div className="bg-gray-100 rounded-xl h-[600px] animate-pulse flex items-center justify-center text-gray-400 text-sm">
+                Loading fleet map…
+              </div>
+            }>
+              <FleetMap
+                onSuspendDriver={(id) => {
+                  if (confirm("Suspend this driver?")) updateDriverStatus(id, "suspended");
+                }}
+              />
+            </Suspense>
+          </div>
+        )}
+
         {tab === "drivers" && (
           <div>
-            <h1 className="text-xl font-bold mb-4">Drivers</h1>
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-xl font-bold">Drivers ({filteredDrivers.length})</h1>
+              <button
+                onClick={exportDriversCsv}
+                className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded text-xs font-semibold"
+              >
+                Export CSV
+              </button>
+            </div>
+
+            {/* Search + filters */}
+            <div className="bg-white rounded-lg p-4 mb-4 flex flex-wrap gap-3 items-end">
+              <div className="flex-1 min-w-[200px]">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Search</label>
+                <input
+                  type="text"
+                  value={driverSearch}
+                  onChange={e => setDriverSearch(e.target.value)}
+                  placeholder="Name, phone, or id"
+                  className="w-full border border-gray-200 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                <select
+                  value={driverFilterStatus}
+                  onChange={e => setDriverFilterStatus(e.target.value as any)}
+                  className="border border-gray-200 rounded px-3 py-2 text-sm"
+                >
+                  <option value="all">All</option>
+                  <option value="approved">Approved</option>
+                  <option value="pending">Pending</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Online</label>
+                <select
+                  value={driverFilterOnline}
+                  onChange={e => setDriverFilterOnline(e.target.value as any)}
+                  className="border border-gray-200 rounded px-3 py-2 text-sm"
+                >
+                  <option value="all">All</option>
+                  <option value="online">Online</option>
+                  <option value="offline">Offline</option>
+                </select>
+              </div>
+              {(driverSearch || driverFilterStatus !== "all" || driverFilterOnline !== "all") && (
+                <button
+                  onClick={() => { setDriverSearch(""); setDriverFilterStatus("all"); setDriverFilterOnline("all"); }}
+                  className="text-xs text-gray-500 hover:text-gray-700 underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+
             <table className="w-full bg-white rounded shadow">
               <thead className="bg-gray-100"><tr><th className="p-3 text-left">Name</th><th className="p-3 text-left">Status</th><th className="p-3 text-left">Online</th><th className="p-3 text-left">Plan / Expiry</th><th className="p-3 text-left">Actions</th></tr></thead>
               <tbody>
-                {drivers.map((d: any) => {
+                {filteredDrivers.map((d: any) => {
                   const endDate = driverSubExpiry[d.user_id ?? d.id] ?? null;
                   const daysLeft = endDate ? Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400000) : null;
                   return (
@@ -484,6 +694,9 @@ export default function AdminDashboard() {
                     </tr>
                   );
                 })}
+                {filteredDrivers.length === 0 && (
+                  <tr><td colSpan={5} className="p-6 text-center text-sm text-gray-500">No drivers match your filters.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -491,7 +704,15 @@ export default function AdminDashboard() {
 
         {tab === "bookings" && (
           <div>
-            <h1 className="text-xl font-bold mb-4">Bookings</h1>
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-xl font-bold">Bookings ({bookings.length})</h1>
+              <button
+                onClick={exportBookingsCsv}
+                className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded text-xs font-semibold"
+              >
+                Export CSV
+              </button>
+            </div>
             <table className="w-full bg-white rounded shadow">
               <thead className="bg-gray-100"><tr><th className="p-3 text-left">Route</th><th className="p-3 text-left">Status</th><th className="p-3 text-left">Price</th><th className="p-3 text-left">Payment</th><th className="p-3 text-left">Actions</th></tr></thead>
               <tbody>
@@ -505,7 +726,18 @@ export default function AdminDashboard() {
                         {b.payment_status || "pending"}
                       </span>
                     </td>
-                    <td className="p-3 flex gap-2">
+                    <td className="p-3 flex gap-2 flex-wrap">
+                      {/* Manual dispatch — only shown for unassigned,
+                       * non-cancelled bookings. Opens a modal where
+                       * the admin picks a driver to force-assign. */}
+                      {!b.driver_id && b.status !== "cancelled" && b.status !== "completed" && (
+                        <button
+                          onClick={() => { setDispatchBooking(b); setDispatchDriverId(""); }}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 text-xs rounded"
+                        >
+                          Dispatch
+                        </button>
+                      )}
                       <button disabled={b.payment_status === "released"} onClick={() => releasePayment(b)} className={`px-2 py-1 text-xs rounded text-white ${b.payment_status === "released" ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}>{b.payment_status === "released" ? "Released ✅" : "Release"}</button>
                       <button onClick={() => refundPayment(b)} className="bg-red-600 text-white px-2 py-1 text-xs rounded">Refund</button>
                       <button onClick={() => { setSelectedBooking(b); setManualRefundPercent(0); }} className="bg-blue-600 text-white px-2 py-1 text-xs rounded">Dispute</button>
@@ -667,6 +899,69 @@ export default function AdminDashboard() {
             ))}
           </div>
           <button onClick={() => setTimelineEvents([])} className="mt-3 w-full bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm">Close</button>
+        </div>
+      )}
+
+      {/* Manual Dispatch Modal — full-screen centred */}
+      {dispatchBooking && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+          onClick={() => { setDispatchBooking(null); setDispatchDriverId(""); }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-gray-900 text-lg mb-1">Manual Dispatch</h3>
+            <p className="text-xs text-gray-500 mb-4">
+              Force-assign this booking to a driver. This bypasses the normal dispatch flow — use when a booking has been waiting too long or you need to move a job to a specific driver.
+            </p>
+            <div className="bg-gray-50 rounded-lg p-3 mb-4 text-xs">
+              <div className="font-semibold text-gray-800 mb-1 truncate">
+                {dispatchBooking.pickup_address} → {dispatchBooking.dropoff_address}
+              </div>
+              <div className="text-gray-500">
+                {safeNumber(dispatchBooking.price_estimate).toFixed(0)} NOK · {dispatchBooking.van_type ?? "any van"}
+              </div>
+            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Select driver</label>
+            <select
+              value={dispatchDriverId}
+              onChange={e => setDispatchDriverId(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm mb-4 focus:ring-2 focus:ring-emerald-500 outline-none"
+            >
+              <option value="">— pick a driver —</option>
+              {drivers
+                .filter((d: any) => d.status === "approved")
+                .sort((a: any, b: any) => {
+                  /* Online drivers first, then by name. */
+                  if (a.online && !b.online) return -1;
+                  if (!a.online && b.online) return 1;
+                  return (a.full_name ?? "").localeCompare(b.full_name ?? "");
+                })
+                .map((d: any) => (
+                  <option key={d.id} value={d.id}>
+                    {d.full_name || d.id.slice(0, 8)} {d.online ? "🟢" : "⚫"}
+                    {d.driver_subscriptions?.[0]?.plan ? ` · ${d.driver_subscriptions[0].plan}` : ""}
+                  </option>
+                ))}
+            </select>
+            <div className="flex gap-2">
+              <button
+                onClick={dispatchBookingToDriver}
+                disabled={!dispatchDriverId}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2.5 rounded-lg text-sm font-semibold"
+              >
+                Dispatch now
+              </button>
+              <button
+                onClick={() => { setDispatchBooking(null); setDispatchDriverId(""); }}
+                className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
