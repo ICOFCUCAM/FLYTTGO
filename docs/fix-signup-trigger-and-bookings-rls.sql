@@ -154,6 +154,22 @@ CREATE POLICY bookings_customer_update ON public.bookings
   WITH CHECK (customer_id = auth.uid());
 
 
+-- ----------------------------------------------------------------------------
+-- 4. Customer self-SELECT on profiles
+-- ----------------------------------------------------------------------------
+-- admin-rls-policies.sql added profiles_admin_all / profiles_self_update /
+-- profiles_self_insert but no SELECT policy for non-admins, so fetchProfile()
+-- in auth.tsx returned no rows for customers. That left profile = null in
+-- the Header component, which rendered Sign In / Sign Up buttons even for
+-- signed-in users and hid the Dashboard / My Bookings / Sign Out dropdown.
+
+DROP POLICY IF EXISTS profiles_self_select ON public.profiles;
+CREATE POLICY profiles_self_select ON public.profiles
+  FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
+
 -- ============================================================================
 -- Verify
 -- ============================================================================
