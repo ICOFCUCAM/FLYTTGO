@@ -206,7 +206,7 @@ export function AuthProvider({
     const emailRedirectTo =
       typeof window !== "undefined"
         ? `${window.location.origin}/auth/callback`
-        : "https://flyttgo-qo46.vercel.app/auth/callback";
+        : "https://flyttgo.no/auth/callback";
 
     const { error } = await supabase.auth.signUp({
       email,
