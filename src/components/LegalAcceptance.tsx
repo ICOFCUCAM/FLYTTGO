@@ -1,141 +1,170 @@
 import React, { useState } from 'react';
 import { useApp } from '../lib/store';
 
-/* ================= CUSTOMER BOOKING LEGAL ACCEPTANCE ================= */
+/* ================= CUSTOMER BOOKING LEGAL ACCEPTANCE =================
+ *
+ * Premium-friendly legal acceptance block for Step 6 of the booking
+ * flow. Previous version dumped a big amber warning on the customer
+ * with five checkboxes that all said slightly different versions of
+ * the same thing. That reads as "FlyttGo is scary, don't book" —
+ * which is the opposite of what we want at the checkout confirmation
+ * step.
+ *
+ * This version follows the pattern the ops team specified:
+ *
+ *   1) A positive "reassurance" banner at the top explaining in one
+ *      sentence what FlyttGo actually does (connects you with verified
+ *      carriers; escrow until delivery). Makes the checkbox feel like
+ *      confirmation of a premium service rather than a legal warning.
+ *
+ *   2) Exactly TWO checkboxes, both framed as confirmations rather
+ *      than warnings:
+ *        - "I confirm the booking details I provided are accurate"
+ *        - "I accept the Terms & Conditions, Privacy Policy, and
+ *           Marketplace Agreement"
+ *
+ *   3) All links are real <a href> anchors with
+ *        target="_blank" rel="noopener noreferrer"
+ *      so clicking one opens the legal page in a new tab instead of
+ *      replacing the booking page and losing the customer's progress.
+ *      The FlyttGo SPA router (src/lib/store.tsx AppProvider) reads
+ *      window.location.pathname on mount, so direct URL loads like
+ *      /terms, /privacy, /liability all render correctly in the new
+ *      tab.
+ *
+ * The onAccepted callback contract is unchanged — BookingFlow still
+ * passes setLegalAccepted and still gates its submit button on it.
+ * ================================================================= */
 
 interface CustomerLegalAcceptanceProps {
   onAccepted: (accepted: boolean) => void;
   compact?: boolean;
 }
 
-export function CustomerLegalAcceptance({ onAccepted, compact = false }: CustomerLegalAcceptanceProps) {
-  const { setPage } = useApp();
+/* Reusable link style so the three legal-page links in the second
+ * checkbox all look identical and use the correct rel attributes
+ * without us re-typing them. */
+function LegalLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="underline font-medium text-[#0B2E59] hover:text-[#0B2E59]/80"
+    >
+      {children}
+    </a>
+  );
+}
 
+export function CustomerLegalAcceptance({ onAccepted, compact = false }: CustomerLegalAcceptanceProps) {
   const [checks, setChecks] = useState({
-    notResponsible: false,
-    claimsToDriver: false,
     accurateInfo: false,
-    termsAccepted: false,
-    privacyAccepted: false,
+    legalAccepted: false,
   });
 
-  const allAccepted = Object.values(checks).every(Boolean);
+  const allAccepted = checks.accurateInfo && checks.legalAccepted;
 
   const toggle = (key: keyof typeof checks) => {
     const updated = { ...checks, [key]: !checks[key] };
     setChecks(updated);
-    onAccepted(Object.values(updated).every(Boolean));
+    onAccepted(updated.accurateInfo && updated.legalAccepted);
   };
 
-  const checkboxItems = [
-    {
-      key: 'notResponsible' as const,
-      label: 'I understand that FlyttGo is a marketplace platform only and is NOT responsible for any damage, loss, theft, or delay of my goods during transport.',
-      required: true,
-    },
-    {
-      key: 'claimsToDriver' as const,
-      label: 'I agree that any claims for damage or loss must be directed to the Transport Provider\'s registered company and their insurer — NOT to FlyttGo.',
-      required: true,
-    },
-    {
-      key: 'accurateInfo' as const,
-      label: 'I confirm that the information I have provided (addresses, item descriptions, contact details) is accurate and complete. I understand that inaccurate information may result in additional charges.',
-      required: true,
-    },
-    {
-      key: 'termsAccepted' as const,
-      label: (
-        <span>
-          I have read and accept the{' '}
-          <button type="button" onClick={() => setPage('terms')} className="text-[#0B2E59] underline font-medium hover:text-[#0B2E59]/80">
-            Terms & Conditions
-          </button>
-          {' '}and{' '}
-          <button type="button" onClick={() => setPage('liability')} className="text-[#0B2E59] underline font-medium hover:text-[#0B2E59]/80">
-            Liability Policy
-          </button>
-          .
-        </span>
-      ),
-      required: true,
-    },
-    {
-      key: 'privacyAccepted' as const,
-      label: (
-        <span>
-          I have read and accept the{' '}
-          <button type="button" onClick={() => setPage('privacy')} className="text-[#0B2E59] underline font-medium hover:text-[#0B2E59]/80">
-            Privacy Policy
-          </button>
-          {' '}and consent to the processing of my personal data for booking purposes.
-        </span>
-      ),
-      required: true,
-    },
-  ];
-
   return (
-    <div className={`${compact ? 'space-y-3' : 'space-y-4'}`}>
-      {/* Legal Warning Banner */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-        <p className="text-amber-800 text-xs font-semibold mb-1">⚠️ Please Read Before Booking</p>
-        <p className="text-amber-700 text-xs leading-relaxed">
-          FlyttGo is a marketplace connecting you with independent Transport Providers. FlyttGo does not transport goods and provides no insurance. All liability for your goods rests with the Transport Provider's company.
+    <div className={compact ? 'space-y-3' : 'space-y-4'}>
+      {/* Positive reassurance banner — replaces the old amber
+       * "WARNING" tone. The escrow mention is the most important
+       * trust signal on the confirmation page. */}
+      <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+        <p className="text-emerald-900 text-xs font-semibold mb-1">Before confirming your booking</p>
+        <p className="text-emerald-800 text-xs leading-relaxed">
+          FlyttGo connects you with verified independent transport providers.
+          Payment is securely held in escrow until delivery is completed.
         </p>
       </div>
 
-      {/* Checkboxes */}
-      <div className={`space-y-${compact ? '2' : '3'}`}>
-        {checkboxItems.map((item) => (
-          <label
-            key={item.key}
-            className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-              checks[item.key]
-                ? 'border-green-300 bg-green-50'
-                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+      {/* Checkbox 1 — accurate info confirmation */}
+      <label
+        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+          checks.accurateInfo
+            ? 'border-emerald-300 bg-emerald-50'
+            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+        }`}
+      >
+        <div className="relative flex-shrink-0 mt-0.5">
+          <input
+            type="checkbox"
+            checked={checks.accurateInfo}
+            onChange={() => toggle('accurateInfo')}
+            className="sr-only"
+          />
+          <div
+            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+              checks.accurateInfo ? 'bg-emerald-600 border-emerald-600' : 'border-gray-300 bg-white'
             }`}
           >
-            <div className="relative flex-shrink-0 mt-0.5">
-              <input
-                type="checkbox"
-                checked={checks[item.key]}
-                onChange={() => toggle(item.key)}
-                className="sr-only"
-              />
-              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                checks[item.key]
-                  ? 'bg-green-600 border-green-600'
-                  : 'border-gray-300 bg-white'
-              }`}>
-                {checks[item.key] && (
-                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </div>
-            </div>
-            <span className="text-xs text-gray-700 leading-relaxed flex-1">
-              {item.label}
-              {item.required && (
-                <span className="text-red-500 ml-1" title="Required">*</span>
-              )}
-            </span>
-          </label>
-        ))}
-      </div>
+            {checks.accurateInfo && (
+              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+        </div>
+        <span className="text-sm text-gray-700 leading-relaxed flex-1">
+          I confirm the booking details I provided are accurate
+        </span>
+      </label>
+
+      {/* Checkbox 2 — legal documents. Real <a> anchors with
+       * target="_blank" rel="noopener noreferrer" so clicking a
+       * link opens a new tab and the customer's booking flow is
+       * preserved in the original tab. */}
+      <label
+        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+          checks.legalAccepted
+            ? 'border-emerald-300 bg-emerald-50'
+            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+        }`}
+      >
+        <div className="relative flex-shrink-0 mt-0.5">
+          <input
+            type="checkbox"
+            checked={checks.legalAccepted}
+            onChange={() => toggle('legalAccepted')}
+            className="sr-only"
+          />
+          <div
+            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+              checks.legalAccepted ? 'bg-emerald-600 border-emerald-600' : 'border-gray-300 bg-white'
+            }`}
+          >
+            {checks.legalAccepted && (
+              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </div>
+        </div>
+        <span className="text-sm text-gray-700 leading-relaxed flex-1">
+          I accept the{' '}
+          <LegalLink href="/terms">Terms &amp; Conditions</LegalLink>,{' '}
+          <LegalLink href="/privacy">Privacy Policy</LegalLink>, and{' '}
+          <LegalLink href="/liability">Marketplace Agreement</LegalLink>
+        </span>
+      </label>
 
       {/* Status indicator */}
       {!allAccepted && (
-        <p className="text-xs text-red-500 flex items-center gap-1.5">
+        <p className="text-xs text-gray-500 flex items-center gap-1.5">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5C3.498 18.333 4.46 20 6 20z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          All boxes must be ticked before you can confirm your booking.
+          Please tick both boxes to continue.
         </p>
       )}
       {allAccepted && (
-        <p className="text-xs text-green-600 flex items-center gap-1.5 font-medium">
+        <p className="text-xs text-emerald-600 flex items-center gap-1.5 font-medium">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
