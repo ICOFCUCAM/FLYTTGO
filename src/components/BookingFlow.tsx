@@ -404,8 +404,32 @@ export default function BookingFlow() {
       setPage('payment');
 
     } catch (err: any) {
-      console.error('Booking submission failed:', err);
-      setError(err.message || 'Booking failed. Please try again.');
+      /* Log the full error object to DevTools so we can see column
+       * names, constraint violations, RLS errors, etc. — the
+       * single-line .message is often a generic "insert failed"
+       * that doesn't tell us what actually went wrong. */
+      console.error('[BookingFlow] Booking submission failed:', err, {
+        pickupAddress,
+        dropoffAddress,
+        distanceKm,
+        priceTotal,
+        vanType,
+        helpers,
+        estimatedHours,
+      });
+      const message =
+        err?.message ||
+        err?.error_description ||
+        err?.details ||
+        'Booking failed. Please try again.';
+      setError(message);
+      /* Scroll the error banner into view — on Step 6 the user is
+       * usually scrolled to the bottom where the confirm button is,
+       * and would otherwise never see the error that just rendered
+       * at the top of the page. */
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      }
     }
 
     setSaving(false);
@@ -940,6 +964,23 @@ export default function BookingFlow() {
                   <p>{t('booking.summaryDelivery')}: {formatNorwegianAddress(dropoffAddress).short}</p>
                 </div>
               </div>
+
+              {/* Inline error banner right above the confirm button.
+               * The top-of-page error still renders too (useful for
+               * other steps) but on Step 6 the customer is usually
+               * scrolled to the bottom, so they would miss a
+               * top-only error. Duplicating it here makes any submit
+               * failure immediately visible. */}
+              {error && (
+                <div className="mb-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+                  <p className="font-semibold">Booking failed</p>
+                  <p className="text-red-600 text-xs mt-1 break-words">{error}</p>
+                  <p className="text-red-500 text-[10px] mt-2">
+                    Open DevTools (F12) → Console tab for the full error details.
+                  </p>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handleSubmit}
