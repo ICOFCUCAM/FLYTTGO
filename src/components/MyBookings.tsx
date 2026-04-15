@@ -7,6 +7,10 @@ import { useApp } from "../lib/store";
  * pages that actually have an in-transit booking to track. */
 const DriverTrackingMap = lazy(() => import("./DriverTrackingMap"));
 
+/* Must match the key CustomerDashboard uses when handing a specific
+ * booking id off to PaymentPage. See CustomerDashboard.tsx. */
+const PAYMENT_HANDOFF_KEY = "flyttgo:payment-booking-id";
+
 function safeNumber(value: any): number {
   const n = Number(value ?? 0);
   return isNaN(n) ? 0 : n;
@@ -88,6 +92,18 @@ export default function MyBookings() {
     setPage("booking");
   }
 
+  /** Hand the user off to PaymentPage with this booking preselected.
+   *  sessionStorage hands the id across the SPA navigation so the
+   *  payment screen loads exactly the row the user clicked, not the
+   *  most-recent-pending fallback (which would be wrong when drafts
+   *  are stacked up). */
+  function completePayment(bookingId: string) {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(PAYMENT_HANDOFF_KEY, bookingId);
+    }
+    setPage("payment");
+  }
+
   const filtered = filter === "all" ? bookings : bookings.filter(b => b.status === filter);
 
   // Keys mirror the bookings.status CHECK constraint values.
@@ -166,7 +182,29 @@ export default function MyBookings() {
               <div className="text-xl font-bold text-emerald-600 mb-2">{safeNumber(price).toFixed(0)} NOK</div>
               {booking.price_adjusted && <div className="bg-orange-50 border border-orange-200 rounded p-3 mb-3"><p className="text-orange-700 text-sm font-semibold">Extra time added — price updated</p></div>}
               {escrow?.adjustment_required && !escrow.adjustment_approved && <button onClick={() => approveAdjustment(escrow.id)} className="mb-3 bg-orange-600 text-white px-4 py-2 rounded text-sm">Approve additional charge</button>}
+              {/* Payment-required banner — a pending payment_status
+               * means the booking row was inserted by BookingFlow
+               * but the user walked away before PaymentPage captured
+               * the money. The booking is effectively a draft until
+               * they finish checkout. */}
+              {booking.payment_status === "pending" && booking.status !== "cancelled" && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3 flex items-start gap-2">
+                  <span className="text-yellow-500 flex-shrink-0">⚠️</span>
+                  <div className="flex-1 text-sm">
+                    <p className="font-semibold text-yellow-800">Payment required</p>
+                    <p className="text-yellow-700 text-xs mt-0.5">This booking isn&apos;t confirmed until payment is completed.</p>
+                  </div>
+                </div>
+              )}
               <div className="flex gap-3 flex-wrap">
+                {booking.payment_status === "pending" && booking.status !== "cancelled" && (
+                  <button
+                    onClick={() => completePayment(booking.id)}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-semibold"
+                  >
+                    Complete Payment →
+                  </button>
+                )}
                 {booking.status === "pending" && <button onClick={() => cancelBooking(booking.id)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">Cancel</button>}
                 {booking.status === "completed" && !booking.customer_confirmation && <button onClick={() => confirmCompletion(booking.id)} className="px-4 py-2 bg-emerald-600 text-white rounded text-sm">Confirm Completion</button>}
                 <button onClick={() => repeatBooking(booking)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">Repeat Booking</button>

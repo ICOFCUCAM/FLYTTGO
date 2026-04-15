@@ -3,6 +3,18 @@ import { useAuth } from "../lib/auth";
 import { useApp } from "../lib/store";
 import { supabase, supabaseFunctionUrl } from "../lib/supabase";
 
+/**
+ * SessionStorage key used to hand off a specific booking id to
+ * PaymentPage. When the user clicks "Complete Payment" on a row in
+ * the dashboard / my-bookings, we stash the id here so PaymentPage
+ * can load exactly that booking instead of falling back to the
+ * most-recent pending one (which would be wrong if the user has
+ * multiple unfinished drafts).
+ *
+ * PaymentPage reads this on mount and clears it once loaded.
+ */
+const PAYMENT_HANDOFF_KEY = "flyttgo:payment-booking-id";
+
 function fmt(value: any): string {
   const n = Number(value ?? 0);
   return String(Math.floor(isNaN(n) ? 0 : n));
@@ -69,6 +81,17 @@ export default function CustomerDashboard() {
     alert("Booking cancelled"); loadData();
   }
 
+  /** Hand the user off to the payment page with this booking preselected.
+   *  We stash the id in sessionStorage so PaymentPage can load exactly
+   *  this booking instead of falling back to its most-recent-pending
+   *  query, which would be wrong when multiple drafts exist. */
+  function goToPayment(bookingId: string) {
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(PAYMENT_HANDOFF_KEY, bookingId);
+    }
+    setPage("payment");
+  }
+
   if (!user) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
@@ -125,11 +148,39 @@ export default function CustomerDashboard() {
         {activeBooking && (
           <div className="bg-white rounded-xl border p-6 mb-8">
             <h2 className="text-lg font-bold mb-4">Active Booking</h2>
+            {/* Payment-required banner — shown whenever the active
+             * booking still has payment_status = 'pending'. Booking
+             * rows are inserted in this state by BookingFlow and
+             * only transition to 'escrow' / 'paid' once PaymentPage
+             * captures the money, so a pending booking is literally
+             * a half-finished draft that needs the user to go back
+             * and complete checkout. */}
+            {activeBooking.payment_status === "pending" && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4 flex items-start gap-3">
+                <span className="text-yellow-500 text-xl flex-shrink-0">⚠️</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-yellow-800">Payment required</p>
+                  <p className="text-sm text-yellow-700 mt-0.5">
+                    Your booking isn&apos;t confirmed yet. Complete payment now to secure your move and notify drivers.
+                  </p>
+                  <button
+                    onClick={() => goToPayment(activeBooking.id)}
+                    className="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition"
+                  >
+                    Complete Payment →
+                  </button>
+                </div>
+              </div>
+            )}
             <p className="font-medium">{activeBooking.pickup_address} → {activeBooking.dropoff_address}</p>
             <p className="text-sm text-gray-500 mt-2">Status: <strong>{activeBooking.status?.replace(/_/g, " ")}</strong></p>
             <p className="text-sm text-gray-500">Estimated Hours: <strong>{activeBooking.estimated_hours ?? "-"}</strong></p>
             <p className="text-sm text-gray-500">Actual Hours: <strong>{activeBooking.actual_hours ?? "Running"}</strong></p>
-            <p className="text-sm text-gray-500">Escrow protected until completion</p>
+            <p className="text-sm text-gray-500">
+              {activeBooking.payment_status === "pending"
+                ? "Escrow not yet funded"
+                : "Escrow protected until completion"}
+            </p>
             <p className="text-lg font-bold mt-2">{fmt(activeBooking.final_price ?? activeBooking.original_price ?? activeBooking.price_estimate)} NOK</p>
             {activeBooking.price_adjusted && (<div className="bg-orange-50 border border-orange-200 p-4 rounded mt-4"><p className="text-orange-700 font-semibold">Extra time detected</p><p className="text-sm text-orange-600">Final price updated automatically</p></div>)}
             {escrowAdjustment?.adjustment_required && !escrowAdjustment.adjustment_approved && (<button onClick={() => approveAdjustment(escrowAdjustment.id)} className="mt-4 bg-orange-600 text-white px-4 py-2 rounded">Approve additional time charge</button>)}
@@ -147,14 +198,22 @@ export default function CustomerDashboard() {
           {recentBookings.length === 0 ? (<div className="p-8 text-center text-gray-500">No bookings yet</div>) : (
             <div className="divide-y">
               {recentBookings.map(b => (
-                <div key={b.id} className="p-5 flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">{b.pickup_address} → {b.dropoff_address}</p>
+                <div key={b.id} className="p-5 flex justify-between items-center gap-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">{b.pickup_address} → {b.dropoff_address}</p>
                     <p className="text-xs text-gray-500">{b.created_at ? new Date(b.created_at).toLocaleDateString() : "-"}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex-shrink-0">
                     <p className="font-bold">{fmt(b.final_price ?? b.original_price ?? b.price_estimate)} NOK</p>
                     <span className={`text-xs px-2 py-1 rounded ${b.status === "completed" ? "bg-emerald-100 text-emerald-700" : b.status === "cancelled" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>{b.status?.replace(/_/g, " ")}</span>
+                    {b.payment_status === "pending" && b.status !== "cancelled" && (
+                      <button
+                        onClick={() => goToPayment(b.id)}
+                        className="block mt-2 text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline"
+                      >
+                        Complete Payment →
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

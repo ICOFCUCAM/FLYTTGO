@@ -5,6 +5,12 @@ import { supabase, supabaseFunctionUrl } from '../lib/supabase';
 
 type PayMethod = 'card' | 'vipps' | 'google_pay' | 'invoice';
 
+/* Must match the key CustomerDashboard / MyBookings uses when
+ * handing a specific booking id off to this page. If this page is
+ * loaded with that key set, we load exactly that booking instead of
+ * falling back to the most-recent-pending query below. */
+const PAYMENT_HANDOFF_KEY = 'flyttgo:payment-booking-id';
+
 function safeNum(v: any) { const n = Number(v ?? 0); return isNaN(n) ? 0 : n; }
 
 function CardIcon() {
@@ -42,18 +48,59 @@ export default function PaymentPage() {
   const [booking, setBooking] = useState<any>(null);
   const isCorporate = profile?.role === 'customer'; // extend when corporate role exists
 
-  /* Load the latest booking that's waiting for payment.
-   * BookingFlow inserts rows with payment_status='pending', and
-   * this page is the one that flips it to 'paid' once a provider
-   * (Stripe Checkout, Vipps, etc.) confirms. */
+  /* Load the booking that's waiting for payment.
+   *
+   * BookingFlow inserts rows with payment_status='pending', and this
+   * page is the one that flips them to 'escrow' / 'paid' once a
+   * provider confirms. We have two sources for "which booking":
+   *
+   *   1. A specific id handed off via sessionStorage by Dashboard or
+   *      MyBookings when the user clicks "Complete Payment" on a
+   *      specific row. We prefer this because the user told us
+   *      exactly which draft they want to finish.
+   *   2. Fallback: the most-recent-pending row for this customer.
+   *      Used when the user arrives here directly from BookingFlow
+   *      (which doesn't set the handoff key because there's only
+   *      ever one draft at that point).
+   *
+   * The handoff key is cleared after we read it so a later direct
+   * visit to /payment doesn't accidentally reload the old draft. */
   useEffect(() => {
     if (!user) return;
-    supabase.from('bookings').select('*')
-      .eq('customer_id', user.id)
-      .eq('payment_status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .then(({ data }) => { if (data?.[0]) setBooking(data[0]); });
+
+    const handoffId =
+      typeof window !== 'undefined'
+        ? window.sessionStorage.getItem(PAYMENT_HANDOFF_KEY)
+        : null;
+
+    if (handoffId) {
+      window.sessionStorage.removeItem(PAYMENT_HANDOFF_KEY);
+      supabase.from('bookings').select('*')
+        .eq('id', handoffId)
+        .eq('customer_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setBooking(data);
+          } else {
+            /* The id was stale (cancelled, deleted, wrong user) —
+             * fall back to the most-recent-pending query below. */
+            loadMostRecentPending();
+          }
+        });
+      return;
+    }
+
+    loadMostRecentPending();
+
+    function loadMostRecentPending() {
+      supabase.from('bookings').select('*')
+        .eq('customer_id', user!.id)
+        .eq('payment_status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .then(({ data }) => { if (data?.[0]) setBooking(data[0]); });
+    }
   }, [user]);
 
   const price = safeNum(booking?.price_estimate ?? (bookingData as any)?.priceEstimate ?? 2450);
