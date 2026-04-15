@@ -36,6 +36,13 @@
 -- 1. Auto-create profile row on signup
 -- ----------------------------------------------------------------------------
 
+-- Note on the `id` column: the profiles table has both `id` (its own
+-- primary key) AND `user_id` (the FK to auth.users.id). The `id` column
+-- is NOT NULL with no default, so we have to supply one explicitly via
+-- gen_random_uuid() — otherwise the insert fails with 23502.
+-- gen_random_uuid() is built in to Postgres 13+ via pgcrypto which
+-- Supabase projects ship with enabled by default.
+
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -46,6 +53,7 @@ DECLARE
   meta jsonb := COALESCE(NEW.raw_user_meta_data, '{}'::jsonb);
 BEGIN
   INSERT INTO public.profiles (
+    id,
     user_id,
     email,
     first_name,
@@ -53,6 +61,7 @@ BEGIN
     role,
     referral_code
   ) VALUES (
+    gen_random_uuid(),
     NEW.id,
     NEW.email,
     NULLIF(meta ->> 'first_name', ''),
@@ -85,6 +94,7 @@ CREATE TRIGGER on_auth_user_created
 -- the metadata wasn't populated.
 
 INSERT INTO public.profiles (
+  id,
   user_id,
   email,
   first_name,
@@ -93,6 +103,7 @@ INSERT INTO public.profiles (
   referral_code
 )
 SELECT
+  gen_random_uuid(),
   u.id,
   u.email,
   NULLIF(u.raw_user_meta_data ->> 'first_name', ''),
