@@ -36,6 +36,13 @@
 -- 1. Auto-create profile row on signup
 -- ----------------------------------------------------------------------------
 
+-- Note on conflict handling: we use an IF NOT EXISTS pre-check instead
+-- of ON CONFLICT (user_id) because profiles.user_id may not have a
+-- UNIQUE constraint in every project, and ON CONFLICT requires one.
+-- IF NOT EXISTS is identical in effect (idempotent, no duplicates) but
+-- has no constraint prerequisites — it will work regardless of what
+-- indexes / constraints are on the profiles table.
+--
 -- Note on the `id` column: the profiles table has both `id` (its own
 -- primary key) AND `user_id` (the FK to auth.users.id). The `id` column
 -- is NOT NULL with no default, so we have to supply one explicitly via
@@ -52,24 +59,25 @@ AS $$
 DECLARE
   meta jsonb := COALESCE(NEW.raw_user_meta_data, '{}'::jsonb);
 BEGIN
-  INSERT INTO public.profiles (
-    id,
-    user_id,
-    email,
-    first_name,
-    last_name,
-    role,
-    referral_code
-  ) VALUES (
-    gen_random_uuid(),
-    NEW.id,
-    NEW.email,
-    NULLIF(meta ->> 'first_name', ''),
-    NULLIF(meta ->> 'last_name',  ''),
-    COALESCE(NULLIF(meta ->> 'role', ''), 'customer'),
-    'FLYTTGO-' || UPPER(SUBSTRING(NEW.id::text FROM 1 FOR 8))
-  )
-  ON CONFLICT (user_id) DO NOTHING;
+  IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE user_id = NEW.id) THEN
+    INSERT INTO public.profiles (
+      id,
+      user_id,
+      email,
+      first_name,
+      last_name,
+      role,
+      referral_code
+    ) VALUES (
+      gen_random_uuid(),
+      NEW.id,
+      NEW.email,
+      NULLIF(meta ->> 'first_name', ''),
+      NULLIF(meta ->> 'last_name',  ''),
+      COALESCE(NULLIF(meta ->> 'role', ''), 'customer'),
+      'FLYTTGO-' || UPPER(SUBSTRING(NEW.id::text FROM 1 FOR 8))
+    );
+  END IF;
 
   RETURN NEW;
 END;
