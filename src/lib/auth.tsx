@@ -180,8 +180,20 @@ export function AuthProvider({
  * routes the freshly-confirmed user to their dashboard.
  *
  * We default to `window.location.origin` so this works against both the
- * Vercel preview deploy (https://flyttgo-qo46.vercel.app) and the
- * production domain (https://flyttgo.no) without code changes.
+ * Vercel preview deploy and the production domain without code changes.
+ *
+ * The profile row is created by a database trigger on auth.users —
+ * see docs/fix-signup-trigger-and-bookings-rls.sql. We DON'T insert
+ * into profiles from the client here because with email confirmations
+ * enabled supabase.auth.signUp() doesn't return a session, so any
+ * follow-up insert would run as the 'anon' role and be blocked by the
+ * profiles_self_insert RLS policy (auth.uid() is NULL for anon). The
+ * SECURITY DEFINER trigger runs atomically with the auth.users insert
+ * and bypasses RLS, so it's the only place this is guaranteed to work.
+ *
+ * first_name / last_name / role are forwarded via options.data — the
+ * trigger reads them from auth.users.raw_user_meta_data when it creates
+ * the profiles row.
  */
 
   async function signUp(
@@ -196,10 +208,7 @@ export function AuthProvider({
         ? `${window.location.origin}/auth/callback`
         : "https://flyttgo-qo46.vercel.app/auth/callback";
 
-    const {
-      data,
-      error
-    } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -212,39 +221,7 @@ export function AuthProvider({
       }
     });
 
-    if (error) return { error };
-
-    if (data.user) {
-      const refCode =
-        "FLYTTGO-" +
-        data.user.id
-          .slice(0, 8)
-          .toUpperCase();
-
-      await supabase
-        .from("profiles")
-        .insert({
-          user_id: data.user.id,
-          email,
-          first_name: firstName,
-          last_name: lastName,
-          role,
-          referral_code: refCode
-        });
-
-      if (role === "driver") {
-        await supabase
-          .from("drivers")
-          .insert({
-            user_id: data.user.id,
-            status: "pending",
-            subscription_plan:
-              "Free"
-          });
-      }
-    }
-
-    return { error: null };
+    return { error };
   }
 
 /* ================= SIGNIN ================= */
