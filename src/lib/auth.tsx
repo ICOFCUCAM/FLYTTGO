@@ -169,7 +169,20 @@ export function AuthProvider({
       subscription.unsubscribe();
   }, []);
 
-/* ================= SIGNUP ================= */
+/* ================= SIGNUP =================
+ *
+ * The `emailRedirectTo` option is what makes email confirmation work
+ * end-to-end: Supabase substitutes this URL into the {{ .ConfirmationURL }}
+ * placeholder in the confirmation-email template, so when the user clicks
+ * the link in their inbox they land on /auth/callback in our SPA. The
+ * callback page then waits for `detectSessionInUrl` (set in supabase.ts)
+ * to pick up the access_token / refresh_token from the URL hash and
+ * routes the freshly-confirmed user to their dashboard.
+ *
+ * We default to `window.location.origin` so this works against both the
+ * Vercel preview deploy (https://flyttgo-qo46.vercel.app) and the
+ * production domain (https://flyttgo.no) without code changes.
+ */
 
   async function signUp(
     email: string,
@@ -178,12 +191,25 @@ export function AuthProvider({
     lastName: string,
     role: string
   ) {
+    const emailRedirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/auth/callback`
+        : "https://flyttgo-qo46.vercel.app/auth/callback";
+
     const {
       data,
       error
     } = await supabase.auth.signUp({
       email,
-      password
+      password,
+      options: {
+        emailRedirectTo,
+        data: {
+          first_name: firstName,
+          last_name:  lastName,
+          role
+        }
+      }
     });
 
     if (error) return { error };

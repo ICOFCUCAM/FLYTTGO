@@ -48,6 +48,9 @@ const PAGE_TO_PATH: Record<Page, string> = {
   'liability':               '/liability',
   'driver-terms':            '/driver-terms',
 
+  /* Supabase auth callback (email confirmation, magic link, OAuth) */
+  'auth-callback':           '/auth/callback',
+
   /* Informational / marketing */
   'about':                   '/about',
   'contact':                 '/contact',
@@ -117,6 +120,7 @@ const PAGE_TITLES: Record<Page, string> = {
   'careers':                 'Careers · FlyttGo',
   'press':                   'Press & Media · FlyttGo',
   'sustainability':          'Sustainability · FlyttGo',
+  'auth-callback':           'Signing you in… · FlyttGo',
   'not-found':               'Page Not Found · FlyttGo',
 };
 
@@ -192,6 +196,8 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     'Press & media kit for FlyttGo — quick facts, executive bios, brand assets and press contact.',
   'sustainability':
     'How FlyttGo makes moving greener — shared routes, EV fleet incentives, reusable moving kits and carbon offset on every booking.',
+  'auth-callback':
+    'Confirming your FlyttGo account and signing you in. You\u2019ll be redirected to your dashboard automatically.',
   'not-found':
     "The page you were looking for doesn't exist. Find what you need from the FlyttGo homepage, or book a move from any of our services.",
 };

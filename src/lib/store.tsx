@@ -15,6 +15,8 @@ export type Page =
   | 'careers' | 'press' | 'sustainability'
   /* Real-time delivery tracking + payment/escrow checkout. */
   | 'tracking' | 'payment'
+  /* Supabase auth post-confirmation / OAuth landing page. */
+  | 'auth-callback'
   /* Fallback for URLs that don't match any known route. */
   | 'not-found';
 

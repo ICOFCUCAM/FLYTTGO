@@ -21,7 +21,32 @@ if (!supabaseUrl || !supabaseKey) {
 export const SUPABASE_URL = supabaseUrl ?? '';
 export const SUPABASE_ANON_KEY = supabaseKey ?? '';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/**
+ * Single Supabase browser client for the whole app.
+ *
+ * The `auth` block is set explicitly (rather than relying on supabase-js v2
+ * defaults) so the production behaviour is obvious from the source:
+ *
+ *   - persistSession      → keep the session in localStorage so a refresh
+ *                           keeps the user signed in
+ *   - autoRefreshToken    → silently refresh expiring access tokens in the
+ *                           background so long sessions don't get bounced
+ *   - detectSessionInUrl  → pick up the access_token / refresh_token that
+ *                           Supabase appends to the URL hash on email
+ *                           confirmation + magic-link / OAuth callbacks
+ *                           (this is what makes /auth/callback work)
+ *   - flowType: 'pkce'    → PKCE code-exchange flow for OAuth and magic
+ *                           links — safer than the implicit grant and the
+ *                           Supabase-recommended default for SPAs
+ */
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession:     true,
+    autoRefreshToken:   true,
+    detectSessionInUrl: true,
+    flowType:           'pkce',
+  },
+});
 
 /**
  * Build a fully-qualified Supabase Edge Function URL.

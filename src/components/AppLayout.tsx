@@ -36,6 +36,7 @@ const PressPage          = lazy(() => import('../pages/PressPage'));
 const SustainabilityPage = lazy(() => import('../pages/SustainabilityPage'));
 const TrackingPage       = lazy(() => import('../pages/TrackingPage'));
 const PaymentPage        = lazy(() => import('../pages/PaymentPage'));
+const AuthCallbackPage   = lazy(() => import('../pages/auth/callback'));
 const NotFoundPage       = lazy(() => import('../pages/NotFoundPage'));
 const Footer             = lazy(() => import('./Footer'));
 
@@ -60,8 +61,11 @@ export default function AppLayout() {
   }, [currentPage]);
 
   const legalPages = ['terms', 'privacy', 'liability', 'driver-terms'];
-  const showHeader = true;
-  const showFooter = !['booking', 'driver-portal', 'admin'].includes(currentPage);
+  /* The auth callback page is a transient, full-screen landing surface
+   * for Supabase email-confirmation / OAuth redirects — chrome would
+   * just be visual noise during the ~100 ms session handoff. */
+  const showHeader = currentPage !== 'auth-callback';
+  const showFooter = !['booking', 'driver-portal', 'admin', 'auth-callback'].includes(currentPage);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -98,6 +102,7 @@ export default function AppLayout() {
       case 'sustainability':         return <SustainabilityPage />;
       case 'tracking':               return <TrackingPage />;
       case 'payment':                return <PaymentPage />;
+      case 'auth-callback':          return <AuthCallbackPage />;
       case 'not-found':              return <NotFoundPage />;
       default:                       return <NotFoundPage />;
     }
