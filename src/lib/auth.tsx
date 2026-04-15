@@ -40,6 +40,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error: any }>;
   signInWithApple: () => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ error: any }>;
+  resendConfirmation: (email: string) => Promise<{ error: any }>;
 
   signOut: () => Promise<void>;
 
@@ -276,6 +277,29 @@ async function resetPassword(email: string) {
   return { error };
 }
 
+/* ================= RESEND EMAIL CONFIRMATION =================
+ *
+ * Wraps supabase.auth.resend() for the 'signup' confirmation email
+ * type. AuthModal exposes this as a "Resend confirmation email"
+ * button when sign-in fails with the 'email_not_confirmed' code,
+ * so customers don't get stuck staring at an error with no path
+ * forward when they didn't see / lost the original confirmation
+ * email Supabase sent at signup.
+ *
+ * The redirectTo lands the user back on the booking page so they
+ * can continue checking out as soon as their email is verified.
+ */
+async function resendConfirmation(email: string) {
+  const { error } = await supabase.auth.resend({
+    type:    'signup',
+    email,
+    options: {
+      emailRedirectTo: `${window.location.origin}/book`,
+    },
+  });
+  return { error };
+}
+
 /* ================= UPDATE PROFILE ================= */
 
   async function updateProfile(
@@ -311,6 +335,7 @@ value={{
   signInWithGoogle,
   signInWithApple,
   resetPassword,
+  resendConfirmation,
   signOut,
   updateProfile,
 }}

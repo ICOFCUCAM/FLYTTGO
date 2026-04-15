@@ -41,7 +41,7 @@ function AppleIcon() {
 
 export default function AuthModal() {
   const { showAuthModal, setShowAuthModal, authMode, setAuthMode } = useApp();
-  const { signIn, signUp, signInWithGoogle, signInWithApple, resetPassword } = useAuth();
+  const { signIn, signUp, signInWithGoogle, signInWithApple, resetPassword, resendConfirmation } = useAuth();
   const { t } = useTranslation();
 
   const [email, setEmail]         = useState('');
@@ -60,6 +60,14 @@ export default function AuthModal() {
   const [forgotMode, setForgotMode] = useState(false);
   const [resetSent, setResetSent]   = useState(false);
 
+  /* Email-not-confirmed sub-flow. When sign-in fails because the
+   * customer never clicked the Supabase confirmation email link,
+   * we flip this on so the inline error banner renders a "Resend
+   * confirmation email" button instead of just dead-ending. */
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [resendingConfirmation, setResendingConfirmation] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
+
   // Reset transient state every time the modal is (re-)opened.
   useEffect(() => {
     if (showAuthModal) {
@@ -69,6 +77,9 @@ export default function AuthModal() {
       setSignupStep('choose');
       setForgotMode(false);
       setResetSent(false);
+      setNeedsConfirmation(false);
+      setResendingConfirmation(false);
+      setConfirmationSent(false);
     }
   }, [showAuthModal, authMode]);
 
@@ -79,11 +90,29 @@ export default function AuthModal() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setNeedsConfirmation(false);
+    setConfirmationSent(false);
     setLoading(true);
     try {
       if (isSignIn) {
         const { error } = await signIn(email, password);
-        if (error) { setError(error.message); return; }
+        if (error) {
+          /* Detect Supabase's email_not_confirmed error so we can
+           * show a "Resend confirmation email" button instead of a
+           * dead-end "Email not confirmed" text message. The error
+           * code lives at error.code in supabase-js v2; older
+           * versions only set the message string, so we fall back
+           * to a substring match. */
+          const code = (error as any)?.code ?? '';
+          const msg  = String(error.message ?? '').toLowerCase();
+          if (code === 'email_not_confirmed' || msg.includes('not confirmed') || msg.includes('email not confirmed')) {
+            setNeedsConfirmation(true);
+            setError('Your email address hasn\u2019t been verified yet. Check your inbox (including spam) for the confirmation link, or resend it below.');
+          } else {
+            setError(error.message);
+          }
+          return;
+        }
       } else {
         const { error } = await signUp(email, password, firstName, lastName, selectedRole);
         if (error) { setError(error.message); return; }
@@ -91,6 +120,26 @@ export default function AuthModal() {
       setShowAuthModal(false);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResendConfirmation() {
+    if (!email.trim()) {
+      setError('Please type your email address above first, then click Resend.');
+      return;
+    }
+    setResendingConfirmation(true);
+    setConfirmationSent(false);
+    try {
+      const { error } = await resendConfirmation(email);
+      if (error) {
+        setError(`Couldn\u2019t resend the confirmation email: ${error.message}`);
+        return;
+      }
+      setConfirmationSent(true);
+      setError('');
+    } finally {
+      setResendingConfirmation(false);
     }
   }
 
@@ -172,9 +221,41 @@ export default function AuthModal() {
               <div className="flex-1 h-px bg-gray-200" />
             </div>
 
+            {/* Error banner. When the cause is an unverified email,
+             * we render a "Resend confirmation email" button inside
+             * the banner so the customer has a one-click path
+             * forward instead of a dead-end. */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-sm mb-4">
-                {error}
+              <div className={`rounded-xl p-3 text-sm mb-4 ${
+                needsConfirmation
+                  ? 'bg-amber-50 border border-amber-200 text-amber-800'
+                  : 'bg-red-50 border border-red-200 text-red-600'
+              }`}>
+                <p className="leading-relaxed">{error}</p>
+                {needsConfirmation && !confirmationSent && (
+                  <button
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    disabled={resendingConfirmation}
+                    className="mt-3 px-4 py-2 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 transition disabled:opacity-60"
+                  >
+                    {resendingConfirmation ? 'Sending…' : 'Resend confirmation email'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Successful resend feedback. Separate from the error
+             * banner because the resend can succeed AFTER an error,
+             * at which point we want the user to see "check your
+             * inbox" not the original red error. */}
+            {confirmationSent && (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl p-3 text-sm mb-4">
+                <p className="font-semibold">Confirmation email sent</p>
+                <p className="text-xs mt-1 leading-relaxed">
+                  Check your inbox for <strong>{email}</strong> (including the spam folder).
+                  Click the link in the email, then come back here and sign in.
+                </p>
               </div>
             )}
 
