@@ -303,6 +303,11 @@ export default function AdminDashboard() {
   }
 
   async function handleApplication(applicationId: string, action: string) {
+    /* reviewed_by is a FK to auth.users(id), so we need a real
+     * admin user id before we can write the review. If the session
+     * has silently dropped, bail early — the admin panel will show
+     * the "access required" screen on next render anyway. */
+    if (!user) return;
     const { data: app } = await supabase.from("driver_applications").select("*").eq("id", applicationId).single();
     if (!app) return;
 
@@ -326,10 +331,12 @@ export default function AdminDashboard() {
 
     /* Capture the audit trail: who reviewed + when. reviewed_by
      * references auth.users; reviewed_at is a timestamptz. Both
-     * columns are added by docs/fix-driver-onboarding-pipeline.sql. */
+     * columns are added by docs/fix-driver-onboarding-pipeline.sql.
+     * user.id is guaranteed non-null here because of the guard
+     * at the top of this function. */
     const reviewPayload: Record<string, any> = {
       status:      action,
-      reviewed_by: user?.id ?? null,
+      reviewed_by: user.id,
       reviewed_at: new Date().toISOString(),
     };
     if (action === "rejected") {

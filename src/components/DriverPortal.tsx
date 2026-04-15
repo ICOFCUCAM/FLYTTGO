@@ -135,20 +135,40 @@ export default function DriverPortal() {
 
   useEffect(() => {
     if (!user) return;
-    enforceSubscriptionExpiry();
-    loadApplication();
-    loadDriver();
+    /* Load application + driver profile + expiry enforcement in
+     * parallel, then flip loading=false ONCE. Doing this in parallel
+     * avoids a flicker where the gate would briefly evaluate with
+     * `application=null, driver=row, loading=false` whenever
+     * loadDriver happened to return before loadApplication. */
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      try {
+        await enforceSubscriptionExpiry();
+        await Promise.all([loadApplication(), loadDriver()]);
+      } catch (e) {
+        console.error('[DriverPortal] initial load failed', e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [user?.id]);
   useEffect(() => { if (!driver) return; loadWallet(); loadJobs(); loadTransactions(); loadSubscription(); }, [driver]);
 
-  /* Auto-flip to the subscription tab when a driver lands in the
-   * portal without an active subscription. They'll still see the
-   * portal chrome and can change tabs, but the first thing they
-   * see is the plan picker. */
+  /* Auto-flip to the subscription tab when an approved driver lands
+   * in the portal without an active subscription. The check has to
+   * work both when subscription is null (brand new driver who's
+   * never subscribed to anything) AND when subscription exists but
+   * is inactive / expired. We explicitly do NOT guard on
+   * !subscription here — that would skip the flip for the most
+   * common case of a just-approved driver. */
   useEffect(() => {
-    if (!driver || !subscription) return;
+    if (!driver) return;
     if (driver.status === 'suspended') return;
-    if (subscription.subscription_status !== 'active' && activeTab !== 'subscription') {
+    const needsSubscription =
+      !subscription || subscription.subscription_status !== 'active';
+    if (needsSubscription && activeTab !== 'subscription') {
       setActiveTab('subscription');
     }
     // Intentionally omit activeTab from deps — we only want this to
@@ -214,8 +234,19 @@ export default function DriverPortal() {
   }
 
   async function loadDriver() {
-    const { data } = await supabase.from('driver_profiles').select('*').eq('user_id', profile.id).maybeSingle();
-    setLoading(false);
+    /* driver_profiles.user_id is a FK to auth.users.id — use
+     * user.id, NOT profile.id. profile.id is the profiles row's own
+     * primary key (separate uuid generated at profile creation)
+     * and does not match the driver_profiles foreign key. The old
+     * query silently returned no rows for any user whose profile
+     * was created by the handle_new_user trigger, making approved
+     * drivers look like they had no driver profile. */
+    if (!user) return;
+    const { data } = await supabase
+      .from('driver_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
     if (!data) return;
     setDriver(data); setOnline(data.online || false);
   }
@@ -244,7 +275,19 @@ export default function DriverPortal() {
 
   async function loadSubscription() {
     if (!user) return;
-    const { data } = await supabase.from('driver_subscriptions').select('*').eq('driver_id', user.id).order('created_at', { ascending: false }).limit(1).single();
+    /* .maybeSingle() — a brand-new approved driver has no
+     * driver_subscriptions row yet, and .single() would throw
+     * PGRST116 ("no rows returned"). .maybeSingle() returns
+     * { data: null } for that case, which our gate then maps to
+     * 'subscription-needed' and auto-flips to the subscription
+     * tab. */
+    const { data } = await supabase
+      .from('driver_subscriptions')
+      .select('*')
+      .eq('driver_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
     setSubscription(data ?? null);
   }
 

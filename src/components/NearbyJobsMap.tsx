@@ -19,7 +19,7 @@
  * paid by drivers who don't open the jobs tab.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L, { LatLngBounds, LatLngTuple } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -197,8 +197,14 @@ export default function NearbyJobsMap({ jobs, onAccept, className = '', height =
             ? [job.dropoff_lat as number, job.dropoff_lng as number]
             : null;
 
+          /* React.Fragment (not a plain div) because react-leaflet
+           * Marker / Popup / Polyline are rendered into the Leaflet
+           * map's layer tree via React context — wrapping them in a
+           * real DOM element would create an orphan empty <div>
+           * inside MapContainer's DOM root and is an invalid child
+           * pattern. Fragment passes them through cleanly. */
           return (
-            <div key={job.id}>
+            <React.Fragment key={job.id}>
               <Marker position={pickup} icon={pickupIcon}>
                 <Popup>
                   <div className="text-xs space-y-1 min-w-[200px]">
@@ -239,7 +245,7 @@ export default function NearbyJobsMap({ jobs, onAccept, className = '', height =
                   <Polyline positions={[pickup, dropoff]} color="#6b7280" weight={2} dashArray="4 6" />
                 </>
               )}
-            </div>
+            </React.Fragment>
           );
         })}
       </MapContainer>

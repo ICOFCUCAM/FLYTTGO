@@ -40,7 +40,7 @@ export default function SubscriptionPlans() {
      * the role somehow isn't set yet. */
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('driver_applications')
         .select('status')
         .eq('user_id', user.id)
@@ -49,6 +49,16 @@ export default function SubscriptionPlans() {
         .maybeSingle();
 
       if (cancelled) return;
+
+      /* On error (network, RLS denial, etc.) fail open to the
+       * not-applied branch so the user sees an actionable CTA
+       * instead of an indefinite spinner. The button will route
+       * them to /become-a-driver where they can retry. */
+      if (error) {
+        console.error('[SubscriptionPlans] gate query failed:', error);
+        setGate('not-applied');
+        return;
+      }
 
       if (!data)                       setGate('not-applied');
       else if (data.status === 'approved') setGate('approved');
