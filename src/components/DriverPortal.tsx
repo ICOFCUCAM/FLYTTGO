@@ -351,7 +351,41 @@ export default function DriverPortal() {
     setChangingPlan(null);
   }
 
-  async function acceptJob(job: any) { await supabase.from('bookings').update({ driver_id: driver.id, status: 'driver_assigned' }).eq('id', job.id); loadJobs(); }
+  async function acceptJob(job: any) {
+    /* Race-safe accept: use a compare-and-swap UPDATE that only
+     * succeeds if the booking is STILL unassigned at the moment
+     * the UPDATE hits the DB. Two drivers clicking Accept on the
+     * same pool job will race — only the one whose UPDATE matches
+     * an unassigned row wins; the other gets 0 rows back and sees
+     * a friendly "job was taken" alert.
+     *
+     * Without the `.is('driver_id', null)` guard + `.select()`,
+     * Postgres would happily let both drivers UPDATE the row
+     * sequentially and the second write would silently overwrite
+     * the first driver's assignment, leaving them with a ghost
+     * job they don't actually own. */
+    const { data: won, error } = await supabase
+      .from('bookings')
+      .update({ driver_id: driver.id, status: 'driver_assigned' })
+      .eq('id', job.id)
+      .is('driver_id', null)
+      .select('id');
+
+    if (error) {
+      alert('Accept failed: ' + error.message);
+      return;
+    }
+
+    if (!won || won.length === 0) {
+      /* Another driver beat us to it. Refresh the job list so the
+       * now-taken job disappears from our pool view. */
+      alert('Another driver already accepted this job.');
+      loadJobs();
+      return;
+    }
+
+    loadJobs();
+  }
   async function startJob(jobId: string) { await supabase.from('bookings').update({ status: 'in_transit', start_time: new Date().toISOString() }).eq('id', jobId); loadJobs(); }
   async function finishJob(jobId: string) {
     // 'completed' is the only valid end state in the bookings status CHECK

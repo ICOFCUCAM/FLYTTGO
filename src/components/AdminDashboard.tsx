@@ -481,6 +481,30 @@ export default function AdminDashboard() {
     loadData();
   }
 
+  /* ── Reclaim stale dispatches ─────────────────────────────
+   * Reverts bookings that are stuck in status='driver_assigned'
+   * with no start_time set (driver never pressed Start) and
+   * whose latest dispatch notification is older than 5 min.
+   * Hands them back to the pending pool so the marketplace can
+   * re-dispatch them. The SQL function also logs each reclaim
+   * event into dispatch_logs with response='stale_reclaimed'
+   * for audit. */
+  async function reclaimStaleDispatches() {
+    if (!confirm("Reclaim stale dispatches? Any booking that was assigned to a driver but never started (idle > 5 min) will revert to pending so another driver can take it.")) return;
+    const { data, error } = await supabase.rpc("reclaim_stale_dispatches", { p_timeout_minutes: 5 });
+    if (error) {
+      alert("Reclaim failed: " + error.message);
+      return;
+    }
+    const n = Number(data ?? 0);
+    alert(
+      n === 0
+        ? "No stale dispatches found. Marketplace is clean."
+        : `Reclaimed ${n} stale booking${n === 1 ? "" : "s"} back to the pending pool.`
+    );
+    loadData();
+  }
+
   async function handleApplication(applicationId: string, action: string) {
     /* reviewed_by is a FK to auth.users(id), so we need a real
      * admin user id before we can write the review. If the session
@@ -745,14 +769,23 @@ export default function AdminDashboard() {
 
         {tab === "bookings" && (
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <h1 className="text-xl font-bold">Bookings ({bookings.length})</h1>
-              <button
-                onClick={exportBookingsCsv}
-                className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded text-xs font-semibold"
-              >
-                Export CSV
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={reclaimStaleDispatches}
+                  className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded text-xs font-semibold"
+                  title="Revert any driver_assigned booking that has been idle > 5 min back to pending so another driver can pick it up"
+                >
+                  Reclaim Stale
+                </button>
+                <button
+                  onClick={exportBookingsCsv}
+                  className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded text-xs font-semibold"
+                >
+                  Export CSV
+                </button>
+              </div>
             </div>
             <table className="w-full bg-white rounded shadow">
               <thead className="bg-gray-100"><tr><th className="p-3 text-left">Route</th><th className="p-3 text-left">Status</th><th className="p-3 text-left">Price</th><th className="p-3 text-left">Payment</th><th className="p-3 text-left">Actions</th></tr></thead>

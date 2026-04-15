@@ -327,6 +327,65 @@ GRANT EXECUTE ON FUNCTION public.dispatch_rank_candidates(uuid) TO authenticated
 
 
 -- ----------------------------------------------------------------------------
+-- 3a. reclaim_stale_dispatches — self-healing for abandoned assignments
+-- ----------------------------------------------------------------------------
+-- Reverts any booking that was assigned to a driver but never actually
+-- started (no start_time) AND whose most recent dispatch notification is
+-- older than the timeout window. Hands the booking back to the pending
+-- pool so other drivers can see it in their marketplace view.
+--
+-- Called automatically at the top of dispatch_assign_best_driver so every
+-- new dispatch self-heals stale ones first. Also exposed as a plain RPC
+-- the admin dashboard can call via a one-click button in the Bookings tab.
+--
+-- Returns the number of bookings reclaimed.
+
+CREATE OR REPLACE FUNCTION public.reclaim_stale_dispatches(p_timeout_minutes integer DEFAULT 5)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_reclaimed integer := 0;
+  v_cutoff    timestamptz := now() - (p_timeout_minutes || ' minutes')::interval;
+BEGIN
+  WITH stale AS (
+    SELECT b.id
+      FROM public.bookings b
+      JOIN LATERAL (
+        SELECT notification_sent_at
+          FROM public.dispatch_logs
+         WHERE booking_id = b.id
+           AND driver_id IS NOT NULL
+         ORDER BY notification_sent_at DESC
+         LIMIT 1
+      ) last_log ON true
+     WHERE b.status = 'driver_assigned'
+       AND b.start_time IS NULL
+       AND b.driver_id IS NOT NULL
+       AND last_log.notification_sent_at < v_cutoff
+  ),
+  reverted AS (
+    UPDATE public.bookings b
+       SET driver_id = NULL,
+           status    = 'pending'
+      FROM stale s
+     WHERE b.id = s.id
+    RETURNING b.id, b.driver_id
+  )
+  INSERT INTO public.dispatch_logs (booking_id, driver_id, dispatch_score, notification_sent_at, response)
+  SELECT id, driver_id, 0, now(), 'stale_reclaimed' FROM reverted;
+
+  GET DIAGNOSTICS v_reclaimed = ROW_COUNT;
+  RETURN v_reclaimed;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.reclaim_stale_dispatches(integer) TO authenticated;
+
+
+-- ----------------------------------------------------------------------------
 -- 4. dispatch_assign_best_driver — atomic assign + notify + log
 -- ----------------------------------------------------------------------------
 -- Picks the top candidate from dispatch_rank_candidates, updates the
@@ -356,6 +415,12 @@ DECLARE
   v_top            RECORD;
   v_result         jsonb;
 BEGIN
+  /* Self-heal: reclaim stale assignments across the platform before
+   * we pick a new candidate. This means every new dispatch (whether
+   * triggered by payment capture or an admin retry) cleans up the
+   * marketplace first. Default window = 5 minutes. */
+  PERFORM public.reclaim_stale_dispatches(5);
+
   /* Load + guard: the booking must exist and still be unassigned. */
   SELECT * INTO v_booking FROM public.bookings WHERE id = p_booking_id;
   IF NOT FOUND THEN

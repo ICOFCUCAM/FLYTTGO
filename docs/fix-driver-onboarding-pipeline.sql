@@ -120,8 +120,26 @@ CREATE POLICY driver_documents_self_delete ON public.driver_documents
 
 
 -- ----------------------------------------------------------------------------
--- 4. Storage: driver-documents bucket policies
+-- 4. Storage: driver-documents bucket + policies
 -- ----------------------------------------------------------------------------
+-- The bucket itself must exist before any policy or upload will work.
+-- Previously this file assumed AdminDashboard had already created it via
+-- the Supabase dashboard UI — but on a fresh project that never happens
+-- and DriverOnboarding hits "Bucket not found" on first upload. Create
+-- it idempotently here with the right limits + allowed mime types so
+-- the entire driver-document flow works on a fresh install.
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'driver-documents',
+  'driver-documents',
+  false,                                         -- private bucket
+  10 * 1024 * 1024,                              -- 10 MB limit matching the UI
+  ARRAY['image/jpeg','image/png','application/pdf']
+)
+ON CONFLICT (id) DO UPDATE SET
+  file_size_limit    = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
 -- Supabase Storage access control lives in storage.objects.
 --
 -- Convention: we store files at '{user_id}/{document_type}.{ext}' — the
