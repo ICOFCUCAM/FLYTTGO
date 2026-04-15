@@ -51,7 +51,7 @@ function safeNum(v: any): number {
 
 export default function BookingFlow() {
   const { profile, user } = useAuth();
-  const { bookingData, setBookingData, setPage } = useApp();
+  const { bookingData, setBookingData, setPage, setShowAuthModal, setAuthMode } = useApp();
   const { t } = useTranslation();
 
   const [step, setStep] = useState(1);
@@ -297,6 +297,16 @@ export default function BookingFlow() {
       return;
     }
     if (!user) {
+      /* Auto-open the sign-in modal instead of just showing a
+       * "please sign in" message and leaving the customer to figure
+       * out where to click. They've already filled out 6 steps —
+       * every extra friction point here loses us a booking.
+       * BookingData (addresses, inventory, pricing, etc.) lives in
+       * the app store so it survives the auth modal opening and
+       * closing, and after signing in they just click Confirm & Pay
+       * again with all their work intact. */
+      setAuthMode('signin');
+      setShowAuthModal(true);
       setError('Please sign in to complete your booking.');
       return;
     }
@@ -489,6 +499,34 @@ export default function BookingFlow() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-8">
+        {/* Persistent sign-in hint for unsigned visitors. Rather
+         * than letting them fill out all 6 steps and blocking at
+         * the final submit, show an inline banner upfront on every
+         * step with a one-click "Sign in" button that opens the
+         * auth modal. BookingData (addresses, inventory, etc.)
+         * lives in the app store so it survives the modal open/
+         * close cycle — after signing in their work is still here. */}
+        {!user && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center gap-3">
+            <svg className="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-blue-900">Sign in to complete your booking</p>
+              <p className="text-xs text-blue-700 mt-0.5">
+                You can fill in all the details now — we&apos;ll ask you to sign in before you confirm payment.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setAuthMode('signin'); setShowAuthModal(true); }}
+              className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
+            >
+              Sign In
+            </button>
+          </div>
+        )}
+
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm flex items-center gap-2">
             <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -970,14 +1008,29 @@ export default function BookingFlow() {
                * other steps) but on Step 6 the customer is usually
                * scrolled to the bottom, so they would miss a
                * top-only error. Duplicating it here makes any submit
-               * failure immediately visible. */}
+               * failure immediately visible.
+               *
+               * Special-case the "sign in" error: show a big Sign In
+               * button in the banner itself so the customer can one-
+               * click their way out of it without hunting for the
+               * top-of-page banner. */}
               {error && (
                 <div className="mb-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
                   <p className="font-semibold">Booking failed</p>
                   <p className="text-red-600 text-xs mt-1 break-words">{error}</p>
-                  <p className="text-red-500 text-[10px] mt-2">
-                    Open DevTools (F12) → Console tab for the full error details.
-                  </p>
+                  {!user ? (
+                    <button
+                      type="button"
+                      onClick={() => { setAuthMode('signin'); setShowAuthModal(true); }}
+                      className="mt-3 px-4 py-2 bg-[#0B2E59] text-white rounded-lg text-xs font-semibold hover:bg-[#1a4a8a] transition"
+                    >
+                      Sign in to continue →
+                    </button>
+                  ) : (
+                    <p className="text-red-500 text-[10px] mt-2">
+                      Open DevTools (F12) → Console tab for the full error details.
+                    </p>
+                  )}
                 </div>
               )}
 
