@@ -440,6 +440,47 @@ export default function AdminDashboard() {
     loadData();
   }
 
+  /* ── Auto dispatch (scoring engine) ───────────────────────
+   * Calls public.dispatch_assign_best_driver which runs the
+   * scoring query inside Postgres, picks the top-scoring
+   * available driver, writes dispatch_logs + notifications,
+   * and atomically assigns the booking. Returns a jsonb with
+   * success + driver details OR a reason for the failure
+   * ('no_candidates', 'already_assigned', etc.).
+   *
+   * This is the one-click alternative to the manual Dispatch
+   * modal — use when the admin trusts the engine to pick the
+   * right driver and just wants to kick off the flow. The
+   * engine also runs automatically when payment is captured
+   * (via trg_dispatch_on_payment_captured), so admins usually
+   * only touch this button for retries or overrides. */
+  async function autoDispatchBooking(bookingId: string) {
+    if (!confirm("Run auto-dispatch on this booking? The engine will pick the best-scoring available driver and assign them immediately.")) return;
+    const { data, error } = await supabase.rpc("dispatch_assign_best_driver", { p_booking_id: bookingId });
+    if (error) {
+      alert("Auto-dispatch failed: " + error.message);
+      return;
+    }
+    const result = data as any;
+    if (result?.success) {
+      alert(
+        `Assigned to ${result.driver_name ?? result.driver_id}\n` +
+        `Score: ${Number(result.score ?? 0).toFixed(1)}\n` +
+        `Distance: ${Number(result.distance_km ?? 0).toFixed(1)} km\n` +
+        `Same city: ${result.same_city ? "yes" : "no"}`
+      );
+    } else {
+      const reasonMsg: Record<string, string> = {
+        no_candidates:         "No eligible drivers found within 15 km. Use manual Dispatch to override.",
+        booking_not_found:     "Booking no longer exists.",
+        already_assigned:      "This booking already has a driver.",
+        race_already_assigned: "Another dispatch beat us to it — refresh to see the result.",
+      };
+      alert("Dispatch not completed: " + (reasonMsg[result?.reason] ?? result?.reason ?? "unknown"));
+    }
+    loadData();
+  }
+
   async function handleApplication(applicationId: string, action: string) {
     /* reviewed_by is a FK to auth.users(id), so we need a real
      * admin user id before we can write the review. If the session
@@ -727,16 +768,35 @@ export default function AdminDashboard() {
                       </span>
                     </td>
                     <td className="p-3 flex gap-2 flex-wrap">
-                      {/* Manual dispatch — only shown for unassigned,
-                       * non-cancelled bookings. Opens a modal where
-                       * the admin picks a driver to force-assign. */}
+                      {/* Auto Dispatch — runs the scoring engine
+                       * (public.dispatch_assign_best_driver) and
+                       * assigns the best-scoring eligible driver in
+                       * one click. The backend trigger already runs
+                       * this automatically when payment is captured,
+                       * but admins can re-trigger it here for
+                       * retries. Only shown for unassigned,
+                       * non-terminal bookings. */}
                       {!b.driver_id && b.status !== "cancelled" && b.status !== "completed" && (
-                        <button
-                          onClick={() => { setDispatchBooking(b); setDispatchDriverId(""); }}
-                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 text-xs rounded"
-                        >
-                          Dispatch
-                        </button>
+                        <>
+                          <button
+                            onClick={() => autoDispatchBooking(b.id)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1 text-xs rounded"
+                            title="Use the scoring engine to pick the best available driver automatically"
+                          >
+                            Auto Dispatch
+                          </button>
+                          {/* Manual dispatch — opens a modal where
+                           * the admin picks a specific driver to
+                           * force-assign, bypassing the scoring
+                           * engine. Use for overrides. */}
+                          <button
+                            onClick={() => { setDispatchBooking(b); setDispatchDriverId(""); }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 text-xs rounded"
+                            title="Pick a specific driver to force-assign this booking"
+                          >
+                            Manual
+                          </button>
+                        </>
                       )}
                       <button disabled={b.payment_status === "released"} onClick={() => releasePayment(b)} className={`px-2 py-1 text-xs rounded text-white ${b.payment_status === "released" ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"}`}>{b.payment_status === "released" ? "Released ✅" : "Release"}</button>
                       <button onClick={() => refundPayment(b)} className="bg-red-600 text-white px-2 py-1 text-xs rounded">Refund</button>
