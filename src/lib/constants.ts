@@ -23,13 +23,13 @@ export const IMAGES = {
 };
 
 export const HERO_SLIDES = [
-  { image: IMAGES.hero.truck,    title: 'Smart Moving & Transport Services',        subtitle: 'Book professional movers and cargo transport in seconds. Real-time tracking, transparent pricing, and verified drivers across Norway.', cta: 'Book a Van' },
-  { image: IMAGES.hero.students, title: 'Student Moving Made Simple',               subtitle: 'Affordable moving solutions for students and small apartments. Fast, reliable, and budget-friendly.', cta: 'Get Price Estimate' },
-  { image: IMAGES.hero.office,   title: 'Business Logistics & Office Moving',       subtitle: 'Professional moving services for offices and commercial logistics. Trusted by businesses across Norway.', cta: 'Schedule Delivery' },
-  { image: IMAGES.hero.truck1,   title: 'Smart Moving & Transport Services',        subtitle: 'Book professional movers and cargo transport in seconds. Real-time tracking, transparent pricing, and verified drivers across Norway.', cta: 'Book a Van' },
-  { image: IMAGES.hero.students1,title: 'Student Moving Made Simple',               subtitle: 'Affordable moving solutions for students and small apartments. Fast, reliable, and budget-friendly.', cta: 'Get Price Estimate' },
-  { image: IMAGES.hero.truck2,   title: 'Smart Moving & Transport Services',        subtitle: 'Book professional movers and cargo transport in seconds. Real-time tracking, transparent pricing, and verified drivers across Norway.', cta: 'Book a Van' },
-  { image: IMAGES.hero.office,   title: 'Business Logistics & Office Moving',       subtitle: 'Professional moving services for offices and commercial logistics. Trusted by businesses across Norway.', cta: 'Schedule Delivery' },
+  { key: 'Smart',    image: IMAGES.hero.truck,     title: 'Smart Moving & Transport Services',        subtitle: 'Book professional movers and cargo transport in seconds. Real-time tracking, transparent pricing, and verified drivers across Norway.', cta: 'Book a Van' },
+  { key: 'Student',  image: IMAGES.hero.students,  title: 'Student Moving Made Simple',               subtitle: 'Affordable moving solutions for students and small apartments. Fast, reliable, and budget-friendly.', cta: 'Get Price Estimate' },
+  { key: 'Business', image: IMAGES.hero.office,    title: 'Business Logistics & Office Moving',       subtitle: 'Professional moving services for offices and commercial logistics. Trusted by businesses across Norway.', cta: 'Schedule Delivery' },
+  { key: 'Smart',    image: IMAGES.hero.truck1,    title: 'Smart Moving & Transport Services',        subtitle: 'Book professional movers and cargo transport in seconds. Real-time tracking, transparent pricing, and verified drivers across Norway.', cta: 'Book a Van' },
+  { key: 'Student',  image: IMAGES.hero.students1, title: 'Student Moving Made Simple',               subtitle: 'Affordable moving solutions for students and small apartments. Fast, reliable, and budget-friendly.', cta: 'Get Price Estimate' },
+  { key: 'Smart',    image: IMAGES.hero.truck2,    title: 'Smart Moving & Transport Services',        subtitle: 'Book professional movers and cargo transport in seconds. Real-time tracking, transparent pricing, and verified drivers across Norway.', cta: 'Book a Van' },
+  { key: 'Business', image: IMAGES.hero.office,    title: 'Business Logistics & Office Moving',       subtitle: 'Professional moving services for offices and commercial logistics. Trusted by businesses across Norway.', cta: 'Schedule Delivery' },
 ];
 
 export const VAN_TYPES = [

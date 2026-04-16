@@ -37,12 +37,16 @@ function HeroSlider() {
               <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
               <span className="text-emerald-300 text-sm font-medium">{t('home.heroBadge')}</span>
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">{slide.title}</h1>
-            <p className="text-lg text-gray-200 mb-8 max-w-lg">{slide.subtitle}</p>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">
+              {t(`home.slide${slide.key}Title`, slide.title)}
+            </h1>
+            <p className="text-lg text-gray-200 mb-8 max-w-lg">
+              {t(`home.slide${slide.key}Sub`, slide.subtitle)}
+            </p>
             <div className="flex flex-wrap gap-4">
               <button onClick={() => setPage('booking')}
                 className="px-8 py-3.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition shadow-lg shadow-emerald-600/30">
-                {slide.cta}
+                {t(`home.slide${slide.key}Cta`, slide.cta)}
               </button>
               <button onClick={() => setPage('van-guide')}
                 className="px-8 py-3.5 bg-white/10 backdrop-blur-sm text-white rounded-xl font-semibold hover:bg-white/20 transition border border-white/20">
@@ -302,32 +306,33 @@ function StatsSection() {
 /* ── SERVICES SECTION ── */
 function ServicesSection() {
   const { setPage } = useApp();
+  const { t } = useTranslation();
   const services = [
-    { name: 'Moving Services',     desc: 'Full house and apartment moving with professional movers and vehicles.', image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254153053_d6599513.jpg', iconPath: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-    { name: 'Furniture Transport', desc: 'Safe transport for individual furniture pieces and sets.', image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254286622_a82a1d1b.jpg', iconPath: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
-    { name: 'Office Relocation',   desc: 'Complete office moving with minimal business disruption.', image: 'https://d64gsuwffb70l.cloudfront.net/69b4405628b40c8fdc7aad59_1773420953628_819790d3.png', iconPath: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
-    { name: 'Same-Day Delivery',   desc: 'Urgent deliveries completed within the same day.', image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254193383_798495ed.jpg', iconPath: 'M13 10V3L4 14h7v7l9-11h-7z' },
-    { name: 'Student Moving',      desc: 'Affordable moving packages designed for students.', image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254266530_893474f8.jpg', iconPath: 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z' },
-    { name: 'Cargo Delivery',      desc: 'Commercial cargo and goods transportation services.', image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254050705_a292f56d.jpg', iconPath: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+    { nameKey: 'serviceMoving',    descKey: 'serviceMovingDesc',    image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254153053_d6599513.jpg', iconPath: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+    { nameKey: 'serviceFurniture', descKey: 'serviceFurnitureDesc', image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254286622_a82a1d1b.jpg', iconPath: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
+    { nameKey: 'serviceOffice',    descKey: 'serviceOfficeDesc',    image: 'https://d64gsuwffb70l.cloudfront.net/69b4405628b40c8fdc7aad59_1773420953628_819790d3.png', iconPath: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+    { nameKey: 'serviceSameDay',   descKey: 'serviceSameDayDesc',   image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254193383_798495ed.jpg', iconPath: 'M13 10V3L4 14h7v7l9-11h-7z' },
+    { nameKey: 'serviceStudent',   descKey: 'serviceStudentDesc',   image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254266530_893474f8.jpg', iconPath: 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z' },
+    { nameKey: 'serviceStorage',   descKey: 'serviceStorageDesc',   image: 'https://d64gsuwffb70l.cloudfront.net/69b1b470fdd1af7483a60acc_1773254050705_a292f56d.jpg', iconPath: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
   ];
 
   return (
     <section id="services-section" className="py-20 bg-gray-50">
       <div className="max-w-6xl mx-auto px-4">
-        <h2 className="text-3xl font-bold text-center mb-4">Our Services</h2>
-        <p className="text-gray-600 max-w-2xl mx-auto text-lg text-center mb-12">From single item deliveries to full office relocations, FlyttGo connects you with verified drivers for all your logistics needs.</p>
+        <h2 className="text-3xl font-bold text-center mb-4">{t('services.sectionTitle')}</h2>
+        <p className="text-gray-600 max-w-2xl mx-auto text-lg text-center mb-12">{t('services.sectionSubtitle')}</p>
         <div className="grid md:grid-cols-3 gap-6">
           {services.map(service => (
-            <div key={service.name} className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 group cursor-pointer" onClick={() => setPage('booking')}>
+            <div key={service.nameKey} className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 group cursor-pointer" onClick={() => setPage('booking')}>
               <div className="relative h-44 overflow-hidden">
-                <img src={service.image} alt={service.name} width={600} height={352} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
+                <img src={service.image} alt={t(`home.${service.nameKey}`)} width={600} height={352} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"/>
                 <div className="absolute bottom-3 left-3 w-9 h-9 bg-white rounded-xl flex items-center justify-center shadow-md">
                   <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={service.iconPath}/></svg>
                 </div>
               </div>
               <div className="p-5">
-                <h3 className="font-semibold text-lg mb-2">{service.name}</h3>
-                <p className="text-gray-600 text-sm">{service.desc}</p>
+                <h3 className="font-semibold text-lg mb-2">{t(`home.${service.nameKey}`)}</h3>
+                <p className="text-gray-600 text-sm">{t(`home.${service.descKey}`)}</p>
               </div>
             </div>
           ))}
@@ -351,8 +356,8 @@ function HowItWorks() {
           {HOW_IT_WORKS.map(item => (
             <div key={item.step} className="text-center">
               <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 shadow-lg shadow-emerald-600/30">{item.step}</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
-              <p className="text-sm text-gray-600">{item.description}</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t(`home.how${item.step}Title`, item.title)}</h3>
+              <p className="text-sm text-gray-600">{t(`home.how${item.step}Desc`, item.description)}</p>
             </div>
           ))}
         </div>
@@ -438,12 +443,13 @@ function MovingToolsSection() {
 /* ── CITIES ── */
 function CitiesSection() {
   const { setPage } = useApp();
+  const { t } = useTranslation();
   return (
     <section className="py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Cities We Serve</h2>
-          <p className="text-lg text-gray-600">Professional moving services across Norway</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{t('home.citiesSectionTitle')}</h2>
+          <p className="text-lg text-gray-600">{t('home.citiesSectionSub')}</p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {CITIES.map(city => (
@@ -451,10 +457,10 @@ function CitiesSection() {
               <img src={city.image} alt={city.name} width={600} height={450} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-110 transition duration-700"/>
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"/>
               <div className="absolute bottom-0 left-0 right-0 p-5">
-                <h3 className="text-xl font-bold text-white mb-1">Flyttehjelp {city.name}</h3>
+                <h3 className="text-xl font-bold text-white mb-1">{t('home.cityMovingHelp')} {city.name}</h3>
                 <div className="flex items-center gap-3 text-sm text-gray-200">
-                  <span>{city.drivers} drivers</span>
-                  <span>{city.bookings} bookings</span>
+                  <span>{city.drivers} {t('home.cityDrivers')}</span>
+                  <span>{city.bookings} {t('home.cityBookings')}</span>
                 </div>
               </div>
             </button>
@@ -467,26 +473,28 @@ function CitiesSection() {
 
 /* ── TESTIMONIALS ── */
 function TestimonialsSection() {
+  const { t } = useTranslation();
   return (
     <section className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">What Our Customers Say</h2>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{t('home.testimonialsTitle')}</h2>
+          <p className="text-lg text-gray-600">{t('home.testimonialsSub')}</p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {TESTIMONIALS.map((t, i) => (
+          {TESTIMONIALS.map((item, i) => (
             <div key={i} className="bg-white rounded-xl p-6 border border-gray-100">
               <div className="flex gap-1 mb-3">
                 {[...Array(5)].map((_, j) => (
-                  <svg key={j} className={`w-5 h-5 ${j < t.rating ? 'text-amber-400' : 'text-gray-200'}`} fill="currentColor" viewBox="0 0 20 20">
+                  <svg key={j} className={`w-5 h-5 ${j < item.rating ? 'text-amber-400' : 'text-gray-200'}`} fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                   </svg>
                 ))}
               </div>
-              <p className="text-sm text-gray-600 mb-4">"{t.text}"</p>
+              <p className="text-sm text-gray-600 mb-4">"{t(`home.testimonial${i}`, item.text)}"</p>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-semibold text-sm">{t.name[0]}</div>
-                <div><p className="text-sm font-semibold text-gray-900">{t.name}</p><p className="text-xs text-gray-500">{t.city}</p></div>
+                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-semibold text-sm">{item.name[0]}</div>
+                <div><p className="text-sm font-semibold text-gray-900">{item.name}</p><p className="text-xs text-gray-500">{item.city}</p></div>
               </div>
             </div>
           ))}

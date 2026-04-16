@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { useApp } from "../lib/store";
 import { supabase, supabaseFunctionUrl } from "../lib/supabase";
@@ -38,6 +39,7 @@ function fmt(value: any): string {
 export default function CustomerDashboard() {
   const { profile, user } = useAuth();
   const { setPage } = useApp();
+  const { t } = useTranslation();
   const [stats, setStats] = useState({ total: 0, active: 0, completed: 0, spent: 0 });
   const [recentBookings, setRecentBookings] = useState<any[]>([]);
   const [activeBooking, setActiveBooking] = useState<any>(null);
@@ -149,11 +151,11 @@ export default function CustomerDashboard() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {profile?.first_name || "Customer"}</h1>
-          <p className="text-gray-600 mt-1">Track your move in real time</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('dashboard.welcome', { name: profile?.first_name || 'Customer' })}</h1>
+          <p className="text-gray-600 mt-1">{t('dashboard.trackMove')}</p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[{ label: "Total Bookings", value: stats.total }, { label: "Active", value: stats.active }, { label: "Completed", value: stats.completed }, { label: "Total Spent", value: `${fmt(stats.spent)} NOK` }].map(s => (
+          {[{ label: t('dashboard.totalBookings'), value: stats.total }, { label: t('dashboard.active'), value: stats.active }, { label: t('dashboard.completed'), value: stats.completed }, { label: t('dashboard.totalSpent'), value: `${fmt(stats.spent)} NOK` }].map(s => (
             <div key={s.label} className="bg-white rounded-xl p-5 border">
               <p className="text-sm text-gray-500">{s.label}</p>
               <p className="text-2xl font-bold">{s.value}</p>
@@ -162,7 +164,7 @@ export default function CustomerDashboard() {
         </div>
         {activeBooking && (
           <div className="bg-white rounded-xl border p-6 mb-8">
-            <h2 className="text-lg font-bold mb-4">Active Booking</h2>
+            <h2 className="text-lg font-bold mb-4">{t('dashboard.activeBooking')}</h2>
             {/* Payment-required banner — shown whenever the active
              * booking still has payment_status = 'pending'. Booking
              * rows are inserted in this state by BookingFlow and
@@ -174,27 +176,27 @@ export default function CustomerDashboard() {
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4 flex items-start gap-3">
                 <span className="text-yellow-500 text-xl flex-shrink-0">⚠️</span>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-yellow-800">Payment required</p>
+                  <p className="font-semibold text-yellow-800">{t('dashboard.paymentRequired')}</p>
                   <p className="text-sm text-yellow-700 mt-0.5">
-                    Your booking isn&apos;t confirmed yet. Complete payment now to secure your move and notify drivers.
+                    {t('dashboard.paymentRequiredDesc')}
                   </p>
                   <button
                     onClick={() => goToPayment(activeBooking.id)}
                     className="mt-3 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition"
                   >
-                    Complete Payment →
+                    {t('dashboard.completePayment')}
                   </button>
                 </div>
               </div>
             )}
             <p className="font-medium">{activeBooking.pickup_address} → {activeBooking.dropoff_address}</p>
-            <p className="text-sm text-gray-500 mt-2">Status: <strong>{activeBooking.status?.replace(/_/g, " ")}</strong></p>
-            <p className="text-sm text-gray-500">Estimated Hours: <strong>{activeBooking.estimated_hours ?? "-"}</strong></p>
-            <p className="text-sm text-gray-500">Actual Hours: <strong>{activeBooking.actual_hours ?? "Running"}</strong></p>
+            <p className="text-sm text-gray-500 mt-2">{t('dashboard.status')}: <strong>{activeBooking.status?.replace(/_/g, " ")}</strong></p>
+            <p className="text-sm text-gray-500">{t('dashboard.estimatedHours')}: <strong>{activeBooking.estimated_hours ?? "-"}</strong></p>
+            <p className="text-sm text-gray-500">{t('dashboard.actualHours')}: <strong>{activeBooking.actual_hours ?? t('dashboard.running')}</strong></p>
             <p className="text-sm text-gray-500">
               {activeBooking.payment_status === "pending"
-                ? "Escrow not yet funded"
-                : "Escrow protected until completion"}
+                ? t('dashboard.escrowNotFunded')
+                : t('dashboard.escrowProtected')}
             </p>
             <p className="text-lg font-bold mt-2">{fmt(activeBooking.final_price ?? activeBooking.original_price ?? activeBooking.price_estimate)} NOK</p>
 
@@ -234,7 +236,7 @@ export default function CustomerDashboard() {
                     className="bg-[#0B2E59] hover:bg-[#1a4a8a] text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition flex items-center gap-2"
                   >
                     <span>📍</span>
-                    Track Delivery
+                    {t('dashboard.trackDelivery')}
                   </button>
                 )}
 
@@ -257,13 +259,13 @@ export default function CustomerDashboard() {
           </div>
         )}
         <div className="grid sm:grid-cols-3 gap-4 mb-8">
-          <button onClick={() => setPage("booking")} className="bg-emerald-600 text-white rounded-xl p-5 font-semibold">New Booking</button>
-          <button onClick={() => setPage("my-bookings")} className="bg-white rounded-xl p-5 border font-semibold">My Bookings</button>
-          <button onClick={() => setPage("van-guide")} className="bg-white rounded-xl p-5 border font-semibold">Van Calculator</button>
+          <button onClick={() => setPage("booking")} className="bg-emerald-600 text-white rounded-xl p-5 font-semibold">{t('dashboard.newBooking')}</button>
+          <button onClick={() => setPage("my-bookings")} className="bg-white rounded-xl p-5 border font-semibold">{t('dashboard.myBookings')}</button>
+          <button onClick={() => setPage("van-guide")} className="bg-white rounded-xl p-5 border font-semibold">{t('dashboard.vanCalculator')}</button>
         </div>
         <div className="bg-white rounded-xl border overflow-hidden">
-          <div className="p-5 border-b"><h2 className="text-lg font-bold">Recent Bookings</h2></div>
-          {recentBookings.length === 0 ? (<div className="p-8 text-center text-gray-500">No bookings yet</div>) : (
+          <div className="p-5 border-b"><h2 className="text-lg font-bold">{t('dashboard.recentBookings')}</h2></div>
+          {recentBookings.length === 0 ? (<div className="p-8 text-center text-gray-500">{t('dashboard.noBookings')}</div>) : (
             <div className="divide-y">
               {recentBookings.map(b => (
                 <div key={b.id} className="p-5 flex justify-between items-center gap-4">
