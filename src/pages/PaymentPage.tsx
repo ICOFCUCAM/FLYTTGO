@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { supabase, supabaseFunctionUrl } from '../lib/supabase';
@@ -40,6 +41,7 @@ function StripeIcon() {
 export default function PaymentPage() {
   const { setPage, bookingData } = useApp();
   const { user, profile } = useAuth();
+  const { t } = useTranslation();
   const [method, setMethod] = useState<PayMethod>('card');
   const [card, setCard] = useState({ number: '', expiry: '', cvc: '', name: '' });
   const [processing, setProcessing] = useState(false);
@@ -166,7 +168,7 @@ export default function PaymentPage() {
         <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5">
           <span className="text-4xl">✅</span>
         </div>
-        <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Payment Secured!</h2>
+        <h2 className="text-2xl font-extrabold text-gray-900 mb-2">{t('payment.successTitle')}</h2>
         <p className="text-gray-500 mb-6 text-sm leading-relaxed">
           Your payment of <strong>{total.toLocaleString()} NOK</strong> is held safely in escrow and will be released to your driver on confirmed delivery.
         </p>
@@ -184,8 +186,8 @@ export default function PaymentPage() {
           ))}
         </div>
         <div className="flex gap-3">
-          <button onClick={() => setPage('tracking')} className="flex-1 py-3 bg-[#0B2E59] text-white rounded-xl font-bold text-sm hover:bg-[#1a4a8a] transition">Track Delivery</button>
-          <button onClick={() => setPage('my-bookings')} className="flex-1 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition">My Bookings</button>
+          <button onClick={() => setPage('tracking')} className="flex-1 py-3 bg-[#0B2E59] text-white rounded-xl font-bold text-sm hover:bg-[#1a4a8a] transition">{t('payment.trackDelivery')}</button>
+          <button onClick={() => setPage('my-bookings')} className="flex-1 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition">{t('payment.viewBookings')}</button>
         </div>
       </div>
     </div>
@@ -197,7 +199,7 @@ export default function PaymentPage() {
 
         {/* Back */}
         <button onClick={() => setPage('booking')} className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6 text-sm">
-          ← Back to booking
+          ← {t('payment.backToBooking')}
         </button>
 
         <div className="grid lg:grid-cols-5 gap-8">
@@ -205,14 +207,14 @@ export default function PaymentPage() {
           {/* LEFT — Payment form */}
           <div className="lg:col-span-3 space-y-5">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-xl font-extrabold text-gray-900 mb-5">Choose Payment Method</h2>
+              <h2 className="text-xl font-extrabold text-gray-900 mb-5">{t('payment.chooseMethod')}</h2>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                 {([
-                  { id: 'card', label: 'Card', icon: <CardIcon/>, sub: 'Stripe' },
-                  { id: 'vipps', label: 'Vipps', icon: <VippsIcon/>, sub: 'Norwegian' },
-                  { id: 'google_pay', label: 'Google Pay', icon: <GooglePayIcon/>, sub: 'Fast' },
-                  { id: 'invoice', label: 'Invoice', icon: <StripeIcon/>, sub: 'Corporate' },
+                  { id: 'card', label: t('payment.card'), icon: <CardIcon/>, sub: t('payment.cardSub') },
+                  { id: 'vipps', label: t('payment.vipps'), icon: <VippsIcon/>, sub: t('payment.vippsSub') },
+                  { id: 'google_pay', label: t('payment.googlePay'), icon: <GooglePayIcon/>, sub: t('payment.googlePaySub') },
+                  { id: 'invoice', label: t('payment.invoice'), icon: <StripeIcon/>, sub: t('payment.invoiceSub') },
                 ] as { id: PayMethod; label: string; icon: React.ReactNode; sub: string }[]).map(m => (
                   <button key={m.id} onClick={() => setMethod(m.id)}
                     className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition ${
@@ -229,13 +231,13 @@ export default function PaymentPage() {
               {method === 'card' && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Cardholder Name</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t('payment.cardholderName')}</label>
                     <input value={card.name} onChange={e => setCard(c => ({ ...c, name: e.target.value }))}
                       placeholder="Ola Nordmann"
                       className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#0B2E59] outline-none"/>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Card Number</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t('payment.cardNumber')}</label>
                     <div className="relative">
                       <input value={card.number} onChange={e => setCard(c => ({ ...c, number: formatCard(e.target.value) }))}
                         placeholder="1234 5678 9012 3456" maxLength={19}
@@ -248,13 +250,13 @@ export default function PaymentPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Expiry Date</label>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t('payment.expiryDate')}</label>
                       <input value={card.expiry} onChange={e => setCard(c => ({ ...c, expiry: formatExpiry(e.target.value) }))}
                         placeholder="MM/YY" maxLength={5}
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#0B2E59] outline-none font-mono"/>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">CVC</label>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t('payment.cvc')}</label>
                       <input value={card.cvc} onChange={e => setCard(c => ({ ...c, cvc: e.target.value.replace(/\D/,'').slice(0,4) }))}
                         placeholder="•••" maxLength={4} type="password"
                         className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#0B2E59] outline-none font-mono"/>
@@ -262,7 +264,7 @@ export default function PaymentPage() {
                   </div>
                   <div className="flex items-center gap-2 bg-blue-50 rounded-xl px-4 py-3">
                     <span className="text-blue-500">🔒</span>
-                    <span className="text-xs text-blue-700">Card data encrypted by Stripe. FlyttGo never stores card details.</span>
+                    <span className="text-xs text-blue-700">{t('payment.cardEncrypted')}</span>
                   </div>
                 </div>
               )}
@@ -331,9 +333,9 @@ export default function PaymentPage() {
             {/* SECURITY BADGES */}
             <div className="grid grid-cols-3 gap-3 text-center">
               {[
-                { icon: '🔒', label: 'Escrow Protection', sub: 'Pay only on delivery' },
-                { icon: '🛡️', label: 'Bank Encryption', sub: '256-bit SSL' },
-                { icon: '✅', label: 'GDPR Compliant', sub: 'Your data is safe' },
+                { icon: '🔒', label: t('payment.escrowBadge'), sub: t('payment.escrowBadgeDesc') },
+                { icon: '🛡️', label: t('payment.bankBadge'), sub: t('payment.bankBadgeDesc') },
+                { icon: '✅', label: t('payment.gdprBadge'), sub: t('payment.gdprBadgeDesc') },
               ].map(b => (
                 <div key={b.label} className="bg-white rounded-xl border border-gray-100 p-3">
                   <div className="text-xl mb-1">{b.icon}</div>
@@ -347,7 +349,7 @@ export default function PaymentPage() {
           {/* RIGHT — Order summary */}
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sticky top-6">
-              <h3 className="font-bold text-gray-900 mb-4">Order Summary</h3>
+              <h3 className="font-bold text-gray-900 mb-4">{t('payment.orderSummary')}</h3>
 
               {/* Booking info */}
               <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-2">
@@ -372,19 +374,19 @@ export default function PaymentPage() {
               {/* Price breakdown */}
               <div className="space-y-2.5 mb-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Service price</span>
+                  <span className="text-gray-500">{t('payment.servicePrice')}</span>
                   <span>{price.toLocaleString()} NOK</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">MVA (25%)</span>
+                  <span className="text-gray-500">{t('payment.mva')}</span>
                   <span>{vat.toLocaleString()} NOK</span>
                 </div>
                 <div className="flex justify-between text-sm text-emerald-600">
-                  <span>Escrow protection</span>
-                  <span>Included</span>
+                  <span>{t('payment.escrowIncluded')}</span>
+                  <span>{t('payment.included')}</span>
                 </div>
                 <div className="border-t border-gray-100 pt-2.5 flex justify-between">
-                  <span className="font-bold text-gray-900">Total</span>
+                  <span className="font-bold text-gray-900">{t('payment.total')}</span>
                   <span className="font-extrabold text-[#0B2E59] text-lg">{total.toLocaleString()} NOK</span>
                 </div>
               </div>
@@ -393,7 +395,7 @@ export default function PaymentPage() {
               <div className="bg-emerald-50 rounded-xl p-3 mb-5 flex gap-2.5 items-start">
                 <span className="text-emerald-500 text-lg flex-shrink-0">🔒</span>
                 <p className="text-xs text-emerald-700 leading-relaxed">
-                  Payment is held securely in escrow. Released to your driver only after you confirm successful delivery.
+                  {t('payment.escrowNotice')}
                 </p>
               </div>
 
@@ -405,12 +407,12 @@ export default function PaymentPage() {
                 {processing ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-                    Processing...
+                    {t('payment.processing')}
                   </span>
-                ) : method === 'vipps' ? 'Pay with Vipps →'
-                  : method === 'google_pay' ? 'Pay with Google Pay →'
-                  : method === 'invoice' ? 'Request Invoice →'
-                  : `Pay ${total.toLocaleString()} NOK →`}
+                ) : method === 'vipps' ? t('payment.payWithVipps')
+                  : method === 'google_pay' ? t('payment.payWithGoogle')
+                  : method === 'invoice' ? t('payment.requestInvoice')
+                  : t('payment.payAmount', { amount: total.toLocaleString() })}
               </button>
 
               <div className="flex items-center justify-center gap-4 mt-4">

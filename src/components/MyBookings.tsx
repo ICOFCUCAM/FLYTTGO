@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase, supabaseFunctionUrl } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { useApp } from "../lib/store";
@@ -40,6 +41,7 @@ interface Booking {
 export default function MyBookings() {
   const { user } = useAuth();
   const { setPage, setBookingData } = useApp();
+  const { t } = useTranslation();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
@@ -121,7 +123,7 @@ export default function MyBookings() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">My Bookings</h1>
+        <h1 className="text-3xl font-bold mb-6">{t('myBookings.title')}</h1>
         <div className="flex flex-wrap gap-2 mb-6">
           {["all","pending","driver_assigned","in_transit","completed","cancelled"].map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`px-4 py-2 rounded text-sm ${filter === f ? "bg-emerald-600 text-white" : "bg-white border"}`}>{f.replace(/_/g, " ")}</button>
@@ -144,7 +146,7 @@ export default function MyBookings() {
             ))}
           </div>
         )
-        : filtered.length === 0 ? <div className="text-center py-12 text-gray-500">No bookings found</div>
+        : filtered.length === 0 ? <div className="text-center py-12 text-gray-500">{t('myBookings.noBookings')}</div>
         : filtered.map(booking => {
           const escrow = escrowMap[booking.id];
           const rawPrice = booking.final_price ?? booking.original_price ?? booking.price_estimate;
@@ -191,8 +193,8 @@ export default function MyBookings() {
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3 flex items-start gap-2">
                   <span className="text-yellow-500 flex-shrink-0">⚠️</span>
                   <div className="flex-1 text-sm">
-                    <p className="font-semibold text-yellow-800">Payment required</p>
-                    <p className="text-yellow-700 text-xs mt-0.5">This booking isn&apos;t confirmed until payment is completed.</p>
+                    <p className="font-semibold text-yellow-800">{t('myBookings.paymentRequired')}</p>
+                    <p className="text-yellow-700 text-xs mt-0.5">{t('myBookings.paymentRequiredDesc')}</p>
                   </div>
                 </div>
               )}
@@ -202,14 +204,14 @@ export default function MyBookings() {
                     onClick={() => completePayment(booking.id)}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-semibold"
                   >
-                    Complete Payment →
+                    {t('myBookings.completePayment')}
                   </button>
                 )}
-                {booking.status === "pending" && <button onClick={() => cancelBooking(booking.id)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">Cancel</button>}
-                {booking.status === "completed" && !booking.customer_confirmation && <button onClick={() => confirmCompletion(booking.id)} className="px-4 py-2 bg-emerald-600 text-white rounded text-sm">Confirm Completion</button>}
-                <button onClick={() => repeatBooking(booking)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">Repeat Booking</button>
+                {booking.status === "pending" && <button onClick={() => cancelBooking(booking.id)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">{t('myBookings.cancel')}</button>}
+                {booking.status === "completed" && !booking.customer_confirmation && <button onClick={() => confirmCompletion(booking.id)} className="px-4 py-2 bg-emerald-600 text-white rounded text-sm">{t('myBookings.confirmCompletion')}</button>}
+                <button onClick={() => repeatBooking(booking)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">{t('myBookings.repeatBooking')}</button>
               </div>
-              <div className="text-xs text-gray-400 mt-3">Loyalty points earned: {Math.floor(Number(price || 0) / 100)}</div>
+              <div className="text-xs text-gray-400 mt-3">{t('myBookings.loyaltyPoints')}: {Math.floor(Number(price || 0) / 100)}</div>
             </div>
           );
         })}
