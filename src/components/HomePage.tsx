@@ -370,6 +370,7 @@ function HowItWorks() {
 function VanTypesSection() {
   const { setPage } = useApp();
   const { t } = useTranslation();
+  const vanKey: Record<string, string> = { small_van: 'vanSmall', medium_van: 'vanMedium', large_van: 'vanLarge', luton_van: 'vanLuton' };
   return (
     <section className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -378,23 +379,27 @@ function VanTypesSection() {
           <p className="text-lg text-gray-600">{t('home.vanSectionSub')}</p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {VAN_TYPES.map(van => (
+          {VAN_TYPES.map(van => {
+            const vk = vanKey[van.id] ?? van.id;
+            const vanName = t(`home.${vk}`, van.name);
+            return (
             <div key={van.id} className="bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-xl transition group">
               <div className="aspect-[4/3] overflow-hidden">
-                <img src={van.image} alt={van.name} width={600} height={450} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
+                <img src={van.image} alt={vanName} width={600} height={450} loading="lazy" decoding="async" className="w-full h-full object-cover group-hover:scale-105 transition duration-500"/>
               </div>
               <div className="p-5">
-                <h3 className="text-lg font-bold text-gray-900 mb-1">{van.name}</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-1">{vanName}</h3>
                 <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
                   <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">{van.capacity}</span>
                   <span>{van.payload}</span>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">{t('home.vanBestFor')}: {van.bestFor.join(', ')}</p>
+                <p className="text-sm text-gray-600 mb-3">{t('home.vanBestFor')}: {van.bestFor.map((b, bi) => t(`home.${vk}Best${bi}`, b)).join(', ')}</p>
                 <p className="text-sm font-semibold text-gray-900 mb-3">{t('home.vanFrom')} {van.pricePerHour} NOK{t('home.vanPerHour')}</p>
-                <button onClick={() => setPage('booking')} className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition text-sm">{t('home.vanBook')} {van.name}</button>
+                <button onClick={() => setPage('booking')} className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition text-sm">{t('home.vanBook')} {vanName}</button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
         <div className="text-center mt-8">
           <button onClick={() => setPage('van-guide')} className="px-6 py-3 border-2 border-emerald-600 text-emerald-600 rounded-xl font-semibold hover:bg-emerald-50 transition">{t('home.vanCalcCta')}</button>
@@ -517,6 +522,10 @@ function SubscriptionTeaser() {
     if (profile?.role === 'driver') { setPage('subscriptions'); return; }
   };
 
+  /* Map plan.id → locale key prefix for features + names */
+  const planNameKey: Record<string, string> = { free: 'planFree', basic: 'planBasic', pro_mini: 'planProMini', pro: 'planPro', unlimited: 'planUnlimited' };
+  const priorityKey: Record<string, string> = { Standard: 'priorityStandard', Moderate: 'priorityModerate', High: 'priorityHigh', 'Very High': 'priorityVeryHigh', Highest: 'priorityHighest' };
+
   return (
     <section className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -528,17 +537,17 @@ function SubscriptionTeaser() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
           {SUBSCRIPTION_PLANS.map(plan => (
             <div key={plan.id} className={`relative bg-white rounded-2xl p-5 flex flex-col transition-all ${plan.popular ? 'border-2 border-emerald-500 shadow-xl scale-[1.03] z-10' : 'border border-gray-200 shadow-sm hover:shadow-md'}`}>
-              {plan.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-full tracking-wide whitespace-nowrap">MOST POPULAR</div>}
-              <h3 className="text-lg font-bold text-gray-900 mt-1 mb-1">{plan.name}</h3>
+              {plan.popular && <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-full tracking-wide whitespace-nowrap">{t('home.mostPopular')}</div>}
+              <h3 className="text-lg font-bold text-gray-900 mt-1 mb-1">{t(`home.${planNameKey[plan.id]}`, plan.name)}</h3>
               <div className="mb-3"><span className="text-3xl font-bold text-gray-900">{plan.price}</span><span className="text-gray-500 text-sm ml-1">NOK{plan.period}</span></div>
               <div className={`inline-flex self-start px-2.5 py-1 rounded-full text-xs font-medium mb-4 ${plan.priorityLevel >= 4 ? 'bg-purple-50 text-purple-600 border border-purple-200' : plan.priorityLevel >= 3 ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : plan.priorityLevel >= 2 ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'bg-gray-100 text-gray-600'}`}>
-                {plan.dispatchPriority} Priority
+                {t(`home.${priorityKey[plan.dispatchPriority]}`, `${plan.dispatchPriority} Priority`)}
               </div>
               <ul className="space-y-2 mb-6 flex-1">
-                {plan.features.map(f => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                {plan.features.map((f, fi) => (
+                  <li key={fi} className="flex items-start gap-2 text-sm text-gray-600">
                     <svg className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/></svg>
-                    {f}
+                    {t(`home.${planNameKey[plan.id]}F${fi}`, f)}
                   </li>
                 ))}
               </ul>
