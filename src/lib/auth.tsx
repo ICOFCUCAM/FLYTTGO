@@ -245,7 +245,7 @@ async function signInWithGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: window.location.origin,
+      redirectTo: `${window.location.origin}/auth/callback`,
     },
   });
 
@@ -256,7 +256,7 @@ async function signInWithApple() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "apple",
     options: {
-      redirectTo: window.location.origin,
+      redirectTo: `${window.location.origin}/auth/callback`,
     },
   });
 
