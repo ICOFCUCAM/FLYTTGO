@@ -369,12 +369,13 @@ function HowItWorks() {
 /* ── VAN TYPES ── */
 function VanTypesSection() {
   const { setPage } = useApp();
+  const { t } = useTranslation();
   return (
     <section className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Choose the Right Van for Your Move</h2>
-          <p className="text-lg text-gray-600">Compare different van sizes and find the perfect vehicle</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">{t('home.vanSectionTitle')}</h2>
+          <p className="text-lg text-gray-600">{t('home.vanSectionSub')}</p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {VAN_TYPES.map(van => (
@@ -388,15 +389,15 @@ function VanTypesSection() {
                   <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-medium">{van.capacity}</span>
                   <span>{van.payload}</span>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">Best for: {van.bestFor.join(', ')}</p>
-                <p className="text-sm font-semibold text-gray-900 mb-3">From {van.pricePerHour} NOK/hr</p>
-                <button onClick={() => setPage('booking')} className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition text-sm">Book {van.name}</button>
+                <p className="text-sm text-gray-600 mb-3">{t('home.vanBestFor')}: {van.bestFor.join(', ')}</p>
+                <p className="text-sm font-semibold text-gray-900 mb-3">{t('home.vanFrom')} {van.pricePerHour} NOK{t('home.vanPerHour')}</p>
+                <button onClick={() => setPage('booking')} className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition text-sm">{t('home.vanBook')} {van.name}</button>
               </div>
             </div>
           ))}
         </div>
         <div className="text-center mt-8">
-          <button onClick={() => setPage('van-guide')} className="px-6 py-3 border-2 border-emerald-600 text-emerald-600 rounded-xl font-semibold hover:bg-emerald-50 transition">Use Our Van Size Calculator</button>
+          <button onClick={() => setPage('van-guide')} className="px-6 py-3 border-2 border-emerald-600 text-emerald-600 rounded-xl font-semibold hover:bg-emerald-50 transition">{t('home.vanCalcCta')}</button>
         </div>
       </div>
     </section>
@@ -406,18 +407,19 @@ function VanTypesSection() {
 /* ── MOVING TOOLS ── */
 function MovingToolsSection() {
   const { setPage } = useApp();
+  const { t } = useTranslation();
   const tools = [
-    { icon: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z', title: 'Van Size Calculator', desc: 'Enter your items and get an instant van recommendation.', cta: 'Open Calculator', page: 'van-guide' as const, badge: 'Free Tool', color: 'bg-emerald-600' },
-    { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', title: 'Moving Checklist', desc: 'The complete timeline for a stress-free move.', cta: 'Start Checklist', page: 'checklist' as const, badge: 'Interactive', color: 'bg-[#1A365D]' },
-    { icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', title: 'Van Size Guide', desc: 'Compare all van types side by side.', cta: 'View Guide', page: 'van-guide' as const, badge: 'Guide', color: 'bg-purple-600' },
+    { icon: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z', title: t('home.toolCalcTitle'), desc: t('home.toolCalcDesc'), cta: t('home.toolCalcCta'), page: 'van-guide' as const, badge: t('home.toolCalcBadge'), color: 'bg-emerald-600' },
+    { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', title: t('home.toolCheckTitle'), desc: t('home.toolCheckDesc'), cta: t('home.toolCheckCta'), page: 'checklist' as const, badge: t('home.toolCheckBadge'), color: 'bg-[#1A365D]' },
+    { icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4', title: t('home.toolGuideTitle'), desc: t('home.toolGuideDesc'), cta: t('home.toolGuideCta'), page: 'van-guide' as const, badge: t('home.toolGuideBadge'), color: 'bg-purple-600' },
   ];
   return (
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">Free Moving Tools</div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#1A365D] mb-4">Plan Your Move Like a Pro</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto text-lg">Use our free tools to estimate costs, choose the right van, and stay organised from day one.</p>
+          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">{t('home.toolsBadge')}</div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#1A365D] mb-4">{t('home.toolsTitle')}</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto text-lg">{t('home.toolsSubtitle')}</p>
         </div>
         <div className="grid sm:grid-cols-3 gap-6">
           {tools.map(tool => (
@@ -508,6 +510,7 @@ function TestimonialsSection() {
 function SubscriptionTeaser() {
   const { setPage, setShowAuthModal, setAuthMode } = useApp();
   const { user, profile } = useAuth();
+  const { t } = useTranslation();
 
   const handlePlanClick = () => {
     if (!user) { setAuthMode('driver-signup'); setShowAuthModal(true); return; }
@@ -518,9 +521,9 @@ function SubscriptionTeaser() {
     <section className="py-20 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">Driver Subscription Plans</div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#1A365D] mb-4">Earn More With the Right Plan</h2>
-          <p className="text-gray-600 max-w-2xl mx-auto text-lg">Lower commission rates. Higher dispatch priority. More earnings every week.</p>
+          <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-sm font-semibold px-4 py-1.5 rounded-full mb-4">{t('home.subTeaserBadge')}</div>
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#1A365D] mb-4">{t('home.subTeaserTitle')}</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto text-lg">{t('home.subTeaserSubtitle')}</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
           {SUBSCRIPTION_PLANS.map(plan => (
@@ -540,12 +543,12 @@ function SubscriptionTeaser() {
                 ))}
               </ul>
               <button onClick={handlePlanClick} className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${plan.popular ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                {!user ? (plan.price === 0 ? 'Register as Driver' : 'Apply & Subscribe') : profile?.role === 'driver' ? (plan.price === 0 ? 'Get Started' : 'Subscribe Now') : 'For Drivers Only'}
+                {!user ? (plan.price === 0 ? t('home.subTeaserRegister') : t('home.subTeaserApply')) : profile?.role === 'driver' ? (plan.price === 0 ? t('home.subTeaserRegister') : t('home.subTeaserApply')) : t('home.subTeaserApply')}
               </button>
             </div>
           ))}
         </div>
-        <p className="text-center text-sm text-gray-400 mt-8">All plans include access to the FlyttGo platform · No hidden fees · Cancel anytime</p>
+        <p className="text-center text-sm text-gray-400 mt-8">{t('home.subTeaserAllPlans')} · {t('home.subTeaserNoFees')} · {t('home.subTeaserCancel')}</p>
       </div>
     </section>
   );
@@ -554,52 +557,53 @@ function SubscriptionTeaser() {
 /* ── CORPORATE CTA ── */
 function CorporateCTA() {
   const { setPage, setShowAuthModal, setAuthMode } = useApp();
+  const { t } = useTranslation();
   const features = [
-    { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', title: 'Bulk Booking', desc: 'Upload multiple delivery requests at once' },
-    { icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', title: 'Recurring Deliveries', desc: 'Schedule daily, weekly or monthly runs' },
-    { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', title: 'Analytics Dashboard', desc: 'Track delivery volumes, costs and performance' },
-    { icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z', title: 'Invoice Billing', desc: 'Consolidated monthly invoices' },
-    { icon: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4', title: 'API Integration', desc: 'Connect FlyttGo to your warehouse or ERP' },
-    { icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', title: 'Multi-user Access', desc: 'Role-based permissions for your team' },
+    { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', titleKey: 'corpBulk', descKey: 'corpBulkDesc' },
+    { icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', titleKey: 'corpRecurring', descKey: 'corpRecurringDesc' },
+    { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', titleKey: 'corpAnalytics', descKey: 'corpAnalyticsDesc' },
+    { icon: 'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z', titleKey: 'corpInvoice', descKey: 'corpInvoiceDesc' },
+    { icon: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4', titleKey: 'corpApi', descKey: 'corpApiDesc' },
+    { icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', titleKey: 'corpMultiUser', descKey: 'corpMultiUserDesc' },
   ];
   return (
     <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           <div>
-            <div className="inline-flex items-center gap-2 bg-[#1A365D]/10 text-[#1A365D] text-sm font-semibold px-4 py-1.5 rounded-full mb-6">For Companies</div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#1A365D] mb-4">Corporate Logistics Portal</h2>
-            <p className="text-gray-600 text-lg mb-8 leading-relaxed">FlyttGo gives businesses a dedicated platform to manage high-volume deliveries, recurring logistics, and company-wide transport operations.</p>
+            <div className="inline-flex items-center gap-2 bg-[#1A365D]/10 text-[#1A365D] text-sm font-semibold px-4 py-1.5 rounded-full mb-6">{t('home.corpBadge')}</div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#1A365D] mb-4">{t('home.corpTitle')}</h2>
+            <p className="text-gray-600 text-lg mb-8 leading-relaxed">{t('home.corpSubtitle')}</p>
             <div className="grid sm:grid-cols-2 gap-4 mb-10">
               {features.map(f => (
-                <div key={f.title} className="flex items-start gap-3">
+                <div key={f.titleKey} className="flex items-start gap-3">
                   <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
                     <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={f.icon}/></svg>
                   </div>
-                  <div><div className="text-sm font-semibold text-gray-900">{f.title}</div><div className="text-xs text-gray-500 mt-0.5 leading-relaxed">{f.desc}</div></div>
+                  <div><div className="text-sm font-semibold text-gray-900">{t(`home.${f.titleKey}`)}</div><div className="text-xs text-gray-500 mt-0.5 leading-relaxed">{t(`home.${f.descKey}`)}</div></div>
                 </div>
               ))}
             </div>
             <div className="flex flex-wrap gap-3">
-              <button onClick={() => { setAuthMode('signup'); setShowAuthModal(true); }} className="px-7 py-3 bg-[#1A365D] text-white rounded-xl font-semibold hover:bg-[#2D4A7A] transition shadow-lg">Create Corporate Account</button>
-              <button onClick={() => setPage('customer-dashboard')} className="px-7 py-3 border-2 border-[#1A365D] text-[#1A365D] rounded-xl font-semibold hover:bg-[#1A365D]/5 transition">View Dashboard →</button>
+              <button onClick={() => { setAuthMode('signup'); setShowAuthModal(true); }} className="px-7 py-3 bg-[#1A365D] text-white rounded-xl font-semibold hover:bg-[#2D4A7A] transition shadow-lg">{t('home.corpCreateAccount')}</button>
+              <button onClick={() => setPage('customer-dashboard')} className="px-7 py-3 border-2 border-[#1A365D] text-[#1A365D] rounded-xl font-semibold hover:bg-[#1A365D]/5 transition">{t('home.corpViewDashboard')}</button>
             </div>
           </div>
           <div className="bg-gradient-to-br from-[#1A365D] to-[#2D4A7A] rounded-3xl p-8 text-white">
-            <h3 className="text-xl font-bold mb-6">Why businesses choose FlyttGo</h3>
+            <h3 className="text-xl font-bold mb-6">{t('home.corpWhyTitle')}</h3>
             <div className="grid grid-cols-2 gap-6 mb-8">
-              {[{ value: '40%', label: 'Average cost reduction vs traditional logistics' }, { value: '560+', label: 'Verified drivers across Norway' }, { value: '< 30s', label: 'Driver assignment time' }, { value: '99.2%', label: 'On-time delivery rate' }].map(s => (
-                <div key={s.label} className="bg-white/10 rounded-2xl p-4">
+              {[{ value: '40%', labelKey: 'corpStat1' }, { value: '560+', labelKey: 'corpStat2' }, { value: '< 30s', labelKey: 'corpStat3' }, { value: '99.2%', labelKey: 'corpStat4' }].map(s => (
+                <div key={s.labelKey} className="bg-white/10 rounded-2xl p-4">
                   <div className="text-2xl font-bold text-emerald-400 mb-1">{s.value}</div>
-                  <div className="text-xs text-white/70 leading-snug">{s.label}</div>
+                  <div className="text-xs text-white/70 leading-snug">{t(`home.${s.labelKey}`)}</div>
                 </div>
               ))}
             </div>
             <div className="border-t border-white/20 pt-6 space-y-3">
-              {['No fixed contracts — pay per delivery', 'Dedicated account manager', 'Priority dispatch for all corporate bookings', 'Real-time tracking for every shipment'].map(item => (
-                <div key={item} className="flex items-center gap-2.5 text-sm text-white/80">
+              {['corpNoContracts', 'corpAccountMgr', 'corpPriorityDispatch', 'corpRealtime'].map(key => (
+                <div key={key} className="flex items-center gap-2.5 text-sm text-white/80">
                   <svg className="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
-                  {item}
+                  {t(`home.${key}`)}
                 </div>
               ))}
             </div>
