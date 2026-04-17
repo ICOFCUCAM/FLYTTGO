@@ -29,6 +29,11 @@ export const en = {
     tagline:      'Smart Moving & Transport Services',
     corporate:    'Corporate Logistics Portal',
     createCorp:   'Create Corporate Account →',
+    toolCalcDesc:  'Find the right van for your move',
+    toolCheckDesc: 'Step-by-step packing guide',
+    subPlans:      'Subscription Plans',
+    subPlansDesc:  'Save with a driver subscription',
+    corpDashDesc:  'Enterprise logistics command center',
   },
 
   /* ─── Footer ─── */

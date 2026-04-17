@@ -9,20 +9,10 @@ import type { Page as PageType } from '../lib/store';
 
 type Lang = 'en' | 'no';
 
-const MOVING_TOOLS = [
-  { label: 'Van Size Calculator', desc: 'Find the right van for your move', page: 'van-guide' as Page },
-  { label: 'Moving Checklist',    desc: 'Step-by-step packing guide',       page: 'checklist' as Page },
-  { label: 'Subscription Plans',  desc: 'Save with a driver subscription',  page: 'subscriptions' as Page },
-];
-
-const CORPORATE_LINKS = [
-  { label: 'Bulk Booking Management', desc: 'Multi-location deliveries at scale',    page: 'bulk-booking' as Page },
-  { label: 'Recurring Deliveries',    desc: 'Daily, weekly or monthly scheduling',   page: 'recurring-deliveries' as Page },
-  { label: 'Company Dashboard Info',  desc: 'Track spending & delivery performance', page: 'company-dashboard-info' as Page },
-  { label: 'Invoice & Billing',       desc: 'Consolidated monthly invoices',         page: 'invoice-billing' as Page },
-  { label: 'Corporate API Access',    desc: 'Integrate FlyttGo into your systems',   page: 'corporate-api-access' as Page },
-  { label: 'Corporate Dashboard',     desc: 'Enterprise logistics command center',   page: 'corporate-dashboard' as Page },
-];
+/* Moving tools + corporate links are built inside the component
+ * body (via useMemo) so they have access to t() for translation.
+ * The const arrays that used to live here at module scope were
+ * hardcoded English and didn't respond to the language switcher. */
 
 /* Tiny "5m ago" / "2h ago" / "3d ago" formatter for the notifications
  * dropdown. Avoids pulling in date-fns just for one string. */
@@ -56,6 +46,23 @@ export default function Header() {
    * click detection has to check both nodes. */
   const langBtnRef = useRef<HTMLButtonElement>(null);
   const langPopRef = useRef<HTMLDivElement>(null);
+
+  /* Moving tools + corporate dropdown items — rebuilt on every render
+   * so t() picks up the active language. Cheap — it's just 9 objects. */
+  const MOVING_TOOLS = [
+    { label: t('home.toolCalcTitle', 'Van Size Calculator'),  desc: t('header.toolCalcDesc', 'Find the right van for your move'), page: 'van-guide' as Page },
+    { label: t('home.toolCheckTitle', 'Moving Checklist'),     desc: t('header.toolCheckDesc', 'Step-by-step packing guide'),       page: 'checklist' as Page },
+    { label: t('header.subPlans', 'Subscription Plans'),       desc: t('header.subPlansDesc', 'Save with a driver subscription'),   page: 'subscriptions' as Page },
+  ];
+
+  const CORPORATE_LINKS = [
+    { label: t('home.corpBulk', 'Bulk Booking Management'),       desc: t('home.corpBulkDesc', 'Multi-location deliveries at scale'),    page: 'bulk-booking' as Page },
+    { label: t('home.corpRecurring', 'Recurring Deliveries'),      desc: t('home.corpRecurringDesc', 'Daily, weekly or monthly scheduling'), page: 'recurring-deliveries' as Page },
+    { label: t('home.corpAnalytics', 'Company Dashboard Info'),    desc: t('home.corpAnalyticsDesc', 'Track spending & delivery performance'), page: 'company-dashboard-info' as Page },
+    { label: t('home.corpInvoice', 'Invoice & Billing'),           desc: t('home.corpInvoiceDesc', 'Consolidated monthly invoices'),         page: 'invoice-billing' as Page },
+    { label: t('home.corpApi', 'Corporate API Access'),            desc: t('home.corpApiDesc', 'Integrate FlyttGo into your systems'),       page: 'corporate-api-access' as Page },
+    { label: t('home.corpAnalytics', 'Corporate Dashboard'),       desc: t('header.corpDashDesc', 'Enterprise logistics command center'),    page: 'corporate-dashboard' as Page },
+  ];
 
   /* Real-time notifications for the bell icon. Returns an empty list
    * silently if the notifications table / RLS / publication aren't

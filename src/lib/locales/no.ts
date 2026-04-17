@@ -31,6 +31,11 @@ export const no: TranslationKeys = {
     tagline:      'Smart flytting og transporttjenester',
     corporate:    'Bedriftslogistikkportal',
     createCorp:   'Opprett bedriftskonto →',
+    toolCalcDesc:  'Finn riktig varebil for flyttingen din',
+    toolCheckDesc: 'Steg-for-steg pakkeguide',
+    subPlans:      'Abonnementer',
+    subPlansDesc:  'Spar med sjåførabonnement',
+    corpDashDesc:  'Bedriftslogistikk kommandosenter',
   },
 
   /* ─── Footer ─── */
