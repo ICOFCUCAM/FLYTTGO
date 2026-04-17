@@ -21,48 +21,48 @@ export default function Footer() {
 
   /* --- Column data ---------------------------------------------- */
   const services: LinkItem[] = [
-    { label: 'Moving Services',      page: 'services' },
-    { label: 'Furniture Transport',  page: 'services' },
-    { label: 'Office Relocation',    page: 'services' },
-    { label: 'Student Moving',       page: 'services' },
-    { label: 'Same-Day Delivery',    page: 'services' },
-    { label: 'Van Size Guide',       page: 'van-guide' },
+    { label: t('home.serviceMoving'),    page: 'services' },
+    { label: t('home.serviceFurniture'), page: 'services' },
+    { label: t('home.serviceOffice'),    page: 'services' },
+    { label: t('home.serviceStudent'),   page: 'services' },
+    { label: t('home.serviceSameDay'),   page: 'services' },
+    { label: t('home.vanSizeGuide'),     page: 'van-guide' },
   ];
 
   const cities: LinkItem[] = [
-    { label: 'Flyttehjelp Oslo',        page: 'services' },
-    { label: 'Flyttehjelp Bergen',      page: 'services' },
-    { label: 'Flyttehjelp Trondheim',   page: 'services' },
-    { label: 'Flyttehjelp Stavanger',   page: 'services' },
-    { label: 'Flyttehjelp Drammen',     page: 'services' },
-    { label: 'Flyttehjelp Fredrikstad', page: 'services' },
+    { label: `${t('home.cityMovingHelp')} Oslo`,        page: 'services' },
+    { label: `${t('home.cityMovingHelp')} Bergen`,      page: 'services' },
+    { label: `${t('home.cityMovingHelp')} Trondheim`,   page: 'services' },
+    { label: `${t('home.cityMovingHelp')} Stavanger`,   page: 'services' },
+    { label: `${t('home.cityMovingHelp')} Drammen`,     page: 'services' },
+    { label: `${t('home.cityMovingHelp')} Fredrikstad`, page: 'services' },
   ];
 
   const company: LinkItem[] = [
-    { label: 'About FlyttGo',       page: 'about' },
-    { label: 'Careers',             page: 'careers' },
-    { label: 'Press & Media',       page: 'press' },
-    { label: 'Sustainability',      page: 'sustainability' },
-    { label: 'For Drivers',         page: 'driver-onboarding' },
-    { label: 'Driver Subscriptions',page: 'subscriptions' },
+    { label: t('about.ctaBook', 'About FlyttGo'), page: 'about' },
+    { label: t('careers.title', 'Careers'),        page: 'careers' },
+    { label: t('press.title', 'Press & Media'),    page: 'press' },
+    { label: t('sustainability.title', 'Sustainability'), page: 'sustainability' },
+    { label: t('driverOnboarding.heroTitle', 'For Drivers'), page: 'driver-onboarding' },
+    { label: t('header.movingTools', 'Driver Subscriptions'), page: 'subscriptions' },
   ];
 
   const resources: LinkItem[] = [
-    { label: 'Help Center',         page: 'help' },
-    { label: 'FAQ',                 page: 'faq' },
-    { label: 'Safety & Insurance',  page: 'safety' },
-    { label: 'Moving Checklist',    page: 'checklist' },
-    { label: 'Van Size Calculator', page: 'van-guide' },
-    { label: 'Contact Us',          page: 'contact' },
+    { label: t('help.title', 'Help Center'),       page: 'help' },
+    { label: t('faq.title', 'FAQ'),                 page: 'faq' },
+    { label: t('safety.title', 'Safety & Insurance'), page: 'safety' },
+    { label: t('booking.checklist', 'Moving Checklist'), page: 'checklist' },
+    { label: t('home.vanSizeGuide'),                page: 'van-guide' },
+    { label: t('contact.heroTitle', 'Contact Us'),  page: 'contact' },
   ];
 
   const corporate: LinkItem[] = [
-    { label: 'FlyttGo for Business', page: 'corporate' },
-    { label: 'Bulk Booking',          page: 'bulk-booking' },
-    { label: 'Recurring Deliveries',  page: 'recurring-deliveries' },
-    { label: 'Invoice & Billing',     page: 'invoice-billing' },
-    { label: 'API Access',            page: 'corporate-api-access' },
-    { label: 'Corporate Dashboard',   page: 'corporate-dashboard' },
+    { label: t('header.corporate', 'FlyttGo for Business'), page: 'corporate' },
+    { label: t('booking.bulkBooking', 'Bulk Booking'),       page: 'bulk-booking' },
+    { label: t('booking.recurring', 'Recurring Deliveries'), page: 'recurring-deliveries' },
+    { label: t('payment.invoice', 'Invoice & Billing'),      page: 'invoice-billing' },
+    { label: t('booking.apiAccess', 'API Access'),           page: 'corporate-api-access' },
+    { label: t('dashboard.title', 'Corporate Dashboard'),    page: 'corporate-dashboard' },
   ];
 
   return (

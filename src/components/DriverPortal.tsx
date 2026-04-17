@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
 import { supabase, supabaseFunctionUrl } from '../lib/supabase';
@@ -121,6 +122,7 @@ type PortalGate =
 export default function DriverPortal() {
   const { profile, user } = useAuth();
   const { setPage } = useApp();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('overview');
   const [online, setOnline] = useState(false);
   const [driver, setDriver] = useState<any>(null);
@@ -379,7 +381,7 @@ export default function DriverPortal() {
     if (!won || won.length === 0) {
       /* Another driver beat us to it. Refresh the job list so the
        * now-taken job disappears from our pool view. */
-      alert('Another driver already accepted this job.');
+      alert(t('driverPortal.jobTaken'));
       loadJobs();
       return;
     }
@@ -479,10 +481,10 @@ export default function DriverPortal() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 max-w-md text-center shadow-sm border border-gray-100">
           <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📋</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">You haven&rsquo;t applied yet</h2>
-          <p className="text-gray-600 text-sm mb-6">To use the FlyttGo Driver Portal you first need to apply and be approved by our team.</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{t('driverPortal.notAppliedTitle')}</h2>
+          <p className="text-gray-600 text-sm mb-6">{t('driverPortal.notAppliedBody')}</p>
           <button onClick={() => setPage('driver-onboarding')} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition">
-            Start driver application →
+            {t('driverPortal.startApplication')}
           </button>
         </div>
       </div>
@@ -503,7 +505,7 @@ export default function DriverPortal() {
             {gate === 'application-rejected' ? '❌' : '⏳'}
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">
-            {gate === 'application-rejected' ? 'Application not approved' : 'Application under review'}
+            {gate === 'application-rejected' ? t('driverPortal.rejectedTitle') : t('driverPortal.pendingTitle')}
           </h2>
           <p className="text-gray-600 text-sm mb-6">
             {gate === 'application-rejected'
@@ -511,7 +513,7 @@ export default function DriverPortal() {
               : 'Our team usually reviews new driver applications within 24 hours.'}
           </p>
           <button onClick={() => setPage('driver-application-status')} className="w-full py-3 bg-[#0B2E59] text-white rounded-xl font-semibold hover:bg-[#1a4a8a] transition">
-            View application status →
+            {t('driverPortal.viewStatus')}
           </button>
         </div>
       </div>
@@ -526,7 +528,7 @@ export default function DriverPortal() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 max-w-md text-center shadow-sm border border-gray-100">
           <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">⏳</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Almost there</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{t('driverPortal.almostTitle')}</h2>
           <p className="text-gray-600 text-sm mb-6">
             Your application was approved but your driver profile is still being set up. This usually takes a few moments — try refreshing in a minute.
           </p>
@@ -543,7 +545,7 @@ export default function DriverPortal() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-8 max-w-md text-center shadow-sm border border-red-100">
         <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4"><span className="text-2xl">🚫</span></div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Account Suspended</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">{t('driverPortal.suspendedTitle')}</h2>
         <p className="text-gray-600 text-sm mb-4">{subExpiry !== null && subExpiry <= 0 ? 'Your subscription has expired. Renew your plan to reactivate.' : 'Your account has been suspended. Please contact support.'}</p>
         <button onClick={() => setActiveTab('subscription')} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition">View Subscription Plans</button>
       </div>
@@ -560,7 +562,7 @@ export default function DriverPortal() {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white p-4 flex justify-between items-center border-b">
         <div>
-          <h1 className="text-xl font-bold">Driver Portal</h1>
+          <h1 className="text-xl font-bold">{t('driverPortal.title')}</h1>
           {subscription && (
             <div className={`text-xs mt-0.5 ${subExpiry !== null && subExpiry <= 3 ? 'text-red-500 font-semibold' : subExpiry !== null && subExpiry <= 7 ? 'text-orange-500' : 'text-gray-400'}`}>
               {subscription.plan} plan{subExpiry !== null && subExpiry > 0 && ` · expires in ${subExpiry}d`}{subExpiry !== null && subExpiry <= 0 && ' · ⚠️ expired'}
@@ -568,7 +570,7 @@ export default function DriverPortal() {
           )}
         </div>
         <button onClick={toggleOnline} className={`px-4 py-2 rounded-full font-medium text-sm ${online ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-          {online ? '● Online' : '○ Offline'}
+          {online ? t('driverPortal.online') : t('driverPortal.offline')}
         </button>
       </div>
 
@@ -579,7 +581,7 @@ export default function DriverPortal() {
        * tab to 'subscription' on first render. */}
       {gate === 'subscription-needed' && (
         <div className="px-6 py-3 text-sm font-medium flex items-center justify-between bg-yellow-50 text-yellow-800 border-b border-yellow-200">
-          <span>⚠️ You need an active subscription to receive job offers. Pick a plan below to get started.</span>
+          <span>⚠️ {t('driverPortal.subNeededBanner')}</span>
           <button onClick={() => setActiveTab('subscription')} className="ml-4 underline text-xs font-semibold">View plans</button>
         </div>
       )}
@@ -593,8 +595,8 @@ export default function DriverPortal() {
 
       <div className="p-6 max-w-7xl mx-auto">
         <div className="flex gap-2 mb-6 flex-wrap">
-          {['overview', 'jobs', 'earnings', 'wallet', 'subscription'].map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={`px-4 py-2 rounded capitalize text-sm font-medium ${activeTab === t ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}>{t}</button>
+          {(['overview', 'jobs', 'earnings', 'wallet', 'subscription'] as const).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded capitalize text-sm font-medium ${activeTab === tab ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}>{t(`driverPortal.${tab}`)}</button>
           ))}
         </div>
 
@@ -636,14 +638,14 @@ export default function DriverPortal() {
               <div className="bg-white rounded-xl border p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h3 className="font-bold text-gray-900 text-sm">📍 Map view</h3>
+                    <h3 className="font-bold text-gray-900 text-sm">📍 {t('driverPortal.mapView')}</h3>
                     <p className="text-xs text-gray-500">Tap a pin to see job details and accept.</p>
                   </div>
                   <button
                     onClick={() => setShowJobMap(s => !s)}
                     className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
                   >
-                    {showJobMap ? 'Hide map' : 'Show map'}
+                    {showJobMap ? t('driverPortal.hideMap') : t('driverPortal.showMap')}
                   </button>
                 </div>
                 {showJobMap && (
@@ -657,7 +659,7 @@ export default function DriverPortal() {
               </div>
             )}
 
-            {jobs.length === 0 && <div className="text-center py-12 text-gray-500">No jobs available right now</div>}
+            {jobs.length === 0 && <div className="text-center py-12 text-gray-500">{t('driverPortal.noJobs')}</div>}
             {jobs.map(job => {
               const price = safeNumber(job.final_price ?? job.original_price ?? job.price_estimate);
               const comm = calcCommission(price, subscription?.plan ?? 'basic');
@@ -676,10 +678,10 @@ export default function DriverPortal() {
                     <p className="text-sm text-gray-500">Total: {safeNumber(price).toFixed(0)} NOK</p>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    {job.status === 'awaiting_driver' && <button onClick={() => acceptJob(job)} className="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium">Accept Job</button>}
-                    {job.status === 'driver_assigned' && <button onClick={() => startJob(job.id)} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">Start Job</button>}
-                    {job.status === 'in_transit' && <button onClick={() => finishJob(job.id)} className="bg-red-600 text-white px-4 py-2 rounded text-sm font-medium">Finish Job</button>}
-                    {job.status === 'completed' && !job.driver_confirmation && <button onClick={() => confirmCompletion(job.id)} className="bg-purple-600 text-white px-4 py-2 rounded text-sm font-medium">Confirm Completion</button>}
+                    {job.status === 'awaiting_driver' && <button onClick={() => acceptJob(job)} className="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium">{t('driverPortal.acceptJob')}</button>}
+                    {job.status === 'driver_assigned' && <button onClick={() => startJob(job.id)} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium">{t('driverPortal.startJob')}</button>}
+                    {job.status === 'in_transit' && <button onClick={() => finishJob(job.id)} className="bg-red-600 text-white px-4 py-2 rounded text-sm font-medium">{t('driverPortal.finishJob')}</button>}
+                    {job.status === 'completed' && !job.driver_confirmation && <button onClick={() => confirmCompletion(job.id)} className="bg-purple-600 text-white px-4 py-2 rounded text-sm font-medium">{t('driverPortal.confirmCompletion')}</button>}
                   </div>
                 </div>
               );
@@ -689,22 +691,22 @@ export default function DriverPortal() {
 
         {activeTab === 'wallet' && (
           <div className="bg-white p-6 rounded-xl border">
-            <h2 className="font-bold text-lg mb-4">Wallet Ledger</h2>
+            <h2 className="font-bold text-lg mb-4">{t('driverPortal.walletBalance')}</h2>
             <p className="text-3xl font-bold text-emerald-600 mb-1">{safeNumber(wallet?.balance).toFixed(0)} NOK</p>
-            <p className="text-sm text-gray-500 mb-6">Available balance</p>
+            <p className="text-sm text-gray-500 mb-6">{t('driverPortal.availableBalance')}</p>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-gray-50 rounded-lg p-4"><p className="text-sm text-gray-500">Pending</p><p className="text-xl font-bold">{safeNumber(wallet?.pending).toFixed(0)} NOK</p></div>
               <div className="bg-gray-50 rounded-lg p-4"><p className="text-sm text-gray-500">Total Earned</p><p className="text-xl font-bold">{safeNumber(wallet?.total_earned).toFixed(0)} NOK</p></div>
             </div>
-            <button onClick={requestPayout} className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium">Request Payout</button>
+            <button onClick={requestPayout} className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium">{t('driverPortal.requestPayout')}</button>
             {transactions.length > 0 && (
               <div className="mt-6">
                 <h3 className="font-semibold mb-3">Recent Transactions</h3>
                 <div className="space-y-2">
-                  {transactions.slice(0, 10).map((t: any) => (
-                    <div key={t.id} className="flex justify-between text-sm py-2 border-b">
-                      <span className="text-gray-600">{t.description ?? t.type}</span>
-                      <span className="font-medium text-emerald-600">+{safeNumber(t.amount).toFixed(0)} NOK</span>
+                  {transactions.slice(0, 10).map((tx: any) => (
+                    <div key={tx.id} className="flex justify-between text-sm py-2 border-b">
+                      <span className="text-gray-600">{tx.description ?? tx.type}</span>
+                      <span className="font-medium text-emerald-600">+{safeNumber(tx.amount).toFixed(0)} NOK</span>
                     </div>
                   ))}
                 </div>
@@ -716,7 +718,7 @@ export default function DriverPortal() {
         {activeTab === 'earnings' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-xl border">
-              <h2 className="font-bold text-lg mb-4">Earnings Summary</h2>
+              <h2 className="font-bold text-lg mb-4">{t('driverPortal.earningsSummary')}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <Card title="Total Earned" value={wallet?.total_earned}/>
                 <Card title="This Month" value={0}/>
@@ -724,7 +726,7 @@ export default function DriverPortal() {
               </div>
             </div>
             <div className="bg-white p-6 rounded-xl border">
-              <h2 className="font-bold text-lg mb-1">Earnings Calculator</h2>
+              <h2 className="font-bold text-lg mb-1">{t('driverPortal.earningsCalc')}</h2>
               <p className="text-sm text-gray-500 mb-5">Estimate your net earnings for any job before you accept.</p>
               <EarningsCalculator plan={subscription?.plan ?? 'basic'}/>
             </div>

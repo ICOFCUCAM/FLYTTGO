@@ -34,6 +34,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../lib/auth';
 import { useApp }  from '../../lib/store';
 
@@ -67,30 +68,18 @@ function readAuthError(): { code: string; description: string } | null {
   };
 }
 
-/** Friendly copy for the error codes Supabase actually returns on
- *  email-confirmation / magic-link failures. */
-function friendlyError(code: string): string {
-  switch (code) {
-    case 'otp_expired':
-      return 'The confirmation link has already been used, or it has expired. ' +
-             'Please sign up again to receive a fresh link — only the most recent ' +
-             'email in your inbox is valid.';
-    case 'access_denied':
-      return 'Your confirmation was rejected. Please try signing up again from ' +
-             'the home page.';
-    case 'server_error':
-      return 'Supabase couldn\u2019t complete the sign-in. Please try again in a ' +
-             'few seconds.';
-    default:
-      return 'We couldn\u2019t sign you in. The link may have expired, already been ' +
-             'used, or been opened on a different device than the one you signed ' +
-             'up from. You can try signing in again from the home page.';
-  }
-}
+/** Map Supabase error codes to locale keys. The actual translation
+ *  happens inside the component where `t` is available. */
+const ERROR_KEY: Record<string, string> = {
+  otp_expired:    'callback.otpExpired',
+  access_denied:  'callback.accessDenied',
+  server_error:   'callback.serverError',
+};
 
 export default function AuthCallbackPage() {
   const { user, profile, loading } = useAuth();
   const { setPage }                = useApp();
+  const { t }                      = useTranslation();
   const [timedOut, setTimedOut]    = useState(false);
 
   /* Read Supabase's error params once on mount. Memoised so we don't
@@ -130,7 +119,7 @@ export default function AuthCallbackPage() {
 
   if (showError) {
     const code    = urlError?.code ?? 'timeout';
-    const message = friendlyError(code);
+    const message = t(ERROR_KEY[code] ?? 'callback.genericError');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
@@ -147,7 +136,7 @@ export default function AuthCallbackPage() {
             </svg>
           </div>
           <h1 className="text-xl font-semibold text-gray-900 mb-2">
-            We couldn&rsquo;t sign you in
+            {t('callback.errorTitle')}
           </h1>
           <p className="text-sm text-gray-600 mb-6">
             {message}
@@ -157,7 +146,7 @@ export default function AuthCallbackPage() {
             onClick={() => setPage('home')}
             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-4 rounded-lg transition"
           >
-            Back to home
+            {t('callback.backHome')}
           </button>
         </div>
       </div>
@@ -168,7 +157,7 @@ export default function AuthCallbackPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="text-center">
         <div className="w-12 h-12 mx-auto mb-4 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-gray-600">Signing you in&hellip;</p>
+        <p className="text-sm text-gray-600">{t('callback.signingIn')}</p>
       </div>
     </div>
   );

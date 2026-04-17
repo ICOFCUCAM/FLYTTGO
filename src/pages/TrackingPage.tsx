@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 import DeliveryMap from '../components/DeliveryMap';
 import { useAuth } from '../lib/auth';
@@ -33,6 +34,7 @@ function ProgressRing({ pct }: { pct: number }) {
 }
 
 export default function TrackingPage() {
+  const { t } = useTranslation();
   const { setPage } = useApp();
   const { user } = useAuth();
   const [bookingId, setBookingId] = useState('');
@@ -61,8 +63,8 @@ export default function TrackingPage() {
   /* ETA countdown */
   useEffect(() => {
     if (!searched) return;
-    const t = setInterval(() => setEta(p => Math.max(0, p - 1)), 15000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setEta(p => Math.max(0, p - 1)), 15000);
+    return () => clearInterval(timer);
   }, [searched]);
 
   /* Scroll chat */
@@ -109,10 +111,10 @@ export default function TrackingPage() {
       <section className="bg-gradient-to-br from-[#0B2E59] to-[#1a4a8a] pt-8 pb-12">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <div className="inline-flex items-center gap-2 bg-white/10 text-white/80 text-xs px-4 py-2 rounded-full mb-5">
-            📍 Real-Time Delivery Tracking
+            📍 {t('tracking.badge')}
           </div>
-          <h1 className="text-4xl font-extrabold text-white mb-3">Track Your Delivery</h1>
-          <p className="text-white/60 mb-8">Enter your booking ID or sign in to auto-load your active job.</p>
+          <h1 className="text-4xl font-extrabold text-white mb-3">{t('tracking.title')}</h1>
+          <p className="text-white/60 mb-8">{t('tracking.subtitle')}</p>
           <div className="flex gap-2 max-w-lg mx-auto">
             <div className="relative flex-1">
               <span className="absolute left-3.5 top-3.5 text-gray-400 text-sm">🔍</span>
@@ -120,18 +122,18 @@ export default function TrackingPage() {
                 value={bookingId}
                 onChange={e => setBookingId(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleTrack()}
-                placeholder="Booking ID (e.g. BK-7842)"
+                placeholder={t('tracking.searchPlaceholder')}
                 className="w-full pl-9 pr-4 py-3.5 rounded-xl text-sm shadow-lg focus:ring-2 focus:ring-[#F2B705] outline-none"
               />
             </div>
             <button onClick={handleTrack} disabled={loading}
               className="px-6 py-3.5 bg-[#F2B705] text-[#0B2E59] font-bold rounded-xl hover:bg-[#F2B705]/90 transition disabled:opacity-60 whitespace-nowrap">
-              {loading ? '...' : 'Track'}
+              {loading ? '...' : t('tracking.trackBtn')}
             </button>
           </div>
           {!user && (
             <p className="text-white/40 text-xs mt-3">
-              <button onClick={() => setPage('home')} className="underline hover:text-white/70">Sign in</button> to auto-load your active delivery
+              <button onClick={() => setPage('home')} className="underline hover:text-white/70">{t('auth.signInTitle')}</button> {t('tracking.signInHint')}
             </p>
           )}
         </div>
@@ -140,8 +142,14 @@ export default function TrackingPage() {
       {/* TRUST BAR */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-center gap-6 text-xs text-gray-500 font-medium">
-          {['🔒 Escrow Protected', '📍 GPS Verified', '⭐ 4.8/5 Rating', '🛡️ Insured Transport', '📞 24/7 Support'].map(b => (
-            <span key={b}>{b}</span>
+          {[
+            { icon: '🔒', key: 'tracking.trustEscrow' },
+            { icon: '📍', key: 'tracking.trustGps' },
+            { icon: '⭐', key: 'tracking.trustRating' },
+            { icon: '🛡️', key: 'tracking.trustInsured' },
+            { icon: '📞', key: 'tracking.trustSupport' },
+          ].map(b => (
+            <span key={b.key}>{b.icon} {t(b.key)}</span>
           ))}
         </div>
       </div>
@@ -150,9 +158,9 @@ export default function TrackingPage() {
       {searched && !booking && (
         <div className="max-w-lg mx-auto px-4 py-16 text-center">
           <div className="text-5xl mb-4">🔍</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Booking Not Found</h2>
-          <p className="text-gray-500 mb-6">We couldn&apos;t find a booking with that ID. Check the ID and try again.</p>
-          <button onClick={() => setPage('my-bookings')} className="px-6 py-3 bg-[#0B2E59] text-white rounded-xl font-semibold text-sm">View My Bookings</button>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{t('tracking.notFoundTitle')}</h2>
+          <p className="text-gray-500 mb-6">{t('tracking.notFoundBody')}</p>
+          <button onClick={() => setPage('my-bookings')} className="px-6 py-3 bg-[#0B2E59] text-white rounded-xl font-semibold text-sm">{t('tracking.viewBookings')}</button>
         </div>
       )}
 
@@ -181,9 +189,9 @@ export default function TrackingPage() {
                   <div className="w-8 h-8 bg-[#0B2E59] rounded-full flex items-center justify-center text-white text-xs font-bold">L</div>
                   <div>
                     <div className="font-semibold text-gray-900 text-sm">Lars Olsen</div>
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-500"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"/>Online</div>
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-500"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"/>{t('tracking.driverOnline')}</div>
                   </div>
-                  <a href="tel:+4791234567" className="ml-auto px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-semibold flex items-center gap-1">📞 Call</a>
+                  <a href="tel:+4791234567" className="ml-auto px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-semibold flex items-center gap-1">📞 {t('tracking.callDriver')}</a>
                 </div>
                 <div ref={chatRef} className="h-40 overflow-y-auto p-4 space-y-3 bg-gray-50">
                   <div className="flex justify-start">
@@ -205,10 +213,10 @@ export default function TrackingPage() {
                     value={message}
                     onChange={e => setMessage(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                    placeholder="Message your driver..."
+                    placeholder={t('tracking.chatPlaceholder')}
                     className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#0B2E59] outline-none"
                   />
-                  <button onClick={sendMessage} className="px-4 py-2.5 bg-[#0B2E59] text-white rounded-xl text-sm font-medium">Send</button>
+                  <button onClick={sendMessage} className="px-4 py-2.5 bg-[#0B2E59] text-white rounded-xl text-sm font-medium">{t('tracking.sendBtn')}</button>
                 </div>
               </div>
             </div>
@@ -222,23 +230,23 @@ export default function TrackingPage() {
                   <ProgressRing pct={pct}/>
                   <div className="absolute text-center">
                     <div className="text-2xl font-extrabold text-gray-900">{Math.round(pct)}%</div>
-                    <div className="text-xs text-gray-400">Complete</div>
+                    <div className="text-xs text-gray-400">{t('tracking.complete')}</div>
                   </div>
                 </div>
                 <div className="mt-3 font-semibold text-[#0B2E59]">
-                  {stages[Math.max(activeIdx, 0)]?.label || 'Booking Confirmed'}
+                  {t(`tracking.stage${Math.max(activeIdx, 0)}`)}
                 </div>
                 <div className="text-xs text-gray-400 mt-1">
-                  {eta > 0 ? `Arriving in ~${eta} min` : 'Delivered!'}
+                  {eta > 0 ? t('tracking.arrivingIn', { min: eta }) : t('tracking.delivered')}
                 </div>
               </div>
 
               {/* Timeline */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <h3 className="font-bold text-[#0B2E59] mb-4 text-sm">Delivery Timeline</h3>
+                <h3 className="font-bold text-[#0B2E59] mb-4 text-sm">{t('tracking.timeline')}</h3>
                 <div className="space-y-0">
                   {stages.map((stage, i) => (
-                    <div key={stage.label} className="flex items-start gap-3">
+                    <div key={i} className="flex items-start gap-3">
                       <div className="flex flex-col items-center">
                         <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${stage.done ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
                           {stage.done ? '✓' : stage.icon}
@@ -248,7 +256,7 @@ export default function TrackingPage() {
                         )}
                       </div>
                       <div className="pb-2">
-                        <div className={`text-sm font-medium leading-tight ${stage.done ? 'text-[#0B2E59]' : 'text-gray-400'}`}>{stage.label}</div>
+                        <div className={`text-sm font-medium leading-tight ${stage.done ? 'text-[#0B2E59]' : 'text-gray-400'}`}>{t(`tracking.stage${i}`)}</div>
                         {stage.time && <div className="text-xs text-gray-400 mt-0.5">{stage.time}</div>}
                       </div>
                     </div>
@@ -258,23 +266,23 @@ export default function TrackingPage() {
 
               {/* Booking details */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <h3 className="font-bold text-[#0B2E59] mb-4 text-sm">Booking Details</h3>
+                <h3 className="font-bold text-[#0B2E59] mb-4 text-sm">{t('tracking.bookingDetails')}</h3>
                 <div className="space-y-2.5">
                   {[
-                    { label: 'Booking ID', value: booking.id?.slice(0,8).toUpperCase() || 'BK-7842' },
-                    { label: 'Service', value: booking.van_type || 'Large Van' },
-                    { label: 'Move Date', value: booking.move_date || 'Today' },
-                    { label: 'Total', value: `${Number(booking.final_price || booking.price_estimate || 2450).toFixed(0)} NOK` },
-                    { label: 'Payment', value: booking.payment_status === 'escrow' ? '🔒 In Escrow' : booking.payment_status || 'Secured' },
+                    { label: t('tracking.bookingId'), value: booking.id?.slice(0,8).toUpperCase() || 'BK-7842', key: 'bookingId' },
+                    { label: t('tracking.service'), value: booking.van_type || 'Large Van', key: 'service' },
+                    { label: t('tracking.moveDate'), value: booking.move_date || 'Today', key: 'moveDate' },
+                    { label: t('tracking.total'), value: `${Number(booking.final_price || booking.price_estimate || 2450).toFixed(0)} NOK`, key: 'total' },
+                    { label: 'Payment', value: booking.payment_status === 'escrow' ? '🔒 In Escrow' : booking.payment_status || 'Secured', key: 'payment' },
                   ].map(row => (
-                    <div key={row.label} className="flex justify-between items-center text-sm">
+                    <div key={row.key} className="flex justify-between items-center text-sm">
                       <span className="text-gray-500">{row.label}</span>
-                      <span className={`font-semibold ${row.label === 'Total' ? 'text-[#F2B705]' : 'text-gray-900'}`}>{row.value}</span>
+                      <span className={`font-semibold ${row.key === 'total' ? 'text-[#F2B705]' : 'text-gray-900'}`}>{row.value}</span>
                     </div>
                   ))}
                 </div>
                 <button onClick={() => setPage('my-bookings')} className="mt-4 w-full py-2.5 border-2 border-[#0B2E59] text-[#0B2E59] rounded-xl text-sm font-semibold hover:bg-[#0B2E59] hover:text-white transition">
-                  View All Bookings
+                  {t('tracking.viewAll')}
                 </button>
               </div>
             </div>
@@ -287,14 +295,14 @@ export default function TrackingPage() {
         <section className="max-w-4xl mx-auto px-4 py-16">
           <div className="grid sm:grid-cols-3 gap-4">
             {[
-              { icon: '📍', title: 'Live GPS Tracking', desc: 'Follow your driver on a real-time map with live position updates.' },
-              { icon: '💬', title: 'In-App Messaging', desc: 'Chat directly with your driver without sharing personal numbers.' },
-              { icon: '🔒', title: 'Escrow Protected', desc: 'Payment held securely until you confirm successful delivery.' },
+              { icon: '📍', titleKey: 'tracking.featureGps', descKey: 'tracking.featureGpsDesc' },
+              { icon: '💬', titleKey: 'tracking.featureChat', descKey: 'tracking.featureChatDesc' },
+              { icon: '🔒', titleKey: 'tracking.featureEscrow', descKey: 'tracking.featureEscrowDesc' },
             ].map(f => (
-              <div key={f.title} className="bg-white rounded-2xl border border-gray-100 p-6 text-center shadow-sm">
+              <div key={f.titleKey} className="bg-white rounded-2xl border border-gray-100 p-6 text-center shadow-sm">
                 <div className="text-4xl mb-3">{f.icon}</div>
-                <h3 className="font-bold text-gray-900 mb-2">{f.title}</h3>
-                <p className="text-gray-500 text-sm">{f.desc}</p>
+                <h3 className="font-bold text-gray-900 mb-2">{t(f.titleKey)}</h3>
+                <p className="text-gray-500 text-sm">{t(f.descKey)}</p>
               </div>
             ))}
           </div>

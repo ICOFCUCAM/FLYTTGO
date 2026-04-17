@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp }  from '../lib/store';
 import { supabase } from '../lib/supabase';
@@ -60,6 +61,7 @@ const DOC_LABEL: Record<string, string> = {
 export default function DriverApplicationStatusPage() {
   const { user }    = useAuth();
   const { setPage } = useApp();
+  const { t }       = useTranslation();
 
   const [loading,     setLoading]     = useState(true);
   const [application, setApplication] = useState<DriverApplication | null>(null);
@@ -110,7 +112,7 @@ export default function DriverApplicationStatusPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Sign in required</h1>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">{t('driverStatus.signInRequired')}</h1>
           <p className="text-sm text-gray-600 mb-6">
             Please sign in to view your driver application status.
           </p>
@@ -118,7 +120,7 @@ export default function DriverApplicationStatusPage() {
             onClick={() => setPage('home')}
             className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition"
           >
-            Back to home
+            {t('driverStatus.backHome')}
           </button>
         </div>
       </div>
@@ -146,15 +148,15 @@ export default function DriverApplicationStatusPage() {
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center text-3xl">📋</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">No application yet</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t('driverStatus.noAppTitle')}</h1>
           <p className="text-gray-600 mb-8 max-w-md mx-auto">
-            You haven&rsquo;t applied to become a FlyttGo driver. Start your application now — it takes about 5 minutes and we&rsquo;ll review it within 24 hours.
+            {t('driverStatus.noAppBody')}
           </p>
           <button
             onClick={() => setPage('driver-onboarding')}
             className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition"
           >
-            Start driver application →
+            {t('driverStatus.startApp')}
           </button>
         </div>
       </div>
@@ -177,7 +179,7 @@ export default function DriverApplicationStatusPage() {
           onClick={() => setPage('home')}
           className="text-sm text-gray-500 hover:text-gray-700 mb-4"
         >
-          ← Back to home
+          ← {t('driverStatus.backHome')}
         </button>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -186,7 +188,7 @@ export default function DriverApplicationStatusPage() {
           {application.status === 'pending' && (
             <div className="bg-yellow-50 border-b border-yellow-200 p-8 text-center">
               <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-yellow-100 flex items-center justify-center text-3xl">⏳</div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">Under review</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('driverStatus.pendingTitle')}</h1>
               <p className="text-sm text-gray-600 max-w-md mx-auto">
                 Your application is in the queue. Our approvals team usually reviews new drivers within 24 hours.
               </p>
@@ -196,7 +198,7 @@ export default function DriverApplicationStatusPage() {
           {application.status === 'approved' && (
             <div className="bg-emerald-50 border-b border-emerald-200 p-8 text-center">
               <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-emerald-100 flex items-center justify-center text-3xl">✅</div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">You&rsquo;re approved!</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('driverStatus.approvedTitle')}</h1>
               <p className="text-sm text-gray-600 max-w-md mx-auto">
                 Welcome to FlyttGo. Pick a subscription plan to start receiving job offers in your area.
               </p>
@@ -206,7 +208,7 @@ export default function DriverApplicationStatusPage() {
           {application.status === 'rejected' && (
             <div className="bg-red-50 border-b border-red-200 p-8 text-center">
               <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-red-100 flex items-center justify-center text-3xl">❌</div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">Not approved</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">{t('driverStatus.rejectedTitle')}</h1>
               <p className="text-sm text-gray-600 max-w-md mx-auto">
                 Your application wasn&rsquo;t approved this time. You can update your documents and re-submit below.
               </p>
@@ -218,35 +220,35 @@ export default function DriverApplicationStatusPage() {
             {/* Rejection reason block */}
             {application.status === 'rejected' && application.rejection_reason && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                <p className="text-xs font-semibold text-red-900 uppercase tracking-wide mb-1">Reason from reviewer</p>
+                <p className="text-xs font-semibold text-red-900 uppercase tracking-wide mb-1">{t('driverStatus.reviewerReason')}</p>
                 <p className="text-sm text-red-800">{application.rejection_reason}</p>
               </div>
             )}
 
             {/* Application summary */}
             <div>
-              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Application details</h2>
+              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">{t('driverStatus.appDetails')}</h2>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-xs text-gray-500">Submitted</p>
+                  <p className="text-xs text-gray-500">{t('driverStatus.submitted')}</p>
                   <p className="font-medium text-gray-900">{submittedAt}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Status</p>
+                  <p className="text-xs text-gray-500">{t('driverStatus.statusLabel')}</p>
                   <p className="font-medium capitalize text-gray-900">{application.status}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Name</p>
+                  <p className="text-xs text-gray-500">{t('driverStatus.name')}</p>
                   <p className="font-medium text-gray-900">
                     {(application.first_name ?? '') + ' ' + (application.last_name ?? '')}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">City</p>
+                  <p className="text-xs text-gray-500">{t('driverStatus.city')}</p>
                   <p className="font-medium text-gray-900">{application.city ?? '—'}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-xs text-gray-500">Vehicle</p>
+                  <p className="text-xs text-gray-500">{t('driverStatus.vehicle')}</p>
                   <p className="font-medium text-gray-900">
                     {application.vehicle_type?.replace(/_/g, ' ') ?? '—'}
                     {application.vehicle_model ? ` · ${application.vehicle_model}` : ''}
@@ -258,9 +260,9 @@ export default function DriverApplicationStatusPage() {
 
             {/* Document status */}
             <div>
-              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Documents</h2>
+              <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">{t('driverStatus.documents')}</h2>
               {documents.length === 0 ? (
-                <p className="text-sm text-gray-500">No documents uploaded yet.</p>
+                <p className="text-sm text-gray-500">{t('driverStatus.noDocsUploaded')}</p>
               ) : (
                 <ul className="space-y-2">
                   {documents.map(doc => (
@@ -286,7 +288,7 @@ export default function DriverApplicationStatusPage() {
               {application.status === 'pending' && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center">
                   <p className="text-sm text-yellow-800">
-                    We&rsquo;ll email you as soon as our team reviews your application. No action is needed from your side right now.
+                    {t('driverStatus.pendingNote')}
                   </p>
                 </div>
               )}
@@ -296,7 +298,7 @@ export default function DriverApplicationStatusPage() {
                   onClick={() => setPage('subscriptions')}
                   className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-base transition shadow-sm"
                 >
-                  Choose a subscription plan →
+                  {t('driverStatus.choosePlan')}
                 </button>
               )}
 
@@ -305,7 +307,7 @@ export default function DriverApplicationStatusPage() {
                   onClick={() => setPage('driver-onboarding')}
                   className="w-full py-4 bg-[#0B2E59] hover:bg-[#1a4a8a] text-white rounded-xl font-bold text-base transition shadow-sm"
                 >
-                  Re-upload documents and re-submit →
+                  {t('driverStatus.reupload')}
                 </button>
               )}
             </div>

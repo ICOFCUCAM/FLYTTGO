@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 
 /* ================= CUSTOMER BOOKING LEGAL ACCEPTANCE =================
@@ -58,6 +59,7 @@ function LegalLink({ href, children }: { href: string; children: React.ReactNode
 }
 
 export function CustomerLegalAcceptance({ onAccepted, compact = false }: CustomerLegalAcceptanceProps) {
+  const { t } = useTranslation();
   const [checks, setChecks] = useState({
     accurateInfo: false,
     legalAccepted: false,
@@ -77,10 +79,9 @@ export function CustomerLegalAcceptance({ onAccepted, compact = false }: Custome
        * "WARNING" tone. The escrow mention is the most important
        * trust signal on the confirmation page. */}
       <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-        <p className="text-emerald-900 text-xs font-semibold mb-1">Before confirming your booking</p>
+        <p className="text-emerald-900 text-xs font-semibold mb-1">{t('legal.banner')}</p>
         <p className="text-emerald-800 text-xs leading-relaxed">
-          FlyttGo connects you with verified independent transport providers.
-          Payment is securely held in escrow until delivery is completed.
+          {t('legal.bannerBody')}
         </p>
       </div>
 
@@ -112,7 +113,7 @@ export function CustomerLegalAcceptance({ onAccepted, compact = false }: Custome
           </div>
         </div>
         <span className="text-sm text-gray-700 leading-relaxed flex-1">
-          I confirm the booking details I provided are accurate
+          {t('legal.check1')}
         </span>
       </label>
 
@@ -147,10 +148,10 @@ export function CustomerLegalAcceptance({ onAccepted, compact = false }: Custome
           </div>
         </div>
         <span className="text-sm text-gray-700 leading-relaxed flex-1">
-          I accept the{' '}
-          <LegalLink href="/terms">Terms &amp; Conditions</LegalLink>,{' '}
-          <LegalLink href="/privacy">Privacy Policy</LegalLink>, and{' '}
-          <LegalLink href="/liability">Marketplace Agreement</LegalLink>
+          {t('legal.check2label')}{' '}
+          <LegalLink href="/terms">{t('legal.termsLink')}</LegalLink>,{' '}
+          <LegalLink href="/privacy">{t('legal.privacyLink')}</LegalLink>, and{' '}
+          <LegalLink href="/liability">{t('legal.marketplaceLink')}</LegalLink>
         </span>
       </label>
 
@@ -168,7 +169,7 @@ export function CustomerLegalAcceptance({ onAccepted, compact = false }: Custome
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          All legal requirements accepted. You may proceed.
+          {t('legal.allAccepted')}
         </p>
       )}
     </div>
