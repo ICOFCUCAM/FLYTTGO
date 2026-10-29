@@ -13,7 +13,7 @@ const CAMT054 = sample('made-up-camt054.xml');
 const CAMT053 = sample('made-up-camt053.xml');
 
 /** The sample's records, to break one field at a time. */
-const records = OCR.split('\r\n').filter(Boolean);
+const records = OCR.split(/\r?\n/).filter(Boolean);
 const withRecord = (i: number, change: (r: string) => string) => records.map((r, j) => (j === i ? change(r) : r)).join('\n');
 const put = (r: string, pos: number, s: string) => r.slice(0, pos - 1) + s + r.slice(pos - 1 + s.length);
 const refusal = (fn: () => unknown) => { try { fn(); } catch (e) { expect(e).toBeInstanceOf(BankFileError); return (e as Error).message; } throw new Error('accepted'); };
