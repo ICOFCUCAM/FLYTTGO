@@ -18,12 +18,16 @@
 --     through a function below that checks the caller's company role and
 --     records an organization_events row.
 --   * A new organisation starts 'pending'; a platform administrator
---     activates, suspends or closes it (company onboarding). Suspended
---     and closed organisations cannot invite.
+--     activates, suspends or closes it (company onboarding). Until it is
+--     active it may only set itself up (details, team, invitations);
+--     later features check is_active_org_member(). Suspended and closed
+--     organisations cannot invite.
 --   * An organisation always keeps at least one active owner.
 --   * Invitations carry a random token shown once to the inviter (for the
 --     invitation email); only its SHA-256 is stored. Accepting needs the
---     signed-in user's email to match the invited one, within 7 days.
+--     signed-in user's confirmed email to match the invited one, within
+--     7 days, once.
+--   * The event log is append-only for every role.
 --
 -- Production already has corporate_accounts and corporate_orders (empty,
 -- not in this repository, admin-only since 00003). They are left as they
@@ -120,7 +124,7 @@ CREATE TABLE IF NOT EXISTS public.organization_invitations (
 CREATE UNIQUE INDEX IF NOT EXISTS organization_invitations_one_pending
   ON public.organization_invitations (organization_id, email) WHERE status = 'pending';
 
--- Who did what in an organisation. Append-only (no update/delete path).
+-- Who did what in an organisation. Append-only (guard_organization_events).
 CREATE TABLE IF NOT EXISTS public.organization_events (
   id              bigint      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   organization_id uuid        NOT NULL REFERENCES public.organizations (id) ON DELETE CASCADE,
@@ -152,6 +156,19 @@ AS $$
     SELECT 1 FROM public.organization_members
      WHERE organization_id = p_org AND user_id = auth.uid() AND status = 'active'
        AND (p_roles IS NULL OR role = ANY (p_roles)));
+$$;
+
+-- As is_org_member, and the organisation is active (verified and
+-- activated by the platform). Anything that commits the company or
+-- shows its business data (bookings, invoices, credit, API keys) checks
+-- this, never is_org_member: a pending, suspended or closed company may
+-- only set itself up (details, team, invitations).
+CREATE OR REPLACE FUNCTION public.is_active_org_member(p_org uuid, p_roles text[] DEFAULT NULL)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT public.is_org_member(p_org, p_roles)
+     AND EXISTS (SELECT 1 FROM public.organizations WHERE id = p_org AND status = 'active');
 $$;
 
 -- Raise unless the caller has one of the roles (platform admins pass).
@@ -199,6 +216,26 @@ DROP TRIGGER IF EXISTS guard_last_owner ON public.organization_members;
 CREATE TRIGGER guard_last_owner
   BEFORE UPDATE OR DELETE ON public.organization_members
   FOR EACH ROW EXECUTE FUNCTION public.guard_last_owner();
+
+-- The event log is never edited, and rows go only with their
+-- organisation (deleting an organisation, rather than closing it, takes
+-- its log along). Holds for every role, the server's included.
+CREATE OR REPLACE FUNCTION public.guard_organization_events()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE'
+     OR EXISTS (SELECT 1 FROM public.organizations WHERE id = OLD.organization_id) THEN
+    RAISE EXCEPTION 'organisation events are append-only' USING ERRCODE = '42501';
+  END IF;
+  RETURN OLD;
+END $$;
+
+DROP TRIGGER IF EXISTS guard_organization_events ON public.organization_events;
+CREATE TRIGGER guard_organization_events
+  BEFORE UPDATE OR DELETE ON public.organization_events
+  FOR EACH ROW EXECUTE FUNCTION public.guard_organization_events();
 
 
 -- ── 3. Row Level Security (reads only; writes through the functions) ──────
@@ -450,7 +487,12 @@ BEGIN
   IF v_inv.expires_at < now() THEN
     RAISE EXCEPTION 'invitation has expired' USING ERRCODE = 'P0002';
   END IF;
-  SELECT lower(email) INTO v_email FROM auth.users WHERE id = auth.uid();
+  -- Only a confirmed address counts: otherwise anyone could sign up with
+  -- the invited address (if email confirmation is off) and take the seat.
+  SELECT lower(email) INTO v_email FROM auth.users WHERE id = auth.uid() AND email_confirmed_at IS NOT NULL;
+  IF v_email IS NULL THEN
+    RAISE EXCEPTION 'confirm your email address before accepting an invitation' USING ERRCODE = '42501';
+  END IF;
   IF v_email IS DISTINCT FROM v_inv.email THEN
     RAISE EXCEPTION 'invitation is for another email address' USING ERRCODE = '42501';
   END IF;
@@ -475,7 +517,8 @@ DECLARE f text;
 BEGIN
   FOREACH f IN ARRAY ARRAY[
     'public.org_role(uuid)', 'public.is_org_member(uuid, text[])', 'public.require_org_role(uuid, text[])',
-    'public.org_event(uuid, text, uuid, jsonb)', 'public.guard_last_owner()',
+    'public.org_event(uuid, text, uuid, jsonb)', 'public.guard_last_owner()', 'public.guard_organization_events()',
+    'public.is_active_org_member(uuid, text[])',
     'public.create_organization(text, text, text, text, text)', 'public.update_organization(uuid, jsonb)',
     'public.admin_set_organization_status(uuid, text, text)', 'public.organization_team(uuid)',
     'public.change_member_role(uuid, uuid, text)', 'public.remove_member(uuid, uuid)',
@@ -485,7 +528,7 @@ BEGIN
   END LOOP;
 END $$;
 
-GRANT EXECUTE ON FUNCTION public.org_role(uuid), public.is_org_member(uuid, text[]),
+GRANT EXECUTE ON FUNCTION public.org_role(uuid), public.is_org_member(uuid, text[]), public.is_active_org_member(uuid, text[]),
   public.create_organization(text, text, text, text, text), public.update_organization(uuid, jsonb),
   public.admin_set_organization_status(uuid, text, text), public.organization_team(uuid),
   public.change_member_role(uuid, uuid, text), public.remove_member(uuid, uuid),
@@ -493,7 +536,7 @@ GRANT EXECUTE ON FUNCTION public.org_role(uuid), public.is_org_member(uuid, text
   TO authenticated, service_role;
 -- Internal helpers: not API endpoints.
 REVOKE ALL ON FUNCTION public.require_org_role(uuid, text[]), public.org_event(uuid, text, uuid, jsonb),
-  public.guard_last_owner() FROM authenticated;
+  public.guard_last_owner(), public.guard_organization_events() FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.is_valid_norwegian_org_number(text), public.is_reserved_org_slug(text)
   TO anon, authenticated, service_role;
 

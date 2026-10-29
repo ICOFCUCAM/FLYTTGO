@@ -27,11 +27,13 @@ This is step 2 of the corporate portal plan: the tenant foundation only. The cor
 | `organization_team(org)` | Members: the team with names and email (profiles are otherwise self-only). |
 | `invite_member(org, email, role)` | Owners; admins for `booker`, `finance` and `viewer`. Not while suspended or closed. Returns the token once. |
 | `revoke_invitation(invitation)` | Owners and admins. |
-| `accept_invitation(token)` | The invited person, signed in with the invited address, before expiry. Single use. |
+| `accept_invitation(token)` | The invited person, signed in with the invited address (confirmed), before expiry. Single use. |
 | `change_member_role(org, user, role)` | Owners; admins only below admin. |
 | `remove_member(org, user)` | Owners; admins only below admin; anyone may leave. |
 
-- **An organisation always has an active owner.** A trigger refuses removing or demoting the last one, through any path, SQL included.
+- **An organisation always has an active owner.** A trigger refuses removing or demoting the last one, through any path, SQL included. This also refuses deleting the last owner's user account: transfer ownership or close the organisation first.
+- **Pending companies only set themselves up.** `is_active_org_member(org, roles)` is true only for an active member of an `active` organisation. Bookings, invoices, credit, API keys and white-label must check it, never `is_org_member`.
+- **The event log is append-only for every role** (server and database owner included). Its rows go only when the organisation itself is deleted; close organisations rather than delete them.
 - **Invitation tokens** are 64 random hex characters (two `gen_random_uuid()`s, 244 bits). Only the hash is stored. A new invitation for the same address revokes the open one.
 - Helpers for later policies on bookings and invoices: `org_role(org)` and `is_org_member(org, roles)`.
 
@@ -41,6 +43,8 @@ Production has these two tables (both empty, not defined in this repository, adm
 
 ## Not yet decided or built
 
+The recommended verification lifecycle (Brønnøysund lookup, invitation emails, what each status may do) is in [`PREDEPLOY_REVIEW.md`](PREDEPLOY_REVIEW.md) §4.5.
+
 - Sending the invitation email (an edge function that calls `invite_member` and mails the link). Until then, the token is returned to the inviter.
 - Whether the platform verifies organisation numbers against Brønnøysundregistrene before activation.
 - What `pending` may do. Today a pending organisation can invite its team but nothing else exists to use. Bookings will require `active`.
@@ -48,4 +52,4 @@ Production has these two tables (both empty, not defined in this repository, adm
 
 ## Tests
 
-`supabase/tests/organizations.test.sql` runs in `npm run test:db` on both the repository schema and the production replica (65 checks), and the rollback variant includes 00005.
+`supabase/tests/organizations.test.sql` runs in `npm run test:db` on both the repository schema and the production replica (80 checks: cross-tenant isolation, invitations, roles, owner retention, pending/active, append-only log), and the rollback variant includes 00005.

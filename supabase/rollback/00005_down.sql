@@ -24,9 +24,11 @@ DROP TABLE IF EXISTS public.organization_invitations;
 DROP TABLE IF EXISTS public.organization_members;
 DROP TABLE IF EXISTS public.organizations;
 
+DROP FUNCTION IF EXISTS public.guard_organization_events();
 DROP FUNCTION IF EXISTS public.guard_last_owner();
 DROP FUNCTION IF EXISTS public.org_event(uuid, text, uuid, jsonb);
 DROP FUNCTION IF EXISTS public.require_org_role(uuid, text[]);
+DROP FUNCTION IF EXISTS public.is_active_org_member(uuid, text[]);
 DROP FUNCTION IF EXISTS public.is_org_member(uuid, text[]);
 DROP FUNCTION IF EXISTS public.org_role(uuid);
 DROP FUNCTION IF EXISTS public.is_reserved_org_slug(text);

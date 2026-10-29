@@ -2,7 +2,8 @@
 -- Schema-only replica of the production project "FlyttGo Norway"
 -- (qzclatvpzicwhewzdiwf), public schema + storage policies, as read on
 -- 2026-10-29 with catalog queries (pg_get_functiondef, pg_get_triggerdef,
--- pg_get_constraintdef, pg_policies, function ACLs). No customer data:
+-- pg_get_constraintdef, pg_get_viewdef, pg_policies, function and table
+-- ACLs, storage.buckets). No customer data:
 -- only the five subscription_plans rows, which are configuration.
 --
 -- Production at that time had the emergency fix already applied
@@ -837,7 +838,50 @@ REVOKE ALL ON FUNCTION public.change_driver_subscription(uuid, text) FROM PUBLIC
 
 -- ── Realtime, storage, configuration rows ──────────────────────────────────
 ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
-INSERT INTO storage.buckets (id, name, public) VALUES ('driver-documents', 'driver-documents', false);
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types) VALUES
+  ('driver-documents', 'driver-documents', false, 10485760, ARRAY['image/jpeg', 'image/png', 'application/pdf']);
+
+-- ── Views (pg_get_viewdef, as in production; owner postgres, no
+-- security_invoker, so they read the tables with the owner's rights) ──
+CREATE VIEW public.driver_dispatch_tiers AS
+ SELECT d.id AS driver_id,
+    COALESCE(ds.plan_id, d.default_plan_id) AS active_plan_id
+   FROM drivers d
+     LEFT JOIN driver_subscriptions ds ON ds.driver_id = d.id AND ds.subscription_status = 'active'::text;
+CREATE VIEW public.driver_dispatch_eligibility AS
+ SELECT ddt.driver_id,
+    sp.dispatch_weight,
+    sp.max_job_value
+   FROM driver_dispatch_tiers ddt
+     JOIN subscription_plans sp ON sp.id = ddt.active_plan_id;
+CREATE VIEW public.dispatch_wave_priority AS
+ SELECT driver_id,
+    dispatch_weight,
+        CASE
+            WHEN dispatch_weight = 5 THEN 1
+            WHEN dispatch_weight = 4 THEN 2
+            WHEN dispatch_weight = 3 THEN 3
+            WHEN dispatch_weight = 2 THEN 4
+            ELSE 5
+        END AS wave_number
+   FROM driver_dispatch_eligibility;
+CREATE VIEW public.driver_dispatch_scores AS
+ SELECT dde.driver_id,
+    dde.dispatch_weight,
+    dde.max_job_value,
+    COALESCE(dm.jobs_completed, 0) AS jobs_completed,
+    COALESCE(dm.online_hours, 0::numeric) AS online_hours,
+    (dde.dispatch_weight * 100 + COALESCE(dm.jobs_completed, 0) * 2)::numeric + COALESCE(dm.online_hours, 0::numeric) * 0.5 AS dispatch_score
+   FROM driver_dispatch_eligibility dde
+     LEFT JOIN driver_metrics dm ON dm.driver_id = dde.driver_id;
+CREATE VIEW public.match_drivers_for_booking_view AS
+ SELECT dp.user_id AS driver_id,
+    dsc.city,
+    v.vehicle_type
+   FROM driver_profiles dp
+     JOIN driver_service_cities dsc ON dsc.driver_id = dp.user_id
+     JOIN vehicles v ON v.driver_id = dp.user_id
+  WHERE dp.status = 'approved'::text;
 INSERT INTO public.subscription_plans (name, price, billing_period) VALUES
   ('Basic', 0, 'daily'), ('Free', 0, 'none'), ('Pro', 1500, 'monthly'),
   ('Pro Mini', 149, 'daily'), ('Unlimited', 2449, 'monthly');

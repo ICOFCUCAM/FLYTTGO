@@ -242,9 +242,13 @@ export default function DriverPortal() {
       .from('driver_profiles')
       .select('*')
       .eq('user_id', user.id)
-      .maybeSingle();
-    if (!data) return;
-    setDriver(data); setOnline(data.online || false);
+      .order('created_at', { ascending: true })
+      .limit(1);
+    /* A user can have more than one profile row (re-approvals used to add
+     * one each time); the oldest is the driver, as in my_driver_id(). */
+    const row = data?.[0];
+    if (!row) return;
+    setDriver(row); setOnline(row.online || false);
   }
 
   async function loadWallet() {
@@ -323,15 +327,20 @@ export default function DriverPortal() {
       const plan = PLAN_OPTIONS.find(p => p.id === planId);
       if (!plan) return;
       if (plan.priceNOK === 0) {
-        await supabase.rpc('change_driver_subscription', { p_driver_id: user.id, p_new_plan: planId });
+        const { error } = await supabase.rpc('change_driver_subscription', { p_driver_id: user.id, p_new_plan: planId });
+        if (error) { alert(`Could not switch plan: ${error.message}`); setChangingPlan(null); return; }
         alert(`Switched to ${plan.label} plan.`);
         await loadSubscription(); await loadDriver(); setChangingPlan(null); return;
       }
       const proration = calculateProration(subscription, plan);
       if (proration?.isFullyCovered) {
-        await supabase.rpc('change_driver_subscription', { p_driver_id: user.id, p_new_plan: planId });
-        await supabase.from('driver_wallet_transactions').insert({ driver_id: driver.id, type: 'subscription_credit', amount: proration.creditExVat, description: `Plan credit — ${proration.daysRemaining} unused Pro days` });
-        alert('Upgraded to Unlimited. Your remaining Pro credit fully covered the cost — no charge.'); await loadSubscription(); await loadDriver(); setChangingPlan(null); return;
+        /* Paid plans are activated only by the server after payment
+         * (change_driver_subscription refuses a paid plan from the
+         * browser), so a zero-charge upgrade needs a server path that
+         * does not exist yet. With today's prices the Pro credit never
+         * covers Unlimited, so this is not reached. */
+        alert('Your credit covers this upgrade. Please contact support to apply it.');
+        setChangingPlan(null); return;
       }
       /* The server prices the plan (with the same Pro → Unlimited
        * proration as calculateProration) from the signed-in driver's

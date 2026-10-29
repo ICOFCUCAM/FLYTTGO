@@ -7,6 +7,9 @@
 #               verified replica of the production schema) + migrations
 #   rollback    stub + replica; migrations up, then supabase/rollback
 #               down; the schema must match production again
+#   rollback with data
+#               as rollback, after writing data only the migrated schema
+#               allows; the rollback must succeed and keep the core rows
 #
 # Every migration is applied twice (re-running must be harmless). Uses
 # the usual PG* variables (PGHOST, PGPORT, PGUSER, PGPASSWORD); needs a
@@ -81,5 +84,17 @@ if ! diff <(echo "$before_bodies") <("${PSQL[@]}" -d "$DB" -At -c "$BODIES"); th
   echo "FAIL: after rolling back, function bodies differ from production's" >&2; exit 1
 fi
 echo "rollback restores the production schema and function bodies exactly"
+
+echo "── rollback with data ──"
+fresh
+"${PSQL[@]}" -d "$DB" -f "$REPLICA"
+migrate
+"${PSQL[@]}" -d "$DB" -f supabase/tests/helpers.sql
+"${PSQL[@]}" -d "$DB" -f supabase/tests/rollback_data.sql >/dev/null
+for f in $(ls supabase/rollback/*_down.sql | sort -r); do
+  PGOPTIONS='-c client_min_messages=notice' "${PSQL[@]}" -d "$DB" -f "$f" 2>&1 | grep -E 'NOTICE' | sed 's/^psql:[^ ]* //' || true
+done
+PGOPTIONS='-c client_min_messages=notice' "${PSQL[@]}" -d "$DB" -f supabase/tests/rollback_data_check.sql 2>&1 \
+  | grep -vE '^\s*$|^-+$|^\([0-9]+ rows?\)$' | sed 's/^psql:[^ ]* //'
 
 "${PSQL[@]}" -d postgres -c "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)"

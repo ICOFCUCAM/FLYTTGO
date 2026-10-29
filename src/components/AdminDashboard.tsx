@@ -578,13 +578,25 @@ export default function AdminDashboard() {
       reviewPayload.rejection_reason = null;
     }
 
+    /* Documents are checked before the application is marked approved,
+     * so a refused activation leaves the application as it was. */
+    if (action === "approved") {
+      const { data: docs } = await supabase.from("driver_documents").select("document_type, verification_status").eq("driver_id", app.user_id);
+      const approvedDocs = (docs ?? []).filter((d: any) => d.verification_status === "approved").map((d: any) => d.document_type);
+      const missingDocs = REQUIRED_DOCS.filter(doc => !approvedDocs.includes(doc));
+      if (missingDocs.length > 0) { alert("Driver cannot be activated.\nMissing approvals for:\n" + missingDocs.map(d => DOCUMENT_TYPE_LABELS[d] ?? d).join(", ")); return; }
+    }
     await supabase.from("driver_applications").update(reviewPayload).eq("id", applicationId);
     if (action !== "approved") { loadData(); return; }
-    const { data: docs } = await supabase.from("driver_documents").select("document_type, verification_status").eq("driver_id", app.user_id);
-    const approvedDocs = (docs ?? []).filter((d: any) => d.verification_status === "approved").map((d: any) => d.document_type);
-    const missingDocs = REQUIRED_DOCS.filter(doc => !approvedDocs.includes(doc));
-    if (missingDocs.length > 0) { alert("Driver cannot be activated.\nMissing approvals for:\n" + missingDocs.map(d => DOCUMENT_TYPE_LABELS[d] ?? d).join(", ")); return; }
-    await supabase.from("driver_profiles").insert({ user_id: app.user_id, full_name: `${app.first_name} ${app.last_name}`, phone: app.phone, status: "approved", online: false });
+    /* Re-approving reuses the driver's existing profile (the oldest, as
+     * my_driver_id() does) instead of adding another one. */
+    const { data: existing } = await supabase.from("driver_profiles").select("id").eq("user_id", app.user_id)
+      .order("created_at", { ascending: true }).limit(1);
+    if (existing && existing.length > 0) {
+      await supabase.from("driver_profiles").update({ status: "approved" }).eq("id", existing[0].id);
+    } else {
+      await supabase.from("driver_profiles").insert({ user_id: app.user_id, full_name: `${app.first_name} ${app.last_name}`, phone: app.phone, status: "approved", online: false });
+    }
     /* sync_profile_role_on_driver_approval trigger auto-flips
      * profiles.role from 'customer' to 'driver' here. */
     alert("✅ Driver activated successfully."); loadData();

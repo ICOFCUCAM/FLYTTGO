@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS auth.users (
   id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email              text,
   raw_user_meta_data jsonb,
+  email_confirmed_at timestamptz DEFAULT now(),   -- confirmed unless a test says otherwise
   created_at         timestamptz DEFAULT now()
 );
 

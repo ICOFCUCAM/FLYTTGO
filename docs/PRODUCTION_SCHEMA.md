@@ -7,8 +7,8 @@ Everything below was read with catalog queries only. Nothing in production was c
 ## The replica, and why to trust it
 
 - `supabase/schema/production-2026-10-29.sql` is a schema-only replica of production's `public` schema and storage policies: 52 tables, 34 functions, 21 triggers, 22 policies, function privileges and the realtime publication. It holds no customer data, only the five `subscription_plans` rows.
-- `supabase/schema/fingerprint.sql` lists every column, constraint, index, RLS flag, trigger, policy, function signature and security mode, function grant and published table. `fingerprint-summary.sql` hashes that list per kind.
-- `supabase/schema/production-2026-10-29.fingerprint` is the summary as computed **on production**. The replica produces the identical nine hashes, and `supabase/tests/run.sh` refuses to run the production tests if it stops doing so.
+- `supabase/schema/fingerprint.sql` lists every column, constraint, index, RLS flag, trigger, policy, function signature and security mode, function grant, published table, view (definition and options), table and view privilege, replica identity and storage bucket. `fingerprint-summary.sql` hashes that list per kind (13 kinds; views, privileges, replica identity and buckets were added on 2026-10-29 after the review found the views).
+- `supabase/schema/production-2026-10-29.fingerprint` is the summary as computed **on production** (PostgreSQL 17.6; the MAINTAIN privilege, new in 17, is left out so 16 and 17 compare). The replica produces the identical 13 hashes, and `supabase/tests/run.sh` refuses to run the production tests if it stops doing so.
 - Function bodies aren't part of the fingerprint, because production's carry Windows line endings and comments. They were copied with `pg_get_functiondef`.
 
 **A replica proves nothing about production on a later day.** Before applying a migration live:
@@ -20,11 +20,14 @@ Everything below was read with catalog queries only. Nothing in production was c
 
 | | |
 |---|---|
-| Data | 5 auth users; 13 profiles (8 without a user); 17 bookings, none with a driver or a Stripe/Vipps reference; 3 escrow rows (all `held`); 4 driver profiles, **all belonging to users that no longer exist**; 4 driver documents for missing users, with **no files in storage**; 5 `drivers` rows; 1 wallet; 0 subscriptions, locations and dispatch logs; 2 admins. In effect, test data. |
+| Data | 5 auth users; 13 profiles (8 without a user); 17 bookings, none with a driver or a Stripe/Vipps reference; 3 escrow rows (all `held`); 4 driver profiles, **three for users that no longer exist and one with no user**; 4 driver documents for missing users, with **no files in storage**; 5 `drivers` rows; 1 wallet; 0 subscriptions, locations and dispatch logs; 2 admins. In effect, test data. |
 | RLS | On for 6 of 52 tables. `admin_accounts` RLS and `change_driver_subscription` without anon were **added by the emergency fix** before this snapshot. |
 | Migrations | None recorded. The schema was built by hand. |
 | Edge functions | `route-distance`, `create-checkout-session`, `process-payment`, `release-escrow` (a commission calculator only), `calculate-price`, `stripe-webhook`. Not deployed: `create-vipps-session`, `vipps-webhook`, `send-booking-email`, `refund-payment`. |
 | Extensions | No `pg_cron`, so no scheduled subscription expiry runs. |
+| Views | Five dispatch views (`driver_dispatch_tiers`, `driver_dispatch_eligibility`, `driver_dispatch_scores`, `dispatch_wave_priority`, `match_drivers_for_booking_view`), owner rights, all privileges to anon. Unused by the app. |
+| Privileges | Every table has Supabase's default grants (all privileges for anon, authenticated, service_role); RLS is the only barrier. |
+| Other | Also present and empty: `subscriptions` (→ `driver_profiles`) and `driver_wallet` (→ `drivers`), beside the `driver_subscriptions` and `driver_wallets` the app uses. One `driver_profiles` row has no `user_id`. |
 
 ## Defects found in production, and where each is fixed
 
@@ -44,6 +47,7 @@ Everything below was read with catalog queries only. Nothing in production was c
 | Approving an over-time charge fails | `capture_extra_escrow_after_approval` re-fires itself endlessly | 00003 |
 | A released escrow can pay the driver repeatedly, or set the balance to NULL | `settle_driver_wallet_after_release` fires on every update | 00003 |
 | Production triggers on escrow stop working once RLS is on | They ran as the calling user | 00003 (run as owner) |
+| Five views bypass RLS (owner rights) and are readable by anon | 00003 (`security_invoker`, browser roles revoked) |
 | `admin_accounts.id` has no default | Admin rows must be inserted with an explicit id | Documented. Insert with `gen_random_uuid()`. |
 
 ## Identity rule (decision to confirm)

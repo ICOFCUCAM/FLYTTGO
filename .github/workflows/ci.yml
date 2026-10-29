@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Run on any branch from the Actions tab (or the API) before a PR exists.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -39,7 +41,8 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        # Production runs PostgreSQL 17 (17.6 on 2026-10-29).
+        image: postgres:17
         env:
           POSTGRES_PASSWORD: postgres
         ports: ['5432:5432']

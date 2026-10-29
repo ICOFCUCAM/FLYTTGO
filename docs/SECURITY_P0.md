@@ -7,6 +7,7 @@ Branch `claude/vibrant-johnson-awo68u`. **Nothing here is deployed or applied.**
 The emergency fix is in place (seen 2026-10-29): `admin_accounts` has RLS with a self-read policy, and `anon` can no longer run `change_driver_subscription`. Still open in production until the migrations are applied:
 
 - 46 of 52 tables have no RLS: wallets, escrow, payments, payouts, platform_config, driver documents and locations, `corporate_accounts.api_key`, chat, audit logs.
+- Five dispatch views run with their owner's rights, so anon can read driver ids, plans, metrics, cities and vehicles through them even once RLS is on. 00003 now sets `security_invoker` and revokes the browser roles.
 - A customer can set their own booking to paid, which dispatches a driver without payment.
 - Any signed-in user can call `change_driver_subscription` for any driver and any plan.
 - Any user (even anon) can run dispatch, or reclaim every assigned job.
@@ -76,7 +77,7 @@ Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.s
 
 **Before anything:**
 1. Confirm the production project (§4).
-2. Re-check that production still matches the replica. Run `supabase/schema/fingerprint-summary.sql` there and compare with `supabase/schema/production-2026-10-29.fingerprint`. Any difference means re-snapshot and re-test first.
+2. Re-check that production still matches the replica. Run `supabase/schema/fingerprint-summary.sql` there and compare with `supabase/schema/production-2026-10-29.fingerprint` (13 kinds, including views and table privileges). Any difference means re-snapshot and re-test first.
 3. Back up the database (Supabase backup, or `pg_dump`).
 
 **On a copy first.** Restore the backup into a Supabase branch or a separate project. Apply 00002 → 00004 and read the NOTICE output (dropped policies, keys left NOT VALID, wallets moved). Run the smoke test in `docs/DEPLOYMENT.md` §7, plus:
@@ -99,7 +100,9 @@ Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.s
    - Wallets moved by 00002 are not moved back.
 3. The rollback re-opens the holes in §1. Use it only to return to a known state.
 
-## 6. Tests (local run, 2026-10-29)
+## 6. Tests (local run, 2026-10-29, PostgreSQL 16; CI runs 17 like production)
+
+The pre-deployment review and its fixes: [`PREDEPLOY_REVIEW.md`](PREDEPLOY_REVIEW.md). The copy-of-production test plan: [`COPY_OF_PRODUCTION_TEST_PLAN.md`](COPY_OF_PRODUCTION_TEST_PLAN.md).
 
 | Check | Result |
 |---|---|
@@ -107,7 +110,7 @@ Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.s
 | `npm run lint` | 0 errors; warnings identical to `main` |
 | `npm run build` | passes |
 | `npm test` (Vitest) | **38 / 38**: pricing and browser/server formula parity, refunds against fake Stripe/Vipps (success, pending, refusal, retry, idempotency key reuse, uncaptured cancel, no double call), tracking (beacon id, customer map follow/stop) |
-| `npm run test:db` | **repo schema 174 / 174; production replica 192 / 192** (P0 109 and 127, organisations 65 on each); **rollback restores production exactly** |
+| `npm run test:db` | **repo schema 189 / 189; production replica 212 / 212** (P0 109 and 132, organisations 80 on each); **rollback restores production exactly**; **rollback with data** succeeds and keeps every core row |
 | Edge functions | Strict TypeScript with stand-in Deno/URL types passes. Real `deno check` runs in CI (deno.land is blocked here). |
 
 `npm run test:db` checks, on each schema:

@@ -199,4 +199,64 @@ SELECT public.revoke_invitation((SELECT invitation_id FROM t));
 SELECT tests.throws($$SELECT public.revoke_invitation((SELECT invitation_id FROM t))$$, NULL, 'a revoked invitation cannot be revoked again');
 ROLLBACK;
 
+-- ── Cross-tenant: an owner of one company has no power over another ──────
+BEGIN;
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.acme() AS id;      -- cust1 owns Acme
+SELECT tests.login(:cust2);
+CREATE TEMP TABLE b ON COMMIT DROP AS SELECT id FROM public.create_organization('Beta AS', 'beta');
+CREATE TEMP TABLE bi ON COMMIT DROP AS SELECT * FROM public.invite_member((SELECT id FROM b), 'apply@test', 'viewer');
+SELECT tests.ok((SELECT count(*) FROM public.organizations) = 1 AND (SELECT slug FROM public.organizations) = 'beta',
+  'each owner sees only their own company');
+SELECT tests.ok((SELECT count(*) FROM public.organization_invitations) = 1, 'and only their own invitations');
+SELECT tests.throws($$SELECT public.invite_member((SELECT id FROM o), 'x@test', 'owner')$$, '42501', 'cannot invite into another company');
+SELECT tests.throws($$SELECT public.update_organization((SELECT id FROM o), '{"name":"Taken"}')$$, '42501', 'cannot edit another company');
+SELECT tests.throws($$SELECT public.change_member_role((SELECT id FROM o), 'd0000000-0000-0000-0000-000000000001', 'owner')$$,
+  '42501', 'cannot change roles in another company');
+SELECT tests.throws($$SELECT public.remove_member((SELECT id FROM o), 'd0000000-0000-0000-0000-000000000001')$$,
+  '42501', 'cannot remove members of another company');
+SELECT tests.login(:cust1);
+SELECT tests.throws($$SELECT public.revoke_invitation((SELECT invitation_id FROM bi))$$, '42501', 'cannot revoke another company''s invitation');
+SELECT tests.ok(NOT public.is_org_member((SELECT id FROM b)), 'membership of one company says nothing about another');
+ROLLBACK;
+
+-- ── Pending companies may only set themselves up ──────────────────────────
+BEGIN;
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.acme() AS id;
+SELECT tests.ok(public.is_org_member((SELECT id FROM o)) AND NOT public.is_active_org_member((SELECT id FROM o)),
+  'a pending company''s owner is a member but not an active one');
+SELECT tests.login(:admin);
+SELECT public.admin_set_organization_status((SELECT id FROM o), 'active', 'verified in Brønnøysund');
+SELECT tests.login(:cust1);
+SELECT tests.ok(public.is_active_org_member((SELECT id FROM o), ARRAY['owner']), 'after activation the owner is an active member');
+SELECT tests.login(:admin);
+SELECT public.admin_set_organization_status((SELECT id FROM o), 'suspended', 'test');
+SELECT tests.login(:cust1);
+SELECT tests.ok(NOT public.is_active_org_member((SELECT id FROM o)), 'suspension ends active membership at once');
+ROLLBACK;
+
+-- ── Unconfirmed addresses cannot accept ────────────────────────────────────
+BEGIN;
+UPDATE auth.users SET email_confirmed_at = NULL WHERE id = 'e0000000-0000-0000-0000-000000000001';
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.acme() AS id;
+CREATE TEMP TABLE t ON COMMIT DROP AS SELECT * FROM public.invite_member((SELECT id FROM o), 'apply@test', 'admin');
+SELECT tests.login(:applic);
+SELECT tests.throws($$SELECT public.accept_invitation((SELECT token FROM t))$$, '42501', 'an unconfirmed address cannot accept');
+ROLLBACK;
+
+-- ── The event log is append-only, for the server too ──────────────────────
+BEGIN;
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.acme() AS id;
+GRANT SELECT ON o TO service_role;
+SET LOCAL ROLE service_role;
+SELECT tests.login(NULL, 'service_role');
+SELECT tests.throws($$UPDATE public.organization_events SET action = 'x'$$, '42501', 'the server cannot edit events');
+SELECT tests.throws($$DELETE FROM public.organization_events$$, '42501', 'the server cannot delete events');
+RESET ROLE;
+SELECT tests.throws($$UPDATE public.organization_events SET actor_id = NULL$$, '42501', 'nor can the database owner');
+ROLLBACK;
+
 \echo 'organizations: all tests passed'

@@ -756,6 +756,23 @@ CREATE POLICY notifications_self_update ON public.notifications
 -- platform_config, commission_ledger, dispatch_logs and the
 -- production-only tables): administrators only (above).
 
+-- ── Views ──
+-- Production has five dispatch views (driver_dispatch_tiers, …_eligibility,
+-- …_scores, dispatch_wave_priority, match_drivers_for_booking_view). A view
+-- reads its tables with its owner's rights, so RLS above does not apply to
+-- it: anon could read driver ids, plans, metrics, cities and vehicles
+-- through them. Nothing in the app or in a function uses them. From now
+-- on they run with the caller's rights (RLS applies) and only the server
+-- reads them.
+DO $$
+DECLARE v text;
+BEGIN
+  FOR v IN SELECT viewname FROM pg_views WHERE schemaname = 'public' ORDER BY viewname LOOP
+    EXECUTE format('ALTER VIEW public.%I SET (security_invoker = true)', v);
+    EXECUTE format('REVOKE ALL ON public.%I FROM anon, authenticated', v);
+  END LOOP;
+END $$;
+
 
 -- ============================================================================
 -- 7. DISPATCH: ADMINS, THE SERVICE ROLE AND THE PAYMENT TRIGGER ONLY

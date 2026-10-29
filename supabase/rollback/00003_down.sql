@@ -48,6 +48,16 @@ CREATE POLICY notifications_self_update ON public.notifications AS PERMISSIVE FO
 CREATE POLICY profiles_admin_all ON public.profiles AS PERMISSIVE FOR ALL TO public USING (is_admin()) WITH CHECK (is_admin());
 CREATE POLICY profiles_self_select ON public.profiles AS PERMISSIVE FOR SELECT TO authenticated USING ((user_id = auth.uid()));
 
+-- ── Views: owner's rights and Supabase's default grants, as in production ──
+DO $$
+DECLARE v text;
+BEGIN
+  FOR v IN SELECT viewname FROM pg_views WHERE schemaname = 'public' LOOP
+    EXECUTE format('ALTER VIEW public.%I RESET (security_invoker)', v);
+    EXECUTE format('GRANT ALL ON public.%I TO anon, authenticated', v);
+  END LOOP;
+END $$;
+
 -- ── Guards ────────────────────────────────────────────────────────────────
 DROP TRIGGER IF EXISTS guard_profile_write             ON public.profiles;
 DROP TRIGGER IF EXISTS guard_booking_write             ON public.bookings;

@@ -111,4 +111,22 @@ SELECT tests.ok((SELECT public.plan_slug(sp.name) FROM public.driver_subscriptio
   'the driver drops to the free plan');
 ROLLBACK;
 
+-- ── Production's dispatch views no longer bypass RLS ──
+BEGIN;
+SELECT tests.ok((SELECT bool_and(c.reloptions @> ARRAY['security_invoker=true']) FROM pg_class c
+                  JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'v')
+                AND (SELECT count(*) FROM pg_views WHERE schemaname = 'public') = 5,
+  'all five views run with the caller''s rights');
+SET LOCAL ROLE anon;
+SELECT tests.login(NULL, 'anon');
+SELECT tests.throws($$SELECT * FROM public.driver_dispatch_scores$$, '42501', 'anon cannot read driver_dispatch_scores');
+SELECT tests.throws($$SELECT * FROM public.match_drivers_for_booking_view$$, '42501', 'anon cannot read match_drivers_for_booking_view');
+SET LOCAL ROLE authenticated;
+SELECT tests.login('c0000000-0000-0000-0000-000000000001');
+SELECT tests.throws($$SELECT * FROM public.driver_dispatch_tiers$$, '42501', 'a customer cannot read driver_dispatch_tiers');
+SET LOCAL ROLE service_role;
+SELECT tests.login(NULL, 'service_role');
+SELECT tests.ok((SELECT count(*) FROM public.dispatch_wave_priority) >= 0, 'the server can still read the views');
+ROLLBACK;
+
 \echo 'p0_production: all tests passed'

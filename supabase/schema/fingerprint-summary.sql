@@ -39,4 +39,25 @@ SELECT kind, count(*) n, md5(string_agg(item, E'\n' ORDER BY item)) h FROM (SELE
    WHERE n.nspname = 'public'
   UNION ALL
   SELECT 'realtime', schemaname || '.' || tablename FROM pg_publication_tables WHERE pubname = 'supabase_realtime'
+  UNION ALL
+  -- Views run with their owner's rights unless security_invoker is set,
+  -- so their definition, options and privileges matter as much as RLS.
+  SELECT 'view', c.relname || ' ' || coalesce(array_to_string(c.reloptions, ','), '-') || ' '
+         || md5(regexp_replace(pg_get_viewdef(c.oid, true), '\s+', ' ', 'g'))
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('v', 'm')
+  UNION ALL
+  -- MAINTAIN exists from PostgreSQL 17 only; left out so 16 and 17 compare.
+  SELECT 'table_grant', c.relname || ' ' || r.rolname || ' ' || a.privilege_type
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN LATERAL aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) a
+    JOIN pg_roles r ON r.oid = a.grantee
+   WHERE n.nspname = 'public' AND c.relkind IN ('r', 'v', 'm') AND a.privilege_type <> 'MAINTAIN'
+     AND r.rolname IN ('anon', 'authenticated', 'service_role')
+  UNION ALL
+  SELECT 'replica_identity', c.relname || ' ' || c.relreplident::text
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r'
+  UNION ALL
+  SELECT 'bucket', id || ' public=' || coalesce(public::text, '-') || ' limit=' || coalesce(file_size_limit::text, '-')
+         || ' mime=' || coalesce(array_to_string(allowed_mime_types, ','), '-')
+    FROM storage.buckets
 ) x) f GROUP BY kind ORDER BY kind;
