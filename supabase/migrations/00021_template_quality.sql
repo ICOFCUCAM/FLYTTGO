@@ -12,6 +12,10 @@
 --     template; approval is refused while one fails or is stale (a page
 --     edited since), unless the administrator gives a reason, which is
 --     kept. A re-imported or edited template still needs a new review.
+--   * Images: each template's images as named slots (hero, services,
+--     about, gallery…) with their source, licence or generation, category,
+--     intended use, size, hash and review status; administrators replace
+--     a slot's image (uploaded to the template bucket) and review images.
 --
 -- Safe to re-run. Rolled back by supabase/rollback/00021_down.sql.
 -- ============================================================================
@@ -62,8 +66,8 @@ AS $$
         OR coalesce(r ->> 'page', '') !~ '^/');
 $$;
 
--- The importer stores a template (server only), with its features and
--- checks. A changed template needs a new review (as in 00009).
+-- The importer stores a template (server only), with its features, checks
+-- and image slots. A changed template needs a new review (as in 00009).
 CREATE OR REPLACE FUNCTION public.import_site_template(p jsonb)
 RETURNS public.site_templates
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
@@ -95,6 +99,11 @@ BEGIN
     reviewed_at = CASE WHEN site_templates.pages IS DISTINCT FROM EXCLUDED.pages THEN NULL ELSE site_templates.reviewed_at END,
     updated_at = now()
   RETURNING * INTO t;
+  -- Its image slots and what is known about each (section 3).
+  IF p ? 'images' THEN
+    PERFORM public.site_template_store_images(t.id, p -> 'images');
+    SELECT * INTO t FROM public.site_templates WHERE id = t.id;
+  END IF;
   RETURN t;
 END $$;
 
@@ -245,4 +254,184 @@ GRANT EXECUTE ON FUNCTION
   public.record_site_template_checks(text, jsonb, jsonb),
   public.admin_record_site_template_page_checks(text, text, jsonb, jsonb),
   public.admin_review_site_template(text, boolean, boolean, text, text)
+TO authenticated, service_role;
+
+
+-- ── 3. Images as named slots, with what is known about each ─────────────────
+-- One row per image slot of a template ({{ASSET:key}}): the slot (hero,
+-- services, about, gallery, team, map, product, background, other), the
+-- image, where it came from, its licence or how it was generated, the
+-- template's category, what it is meant to show, its size and hash, and
+-- whether FlyttGo has reviewed it. FlyttGo administrators only.
+CREATE TABLE IF NOT EXISTS public.site_template_images (
+  template_id   text        NOT NULL REFERENCES public.site_templates (id) ON DELETE CASCADE,
+  asset_key     text        NOT NULL CHECK (asset_key ~ '^[A-Za-z0-9._-]{1,60}$' AND asset_key <> 'thumbnail'),
+  slot          text        NOT NULL CHECK (slot IN ('hero', 'services', 'about', 'gallery', 'team', 'map', 'product', 'background', 'other')),
+  url           text        NOT NULL CHECK (url ~ '^https://'),
+  source        text        NOT NULL CHECK (source IN ('architect-ai', 'ai-generated', 'licensed', 'own')),
+  licence       text,
+  generation    jsonb,
+  category      text,
+  intended_use  text,
+  width         integer     CHECK (width > 0),
+  height        integer     CHECK (height > 0),
+  sha256        text        CHECK (sha256 ~ '^[0-9a-f]{64}$'),
+  review_status text        NOT NULL DEFAULT 'unreviewed' CHECK (review_status IN ('unreviewed', 'approved', 'rejected')),
+  reviewed_by   uuid,
+  reviewed_at   timestamptz,
+  replaced_by   uuid,
+  replaced_at   timestamptz,
+  history       jsonb       NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(history) = 'array'),
+  updated_at    timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (template_id, asset_key),
+  CHECK (source <> 'licensed' OR nullif(btrim(licence), '') IS NOT NULL),
+  CHECK (source <> 'ai-generated' OR nullif(btrim(generation ->> 'model'), '') IS NOT NULL)
+);
+CREATE INDEX IF NOT EXISTS site_template_images_sha256_idx ON public.site_template_images (sha256);
+ALTER TABLE public.site_template_images ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS site_template_images_admin ON public.site_template_images;
+CREATE POLICY site_template_images_admin ON public.site_template_images FOR SELECT TO authenticated USING (public.is_admin());
+REVOKE ALL ON public.site_template_images FROM anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.site_template_images FROM authenticated;
+
+-- FlyttGo administrators upload replacement images into the template
+-- bucket (the importer writes there with the service key).
+DROP POLICY IF EXISTS site_template_assets_admin_insert ON storage.objects;
+CREATE POLICY site_template_assets_admin_insert ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'site-template-assets' AND public.is_admin());
+
+-- The importer records a template's image slots (called by
+-- import_site_template). A slot an administrator replaced keeps its image:
+-- the template's asset is pointed back at it.
+CREATE OR REPLACE FUNCTION public.site_template_store_images(p_id text, p_images jsonb)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE im jsonb; r public.site_template_images%ROWTYPE;
+BEGIN
+  IF jsonb_typeof(coalesce(p_images, '[]'::jsonb)) <> 'array' THEN
+    RAISE EXCEPTION 'templates: images must be a list' USING ERRCODE = '22023';
+  END IF;
+  FOR im IN SELECT * FROM jsonb_array_elements(coalesce(p_images, '[]'::jsonb)) LOOP
+    SELECT * INTO r FROM public.site_template_images WHERE template_id = p_id AND asset_key = im ->> 'asset_key';
+    IF FOUND AND r.replaced_at IS NOT NULL THEN CONTINUE; END IF;
+    INSERT INTO public.site_template_images (template_id, asset_key, slot, url, source, licence, generation, category,
+                                             intended_use, width, height, sha256)
+    VALUES (p_id, im ->> 'asset_key', coalesce(im ->> 'slot', 'other'), im ->> 'url', coalesce(im ->> 'source', 'architect-ai'),
+            im ->> 'licence', nullif(im -> 'generation', 'null'::jsonb), im ->> 'category', im ->> 'intended_use',
+            (im ->> 'width')::int, (im ->> 'height')::int, im ->> 'sha256')
+    ON CONFLICT (template_id, asset_key) DO UPDATE SET
+      slot = EXCLUDED.slot, url = EXCLUDED.url, source = EXCLUDED.source, licence = EXCLUDED.licence,
+      generation = EXCLUDED.generation, category = EXCLUDED.category, intended_use = EXCLUDED.intended_use,
+      width = EXCLUDED.width, height = EXCLUDED.height, sha256 = EXCLUDED.sha256,
+      review_status = CASE WHEN site_template_images.url IS DISTINCT FROM EXCLUDED.url
+                             OR site_template_images.sha256 IS DISTINCT FROM EXCLUDED.sha256
+                           THEN 'unreviewed' ELSE site_template_images.review_status END,
+      updated_at = now();
+  END LOOP;
+  -- Replaced slots keep their image in the template's assets.
+  UPDATE public.site_templates t SET assets = (
+    SELECT coalesce(jsonb_agg(CASE WHEN i.url IS NOT NULL THEN a || jsonb_build_object('url', i.url) ELSE a END ORDER BY n), '[]'::jsonb)
+      FROM jsonb_array_elements(t.assets) WITH ORDINALITY AS e(a, n)
+      LEFT JOIN public.site_template_images i
+        ON i.template_id = t.id AND i.asset_key = a ->> 'key' AND i.replaced_at IS NOT NULL)
+   WHERE t.id = p_id AND EXISTS (SELECT 1 FROM public.site_template_images WHERE template_id = p_id AND replaced_at IS NOT NULL);
+END $$;
+REVOKE ALL ON FUNCTION public.site_template_store_images(text, jsonb) FROM PUBLIC, anon, authenticated;
+
+-- An administrator replaces the image of one slot with one uploaded to
+-- site-template-assets/<template>/ (checked by its bytes in the panel:
+-- PNG, JPEG or WebP; size and hash sent with it), saying where it comes
+-- from. The earlier image is kept in history; an approved template goes
+-- back to review, as after a page edit.
+CREATE OR REPLACE FUNCTION public.admin_replace_site_template_image(p_template text, p_key text, p_path text, p_meta jsonb)
+RETURNS public.site_template_images
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE t public.site_templates%ROWTYPE; r public.site_template_images%ROWTYPE; v_url text; v_base text;
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'templates: platform administrators only' USING ERRCODE = '42501'; END IF;
+  SELECT * INTO t FROM public.site_templates WHERE id = p_template FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'templates: no such template' USING ERRCODE = 'P0002'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(t.assets) a WHERE a ->> 'key' = p_key) OR p_key = 'thumbnail' THEN
+    RAISE EXCEPTION 'templates: the template has no image %', p_key USING ERRCODE = 'P0002';
+  END IF;
+  IF coalesce(p_path, '') !~ ('^' || p_template || '/[A-Za-z0-9._-]{1,120}\.(png|jpg|webp)$')
+     OR NOT EXISTS (SELECT 1 FROM storage.objects WHERE bucket_id = 'site-template-assets' AND name = p_path) THEN
+    RAISE EXCEPTION 'templates: upload the image to site-template-assets/%/ first', p_template USING ERRCODE = '22023';
+  END IF;
+  IF coalesce(p_meta ->> 'mime', '') NOT IN ('image/png', 'image/jpeg', 'image/webp')
+     OR coalesce(p_meta ->> 'sha256', '') !~ '^[0-9a-f]{64}$'
+     OR coalesce((p_meta ->> 'width')::int, 0) <= 0 OR coalesce((p_meta ->> 'height')::int, 0) <= 0 THEN
+    RAISE EXCEPTION 'templates: a PNG, JPEG or WebP image, with its size and SHA-256' USING ERRCODE = '22023';
+  END IF;
+  IF coalesce(p_meta ->> 'source', '') NOT IN ('ai-generated', 'licensed', 'own') THEN
+    RAISE EXCEPTION 'templates: say where the image comes from: ai-generated, licensed or own' USING ERRCODE = '22023';
+  END IF;
+  -- The bucket's public address, from the template's other images.
+  SELECT substring(a ->> 'url' FROM '^(https://[^/]+/storage/v1/object/public/site-template-assets/)') INTO v_base
+    FROM jsonb_array_elements(t.assets) a WHERE a ->> 'url' ~ '^https://[^/]+/storage/v1/object/public/site-template-assets/' LIMIT 1;
+  IF v_base IS NULL THEN
+    RAISE EXCEPTION 'templates: the template''s images are not in FlyttGo''s storage yet (import it with --to-flyttgo first)' USING ERRCODE = '55000';
+  END IF;
+  v_url := v_base || p_path;
+  SELECT * INTO r FROM public.site_template_images WHERE template_id = p_template AND asset_key = p_key FOR UPDATE;
+  INSERT INTO public.site_template_images AS i (template_id, asset_key, slot, url, source, licence, generation, category, intended_use,
+                                                width, height, sha256, replaced_by, replaced_at, history)
+  VALUES (p_template, p_key, coalesce(nullif(p_meta ->> 'slot', ''), r.slot, 'other'), v_url, p_meta ->> 'source',
+          nullif(btrim(p_meta ->> 'licence'), ''), nullif(p_meta -> 'generation', 'null'::jsonb), r.category,
+          coalesce(nullif(btrim(p_meta ->> 'intended_use'), ''), r.intended_use),
+          (p_meta ->> 'width')::int, (p_meta ->> 'height')::int, p_meta ->> 'sha256', auth.uid(), now(),
+          CASE WHEN r.template_id IS NULL THEN '[]'::jsonb
+               ELSE r.history || jsonb_build_array(jsonb_build_object('url', r.url, 'source', r.source, 'licence', r.licence,
+                      'sha256', r.sha256, 'review_status', r.review_status, 'until', now())) END)
+  ON CONFLICT (template_id, asset_key) DO UPDATE SET
+    slot = EXCLUDED.slot, url = EXCLUDED.url, source = EXCLUDED.source, licence = EXCLUDED.licence, generation = EXCLUDED.generation,
+    intended_use = EXCLUDED.intended_use, width = EXCLUDED.width, height = EXCLUDED.height, sha256 = EXCLUDED.sha256,
+    review_status = 'unreviewed', reviewed_by = NULL, reviewed_at = NULL,
+    replaced_by = EXCLUDED.replaced_by, replaced_at = EXCLUDED.replaced_at, history = EXCLUDED.history, updated_at = now()
+  RETURNING * INTO r;
+  UPDATE public.site_templates SET
+    assets = (SELECT jsonb_agg(CASE WHEN a ->> 'key' = p_key THEN a || jsonb_build_object('url', v_url) ELSE a END ORDER BY n)
+                FROM jsonb_array_elements(assets) WITH ORDINALITY AS e(a, n)),
+    status = CASE WHEN status = 'approved' THEN 'imported' ELSE status END,
+    reviewed_by = CASE WHEN status = 'approved' THEN NULL ELSE reviewed_by END,
+    reviewed_at = CASE WHEN status = 'approved' THEN NULL ELSE reviewed_at END,
+    updated_at = now()
+   WHERE id = p_template;
+  RETURN r;
+END $$;
+
+-- An administrator reviews one image: approves it once its licence (or
+-- how it was generated) and its content are right, or rejects it. The
+-- licence of an imported image can be recorded here once confirmed.
+CREATE OR REPLACE FUNCTION public.admin_review_site_template_image(p_template text, p_key text, p_status text, p_licence text)
+RETURNS public.site_template_images
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE r public.site_template_images%ROWTYPE;
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'templates: platform administrators only' USING ERRCODE = '42501'; END IF;
+  IF p_status NOT IN ('approved', 'rejected', 'unreviewed') THEN
+    RAISE EXCEPTION 'templates: approved, rejected or unreviewed' USING ERRCODE = '22023';
+  END IF;
+  SELECT * INTO r FROM public.site_template_images WHERE template_id = p_template AND asset_key = p_key FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'templates: no such image' USING ERRCODE = 'P0002'; END IF;
+  r.licence := coalesce(nullif(btrim(coalesce(p_licence, '')), ''), r.licence);
+  IF p_status = 'approved' AND r.source IN ('architect-ai', 'licensed') AND r.licence IS NULL THEN
+    RAISE EXCEPTION 'templates: record the image''s licence before approving it' USING ERRCODE = '55000';
+  END IF;
+  UPDATE public.site_template_images SET review_status = p_status, licence = r.licence, reviewed_by = auth.uid(), reviewed_at = now(),
+         updated_at = now()
+   WHERE template_id = p_template AND asset_key = p_key RETURNING * INTO r;
+  RETURN r;
+END $$;
+
+REVOKE ALL ON FUNCTION
+  public.admin_replace_site_template_image(text, text, text, jsonb),
+  public.admin_review_site_template_image(text, text, text, text)
+FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION
+  public.admin_replace_site_template_image(text, text, text, jsonb),
+  public.admin_review_site_template_image(text, text, text, text)
 TO authenticated, service_role;

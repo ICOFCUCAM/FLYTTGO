@@ -13,6 +13,9 @@ import { supabase } from './supabase';
 import { callJson, logoUrl } from './invoicing';
 import { isFlyttgoHost } from './hosts';
 import type { CheckResult, TemplateChecks } from '../../supabase/functions/_shared/template-quality';
+import {
+  EXTENSION, MAX_TEMPLATE_IMAGE, imageInfo, sha256Hex, type ImageSource, type TemplateImage,
+} from '../../supabase/functions/_shared/template-images';
 
 export type SellerModel = 'flyttgo' | 'company';
 export type WhiteLabelStatus = 'requested' | 'active' | 'suspended' | 'ended' | 'declined';
@@ -220,6 +223,48 @@ export async function reviewTemplate(id: string, approve: boolean, contentChecke
 /** After a page is saved: its checks that need no browser and its content flags, found again from the saved page. */
 export async function recordPageChecks(id: string, path: string, results: CheckResult[], flags: SiteTemplate['content_flags']): Promise<string | null> {
   return err((await supabase.rpc('admin_record_site_template_page_checks', { p_id: id, p_path: path, p_results: results, p_flags: flags })).error);
+}
+
+/* ── Template images (00021): slots, metadata, replacement, review ── */
+
+/** A template's image slots and what is known about each (FlyttGo administrators). */
+export async function loadTemplateImages(id: string): Promise<(TemplateImage & { history: unknown[]; reviewed_at: string | null; replaced_at: string | null })[]> {
+  const { data } = await supabase.from('site_template_images').select('*').eq('template_id', id).order('asset_key');
+  return (data ?? []) as (TemplateImage & { history: unknown[]; reviewed_at: string | null; replaced_at: string | null })[];
+}
+
+/**
+ * Replace the image of one slot: the file is checked by its bytes (PNG,
+ * JPEG or WebP, at most 5 MB; never by its name or the type the browser
+ * claims), stored in the template bucket under its hash, then recorded
+ * with where it comes from. The template goes back to review.
+ */
+export async function replaceTemplateImage(templateId: string, key: string, file: File, meta: {
+  source: Exclude<ImageSource, 'architect-ai'>; licence?: string; model?: string; prompt?: string; intended_use?: string;
+}): Promise<string | null> {
+  if (file.size > MAX_TEMPLATE_IMAGE) return 'the image must be at most 5 MB';
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const info = imageInfo(bytes);
+  if (!info) return 'the file is not a PNG, JPEG or WebP image';
+  const sha = await sha256Hex(bytes);
+  const path = `${templateId}/${key.replace(/[^A-Za-z0-9.-]+/g, '-')}-${sha.slice(0, 12)}.${EXTENSION[info.mime]}`;
+  const { error: upErr } = await supabase.storage.from('site-template-assets').upload(path, bytes, { contentType: info.mime, upsert: false });
+  if (upErr && !/exists/i.test(upErr.message)) return upErr.message;
+  return err((await supabase.rpc('admin_replace_site_template_image', {
+    p_template: templateId, p_key: key, p_path: path,
+    p_meta: { mime: info.mime, sha256: sha, width: info.width, height: info.height, source: meta.source,
+              licence: meta.licence?.trim() || null, intended_use: meta.intended_use?.trim() || null,
+              generation: meta.source === 'ai-generated' ? { model: meta.model?.trim() ?? '', prompt: meta.prompt?.trim() || undefined,
+                                                              date: new Date().toISOString().slice(0, 10) } : null },
+  })).error);
+}
+
+/** Approve or reject an image (the licence of an imported one may be recorded at the same time). */
+export async function reviewTemplateImage(templateId: string, key: string, status: 'approved' | 'rejected' | 'unreviewed',
+                                          licence?: string | null): Promise<string | null> {
+  return err((await supabase.rpc('admin_review_site_template_image', {
+    p_template: templateId, p_key: key, p_status: status, p_licence: licence ?? null,
+  })).error);
 }
 
 /* ── The public page ───────────────────────────────────────────────── */
