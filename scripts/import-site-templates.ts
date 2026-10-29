@@ -22,17 +22,26 @@
 //   FLYTTGO_SUPABASE_URL=https://<ref>.supabase.co FLYTTGO_SERVICE_ROLE_KEY=... \
 //     node scripts/import-site-templates.ts --from-file site_masters.json --to-flyttgo
 //
+// Every template is taken (each in its catalogue category, TEMPLATE_CATEGORIES
+// in _shared/site-template.ts; one in no category goes to "other"), except
+// health templates (clinics, dentists, therapists…): patient data is outside
+// what FlyttGo offers (docs/SERVICE_PLATFORM.md).
+//
+// Before the scripts are removed, each page is settled in a headless browser
+// (scripts/template-snapshot.ts: reduced motion, no network) so what the
+// scripts draw (sections that fade in, star ratings, counters) stays; then
+// the cleaned page is checked with scripts off, and a page that shows less
+// than 90 % of the text is flagged 'hidden' for review. Needs Playwright
+// (`npx playwright install chromium` once); without it, a warning.
+//
 // Options:
-//   --group NAME         transport (default), field-service, appointments,
-//                        websites (hospitality, shops, software, education,
-//                        nonprofits and others: website and invoicing only),
-//                        or all (every group above)
-//   --industries a,b,c   instead of a group: templates sharing any of these
-//                        industries
-//   Health templates (clinics, dentists, therapists…) are always left out:
-//   patient data is outside what FlyttGo offers (docs/SERVICE_PLATFORM.md).
+//   --category ID        only one catalogue category (transport, trades,
+//                        appointments, professional, hospitality, retail,
+//                        technology, community, industry, entertainment, other)
+//   --industries a,b,c   only templates sharing any of these industries
 //   --ids a,b            only these templates
 //   --limit N
+//   --no-snapshot        skip the browser step (not recommended)
 //
 // An export file is the JSON array of site_masters rows (id, name,
 // industry, style, pages, preview_assets), for example from the SQL editor:
@@ -41,34 +50,11 @@
 // ============================================================================
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { prepareTemplate, type MasterRow, type PreparedTemplate, type TemplateAsset } from '../supabase/functions/_shared/site-template.ts';
-
-const MOVING_AND_LOGISTICS = [
-  'moving', 'movers', 'relocation', 'removals', 'logistics', 'freight', 'courier', 'delivery', 'transport',
-  'trucking', 'last-mile', 'warehousing', 'storage', 'parcel', 'shipping',
-];
-const GROUPS: Record<string, string[]> = {
-  transport: MOVING_AND_LOGISTICS,
-  'field-service': ['plumbing', 'plumber', 'emergency-plumbing', 'electrician', 'electrical', 'residential-electric', 'hvac',
-    'heating-and-cooling', 'air-conditioning', 'trades', 'home-services', 'cleaning', 'house-cleaning', 'maid-service',
-    'recurring-cleaning', 'landscaping', 'lawn-care', 'hardscaping', 'construction', 'contractor', 'general-contractor',
-    'roofing', 'roofer', 'painting', 'painter', 'pest-control', 'exterminator', 'termite', 'renovation', 'remodeling',
-    'kitchen-bath', 'restoration', 'storm-damage', 'solar', 'auto-repair', 'mechanic', 'garage', 'car-care', 'detailing',
-    'mobile-detailing', 'auto-detailing', 'auto-body', 'body-shop', 'collision-repair', 'tyres', 'servicing', 'mot'],
-  appointments: ['beauty', 'salon', 'hair-salon', 'hair', 'barber', 'barbershop', 'spa', 'day-spa', 'nails', 'nail-salon',
-    'personal-care', 'skincare', 'esthetics', 'massage', 'fitness', 'gym', 'personal-training', 'personal-trainer', 'yoga',
-    'pilates', 'wellness', 'pet-care', 'pets', 'dog-grooming', 'pet-grooming', 'grooming', 'dog-training', 'tutoring',
-    'private tutor', 'music lessons', 'driving school', 'photography', 'consulting', 'coaching', 'accounting', 'bookkeeping',
-    'law-firm', 'lawyer', 'legal', 'professional-services', 'financial-advisor', 'veterinary', 'vet'],
-  websites: ['hospitality', 'hotel', 'restaurant', 'food', 'cafe', 'bakery', 'catering', 'travel', 'tours', 'tour-operator',
-    'events', 'venue', 'ecommerce', 'online-store', 'shop', 'retail', 'saas', 'software', 'b2b-software', 'education',
-    'e-learning', 'academy', 'nonprofit', 'charity', 'church', 'community', 'real-estate', 'realtor', 'property-management',
-    'manufacturing', 'agriculture', 'gaming', 'entertainment'],
-};
-/* Never imported: patient and clinical services. */
-const EXCLUDED = ['health', 'clinic', 'medical', 'dental', 'dentist', 'therapy', 'counseling', 'mental-health', 'psychology',
-  'optometry', 'eye-care', 'orthodontics', 'pediatrics', 'primary-care', 'family-medicine', 'womens-health', 'obgyn',
-  'dermatology', 'chiropractic', 'physical-therapy', 'medical-spa', 'hospital', 'healthcare'];
+import {
+  categoryLabel, prepareTemplate, replaceForms, templateCategory, TEMPLATE_CATEGORIES, OTHER_CATEGORY,
+  type MasterRow, type PreparedTemplate, type TemplateAsset, type TemplatePage,
+} from '../supabase/functions/_shared/site-template.ts';
+import { snapshotter, type Snapshotter } from './template-snapshot.ts';
 
 const IMAGE_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const MAX_IMAGE = 5 * 1024 * 1024;
@@ -111,17 +97,41 @@ async function fromFile(path: string): Promise<MasterRow[]> {
 
 function select(rows: MasterRow[]): MasterRow[] {
   const ids = arg('ids')?.split(',').map(s => s.trim()).filter(Boolean);
-  const group = arg('group') ?? (has('all') ? 'all' : 'transport');
-  const industries = arg('industries')?.split(',').map(s => s.trim().toLowerCase())
-    ?? (group === 'all' ? Object.values(GROUPS).flat() : GROUPS[group]);
-  if (!industries) throw new Error(`unknown group ${group}: ${Object.keys(GROUPS).join(', ')} or all`);
+  const category = arg('category');
+  if (category && category !== OTHER_CATEGORY.id && !TEMPLATE_CATEGORIES.some(c => c.id === category)) {
+    throw new Error(`unknown category ${category}: ${[...TEMPLATE_CATEGORIES.map(c => c.id), OTHER_CATEGORY.id].join(', ')}`);
+  }
+  const industries = arg('industries')?.split(',').map(s => s.trim().toLowerCase());
   const tags = (r: MasterRow) => (r.industry ?? []).map(i => String(i).toLowerCase());
-  let out = rows.filter(r => (!ids || ids.includes(r.id))
-    && !tags(r).some(i => EXCLUDED.includes(i))
-    && tags(r).some(i => industries.includes(i)));
+  let out = rows.filter(r => {
+    const c = templateCategory(r.industry);
+    return c !== null && (!ids || ids.includes(r.id)) && (!category || c === category)
+      && (!industries || tags(r).some(i => industries.includes(i)));
+  });
   const limit = Number(arg('limit'));
   if (Number.isFinite(limit) && limit > 0) out = out.slice(0, limit);
   return out;
+}
+
+/** Settle each page with its scripts, prepare the template, then check it with scripts off. */
+async function prepare(row: MasterRow, snap: Snapshotter | null): Promise<PreparedTemplate> {
+  const pages = (typeof row.pages === 'string' ? JSON.parse(row.pages) : row.pages) as TemplatePage[];
+  const settled: TemplatePage[] = [];
+  for (const p of pages) {
+    settled.push(snap && /<script\b/i.test(p.html) ? { ...p, html: await snap.settle(p.html) } : p);
+  }
+  const t = prepareTemplate({ ...row, pages: settled });
+  if (snap) {
+    for (const p of t.pages) {
+      const before = settled.find(s => (s.path || '/') === p.path) ?? settled[0];
+      const shown = await snap.visibleChars(replaceForms(before.html), true);
+      const after = await snap.visibleChars(p.html, false);
+      if (shown > 0 && after < shown * 0.9) {
+        t.flags.push({ kind: 'hidden', page: p.path, sample: `${Math.round(100 - (after / shown) * 100)} % of the text is not visible without scripts` });
+      }
+    }
+  }
+  return t;
 }
 
 function report(templates: PreparedTemplate[]): string {
@@ -130,12 +140,18 @@ function report(templates: PreparedTemplate[]): string {
     '- **price**: remove; prices come from the booking page.',
     '- **review**, **claim**: remove unless true for the company that uses the template.',
     '- **sample_name**, **phone**, **email**: what is left of the sample company.', '',
-    '| Template | Industries | Pages | price | review | claim | other | Removed (scripts, forms, handlers) |',
-    '|---|---|---|---|---|---|---|---|'];
+    '- **hidden**: part of the page only shows with scripts; fix the page before approval.', '',
+    '| Category | Templates |', '|---|---|'];
+  const byCat = new Map<string, number>();
+  for (const t of templates) { const c = templateCategory(t.industry) ?? 'other'; byCat.set(c, (byCat.get(c) ?? 0) + 1); }
+  for (const [c, n] of [...byCat].sort((a, b) => b[1] - a[1])) lines.push(`| ${categoryLabel(c)} | ${n} |`);
+  lines.push('', '| Template | Category | Industries | Pages | price | review | claim | other | hidden | Removed (scripts, forms, handlers) |',
+    '|---|---|---|---|---|---|---|---|---|---|');
   for (const t of templates) {
     const n = (k: string) => t.flags.filter(f => f.kind === k).length;
-    lines.push(`| ${t.id} (${t.name}) | ${t.industry.join(', ')} | ${t.pages.length} | ${n('price')} | ${n('review')} | ${n('claim')} | `
-      + `${n('sample_name') + n('phone') + n('email')} | ${t.removed.scripts}, ${t.removed.forms}, ${t.removed.handlers} |`);
+    lines.push(`| ${t.id} (${t.name}) | ${categoryLabel(templateCategory(t.industry) ?? 'other')} | ${t.industry.join(', ')} | ${t.pages.length} | `
+      + `${n('price')} | ${n('review')} | ${n('claim')} | ${n('sample_name') + n('phone') + n('email')} | ${n('hidden')} | `
+      + `${t.removed.scripts}, ${t.removed.forms}, ${t.removed.handlers} |`);
   }
   for (const t of templates) {
     lines.push('', `## ${t.id}`, '');
@@ -186,8 +202,25 @@ async function main() {
   const source = arg('from-file');
   const rows = has('from-architect') ? await fromArchitect() : source ? await fromFile(source) : null;
   if (!rows) throw new Error('say where to read from: --from-architect or --from-file <export.json>');
-  const templates = select(rows).map(r => prepareTemplate(r));
-  console.log(`${templates.length} of ${rows.length} templates selected`);
+  const chosen = select(rows);
+  console.log(`${chosen.length} of ${rows.length} templates selected (health templates are never imported)`);
+  const snap = has('no-snapshot') ? null : await snapshotter();
+  if (!snap && !has('no-snapshot')) {
+    console.warn('Playwright is not available: pages are imported without the browser step, so what their scripts '
+      + 'draw (fade-ins, stars, counters) may be missing. Install it: npm i -D playwright && npx playwright install chromium');
+  }
+  const templates: PreparedTemplate[] = [];
+  try {
+    for (const r of chosen) {
+      const t = await prepare(r, snap);
+      templates.push(t);
+      const hidden = t.flags.filter(f => f.kind === 'hidden').length;
+      console.log(`prepared ${t.id} (${categoryLabel(templateCategory(t.industry) ?? 'other')}): ${t.pages.length} pages`
+        + (hidden ? `, ${hidden} page(s) flagged hidden` : ''));
+    }
+  } finally {
+    await snap?.close();
+  }
 
   const out = arg('out');
   if (out) {

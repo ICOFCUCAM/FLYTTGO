@@ -12,10 +12,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { formatNok } from '../../lib/invoicing';
 import {
-  SELLER_LABELS, STATUS_LABELS, decide, loadAllWhiteLabels, loadPlans, loadTemplates, missingFor, reviewTemplate,
-  setStatus, updatePlan, updateTemplatePage, type SiteTemplate, type WhiteLabelPlan,
+  SELLER_LABELS, STATUS_LABELS, decide, loadAllWhiteLabels, loadPlans, loadTemplate, loadTemplateList, missingFor, reviewTemplate,
+  setStatus, updatePlan, updateTemplatePage, type SiteTemplate, type SiteTemplateSummary, type WhiteLabelPlan,
 } from '../../lib/whiteLabel';
-import { renderTemplatePage } from '../../../supabase/functions/_shared/site-template';
+import { OTHER_CATEGORY, TEMPLATE_CATEGORIES, categoryLabel, renderTemplatePage, templateCategory } from '../../../supabase/functions/_shared/site-template';
 
 type Row = Awaited<ReturnType<typeof loadAllWhiteLabels>>[number];
 const btn = 'px-2.5 py-1 rounded text-xs font-medium disabled:opacity-50';
@@ -25,14 +25,17 @@ export default function WhiteLabelAdminPanel() {
   const [rows, setRows] = useState<Row[]>([]);
   const [missing, setMissing] = useState<Record<string, string[]>>({});
   const [plans, setPlans] = useState<WhiteLabelPlan[]>([]);
-  const [templates, setTemplates] = useState<SiteTemplate[]>([]);
+  const [templates, setTemplates] = useState<SiteTemplateSummary[]>([]);
+  const [full, setFull] = useState<SiteTemplate | null>(null);
+  const [cat, setCat] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'imported' | 'approved' | 'retired'>('all');
   const [open, setOpen] = useState<{ id: string; path: string } | null>(null);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const reload = useCallback(async () => {
-    const [r, p, t] = await Promise.all([loadAllWhiteLabels(), loadPlans(), loadTemplates()]);
+    const [r, p, t] = await Promise.all([loadAllWhiteLabels(), loadPlans(), loadTemplateList(true)]);
     setRows(r); setPlans(p); setTemplates(t);
     const m: Record<string, string[]> = {};
     for (const x of r.filter(x => x.status === 'requested' || x.requested_plan_code)) m[x.organization_id] = await missingFor(x.organization_id);
@@ -46,9 +49,17 @@ export default function WhiteLabelAdminPanel() {
     setBusy(false);
     setMsg(e ? { ok: false, text: e } : { ok: true, text: ok });
     await reload();
+    if (open) setFull(await loadTemplate(open.id));
   }
   const planName = (c: string | null) => plans.find(p => p.code === c)?.name ?? c ?? '';
-  const tpl = open ? templates.find(t => t.id === open.id) : null;
+  const tpl = open && full?.id === open.id ? full : null;
+  const openTemplate = async (id: string) => {
+    const t = await loadTemplate(id);
+    setFull(t);
+    if (t) { setOpen({ id, path: t.pages[0]?.path ?? '/' }); setDraft(t.pages[0]?.html ?? ''); }
+  };
+  const catOf = (t: SiteTemplateSummary) => templateCategory(t.industry) ?? OTHER_CATEGORY.id;
+  const listed = templates.filter(t => (cat === 'all' || catOf(t) === cat) && (statusFilter === 'all' || t.status === statusFilter));
   const page = tpl?.pages.find(p => p.path === open?.path);
 
   return (
@@ -119,16 +130,35 @@ export default function WhiteLabelAdminPanel() {
       {view === 'templates' && (
         <div className="grid lg:grid-cols-3 gap-4">
           <div className="bg-white rounded-lg shadow max-h-[70vh] overflow-auto">
+            <div className="p-3 border-b space-y-2 sticky top-0 bg-white">
+              <select value={cat} onChange={e => setCat(e.target.value)} className="w-full border rounded px-2 py-1 text-xs">
+                <option value="all">Every category ({templates.length})</option>
+                {[...TEMPLATE_CATEGORIES, OTHER_CATEGORY].map(c => {
+                  const n = templates.filter(t => catOf(t) === c.id).length;
+                  return n ? <option key={c.id} value={c.id}>{c.label} ({n})</option> : null;
+                })}
+              </select>
+              <div className="flex gap-1">
+                {(['all', 'imported', 'approved', 'retired'] as const).map(st => (
+                  <button key={st} onClick={() => setStatusFilter(st)} className={`${btn} ${statusFilter === st ? 'bg-gray-900 text-white' : 'bg-gray-100'}`}>
+                    {st === 'all' ? 'All' : st === 'imported' ? 'To review' : st === 'approved' ? 'Offered' : 'Retired'} ({templates.filter(t => st === 'all' || t.status === st).length})
+                  </button>
+                ))}
+              </div>
+            </div>
             {templates.length === 0 && <p className="p-4 text-sm text-gray-500">No templates yet. Import them with scripts/import-site-templates.ts (see docs/WHITE_LABEL.md).</p>}
-            {templates.map(t => {
-              const prices = t.content_flags.filter(f => f.kind === 'price').length;
+            {listed.map(t => {
+              const flags = t.content_flags ?? [];
+              const prices = flags.filter(f => f.kind === 'price').length;
+              const hidden = flags.filter(f => f.kind === 'hidden').length;
               return (
-                <button key={t.id} onClick={() => { setOpen({ id: t.id, path: t.pages[0]?.path ?? '/' }); setDraft(t.pages[0]?.html ?? ''); }}
+                <button key={t.id} onClick={() => openTemplate(t.id)}
                   className={`w-full text-left px-4 py-3 border-b text-sm ${open?.id === t.id ? 'bg-gray-50' : ''}`}>
                   <div className="flex justify-between"><span className="font-medium">{t.name}</span>
                     <span className={`text-xs ${t.status === 'approved' ? 'text-emerald-700' : t.status === 'retired' ? 'text-gray-400' : 'text-yellow-700'}`}>{t.status}</span></div>
-                  <div className="text-xs text-gray-500">{t.id} · {t.style} · {t.industry.slice(0, 3).join(', ')}</div>
-                  {t.status !== 'approved' && <div className="text-xs text-gray-500">{t.content_flags.length} things to check{prices ? `, ${prices} prices` : ''}</div>}
+                  <div className="text-xs text-gray-500">{categoryLabel(catOf(t))} · {t.style} · {t.industry.slice(0, 3).join(', ')}</div>
+                  {t.status !== 'approved' && <div className="text-xs text-gray-500">{flags.length} things to check{prices ? `, ${prices} prices` : ''}</div>}
+                  {hidden > 0 && <div className="text-xs text-red-700">{hidden} page(s) show less without scripts: fix before approval</div>}
                 </button>
               );
             })}

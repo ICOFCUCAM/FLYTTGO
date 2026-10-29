@@ -10,12 +10,13 @@ import { useApp } from '../../lib/store';
 import type { Membership } from '../../lib/organizations';
 import { formatNok } from '../../lib/invoicing';
 import {
-  DPA_VERSION, SELLER_LABELS, STATUS_LABELS, acceptDpa, endPlan, loadOrgWhiteLabel, loadPlans, loadStats, loadTemplates,
+  DPA_VERSION, SELLER_LABELS, STATUS_LABELS, acceptDpa, endPlan, loadOrgWhiteLabel, loadPlans, loadStats, loadTemplateList,
   missingFor, requestPlan, saveBrand, setDomain, setSite, stripeConnect, verifyDomain,
-  type OrgWhiteLabel, type SiteTemplate, type WhiteLabelPlan,
+  type OrgWhiteLabel, type SiteTemplateSummary, type WhiteLabelPlan,
 } from '../../lib/whiteLabel';
 import { sellerSplit } from '../../../supabase/functions/_shared/white-label';
 import { INDUSTRIES, setIndustry } from '../../lib/services';
+import TemplateCatalogue from '../whiteLabel/TemplateCatalogue';
 
 const input = 'w-full border border-gray-200 rounded-xl px-3 py-2 text-sm';
 const btn = 'px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50';
@@ -28,7 +29,7 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
   const [plans, setPlans] = useState<WhiteLabelPlan[]>([]);
   const [wl, setWl] = useState<OrgWhiteLabel | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
-  const [templates, setTemplates] = useState<SiteTemplate[]>([]);
+  const [templates, setTemplates] = useState<SiteTemplateSummary[]>([]);
   const [stats, setStats] = useState<Awaited<ReturnType<typeof loadStats>>>([]);
   const [choice, setChoice] = useState<string>('');
   const [brand, setBrand] = useState({ display_name: '', primary_color: '', accent_color: '', tagline: '', support_email: '',
@@ -42,7 +43,7 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const reload = useCallback(async () => {
-    const [p, w, t] = await Promise.all([loadPlans(), loadOrgWhiteLabel(org.id), loadTemplates()]);
+    const [p, w, t] = await Promise.all([loadPlans(), loadOrgWhiteLabel(org.id), loadTemplateList()]);
     setPlans(p); setWl(w); setTemplates(t);
     setChoice(w?.requested_plan_code ?? w?.plan_code ?? p.find(x => x.is_default)?.code ?? '');
     if (w) {
@@ -189,21 +190,12 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
           {/* Website template */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6">
             <h3 className="font-bold text-gray-900 mb-1">Website</h3>
-            <p className="text-sm text-gray-500 mb-3">Choose a website from FlyttGo's template library, in your name and colours. Every "book" button leads to your booking page. Without one, your page is a simple branded front page.</p>
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-96 overflow-auto">
-              <button onClick={() => setTemplate('')} disabled={!canEdit}
-                className={`rounded-xl border-2 p-3 text-left text-sm ${template === '' ? 'border-[#0B2E59]' : 'border-gray-200'}`}>
-                <div className="font-semibold">No template</div><div className="text-xs text-gray-500">Simple branded front page</div>
-              </button>
-              {templates.filter(t => t.status === 'approved').map(t => (
-                <button key={t.id} onClick={() => setTemplate(t.id)} disabled={!canEdit}
-                  className={`rounded-xl border-2 p-3 text-left text-sm ${template === t.id ? 'border-[#0B2E59]' : 'border-gray-200'}`}>
-                  <div className="font-semibold">{t.name}</div>
-                  <div className="text-xs text-gray-500">{t.style} · {t.industry.slice(0, 3).join(', ')} · {t.pages.length} pages</div>
-                </button>
-              ))}
-            </div>
-            {templates.filter(t => t.status === 'approved').length === 0 && <p className="text-xs text-gray-500 mt-2">No templates are offered yet: FlyttGo checks each one before it's offered.</p>}
+            <p className="text-sm text-gray-500 mb-3">Choose a website from FlyttGo's catalogue, by category. Open any of them to see every page in your name and colours. Every "book" button leads to your booking page.</p>
+            <TemplateCatalogue templates={templates} selected={template} onSelect={setTemplate} canEdit={canEdit}
+              brand={{ name: brand.display_name || org.name, tagline: brand.tagline || null, phone: brand.support_phone || null,
+                       email: brand.support_email || null, city: city || null,
+                       primaryColor: brand.primary_color || null, accentColor: brand.accent_color || null }}
+              sellerNotice="Here your site names who sells what is booked (you or FlyttGo, by your plan)." />
             <label className="block text-sm mt-3 max-w-xs">Town or region your site names<input className={input} value={city} disabled={!canEdit} onChange={e => setCity(e.target.value)} /></label>
             {canEdit && <button disabled={busy} onClick={() => run(() => setSite(org.id, template || null, city), 'Website saved.')} className={`${btn} bg-[#0B2E59] text-white mt-4`}>Save website</button>}
           </div>

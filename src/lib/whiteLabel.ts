@@ -132,7 +132,24 @@ export async function loadStats(orgId: string) {
   return (data ?? []) as { month: string; bookings: number; completed: number; cancelled: number; customer_revenue: number | null }[];
 }
 
-/** Approved templates (companies) or every template (FlyttGo administrators). */
+/** A template as the catalogue lists it: no pages (they are loaded when one is opened). */
+export type SiteTemplateSummary = Omit<SiteTemplate, 'pages' | 'content_flags'> & { content_flags?: SiteTemplate['content_flags'] };
+
+/** The catalogue: approved templates (companies) or every template (FlyttGo administrators), without their pages. */
+export async function loadTemplateList(withFlags = false): Promise<SiteTemplateSummary[]> {
+  const { data } = await supabase.from('site_templates')
+    .select(`id, name, industry, style, assets, status, review_note, reviewed_at${withFlags ? ', content_flags' : ''}`).order('name');
+  return (data ?? []) as unknown as SiteTemplateSummary[];
+}
+
+/** One template with its pages (for a preview or a review). */
+export async function loadTemplate(id: string): Promise<SiteTemplate | null> {
+  const { data } = await supabase.from('site_templates')
+    .select('id, name, industry, style, pages, assets, content_flags, status, review_note, reviewed_at').eq('id', id).maybeSingle();
+  return (data ?? null) as SiteTemplate | null;
+}
+
+/** Approved templates (companies) or every template (FlyttGo administrators), with every page. Prefer loadTemplateList. */
 export async function loadTemplates(): Promise<SiteTemplate[]> {
   const { data } = await supabase.from('site_templates')
     .select('id, name, industry, style, pages, assets, content_flags, status, review_note, reviewed_at').order('id');

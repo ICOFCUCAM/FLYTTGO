@@ -44,7 +44,64 @@ export interface SanitiseReport {
   forms: number; links: number; imports: number; refresh: number; externalSrc: number;
 }
 
-export interface ContentFlag { kind: 'price' | 'review' | 'claim' | 'phone' | 'email' | 'sample_name'; page: string; sample: string }
+export interface ContentFlag { kind: 'price' | 'review' | 'claim' | 'phone' | 'email' | 'sample_name' | 'hidden'; page: string; sample: string }
+
+/**
+ * Catalogue categories for companies choosing a website. A template is in
+ * the first category one of its industries belongs to; one in none of
+ * them is in "other" (never left out). Patient and clinical services are
+ * never imported.
+ */
+export const TEMPLATE_CATEGORIES: { id: string; label: string; tags: string[] }[] = [
+  { id: 'transport', label: 'Moving and transport', tags: [
+    'moving', 'movers', 'relocation', 'removals', 'man-and-van', 'logistics', 'freight', 'courier', 'delivery', 'transport',
+    'trucking', 'last-mile', 'warehousing', 'storage', 'parcel', 'shipping', 'import export', 'import-export'] },
+  { id: 'trades', label: 'Trades, home and car services', tags: [
+    'plumbing', 'plumber', 'emergency-plumbing', 'electrician', 'electrical', 'residential-electric', 'hvac',
+    'heating-and-cooling', 'air-conditioning', 'trades', 'home-services', 'cleaning', 'house-cleaning', 'maid-service',
+    'recurring-cleaning', 'landscaping', 'lawn-care', 'hardscaping', 'construction', 'contractor', 'general-contractor',
+    'roofing', 'roofer', 'painting', 'painter', 'pest-control', 'exterminator', 'termite', 'renovation', 'remodeling',
+    'kitchen-bath', 'restoration', 'storm-damage', 'solar', 'automotive', 'auto', 'auto-repair', 'mechanic', 'garage',
+    'car-care', 'detailing', 'mobile-detailing', 'auto-detailing', 'auto-body', 'body-shop', 'collision-repair', 'tyres',
+    'servicing', 'mot'] },
+  { id: 'appointments', label: 'Salons, wellness and bookings', tags: [
+    'beauty', 'salon', 'hair-salon', 'hair', 'barber', 'barbershop', 'spa', 'day-spa', 'nails', 'nail-salon',
+    'personal-care', 'skincare', 'esthetics', 'massage', 'fitness', 'gym', 'personal-training', 'personal-trainer', 'yoga',
+    'pilates', 'wellness', 'pet-care', 'pets', 'dog-grooming', 'pet-grooming', 'grooming', 'dog-training', 'tutoring',
+    'private tutor', 'music lessons', 'driving school', 'photography'] },
+  { id: 'professional', label: 'Professional services', tags: [
+    'consulting', 'coaching', 'accounting', 'bookkeeping', 'law-firm', 'lawyer', 'legal', 'professional-services',
+    'financial-advisor', 'finance', 'insurance', 'veterinary', 'vet', 'research', 'security'] },
+  { id: 'hospitality', label: 'Food, hospitality and events', tags: [
+    'hospitality', 'hotel', 'restaurant', 'food', 'cafe', 'bakery', 'catering', 'travel', 'tours', 'tour-operator',
+    'events', 'venue'] },
+  { id: 'retail', label: 'Shops and online stores', tags: ['ecommerce', 'online-store', 'shop', 'retail'] },
+  { id: 'technology', label: 'Software and technology', tags: ['saas', 'software', 'b2b-software', 'technology', 'tech', 'hosting'] },
+  { id: 'community', label: 'Education, nonprofit and community', tags: [
+    'education', 'e-learning', 'academy', 'nonprofit', 'charity', 'church', 'community'] },
+  { id: 'industry', label: 'Property, industry and agriculture', tags: [
+    'real-estate', 'realtor', 'property-management', 'manufacturing', 'agriculture', 'mining', 'energy', 'pharmaceutical'] },
+  { id: 'entertainment', label: 'Gaming and entertainment', tags: ['gaming', 'games', 'esports', 'entertainment'] },
+];
+export const OTHER_CATEGORY = { id: 'other', label: 'Other businesses' };
+
+/** Industries never imported: patient and clinical services. */
+export const EXCLUDED_INDUSTRIES = ['health', 'clinic', 'medical', 'dental', 'dentist', 'therapy', 'counseling',
+  'mental-health', 'psychology', 'optometry', 'eye-care', 'orthodontics', 'pediatrics', 'primary-care',
+  'family-medicine', 'womens-health', 'obgyn', 'dermatology', 'chiropractic', 'physical-therapy', 'medical-spa',
+  'hospital', 'healthcare'];
+
+/** The catalogue category of a template; null when it is never imported. */
+export function templateCategory(industry: readonly string[] | null | undefined): string | null {
+  const tags = (industry ?? []).map(i => String(i).toLowerCase());
+  if (tags.some(t => EXCLUDED_INDUSTRIES.includes(t))) return null;
+  return TEMPLATE_CATEGORIES.find(c => tags.some(t => c.tags.includes(t)))?.id ?? OTHER_CATEGORY.id;
+}
+
+/** The label of a category id. */
+export function categoryLabel(id: string): string {
+  return TEMPLATE_CATEGORIES.find(c => c.id === id)?.label ?? OTHER_CATEGORY.label;
+}
 
 export interface PreparedTemplate {
   id: string;
@@ -94,6 +151,18 @@ function count(re: RegExp, s: string): number {
 }
 
 /**
+ * Forms become a card with a link to the booking page. The card keeps the
+ * form's classes (and so the template's look); what the form asked for is
+ * asked on the booking page instead.
+ */
+export function replaceForms(html: string): string {
+  return String(html ?? '').replace(/<form\b([^>]*)>[\s\S]*?<\/form\s*>/gi, (_m, attrs: string) => {
+    const cls = /\sclass\s*=\s*("|')([^"']*)\1/i.exec(attrs)?.[2]?.replace(/[^\w\s-]/g, '') ?? '';
+    return `<div class="${cls ? `${cls} ` : ''}fg-book-card"><p class="fg-book"><a href="{{BOOKING_URL}}">${BOOK_LABEL}</a></p></div>`;
+  }).replace(/<\/?form\b[^>]*>/gi, '');
+}
+
+/**
  * Remove everything that runs code, loads from elsewhere or sends data:
  * scripts, event handlers, javascript: URLs, frames and embeds, <base>,
  * meta refresh, <link> tags, CSS @import, and forms (replaced by a link to
@@ -111,9 +180,7 @@ export function sanitiseHtml(html: string, assetHosts: string[] = []): { html: s
   h = h.replace(frameRe, '');
 
   removed.forms = count(/<form\b/gi, h);
-  h = h.replace(/<form\b[\s\S]*?<\/form\s*>/gi,
-    `<p class="fg-book"><a href="{{BOOKING_URL}}">${BOOK_LABEL}</a></p>`);
-  h = h.replace(/<\/?form\b[^>]*>/gi, '');
+  h = replaceForms(h);
   // Inputs left outside a form submit nothing; drop them with buttons that
   // would.
   h = h.replace(/<(input|select|textarea)\b[^>]*>/gi, '').replace(/<\/(select|textarea)\s*>/gi, '');
@@ -199,7 +266,10 @@ export function prepareTemplate(row: MasterRow, assetHosts: string[] = []): Prep
   const assets = parseJson<TemplateAsset[]>(row.preview_assets ?? null, []);
   const removed: SanitiseReport = { scripts: 0, handlers: 0, jsUrls: 0, frames: 0, forms: 0, links: 0, imports: 0, refresh: 0, externalSrc: 0 };
   const name = String(row.name ?? '').trim();
-  const nameRe = name.length >= 3 ? new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g') : null;
+  // The name as written in the page's text, where "&" is "&amp;".
+  const esc = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const nameRe = name.length >= 3
+    ? new RegExp(`\\b(?:${[...new Set([name, escapeHtml(name)])].map(esc).join('|')})(?![\\w])`, 'g') : null;
   const out: TemplatePage[] = [];
   const flags: ContentFlag[] = [];
   for (const p of pages) {
@@ -219,6 +289,8 @@ export function prepareTemplate(row: MasterRow, assetHosts: string[] = []): Prep
       return `>${t}<`;
     });
     if (nameRe) h = h.replace(/(<title>[^<]*)/i, (m) => m.replace(nameRe, '{{brand.name}}'));
+    // …and in what screen readers read out: image descriptions and labels.
+    if (nameRe) h = h.replace(/(\s(?:alt|title|aria-label)\s*=\s*")([^"]*)"/gi, (_m, a: string, v: string) => `${a}${v.replace(nameRe, '{{brand.name}}')}"`);
     flags.push(...contentFlags(h, path, name));
     out.push({ path, html: h, title: p.title ?? null });
   }
@@ -283,6 +355,11 @@ export function renderTemplatePage(html: string, ctx: RenderContext): string {
   const style = `<style>${colours.length ? `:root{${colours.join(';')}}` : ''}`
     + '.fg-book{margin:1.5rem 0}.fg-book a{display:inline-block;padding:.8rem 1.4rem;border-radius:.5rem;'
     + 'background:var(--c-primary,#0b2e59);color:#fff;font-weight:700;text-decoration:none}'
+    + '.fg-book-card{display:flex;align-items:center;justify-content:center;min-height:8rem}.fg-book-card .fg-book{margin:0}'
+    + '.fg-book-card .fg-book a{background:var(--c-accent,var(--c-primary,#0b2e59));padding:1rem 1.8rem;font-size:1rem}'
+    // Pages are shown without scripts: content a script would have faded in
+    // is shown as it ends up (the importer's snapshot already does this).
+    + '.reveal{opacity:1!important;transform:none!important}'
     + '.fg-seller{font:13px/1.5 system-ui,sans-serif;background:#f3f4f6;color:#374151;padding:12px 16px;text-align:center}'
     + '</style>';
   h = /<\/head>/i.test(h) ? h.replace(/<\/head>/i, `${style}</head>`) : style + h;

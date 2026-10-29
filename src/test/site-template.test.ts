@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  contentFlags, htmlProblems, pageFor, prepareTemplate, renderTemplatePage, sanitiseHtml, templateId,
+  OTHER_CATEGORY, TEMPLATE_CATEGORIES, categoryLabel, contentFlags, htmlProblems, pageFor, prepareTemplate, renderTemplatePage,
+  replaceForms, sanitiseHtml, templateCategory, templateId,
 } from '../../supabase/functions/_shared/site-template.ts';
 
 const ASSET_HOST = 'assets.flyttgo.test';
@@ -125,5 +126,53 @@ describe('renderTemplatePage (serve)', () => {
 describe('contentFlags', () => {
   it('finds Norwegian prices too', () => {
     expect(contentFlags('<p>Fra 1 290 kr per time</p>', '/').some(f => f.kind === 'price')).toBe(true);
+  });
+});
+
+describe('the catalogue categories', () => {
+  it('puts every template in a category, never health', () => {
+    expect(templateCategory(['moving', 'movers'])).toBe('transport');
+    expect(templateCategory(['logistics', 'man-and-van'])).toBe('transport');
+    expect(templateCategory(['automotive'])).toBe('trades');
+    expect(templateCategory(['hair-salon'])).toBe('appointments');
+    expect(templateCategory(['restaurant'])).toBe('hospitality');
+    expect(templateCategory(['mining'])).toBe('industry');
+    expect(templateCategory(['something-new'])).toBe(OTHER_CATEGORY.id);
+    expect(templateCategory([])).toBe(OTHER_CATEGORY.id);
+    expect(templateCategory(['dental', 'clinic'])).toBeNull();
+    expect(templateCategory(['beauty', 'medical-spa'])).toBeNull();
+  });
+  it('has a label for every category and no industry in two', () => {
+    const seen = new Map<string, string>();
+    for (const c of TEMPLATE_CATEGORIES) {
+      expect(categoryLabel(c.id)).toBe(c.label);
+      for (const t of c.tags) { expect(seen.get(t), `${t} in ${seen.get(t)} and ${c.id}`).toBeUndefined(); seen.set(t, c.id); }
+    }
+    expect(categoryLabel('other')).toBe(OTHER_CATEGORY.label);
+  });
+});
+
+describe('keeping the template\'s look', () => {
+  it('turns a form into a card with its classes and a booking button', () => {
+    const h = replaceForms('<div class="cta-grid"><form class="lead" data-lead-form><input name="email"><button>Send</button></form></div>');
+    expect(h).toContain('<div class="lead fg-book-card">');
+    expect(h).toContain('href="{{BOOKING_URL}}"');
+    expect(h).not.toMatch(/<form|<input|<button/);
+  });
+  it('replaces the sample name where the page writes "&" as "&amp;", also in image descriptions', () => {
+    const t = prepareTemplate({ id: 'x', name: 'Fast Man & Van', pages: [{ path: '/', html:
+      '<html><head><title>Fast Man & Van — UK</title></head><body><a class="brand">Fast Man &amp; Van</a>'
+      + '<img src="{{ASSET:hero}}" alt="A Fast Man &amp; Van removal van"><p>Fast Man &amp; Vans</p></body></html>' }] });
+    const h = t.pages[0].html;
+    expect(h).toContain('<a class="brand">{{brand.name}}</a>');
+    expect(h).toContain('alt="A {{brand.name}} removal van"');
+    expect(h).toContain('<title>{{brand.name}} — UK</title>');
+    expect(h).toContain('Fast Man &amp; Vans');                      // a longer word is left alone
+  });
+  it('shows content scripts would have faded in', () => {
+    const h = renderTemplatePage('<html><head><style>.reveal{opacity:0}</style></head><body><div class="reveal">Hi</div></body></html>', {
+      brand: { name: 'A' }, assets: [], pageUrl: () => '#', bookingUrl: '#', sellerNotice: 'n' });
+    expect(h).toMatch(/\.reveal\{opacity:1!important;transform:none!important\}/);
+    expect(h.indexOf('.reveal{opacity:1')).toBeGreaterThan(h.indexOf('.reveal{opacity:0}'));
   });
 });
