@@ -5,7 +5,8 @@
  * the live miniature, TemplateThumb, where it has none), its style, what
  * its pages have (features found at import), how many pages and what kind
  * of business it suits; and a full preview of each page in the company's
- * own name and colours before it is chosen.
+ * own name and colours before it is chosen: at desktop width, as a tablet
+ * (768 px) or as a phone (390 px), page by page (tabs, previous and next).
  * Previews are sandboxed without scripts, as the published site is.
  */
 import { useEffect, useMemo, useState } from 'react';
@@ -23,6 +24,14 @@ const hostsOf = (assets: { url: string }[]) =>
 /** Every card's picture has the same shape: the top of the home page, 4 : 3. */
 const THUMB_BOX = 'aspect-[4/3]';
 const tag = 'inline-block rounded-full px-2 py-0.5 text-[11px] font-medium';
+
+/** The preview's screen sizes: a desktop (the full width), a tablet and a phone. */
+const DEVICES = [
+  { id: 'desktop', label: 'Desktop', width: 0 },
+  { id: 'tablet', label: 'Tablet', width: 768 },
+  { id: 'phone', label: 'Phone', width: 390 },
+] as const;
+type Device = (typeof DEVICES)[number]['id'];
 
 const pageName = (path: string) => path === '/' ? 'Home' : path.replace(/^\//, '').replace(/[-/]/g, ' ').replace(/^./, c => c.toUpperCase());
 
@@ -46,6 +55,7 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
   const [query, setQuery] = useState('');
   const [preview, setPreview] = useState<{ t: SiteTemplate; path: string } | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
+  const [device, setDevice] = useState<Device>('desktop');
 
   // Open on the company's current category the first time.
   useEffect(() => {
@@ -133,30 +143,58 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
       </div>
       {shown.length === 0 && <p className="text-sm text-gray-500 mt-3">No template matches.</p>}
 
-      {preview && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={`Preview of ${preview.t.name}`}>
-          <div className="bg-white rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden">
-            <div className="flex flex-wrap items-center gap-2 p-3 border-b">
-              <div className="font-semibold mr-2">{preview.t.name}</div>
-              {preview.t.pages.map(p => (
-                <button key={p.path} onClick={() => setPreview({ ...preview, path: p.path })}
-                  className={`px-2.5 py-1 rounded text-xs ${p.path === preview.path ? 'bg-gray-900 text-white' : 'bg-gray-100'}`}>{pageName(p.path)}</button>
-              ))}
-              <div className="ml-auto flex gap-2">
-                {selected === preview.t.id ? <span className="text-sm font-semibold text-[#0B2E59] self-center">Chosen</span>
-                  : <button disabled={!canEdit} onClick={() => { onSelect(preview.t.id); setPreview(null); }} className={`${btn} bg-[#0B2E59] text-white`}>Choose this website</button>}
-                <button onClick={() => setPreview(null)} className={`${btn} bg-gray-100`}>Close</button>
+      {preview && (() => {
+        const pages = preview.t.pages;
+        const at = Math.max(0, pages.findIndex(p => p.path === preview.path));
+        const go = (i: number) => setPreview({ ...preview, path: pages[(i + pages.length) % pages.length].path });
+        const frame = DEVICES.find(d => d.id === device) ?? DEVICES[0];
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-2 sm:p-4" role="dialog" aria-modal="true"
+            aria-label={`Preview of ${preview.t.name}`}
+            onKeyDown={e => { if (e.key === 'Escape') setPreview(null); }}>
+            <div className="bg-white rounded-2xl w-full max-w-7xl h-[94vh] flex flex-col overflow-hidden">
+              <div className="flex flex-wrap items-center gap-2 p-3 border-b">
+                <div className="font-semibold mr-1">{preview.t.name}</div>
+                <span className="text-[11px] font-semibold rounded-full bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-0.5">
+                  Preview: your name and colours, sample content
+                </span>
+                <div className="ml-auto flex flex-wrap gap-2">
+                  {selected === preview.t.id ? <span className="text-sm font-semibold text-[#0B2E59] self-center">Chosen</span>
+                    : <button disabled={!canEdit} onClick={() => { onSelect(preview.t.id); setPreview(null); }} className={`${btn} bg-[#0B2E59] text-white`}>Choose this website</button>}
+                  <button autoFocus onClick={() => setPreview(null)} className={`${btn} bg-gray-100`}>Close</button>
+                </div>
               </div>
+              <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b bg-gray-50">
+                <button onClick={() => go(at - 1)} disabled={pages.length < 2} className={`${btn} bg-white border border-gray-200`} aria-label="Previous page">‹ Previous</button>
+                <div className="flex flex-wrap gap-1" role="group" aria-label="Pages">
+                  {pages.map(p => (
+                    <button key={p.path} onClick={() => setPreview({ ...preview, path: p.path })} aria-pressed={p.path === preview.path}
+                      className={`px-2.5 py-1 rounded text-xs ${p.path === preview.path ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200'}`}>{pageName(p.path)}</button>
+                  ))}
+                </div>
+                <button onClick={() => go(at + 1)} disabled={pages.length < 2} className={`${btn} bg-white border border-gray-200`} aria-label="Next page">Next ›</button>
+                <span className="text-xs text-gray-500">Page {at + 1} of {pages.length}</span>
+                <div className="ml-auto inline-flex rounded-lg border border-gray-200 bg-white p-0.5" role="group" aria-label="Screen size">
+                  {DEVICES.map(d => (
+                    <button key={d.id} onClick={() => setDevice(d.id)} aria-pressed={device === d.id} title={d.width ? `${d.width} px wide` : 'Full width'}
+                      className={`px-3 py-1 rounded-md text-xs font-semibold ${device === d.id ? 'bg-[#0B2E59] text-white' : 'text-gray-700'}`}>{d.label}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex-1 min-h-0 bg-gray-200 overflow-auto flex justify-center">
+                <iframe key={`${preview.t.id}${preview.path}`} title={`${preview.t.name}: ${pageName(preview.path)} (${frame.label.toLowerCase()})`} sandbox=""
+                  className={`bg-white ${frame.width ? 'self-stretch shadow-xl sm:my-3 sm:rounded-lg border border-gray-300 shrink-0' : 'w-full h-full'}`}
+                  style={frame.width ? { width: frame.width, maxWidth: '100%' } : undefined}
+                  srcDoc={renderTemplatePage(pages[at]?.html ?? '', {
+                    brand, assets: preview.t.assets, pageUrl: () => '#', bookingUrl: '#', sellerNotice,
+                    assetHosts: hostsOf(preview.t.assets),
+                  })} />
+              </div>
+              <p className="text-xs text-gray-500 px-3 py-2 border-t">Shown with your name, colours and contact details; the wording and pictures are the template's samples. On your site every "book" button opens your booking page.</p>
             </div>
-            <iframe title={`${preview.t.name}: ${pageName(preview.path)}`} sandbox="" className="flex-1 w-full bg-white"
-              srcDoc={renderTemplatePage(preview.t.pages.find(p => p.path === preview.path)?.html ?? '', {
-                brand, assets: preview.t.assets, pageUrl: () => '#', bookingUrl: '#', sellerNotice,
-                assetHosts: hostsOf(preview.t.assets),
-              })} />
-            <p className="text-xs text-gray-500 px-3 py-2 border-t">Shown with your name, colours and contact details. On your site every "book" button opens your booking page.</p>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
