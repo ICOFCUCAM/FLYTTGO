@@ -16,6 +16,11 @@
 //   POST /functions/v1/white-label-site
 //   { "slug": "acme" } | { "host": "booking.acme.no" }, optional "page": "/services"
 //
+// Also the websites that may show the company's booking widget
+// (widget_origins, migration 00018): the embed page checks its parent
+// against them. With "widget": true only those are returned, for the
+// frame-ancestors header (middleware.ts).
+//
 // DEPLOY: supabase functions deploy white-label-site --no-verify-jwt
 // ============================================================================
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
@@ -34,7 +39,7 @@ const json = (body: unknown, status = 200) =>
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST')    return json({ error: 'Method not allowed' }, 405);
-  const body = await req.json().catch(() => ({})) as { slug?: string; host?: string; page?: string };
+  const body = await req.json().catch(() => ({})) as { slug?: string; host?: string; page?: string; widget?: boolean };
   const slug = typeof body.slug === 'string' ? body.slug.slice(0, 63) : null;
   const host = typeof body.host === 'string' ? body.host.slice(0, 253) : null;
   if (!slug && !host) return json({ error: 'slug or host is required' }, 400);
@@ -43,6 +48,9 @@ serve(async (req: Request) => {
   const { data: site, error } = await db.rpc('white_label_public', { p_slug: slug, p_host: host });
   if (error) return json({ error: 'site lookup failed' }, 500);
   if (!site) return json({ error: 'not found' }, 404);
+  const { data: origins } = await db.rpc('widget_origins_public', { p_org: site.organization_id });
+  const widgetOrigins: string[] = Array.isArray(origins) ? origins : [];
+  if (body.widget === true) return json({ slug: site.slug, widget_origins: widgetOrigins });
 
   let logoUrl: string | null = null;
   if (site.logo_path) {
@@ -83,5 +91,6 @@ serve(async (req: Request) => {
     }
   }
 
-  return json({ ...site, logo_path: undefined, logo_url: logoUrl, seller_notice: notice, modules, booking, pages, page });
+  return json({ ...site, logo_path: undefined, logo_url: logoUrl, seller_notice: notice, modules, booking, pages, page,
+                widget_origins: widgetOrigins });
 });

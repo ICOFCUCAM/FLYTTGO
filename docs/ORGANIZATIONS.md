@@ -100,7 +100,7 @@ In the app: the **Team** tab shows each member's limits and this month's spend, 
 
 ## Not yet built
 
-- Company API keys (the dashboard's API tab is still a preview). Like bookings, invoices and credit, they will require `is_active_org_member()`.
+- API keys (migration 00018, [`API.md`](API.md)) are built and require `is_active_org_member()` to create; a key works only while the company is active.
 
 ## Tests
 

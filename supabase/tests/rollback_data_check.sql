@@ -17,6 +17,9 @@ SELECT tests.ok((SELECT status = 'cancelled' AND payment_status = 'pending' FROM
 SELECT tests.ok(to_regclass('public.payment_refunds') IS NULL AND to_regclass('public.organizations') IS NULL,
   'refund records and organisations are dropped (export them first)');
 
+SELECT tests.ok(to_regclass('public.api_keys') IS NULL AND to_regclass('public.organization_widget_origins') IS NULL,
+  'API keys, their log and the widget''s websites are dropped (every key stops working)');
+
 \echo '── left NOT VALID by the rollback (rows written while the migrations were in force):'
 SELECT c.relname || '.' || con.conname AS constraint_not_valid
   FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid JOIN pg_namespace n ON n.oid = c.relnamespace

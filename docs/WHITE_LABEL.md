@@ -68,6 +68,22 @@ Architect-AI's `site_masters` (210 generated five-page websites, read 2026-10-29
 - **Serving:** `white-label-site` renders the requested page with the company's brand (`renderTemplatePage`, which sanitises again), and the browser shows it in an iframe **sandboxed without scripts or same-origin access**. Links leave the frame to the site's other pages or the booking page.
 - **Before import:** confirm FlyttGo may use Architect-AI's content (same owner) and the licence of its images (stock photos).
 
+## Booking widget
+
+A company puts its booking page on its own website (migration 00018; the API keys of the same migration are in [`API.md`](API.md)). **No API key is involved:** customers book through the company's FlyttGo page, as on `/b/<slug>`.
+
+- **The snippet** (Corporate dashboard → **API and widget**, with a copy button and a live preview):
+  ```html
+  <div id="flyttgo-booking"></div>
+  <script src="https://flyttgo.no/widget.js" data-company="<slug>" data-target="#flyttgo-booking" async></script>
+  ```
+  `public/widget.js` (no dependencies) inserts an iframe of `/embed/<slug>` and sets its height from the page's `flyttgo:resize` messages, accepted only from its own frame and FlyttGo's origin. The frame is sandboxed: scripts, forms and new tabs for FlyttGo's page; it never navigates the company's page without the visitor's click.
+- **The embed page** (`src/pages/EmbedPage.tsx`) shows the same booking flow as the company's page, compact and without FlyttGo's header and footer: FlyttGo's moves (`BookingFlow`) for transport plans, the company's jobs or appointments (`ServiceBookingPage`) for the others. It needs the company's page to be active. Card and Vipps payment open in a new tab (payment providers refuse to run inside frames; the confirmation page there may ask the customer to sign in again, as browsers keep a frame's sign-in apart from the site's); sign-in works inside the frame with email and password (Google or Apple sign-in may not, as they refuse frames).
+- **Where it may be shown:** the websites the company lists (owners and admins; `https://host[:port]` without a path, or `http://localhost` for testing; at most 20), in `organization_widget_origins`. Enforced twice:
+  1. **The browser**, by `Content-Security-Policy: frame-ancestors 'self' <the websites>` on `/embed/<slug>`. `vercel.json` only rewrites to the app, so the header comes from the Vercel Routing Middleware `middleware.ts`, which reads the list through `white-label-site` (`"widget": true`). If the list cannot be read only FlyttGo may frame the page.
+  2. **The embed page**, which checks the website that framed it (`location.ancestorOrigins`, else the referrer, else the origin the script passed) against the list from `white-label-site` and shows the flow only there or inside FlyttGo itself (the dashboard's preview). Elsewhere it shows a link to the company's page. This also covers hosts where the middleware does not run (local development).
+- **Before going live:** check on a Vercel preview that `/embed/<slug>` carries the header (the middleware is not tested on Vercel yet; [`DEPLOYMENT.md`](DEPLOYMENT.md) §3).
+
 ## Who may do what
 
 | | Owner | Admin | Finance, booker, viewer | FlyttGo administrator | Server |
@@ -91,7 +107,8 @@ Architect-AI's `site_masters` (210 generated five-page websites, read 2026-10-29
 
 - **Vercel domains API:** adding a verified domain to the project is manual. It could be automated with a Vercel token.
 - **Vipps for Model B:** would need each company's own Vipps MobilePay agreement (or Vipps' partner API).
-- **Booking widget and API keys** for companies' own websites: not built yet (the plans don't list them).
+- **Booking widget and API keys:** built (migration 00018, above and [`API.md`](API.md)). The plans don't list them yet: decide whether they are part of every plan or priced.
+- **Webhooks** for the API (status changes pushed to the company): not built.
 
 ## Tests
 

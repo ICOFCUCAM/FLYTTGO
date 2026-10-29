@@ -57,6 +57,8 @@ export interface PublicSite {
   modules: string[];
   pages: string[];
   page: { path: string; html: string } | null;
+  /** Websites that may show the booking widget (00018). */
+  widget_origins?: string[];
 }
 
 export const DPA_VERSION = '2026-10-draft';
@@ -194,23 +196,28 @@ export async function reviewTemplate(id: string, approve: boolean, contentChecke
 
 /* ── The public page ───────────────────────────────────────────────── */
 const BRAND_KEY = 'flyttgo.brand';
+/* Inside a frame (the booking widget, or its preview in the dashboard, which
+ * shares the tab's session storage) the page is remembered apart, so the
+ * dashboard around a preview never turns into the company's page. */
+const brandKey = () => (typeof window !== 'undefined' && window.self !== window.top ? `${BRAND_KEY}.framed` : BRAND_KEY);
 
-/** Which company's page this visit is on: /b/<slug>, a company's own
- *  domain or subdomain, or the page the visitor came from in this tab. */
+/** Which company's page this visit is on: /b/<slug> (or /embed/<slug>, the
+ *  booking widget), a company's own domain or subdomain, or the page the
+ *  visitor came from in this tab. */
 export function brandTarget(): { slug?: string; host?: string } | null {
   if (typeof window === 'undefined') return null;
   const { pathname, hostname } = window.location;
-  const m = /^\/b\/([a-z0-9-]{3,63})(?:\/|$)/.exec(pathname);
+  const m = /^\/(?:b|embed)\/([a-z0-9-]{3,63})(?:\/|$)/.exec(pathname);
   const store = (v: string | null) => {
     try {
-      if (v) sessionStorage.setItem(BRAND_KEY, v); else sessionStorage.removeItem(BRAND_KEY);
+      if (v) sessionStorage.setItem(brandKey(), v); else sessionStorage.removeItem(brandKey());
     } catch { /* private mode */ }
   };
   if (m) { store(m[1]); return { slug: m[1] }; }
   if (!isFlyttgoHost(hostname)) return { host: hostname };
   if (pathname === '/') { store(null); return null; }             // back on FlyttGo's own front page
   try {
-    const kept = sessionStorage.getItem(BRAND_KEY);
+    const kept = sessionStorage.getItem(brandKey());
     return kept ? { slug: kept } : null;
   } catch { return null; }
 }

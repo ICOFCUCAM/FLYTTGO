@@ -98,9 +98,13 @@ supabase functions deploy <name> --no-verify-jwt
 | `create-vipps-session` | Vipps Checkout v3 session | `PaymentPage`, `DriverPortal.subscribeToPlan` |
 | `vipps-webhook` | Flips `payment_status → paid` post-Vipps | Vipps (webhook endpoint) |
 | `calculate-price` | Server-authoritative pricing helper | (backend only) |
+| `public-api` | The companies' REST API (`/v1/...`), authenticated by the company's API key, not a session ([`API.md`](API.md), migration 00018) | Companies' own servers |
+| `white-label-site` | A company's public page, and the websites that may frame its booking widget | `BrandSitePage`, `EmbedPage`, `middleware.ts` |
 | `release-escrow` | Legacy commission calculator (harmless) | (none — dead code) |
 
 `--no-verify-jwt` is **required** for every function — Supabase's default JWT check blocks unauthenticated browser calls (Stripe webhooks, Vipps webhooks, anon booking widgets).
+
+`public-api` sends no CORS headers on purpose (API keys belong on servers). The booking widget's frame header comes from the Vercel Routing Middleware `middleware.ts` (project root, `/embed/*` only); it needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` at runtime, which section 1 already sets. Check on a preview deployment that `/embed/<slug>` answers with `Content-Security-Policy: frame-ancestors 'self' …` before companies paste the widget ([`WHITE_LABEL.md`](WHITE_LABEL.md) → Booking widget).
 
 Deploy them all in one go:
 ```bash

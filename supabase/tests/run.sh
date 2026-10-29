@@ -53,7 +53,7 @@ echo "── repo ──"
 fresh
 "${PSQL[@]}" -d "$DB" -f supabase/migrations/00001_complete_schema.sql
 migrate
-run_tests supabase/tests/p0_security.test.sql supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql supabase/tests/bank_import.test.sql supabase/tests/spending_limits.test.sql
+run_tests supabase/tests/p0_security.test.sql supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql supabase/tests/bank_import.test.sql supabase/tests/spending_limits.test.sql supabase/tests/api_keys.test.sql
 
 # The scheduled jobs (supabase/ops/schedules.sql), with stand-ins for
 # pg_cron, pg_net and Vault.
@@ -69,7 +69,7 @@ fi
 echo "replica matches the production fingerprint"
 migrate
 run_tests supabase/tests/p0_security.test.sql supabase/tests/p0_production.test.sql \
-  supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql supabase/tests/bank_import.test.sql supabase/tests/spending_limits.test.sql
+  supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql supabase/tests/bank_import.test.sql supabase/tests/spending_limits.test.sql supabase/tests/api_keys.test.sql
 
 echo "── rollback ──"
 # Function bodies and settings (the fingerprint covers structure, not

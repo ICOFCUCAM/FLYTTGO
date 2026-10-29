@@ -59,6 +59,13 @@ SELECT 'b0000000-0000-0000-0000-000000000017', 'c0000000-0000-0000-0000-00000000
   FROM public.organizations WHERE slug = 'rollback-as';
 SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false);
 SELECT public.company_booking_check('b0000000-0000-0000-0000-000000000017', 'c0000000-0000-0000-0000-000000000001', 1200);
+-- 00018: the company active, an API key with its log and a counted
+-- request, a widget website.
+SELECT set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
+SELECT public.create_api_key((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'Rollback', ARRAY['quotes', 'bookings:read']);
+SELECT public.add_widget_origin((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'https://rollback.example');
+SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false);
+SELECT public.api_begin((SELECT key_hash FROM public.api_keys LIMIT 1), 'quotes');
 SELECT set_config('request.jwt.claims', '', false);
 
 -- What exists before the rollback, for the comparison afterwards.
