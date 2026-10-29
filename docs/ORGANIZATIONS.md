@@ -77,6 +77,7 @@ FlyttGo's own invoicing, payment terms per company, branding on the special plan
 ## Not yet built
 
 - Per-member spending limits and approval rules (step 4, company bookings). Bookings, invoices, credit and API keys will require `is_active_org_member()`.
+- API keys (migration 00018, [`API.md`](API.md)) are built and require `is_active_org_member()` to create; a key works only while the company is active.
 
 ## Tests
 

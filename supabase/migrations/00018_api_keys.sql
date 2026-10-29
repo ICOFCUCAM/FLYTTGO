@@ -456,6 +456,7 @@ BEGIN
                                ORDER BY j.created_at DESC), '[]'::jsonb) INTO v_rows
         FROM (SELECT * FROM public.jobs x
                WHERE x.organization_id = v_org AND (v_id IS NULL OR x.id = v_id)
+                 AND (p_args ->> 'status' IS NULL OR x.status = p_args ->> 'status')
                  AND (v_before IS NULL OR x.created_at < v_before)
                ORDER BY x.created_at DESC LIMIT CASE WHEN p_what = 'jobs.get' THEN 1 ELSE v_limit + 1 END) j;
       IF p_what = 'jobs.get' THEN
@@ -488,6 +489,7 @@ BEGIN
                                  'cancelled_at', a.cancelled_at, 'created_at', a.created_at) ORDER BY a.starts_at DESC), '[]'::jsonb) INTO v_rows
         FROM (SELECT * FROM public.appointments x
                WHERE x.organization_id = v_org AND (v_id IS NULL OR x.id = v_id)
+                 AND (p_args ->> 'status' IS NULL OR x.status = p_args ->> 'status')
                  AND (v_before IS NULL OR x.starts_at < v_before)
                ORDER BY x.starts_at DESC LIMIT CASE WHEN p_what = 'appointments.get' THEN 1 ELSE v_limit + 1 END) a;
       IF p_what = 'appointments.get' THEN

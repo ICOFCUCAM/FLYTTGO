@@ -152,6 +152,9 @@ SELECT tests.ok((SELECT r ->> 'status' FROM j) = 'accepted' AND (SELECT (r ->> '
 SELECT tests.ok((SELECT created_by FROM public.jobs) = :cust1 AND (SELECT actor_id FROM public.job_events WHERE action = 'job.requested') = :cust1,
   'the job is made as the key''s creator (the job log names them)');
 SELECT tests.ok((SELECT count(*) FROM public.api_events WHERE action = 'job.create' AND actor_id = :cust1) = 1, 'the write is in the key log');
+SELECT tests.ok(jsonb_array_length(public.api_read(tests.key_hash((SELECT key FROM k)), 'jobs.list') -> 'data') = 1
+                AND jsonb_array_length(public.api_read(tests.key_hash((SELECT key FROM k)), 'jobs.list', '{"status":"cancelled"}') -> 'data') = 0,
+  'the key lists the company''s jobs, by status');
 SELECT tests.ok(public.api_write(tests.key_hash((SELECT key FROM k)), 'job.create', '{}', 'idem-1', 'h1') ->> 'replayed' = 'true'
                 AND (SELECT count(*) FROM public.jobs) = 1,
   'the same Idempotency-Key and request return the first answer, without a second job');
