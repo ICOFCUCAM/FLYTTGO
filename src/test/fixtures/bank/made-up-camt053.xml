@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP SAMPLE for the tests (src/test/bank-files.test.ts): not from a bank, no real account or person. -->
+<doc:Document xmlns:doc="urn:iso:std:iso:20022:tech:xsd:camt.053.001.08">
+  <doc:BkToCstmrStmt>
+    <doc:GrpHdr>
+      <doc:MsgId>SAMPLE-053-20261031</doc:MsgId>
+      <doc:CreDtTm>2026-11-01T02:00:00+01:00</doc:CreDtTm>
+    </doc:GrpHdr>
+    <doc:Stmt>
+      <doc:Id>SAMPLE-STMT-20261031</doc:Id>
+      <doc:Acct><doc:Id><doc:Othr><doc:Id>12345678903</doc:Id><doc:SchmeNm><doc:Cd>BBAN</doc:Cd></doc:SchmeNm></doc:Othr></doc:Id></doc:Acct>
+      <doc:Bal>
+        <doc:Tp><doc:CdOrPrtry><doc:Cd>OPBD</doc:Cd></doc:CdOrPrtry></doc:Tp>
+        <doc:Amt Ccy="NOK">10000.00</doc:Amt><doc:CdtDbtInd>CRDT</doc:CdtDbtInd><doc:Dt><doc:Dt>2026-10-31</doc:Dt></doc:Dt>
+      </doc:Bal>
+      <doc:Ntry>
+        <doc:Amt Ccy="NOK">1200.00</doc:Amt>
+        <doc:CdtDbtInd>CRDT</doc:CdtDbtInd>
+        <doc:Sts><doc:Cd>BOOK</doc:Cd></doc:Sts>
+        <doc:BookgDt><doc:DtTm>2026-10-31T09:14:00+01:00</doc:DtTm></doc:BookgDt>
+        <doc:AcctSvcrRef>SAMPLE-STMT-REF-1</doc:AcctSvcrRef>
+        <doc:NtryDtls><doc:TxDtls>
+          <doc:RltdPties><doc:Dbtr><doc:Pty><doc:Nm>Eksempel Bedrift AS</doc:Nm></doc:Pty></doc:Dbtr></doc:RltdPties>
+          <doc:RmtInf><doc:Strd><doc:CdtrRefInf><doc:Tp><doc:CdOrPrtry><doc:Cd>SCOR</doc:Cd></doc:CdOrPrtry></doc:Tp><doc:Ref>000000018</doc:Ref></doc:CdtrRefInf></doc:Strd></doc:RmtInf>
+        </doc:TxDtls></doc:NtryDtls>
+      </doc:Ntry>
+      <doc:Ntry>
+        <doc:Amt Ccy="NOK">49.00</doc:Amt>
+        <doc:CdtDbtInd>DBIT</doc:CdtDbtInd>
+        <doc:Sts><doc:Cd>BOOK</doc:Cd></doc:Sts>
+        <doc:BookgDt><doc:Dt>2026-10-31</doc:Dt></doc:BookgDt>
+        <doc:AcctSvcrRef>SAMPLE-STMT-REF-2</doc:AcctSvcrRef>
+      </doc:Ntry>
+    </doc:Stmt>
+  </doc:BkToCstmrStmt>
+</doc:Document>

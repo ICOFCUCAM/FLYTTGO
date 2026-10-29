@@ -148,6 +148,7 @@ Every item must pass before production is touched ([`PREDEPLOY_REVIEW.md`](PREDE
   - Expect an invoice numbered 1, due in 30 days, with a valid KID, emailed with PDF and EHF.
   - Validate the EHF in a Peppol validator (for example the Difi/DFØ EHF validator).
   - Pay it from a bank file row and see it paid.
+  - Import a Nets OCR or camt.054 file from the bank's test environment (00016): the preview shows the match, confirming records it, importing the same file again is refused, and an unknown KID stays under "To handle by hand".
   - Credit part of it.
   - Run the reminder on an overdue invoice in a test company.
 - [ ] **Credit-check switch.** Tick "Require credit check": switching invoicing on and booking on invoice are refused until a check is recorded. Untick it: they work again.
