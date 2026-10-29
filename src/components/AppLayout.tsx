@@ -25,6 +25,7 @@ const WhiteLabelDpaPage    = lazy(() => import('../pages/WhiteLabelDpaPage'));
 const BrandSitePage        = lazy(() => import('../pages/BrandSitePage'));
 const ServiceBookingPage   = lazy(() => import('../pages/ServiceBookingPage'));
 const MyServicesPage       = lazy(() => import('../pages/MyServicesPage'));
+const AccountingPage       = lazy(() => import('../pages/AccountingPage'));
 const ServicesPage       = lazy(() => import('../pages/ServicesPage'));
 const CorporatePage             = lazy(() => import('../pages/CorporatePage'));
 const CorporateDashboard        = lazy(() => import('../pages/CorporateDashboard'));
@@ -124,6 +125,7 @@ export default function AppLayout() {
       case 'white-label-dpa':        return <WhiteLabelDpaPage />;
       case 'brand-site':             return <BrandSitePage />;
       case 'my-services':            return <MyServicesPage />;
+      case 'accounting':             return <AccountingPage />;
       case 'not-found':              return <NotFoundPage />;
       default:                       return <NotFoundPage />;
     }

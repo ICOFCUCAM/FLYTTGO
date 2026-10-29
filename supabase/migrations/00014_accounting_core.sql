@@ -120,9 +120,15 @@ CREATE TABLE IF NOT EXISTS accounting.accounts (
   code             text    NOT NULL CHECK (code ~ '^[1-8][0-9]{3}$'),
   name             text    NOT NULL CHECK (btrim(name) <> ''),
   default_mva_code text    REFERENCES accounting.mva_codes (code),
+  -- SAF-T 1.30 grouping (Skatteetaten's næringsspesifikasjon code list):
+  -- what the account is in the business tax return.
+  grouping_category text,
+  grouping_code     text,
   active           boolean NOT NULL DEFAULT true,
-  PRIMARY KEY (ledger_id, code)
+  PRIMARY KEY (ledger_id, code),
+  CONSTRAINT accounts_grouping CHECK ((grouping_category IS NULL) = (grouping_code IS NULL))
 );
+ALTER TABLE accounting.accounts ADD COLUMN IF NOT EXISTS grouping_category text, ADD COLUMN IF NOT EXISTS grouping_code text;
 
 -- Which account each kind of posting uses (the host's postings and MVA).
 CREATE TABLE IF NOT EXISTS accounting.posting_accounts (
@@ -494,6 +500,80 @@ BEGIN
     ('8800', 'Årsresultat', NULL)
   ) AS a(code, name, mva)
   ON CONFLICT (ledger_id, code) DO NOTHING;
+  -- Their grouping in the næringsspesifikasjon (Skatteetaten's 2025–2026
+  -- list). Judgement calls the accountant may change: vans are 1238 rather
+  -- than 1205; payment-provider balances are treated as bank.
+  UPDATE accounting.accounts a SET grouping_category = g.cat, grouping_code = g.code
+    FROM (VALUES
+    ('1200', 'balanseverdiForAnleggsmiddel', '1205'),
+    ('1230', 'balanseverdiForAnleggsmiddel', '1205'),
+    ('1250', 'balanseverdiForAnleggsmiddel', '1205'),
+    ('1280', 'balanseverdiForAnleggsmiddel', '1280'),
+    ('1500', 'balanseverdiForOmloepsmiddel', '1500'),
+    ('1570', 'balanseverdiForOmloepsmiddel', '1570'),
+    ('1700', 'balanseverdiForOmloepsmiddel', '1570'),
+    ('1900', 'balanseverdiForOmloepsmiddel', '1900'),
+    ('1920', 'balanseverdiForOmloepsmiddel', '1920'),
+    ('1940', 'balanseverdiForOmloepsmiddel', '1920'),
+    ('1941', 'balanseverdiForOmloepsmiddel', '1920'),
+    ('1950', 'balanseverdiForOmloepsmiddel', '1950'),
+    ('2000', 'egenkapital', '2000'),
+    ('2050', 'egenkapital', '2050'),
+    ('2080', 'egenkapital', '2080'),
+    ('2400', 'kortsiktigGjeld', '2400'),
+    ('2500', 'kortsiktigGjeld', '2500'),
+    ('2600', 'kortsiktigGjeld', '2600'),
+    ('2700', 'kortsiktigGjeld', '2740'),
+    ('2701', 'kortsiktigGjeld', '2740'),
+    ('2702', 'kortsiktigGjeld', '2740'),
+    ('2710', 'kortsiktigGjeld', '2740'),
+    ('2711', 'kortsiktigGjeld', '2740'),
+    ('2712', 'kortsiktigGjeld', '2740'),
+    ('2740', 'kortsiktigGjeld', '2740'),
+    ('2770', 'kortsiktigGjeld', '2770'),
+    ('2780', 'kortsiktigGjeld', '2770'),
+    ('2900', 'kortsiktigGjeld', '2990'),
+    ('2910', 'kortsiktigGjeld', '2910'),
+    ('2940', 'kortsiktigGjeld', '2949'),
+    ('3000', 'salgsinntekt', '3000'),
+    ('3001', 'salgsinntekt', '3000'),
+    ('3002', 'salgsinntekt', '3000'),
+    ('3100', 'salgsinntekt', '3100'),
+    ('3900', 'annenDriftsinntekt', '3900'),
+    ('4000', 'varekostnad', '4005'),
+    ('4300', 'varekostnad', '4005'),
+    ('4500', 'varekostnad', '4500'),
+    ('5000', 'loennskostnad', '5000'),
+    ('5180', 'loennskostnad', '5000'),
+    ('5400', 'loennskostnad', '5400'),
+    ('6000', 'annenDriftskostnad', '6000'),
+    ('6300', 'annenDriftskostnad', '6300'),
+    ('6340', 'annenDriftskostnad', '6340'),
+    ('6540', 'annenDriftskostnad', '6500'),
+    ('6550', 'annenDriftskostnad', '6500'),
+    ('6600', 'annenDriftskostnad', '6600'),
+    ('6700', 'annenDriftskostnad', '6700'),
+    ('6705', 'annenDriftskostnad', '6700'),
+    ('6800', 'annenDriftskostnad', '6995'),
+    ('6810', 'annenDriftskostnad', '6995'),
+    ('6900', 'annenDriftskostnad', '6995'),
+    ('6940', 'annenDriftskostnad', '6995'),
+    ('7000', 'annenDriftskostnad', '7000'),
+    ('7020', 'annenDriftskostnad', '7020'),
+    ('7040', 'annenDriftskostnad', '7040'),
+    ('7100', 'annenDriftskostnad', '7155'),
+    ('7140', 'annenDriftskostnad', '7165'),
+    ('7320', 'annenDriftskostnad', '7330'),
+    ('7350', 'annenDriftskostnad', '7350'),
+    ('7500', 'annenDriftskostnad', '7500'),
+    ('7770', 'annenDriftskostnad', '7700'),
+    ('7790', 'annenDriftskostnad', '7700'),
+    ('8050', 'finansinntekt', '8050'),
+    ('8150', 'finanskostnad', '8150'),
+    ('8300', 'skattekostnad', '8300'),
+    ('8800', 'resultatDisponeringForSAF-T', '8800')
+    ) AS g(account, cat, code)
+   WHERE a.ledger_id = p_ledger AND a.code = g.account AND a.grouping_code IS NULL;
   INSERT INTO accounting.posting_accounts (ledger_id, key, account_code)
   SELECT p_ledger, k.key, k.code FROM (VALUES
     ('receivables', '1500'), ('payables', '2400'), ('sales_25', '3000'), ('sales_15', '3001'), ('sales_12', '3002'), ('sales_0', '3100'),
@@ -612,7 +692,9 @@ BEGIN
   RETURN l;
 END $$;
 
-CREATE OR REPLACE FUNCTION accounting.save_account(p_ledger uuid, p_code text, p_name text, p_mva_code text, p_active boolean)
+DROP FUNCTION IF EXISTS accounting.save_account(uuid, text, text, text, boolean);
+CREATE OR REPLACE FUNCTION accounting.save_account(p_ledger uuid, p_code text, p_name text, p_mva_code text, p_active boolean,
+                                                  p_grouping_category text DEFAULT NULL, p_grouping_code text DEFAULT NULL)
 RETURNS accounting.accounts
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
@@ -622,9 +704,11 @@ BEGIN
   IF NOT coalesce(p_active, true) AND EXISTS (SELECT 1 FROM accounting.posting_accounts WHERE ledger_id = p_ledger AND account_code = p_code) THEN
     RAISE EXCEPTION 'accounting: account % is used for automatic posting; choose another account there first', p_code USING ERRCODE = '55000';
   END IF;
-  INSERT INTO accounting.accounts AS x (ledger_id, code, name, default_mva_code, active)
-  VALUES (p_ledger, p_code, btrim(p_name), nullif(p_mva_code, ''), coalesce(p_active, true))
-  ON CONFLICT (ledger_id, code) DO UPDATE SET name = EXCLUDED.name, default_mva_code = EXCLUDED.default_mva_code, active = EXCLUDED.active
+  INSERT INTO accounting.accounts AS x (ledger_id, code, name, default_mva_code, active, grouping_category, grouping_code)
+  VALUES (p_ledger, p_code, btrim(p_name), nullif(p_mva_code, ''), coalesce(p_active, true),
+          nullif(btrim(coalesce(p_grouping_category, '')), ''), nullif(btrim(coalesce(p_grouping_code, '')), ''))
+  ON CONFLICT (ledger_id, code) DO UPDATE SET name = EXCLUDED.name, default_mva_code = EXCLUDED.default_mva_code, active = EXCLUDED.active,
+    grouping_category = coalesce(EXCLUDED.grouping_category, x.grouping_category), grouping_code = coalesce(EXCLUDED.grouping_code, x.grouping_code)
   RETURNING * INTO a;
   PERFORM accounting.log(p_ledger, 'ledger.account', jsonb_build_object('code', p_code, 'name', a.name, 'active', a.active));
   RETURN a;
@@ -1240,6 +1324,11 @@ BEGIN
                               WHERE ledger_id = p_ledger AND key ~ '^(output|input)_vat_');
   RETURN QUERY SELECT 'MVA accounts agree with the MVA lines', vat_lines = vat_accounts,
                       'MVA lines ' || vat_lines || ', MVA accounts ' || vat_accounts;
+
+  SELECT string_agg(DISTINCT a.code, ', ') INTO g FROM accounting.accounts a
+   WHERE a.ledger_id = p_ledger AND a.grouping_code IS NULL
+     AND EXISTS (SELECT 1 FROM accounting.voucher_lines vl WHERE vl.ledger_id = p_ledger AND vl.account_code = a.code);
+  RETURN QUERY SELECT 'Accounts in use have a tax-return grouping (SAF-T)', g IS NULL, coalesce('missing: ' || g, 'all mapped');
 END $$;
 
 
@@ -1276,7 +1365,7 @@ GRANT EXECUTE ON FUNCTION
   accounting.add_note(uuid, uuid, text), accounting.my_ledgers(),
   accounting.request_ledger(uuid, date, text, numeric), accounting.decide_ledger(uuid, boolean, numeric, text),
   accounting.open_house_ledger(text, text, date, text), accounting.set_settings(uuid, jsonb),
-  accounting.save_account(uuid, text, text, text, boolean), accounting.set_posting_account(uuid, text, text),
+  accounting.save_account(uuid, text, text, text, boolean, text, text), accounting.set_posting_account(uuid, text, text),
   accounting.end_ledger(uuid, text), accounting.post_voucher(uuid, date, text, jsonb),
   accounting.reverse_voucher(uuid, date, text), accounting.lock_period(uuid, date), accounting.close_year(uuid, integer),
   accounting.add_attachment(uuid, text, text, text, bigint), accounting.trial_balance(uuid, date, date),

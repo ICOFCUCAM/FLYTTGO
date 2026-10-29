@@ -4,9 +4,9 @@ vi.mock('../lib/supabase', () => ({ supabase: {}, callFunction: vi.fn() }));
 const { assignableRoles, canBookFor, canEditCompany, canInvite, canManage, suggestSlug } = await import('../lib/organizations');
 
 describe('company roles in the browser match the database rules', () => {
-  it('owners manage everyone; admins only bookers, finance and viewers', () => {
-    expect(assignableRoles('owner')).toEqual(['owner', 'admin', 'booker', 'finance', 'viewer']);
-    expect(assignableRoles('admin')).toEqual(['booker', 'finance', 'viewer']);
+  it('owners manage everyone; admins only bookers, finance, viewers and staff', () => {
+    expect(assignableRoles('owner')).toEqual(['owner', 'admin', 'booker', 'finance', 'viewer', 'staff']);
+    expect(assignableRoles('admin')).toEqual(['booker', 'finance', 'viewer', 'staff']);
     expect(canManage('admin', 'admin')).toBe(false);
     expect(canManage('admin', 'owner')).toBe(false);
     expect(canManage('admin', 'viewer')).toBe(true);

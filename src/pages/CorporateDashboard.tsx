@@ -10,6 +10,7 @@ import WhiteLabelPanel from '../components/corporate/WhiteLabelPanel';
 import JobsPanel from '../components/corporate/JobsPanel';
 import AppointmentsPanel from '../components/corporate/AppointmentsPanel';
 import SalesInvoicesPanel from '../components/corporate/SalesInvoicesPanel';
+import AccountingPanel from '../components/corporate/AccountingPanel';
 import { hasModule } from '../lib/services';
 
 /* Visitors see the dashboard preview with sample figures. A signed-in
@@ -19,7 +20,7 @@ import { hasModule } from '../lib/services';
  * company can register one. */
 
 type DashTab = 'overview' | 'shipments' | 'recurring' | 'invoices' | 'drivers' | 'analytics' | 'api' | 'team' | 'white-label'
-  | 'jobs' | 'appointments' | 'sales' | 'documents' | 'support';
+  | 'jobs' | 'appointments' | 'sales' | 'accounting' | 'documents' | 'support';
 
 function StatCard({ icon, label, value, sub, color = 'emerald' }: { icon: string; label: string; value: string; sub?: string; color?: string }) {
   const colors: Record<string, string> = { emerald: 'bg-emerald-50 text-emerald-600', blue: 'bg-blue-50 text-blue-600', purple: 'bg-purple-50 text-purple-600', orange: 'bg-orange-50 text-orange-600' };
@@ -62,6 +63,8 @@ const NAV_ITEMS: { id: DashTab; icon: string; label: string }[] = [
   { id: 'jobs',         icon: '🔧', label: 'Jobs' },
   { id: 'appointments', icon: '📅', label: 'Appointments' },
   { id: 'sales',        icon: '🧾', label: 'Invoices to customers' },
+  /* The accounting add-on (00014/00015), for owners, admins and finance. */
+  { id: 'accounting',   icon: '📒', label: 'Accounting' },
   { id: 'documents',  icon: '📄', label: 'Documents' },
   { id: 'support',    icon: '🎧', label: 'Support' },
 ];
@@ -92,7 +95,8 @@ export default function CorporateDashboard() {
       .then(r => setModules(r.filter(Boolean) as string[]));
   }, [current?.organization.id]);
   const MODULE_TABS: Partial<Record<DashTab, string>> = { jobs: 'jobs', appointments: 'appointments', sales: 'sales_invoicing' };
-  const navItems = NAV_ITEMS.filter(n => !MODULE_TABS[n.id] || modules.includes(MODULE_TABS[n.id]!));
+  const navItems = NAV_ITEMS.filter(n => (!MODULE_TABS[n.id] || modules.includes(MODULE_TABS[n.id]!))
+    && (n.id !== 'accounting' || (!!current && ['owner', 'admin', 'finance'].includes(current.role))));
   const live = !!current;                                    // a real company, not the preview
   const needsCompany = !!user && memberships !== null && memberships.length === 0;
   const SAMPLE_TABS: DashTab[] = ['overview', 'recurring', 'api'];
@@ -431,6 +435,7 @@ export default function CorporateDashboard() {
           {tab === 'jobs' && live && current && <JobsPanel key={current.organization.id} membership={current} />}
           {tab === 'appointments' && live && current && <AppointmentsPanel key={current.organization.id} membership={current} />}
           {tab === 'sales' && live && current && <SalesInvoicesPanel key={current.organization.id} membership={current} />}
+          {tab === 'accounting' && live && current && <AccountingPanel key={current.organization.id} membership={current} />}
 
           {/* ── WHITE LABEL ── */}
           {tab === 'white-label' && live && current && <WhiteLabelPanel key={current.organization.id} membership={current} />}

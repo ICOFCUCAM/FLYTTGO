@@ -4,6 +4,7 @@ import { supabase, callFunction } from "../lib/supabase";
 import CompaniesPanel from "./admin/CompaniesPanel";
 import InvoicingPanel from "./admin/InvoicingPanel";
 import WhiteLabelAdminPanel from "./admin/WhiteLabelAdminPanel";
+import AccountingAdminPanel from "./admin/AccountingAdminPanel";
 import { activePlansByUser, ASSIGNABLE_PLANS } from "../lib/plans";
 import { useAuth } from "../lib/auth";
 
@@ -22,6 +23,7 @@ type AdminTab =
   | "companies"
   | "invoicing"
   | "white-label"
+  | "accounting"
   | "settings";
 
 /* ── CSV export helper ──────────────────────────────────────────
@@ -152,6 +154,7 @@ export default function AdminDashboard() {
     "companies",
     "invoicing",
     "white-label",
+    "accounting",
     "settings",
   ];
 
@@ -982,6 +985,7 @@ export default function AdminDashboard() {
 
         {tab === "invoicing" && <InvoicingPanel />}
         {tab === "white-label" && <WhiteLabelAdminPanel />}
+        {tab === "accounting" && <AccountingAdminPanel />}
 
         {tab === "settings" && (
           <div>

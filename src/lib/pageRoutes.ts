@@ -47,6 +47,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   'white-label-dpa':         '/business/white-label/agreement',
   'brand-site':              '/b',
   'my-services':             '/my-services',
+  'accounting':              '/accounting',
 
   /* Legal */
   'terms':                   '/terms',
@@ -136,6 +137,7 @@ const PAGE_TITLES: Record<Page, string> = {
   'white-label-dpa':         'Data processing agreement (white label) · FlyttGo',
   'brand-site':              'Book a move',
   'my-services':             'My jobs and appointments',
+  'accounting':              'Regnskap · Accounting · FlyttGo',
   'not-found':               'Page Not Found · FlyttGo',
 };
 
@@ -225,6 +227,8 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     'Book a move online: instant price, verified drivers and live tracking.',
   'my-services':
     'Your jobs and appointments with companies on FlyttGo, and their invoices.',
+  'accounting':
+    'The books you keep or review for companies on FlyttGo: accountants, bookkeepers and auditors.',
   'not-found':
     "The page you were looking for doesn't exist. Find what you need from the FlyttGo homepage, or book a move from any of our services.",
 };
