@@ -55,6 +55,7 @@ The page is at `flyttgo.no/b/<slug>`, at `<slug>.flyttgo.no` (once the wildcard 
 - Refunds of Model B bookings go through the company's account with `refund_application_fee`, so FlyttGo gives back its share in proportion. The cancellation policy is FlyttGo's (the company's terms must not promise less).
 - Drivers, dispatch, escrow and payouts are unchanged: the escrow holds FlyttGo's price.
 - Who sees the bookings: Model B, the selling company's members (`bookings_white_label_select`); Model A, nobody at the company (they see `white_label_stats`, monthly numbers only).
+- On a plan outside transport the page books the company's own module instead (`bookingFor()` in `_shared/white-label.ts`, read by `white-label-site`): jobs, appointments, restaurant tables or hotel rooms ([`SERVICE_PLATFORM.md`](SERVICE_PLATFORM.md)); its seller notice then names the company as the seller and FlyttGo as the booking system.
 
 ## Website templates (from ArchitectPro)
 
@@ -113,4 +114,4 @@ A company puts its booking page on its own website (migration 00018; the API key
 ## Tests
 
 - `supabase/tests/white_label.test.sql` (PostgreSQL 16 and 17.6, both schemas; the rollback restores the earlier state exactly): the price list and who changes it; choosing Model A; Model B requirements; plan changes; the database deciding the seller; the split by the server only; no invoice for Model B; who sees bookings; the public page; plan billing and Model B settlement; templates (clean import, review, approval, choice, re-import).
-- `src/test/white-label.test.ts` (split, seller notice), `src/test/site-template.test.ts` (sanitiser, import, render), `src/test/refunds.test.ts` (refunds on a connected account).
+- `src/test/white-label.test.ts` (split, seller notice), `src/test/reservations.test.ts` (which booking a page offers, the notice outside transport), `src/test/site-template.test.ts` (sanitiser, import, render), `src/test/refunds.test.ts` (refunds on a connected account).

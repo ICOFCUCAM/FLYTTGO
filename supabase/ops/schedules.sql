@@ -10,7 +10,7 @@
 --   job                              when (UTC)           what
 --   auto-downgrade-expired-subscriptions  every hour :00  expire_lapsed_subscriptions() (00006)
 --   flyttgo-invoice-run              daily 05:15          invoice-run (06:15 Oslo winter, 07:15 summer)
---   flyttgo-appointment-reminders    every hour :10       appointment-reminders (00013)
+--   flyttgo-appointment-reminders    every hour :10       appointment-reminders (00013, 00019)
 --   flyttgo-accounting-cancellations daily 00:20          accounting.apply_cancellations() (00014): ledgers past their last day end
 --
 -- The two functions are called with the service role key, read at each run

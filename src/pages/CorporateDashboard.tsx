@@ -9,6 +9,8 @@ import CompanyInvoices from '../components/corporate/CompanyInvoices';
 import WhiteLabelPanel from '../components/corporate/WhiteLabelPanel';
 import JobsPanel from '../components/corporate/JobsPanel';
 import AppointmentsPanel from '../components/corporate/AppointmentsPanel';
+import RestaurantPanel from '../components/corporate/RestaurantPanel';
+import HotelPanel from '../components/corporate/HotelPanel';
 import SalesInvoicesPanel from '../components/corporate/SalesInvoicesPanel';
 import AccountingPanel from '../components/corporate/AccountingPanel';
 import ApiWidgetPanel from '../components/corporate/ApiWidgetPanel';
@@ -21,7 +23,7 @@ import { hasModule } from '../lib/services';
  * company can register one. */
 
 type DashTab = 'overview' | 'shipments' | 'recurring' | 'invoices' | 'drivers' | 'analytics' | 'api' | 'team' | 'white-label'
-  | 'jobs' | 'appointments' | 'sales' | 'accounting' | 'documents' | 'support';
+  | 'jobs' | 'appointments' | 'restaurant' | 'hotel' | 'sales' | 'accounting' | 'documents' | 'support';
 
 function StatCard({ icon, label, value, sub, color = 'emerald' }: { icon: string; label: string; value: string; sub?: string; color?: string }) {
   const colors: Record<string, string> = { emerald: 'bg-emerald-50 text-emerald-600', blue: 'bg-blue-50 text-blue-600', purple: 'bg-purple-50 text-purple-600', orange: 'bg-orange-50 text-orange-600' };
@@ -61,9 +63,11 @@ const NAV_ITEMS: { id: DashTab; icon: string; label: string }[] = [
   { id: 'api',        icon: '🔗', label: 'API and widget' },
   { id: 'team',       icon: '👥', label: 'Team' },
   { id: 'white-label', icon: '🏷️', label: 'Plan and website' },
-  /* Shown when the company's plan includes the module (00010–00013). */
+  /* Shown when the company's plan includes the module (00010–00013, 00019). */
   { id: 'jobs',         icon: '🔧', label: 'Jobs' },
   { id: 'appointments', icon: '📅', label: 'Appointments' },
+  { id: 'restaurant',   icon: '🍽️', label: 'Restaurant' },
+  { id: 'hotel',        icon: '🛏️', label: 'Hotel' },
   { id: 'sales',        icon: '🧾', label: 'Invoices to customers' },
   /* The accounting add-on (00014/00015), for owners, admins and finance. */
   { id: 'accounting',   icon: '📒', label: 'Accounting' },
@@ -93,10 +97,11 @@ export default function CorporateDashboard() {
   const [modules, setModules] = useState<string[]>([]);
   useEffect(() => {
     if (!current) { setModules([]); return; }
-    Promise.all((['jobs', 'appointments', 'sales_invoicing'] as const).map(async m => (await hasModule(current.organization.id, m)) ? m : null))
+    Promise.all((['jobs', 'appointments', 'restaurant_reservations', 'hotel_reservations', 'sales_invoicing'] as const).map(async m => (await hasModule(current.organization.id, m)) ? m : null))
       .then(r => setModules(r.filter(Boolean) as string[]));
   }, [current?.organization.id]);
-  const MODULE_TABS: Partial<Record<DashTab, string>> = { jobs: 'jobs', appointments: 'appointments', sales: 'sales_invoicing' };
+  const MODULE_TABS: Partial<Record<DashTab, string>> = { jobs: 'jobs', appointments: 'appointments', restaurant: 'restaurant_reservations',
+                                                       hotel: 'hotel_reservations', sales: 'sales_invoicing' };
   const navItems = NAV_ITEMS.filter(n => (!MODULE_TABS[n.id] || modules.includes(MODULE_TABS[n.id]!))
     && (n.id !== 'accounting' || (!!current && ['owner', 'admin', 'finance'].includes(current.role))));
   const live = !!current;                                    // a real company, not the preview
@@ -444,6 +449,8 @@ export default function CorporateDashboard() {
           {/* ── OTHER INDUSTRIES: jobs, appointments, own invoices ── */}
           {tab === 'jobs' && live && current && <JobsPanel key={current.organization.id} membership={current} />}
           {tab === 'appointments' && live && current && <AppointmentsPanel key={current.organization.id} membership={current} />}
+          {tab === 'restaurant' && live && current && <RestaurantPanel key={current.organization.id} membership={current} />}
+          {tab === 'hotel' && live && current && <HotelPanel key={current.organization.id} membership={current} />}
           {tab === 'sales' && live && current && <SalesInvoicesPanel key={current.organization.id} membership={current} />}
           {tab === 'accounting' && live && current && <AccountingPanel key={current.organization.id} membership={current} />}
 

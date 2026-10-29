@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { useApp } from '../lib/store';
 import Header from './Header';
 import { useWhiteLabel } from '../lib/whiteLabelContext';
+import { ownBooking as ownCompanyBooking } from '../lib/whiteLabel';
 import { BrandFooter, BrandHeader } from './whiteLabel/BrandFrame';
 import AuthModal from './AuthModal';
 import { isEmbedded, useEmbedResize } from '../lib/embed';
@@ -66,8 +67,9 @@ export default function AppLayout() {
    * FlyttGo's (the booking flow keeps working as usual underneath). */
   const { site } = useWhiteLabel();
   const branded = !!site && ['brand-site', 'booking', 'payment', 'my-bookings', 'my-services', 'tracking', 'auth-callback', 'terms', 'privacy'].includes(currentPage);
-  /* A company outside moving books its own jobs or appointments, not moves. */
-  const ownBooking = !!site && (site.booking === 'jobs' || site.booking === 'appointments');
+  /* A company outside moving books its own jobs, appointments, tables or
+   * rooms, not moves. */
+  const ownBooking = !!site && ownCompanyBooking(site.booking);
   /* In the booking widget's frame on the company's own website (src/lib/embed.ts):
    * no header or footer, and the frame follows the page's height. */
   const embedded = currentPage === 'embed' || isEmbedded();

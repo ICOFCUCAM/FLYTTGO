@@ -12,6 +12,7 @@
 import { supabase } from './supabase';
 import { callJson } from './invoicing';
 import { isFlyttgoHost } from './hosts';
+import type { PageBooking } from '../../supabase/functions/_shared/white-label';
 
 export type SellerModel = 'flyttgo' | 'company';
 export type WhiteLabelStatus = 'requested' | 'active' | 'suspended' | 'ended' | 'declined';
@@ -52,14 +53,30 @@ export interface PublicSite {
   support: { email: string | null; phone: string | null };
   terms_url: string | null; privacy_url: string | null;
   seller_notice: string;
-  /** What the page books: FlyttGo's moves, or the company's Jobs or Appointments. */
-  booking: 'moves' | 'jobs' | 'appointments' | 'none';
+  /** What the page books: FlyttGo's moves, or the company's Jobs,
+   * Appointments, Restaurant or Hotel module (bookingFor()). */
+  booking: PageBooking;
   modules: string[];
   pages: string[];
   page: { path: string; html: string } | null;
   /** Websites that may show the booking widget (00018). */
   widget_origins?: string[];
 }
+
+/** The page's booking button: what a visitor books there. */
+export function bookingLabel(booking: PageBooking | undefined, fallback = 'Book a move'): string {
+  switch (booking) {
+    case 'jobs':         return 'Ask for a job';
+    case 'appointments': return 'Book a time';
+    case 'restaurant':   return 'Book a table';
+    case 'hotel':        return 'Book a room';
+    default:             return fallback;
+  }
+}
+
+/** A company outside moving books its own services on its page, not moves. */
+export const ownBooking = (booking: PageBooking | undefined) =>
+  booking === 'jobs' || booking === 'appointments' || booking === 'restaurant' || booking === 'hotel';
 
 export const DPA_VERSION = '2026-10-draft';
 

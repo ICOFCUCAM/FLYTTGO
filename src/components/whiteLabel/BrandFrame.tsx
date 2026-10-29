@@ -4,7 +4,7 @@
  * of FlyttGo's own. The seller is always stated (docs/WHITE_LABEL.md).
  */
 import { useApp } from '../../lib/store';
-import { textOn, type PublicSite } from '../../lib/whiteLabel';
+import { bookingLabel, textOn, type PublicSite } from '../../lib/whiteLabel';
 
 export function BrandHeader({ site }: { site: PublicSite }) {
   const { setPage } = useApp();
@@ -22,7 +22,7 @@ export function BrandHeader({ site }: { site: PublicSite }) {
         <button onClick={() => setPage('booking')}
           style={{ background: site.accent_color ?? '#10b981', color: textOn(site.accent_color ?? '#10b981') }}
           className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">
-          {site.booking === 'jobs' ? 'Ask for a job' : site.booking === 'appointments' ? 'Book a time' : 'Book a move'}
+          {bookingLabel(site.booking)}
         </button>
       </div>
     </header>

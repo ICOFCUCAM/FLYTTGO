@@ -67,6 +67,23 @@ SELECT public.add_widget_origin((SELECT id FROM public.organizations WHERE slug 
 SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false);
 SELECT public.api_begin((SELECT key_hash FROM public.api_keys LIMIT 1), 'quotes');
 SELECT set_config('request.jwt.claims', '', false);
+-- 00019: a restaurant's table, a reservation on it with its log, a hotel's
+-- room type, room and stay with its log (the company is on no plan).
+INSERT INTO public.restaurant_settings (organization_id) SELECT id FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.restaurant_tables (organization_id, name, seats) SELECT id, 'T1', 2 FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.restaurant_reservations (organization_id, number, customer, party_size, starts_at, ends_at)
+SELECT id, 1, '{"name":"Kari","phone":"+47 900 00 000"}', 2, now() + interval '1 day', now() + interval '1 day 2 hours'
+  FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.restaurant_reservation_tables (reservation_id, table_id)
+SELECT r.id, t.id FROM public.restaurant_reservations r JOIN public.restaurant_tables t ON t.organization_id = r.organization_id;
+INSERT INTO public.restaurant_reservation_events (reservation_id, action) SELECT id, 'reservation.booked' FROM public.restaurant_reservations;
+INSERT INTO public.hotel_settings (organization_id, vat_rate) SELECT id, 12 FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.hotel_room_types (organization_id, name, capacity, nightly_price) SELECT id, 'Double', 2, 1120 FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.hotel_rooms (organization_id, room_type_id, name) SELECT organization_id, id, '101' FROM public.hotel_room_types;
+INSERT INTO public.hotel_stays (organization_id, number, room_type_id, room_id, customer, guests, check_in, check_out, nightly_price, total, vat_rate)
+SELECT organization_id, 1, room_type_id, id, '{"name":"Kari","phone":"+47 900 00 000"}', 2, current_date + 1, current_date + 3, 1120, 2240, 12
+  FROM public.hotel_rooms;
+INSERT INTO public.hotel_stay_events (stay_id, action) SELECT id, 'stay.booked' FROM public.hotel_stays;
 
 -- What exists before the rollback, for the comparison afterwards.
 CREATE TABLE public.zz_rollback_before AS

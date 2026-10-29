@@ -26,7 +26,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { serviceClient } from '../_shared/auth.ts';
 import { pageFor, renderTemplatePage, type TemplateAsset, type TemplatePage } from '../_shared/site-template.ts';
-import { sellerNotice } from '../_shared/white-label.ts';
+import { bookingFor, sellerNotice } from '../_shared/white-label.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -57,13 +57,13 @@ serve(async (req: Request) => {
     const { data } = await db.storage.from('organization-logos').createSignedUrl(site.logo_path, 3600);
     logoUrl = data?.signedUrl ?? null;
   }
-  const notice = sellerNotice(site);
   /* Which booking the page offers: FlyttGo's moves (transport plans), or the
-   * company's own Jobs or Appointments module (docs/SERVICE_PLATFORM.md). */
+   * company's own Jobs, Appointments, Restaurant or Hotel module
+   * (docs/SERVICE_PLATFORM.md). */
   const { data: plan } = await db.from('white_label_plans').select('modules').eq('code', site.plan).maybeSingle();
   const modules: string[] = plan?.modules ?? [];
-  const booking = modules.includes('jobs') ? 'jobs' : modules.includes('appointments') ? 'appointments'
-    : modules.length === 0 ? 'moves' : 'none';
+  const booking = bookingFor(modules);
+  const notice = sellerNotice({ ...site, booking });
 
   let page: { path: string; html: string } | null = null;
   let pages: string[] = [];

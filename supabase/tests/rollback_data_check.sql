@@ -16,6 +16,8 @@ SELECT tests.ok((SELECT status = 'cancelled' AND payment_status = 'pending' FROM
   'a booking that waited for approval is cancelled, unpaid, rather than left payable without approval');
 SELECT tests.ok(to_regclass('public.payment_refunds') IS NULL AND to_regclass('public.organizations') IS NULL,
   'refund records and organisations are dropped (export them first)');
+SELECT tests.ok(to_regclass('public.restaurant_reservations') IS NULL AND to_regclass('public.hotel_stays') IS NULL,
+  'table reservations and hotel stays are dropped (export them first)');
 
 SELECT tests.ok(to_regclass('public.api_keys') IS NULL AND to_regclass('public.organization_widget_origins') IS NULL,
   'API keys, their log and the widget''s websites are dropped (every key stops working)');

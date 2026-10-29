@@ -1,7 +1,8 @@
 /**
  * My jobs and appointments: what a customer has booked with companies on
- * the platform outside moving (docs/SERVICE_PLATFORM.md), and the invoices
- * those companies sent. Accept or decline a quote, cancel within the rules,
+ * the platform outside moving (docs/SERVICE_PLATFORM.md): jobs,
+ * appointments, restaurant tables and hotel stays, and the invoices those
+ * companies sent. Accept or decline a quote, cancel within the rules,
  * download an invoice or pay it by card when the company takes cards.
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -12,6 +13,10 @@ import {
   APPOINTMENT_STATUS, JOB_STATUS, cancelAppointment, cancelJob, loadAppointments, loadJobs, loadMyInvoices, osloDateTime,
   payInvoiceByCard, respondToQuote, type Appointment, type Job, type SalesInvoice,
 } from '../lib/services';
+import {
+  STAY_STATUS, TABLE_STATUS, cancelReservation, cancelStay, loadStays, loadTableReservations, stayCancellation,
+  type HotelStay, type TableReservation,
+} from '../lib/reservations';
 
 const btn = 'px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50';
 
@@ -21,13 +26,16 @@ export default function MyServicesPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
+  const [tables, setTables] = useState<TableReservation[]>([]);
+  const [stays, setStays] = useState<HotelStay[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const reload = useCallback(async () => {
     if (!user) return;
-    const [j, a, i] = await Promise.all([loadJobs({ customer: user.id }), loadAppointments({ customer: user.id }), loadMyInvoices(user.id)]);
-    setJobs(j); setAppointments(a.reverse()); setInvoices(i);
+    const [j, a, i, t, s] = await Promise.all([loadJobs({ customer: user.id }), loadAppointments({ customer: user.id }), loadMyInvoices(user.id),
+      loadTableReservations({ customer: user.id }), loadStays({ customer: user.id })]);
+    setJobs(j); setAppointments(a.reverse()); setInvoices(i); setTables(t.reverse()); setStays(s.reverse());
   }, [user]);
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => {
@@ -68,6 +76,46 @@ export default function MyServicesPage() {
           {appointments.length === 0 && <p className="text-sm text-gray-500">No appointments.</p>}
         </div>
       </section>
+
+      {tables.length > 0 && (
+        <section>
+          <h2 className="font-bold text-lg mb-2">Table reservations</h2>
+          <div className="space-y-2">
+            {tables.map(r => (
+              <div key={r.id} className="bg-white border rounded-xl p-4 flex flex-wrap justify-between gap-2 text-sm">
+                <div><div className="font-medium">{osloDateTime(r.starts_at)} · {r.party_size} {r.party_size === 1 ? 'guest' : 'guests'}</div>
+                  <div className="text-gray-500">{TABLE_STATUS[r.status]}{r.no_show_fee ? ` · no-show fee ${formatNok(r.no_show_fee)}` : ''}</div></div>
+                {r.status === 'booked' && new Date(r.starts_at) > new Date() &&
+                  <button disabled={busy} onClick={() => { if (confirm('Cancel this table reservation?')) run(() => cancelReservation(r.id, ''), 'Cancelled.'); }} className={`${btn} bg-gray-100`}>Cancel</button>}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {stays.length > 0 && (
+        <section>
+          <h2 className="font-bold text-lg mb-2">Hotel stays</h2>
+          <div className="space-y-2">
+            {stays.map(s => {
+              const c = stayCancellation(s, new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Oslo' }));
+              return (
+                <div key={s.id} className="bg-white border rounded-xl p-4 flex flex-wrap justify-between gap-2 text-sm">
+                  <div><div className="font-medium">{s.check_in} → {s.check_out} · {s.nights} {s.nights === 1 ? 'night' : 'nights'} · {s.guests} {s.guests === 1 ? 'guest' : 'guests'}</div>
+                    <div className="text-gray-500">{formatNok(s.total)} · {STAY_STATUS[s.status]}
+                      {s.status === 'booked' && s.free_cancel_until ? ` · free cancellation until ${s.free_cancel_until}` : ''}
+                      {s.cancel_fee ? ` · fee ${formatNok(s.cancel_fee)}` : ''}</div></div>
+                  {c.online &&
+                    <button disabled={busy} onClick={() => {
+                      if (confirm(c.fee ? `Cancelling now costs ${formatNok(c.fee)} (the hotel's rule). Cancel the stay?` : 'Cancel this stay?'))
+                        run(() => cancelStay(s.id, ''), 'Cancelled.');
+                    }} className={`${btn} bg-gray-100`}>Cancel</button>}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="font-bold text-lg mb-2">Jobs</h2>

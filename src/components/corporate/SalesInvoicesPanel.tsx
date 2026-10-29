@@ -143,7 +143,8 @@ export default function SalesInvoicesPanel({ membership }: { membership: Members
             {invoices.map(i => (
               <tr key={i.id} className="border-t align-top">
                 <td className="p-3">{i.number ?? '—'}{i.kind === 'credit_note' ? ' (credit)' : ''}</td>
-                <td className="p-3">{i.buyer?.name}<div className="text-xs text-gray-400">{i.source_type === 'job' ? 'Job' : i.source_type === 'appointment' ? 'Appointment' : ''} {i.reference ?? ''}</div></td>
+                <td className="p-3">{i.buyer?.name}<div className="text-xs text-gray-400">{i.source_type === 'job' ? 'Job' : i.source_type === 'appointment' ? 'Appointment'
+                  : i.source_type === 'restaurant_reservation' ? 'Table' : i.source_type === 'hotel_stay' ? 'Stay' : ''} {i.reference ?? ''}</div></td>
                 <td className="p-3">{i.issue_date ?? '—'}</td>
                 <td className={`p-3 ${isOverdue(i) ? 'text-red-700 font-medium' : ''}`}>{i.due_date ?? '—'}</td>
                 <td className="p-3">{formatNok(i.total)}</td>
