@@ -46,6 +46,17 @@ UPDATE public.bookings SET captured_at = now(), captured_amount = 2875 WHERE id 
 SELECT public.record_organization_verification((SELECT id FROM public.organizations WHERE slug = 'rollback-as'),
                                                'brreg', true, '{"navn":"ROLLBACK AS"}');
 
+-- 00018: the company active, an API key with its log and a counted
+-- request, a widget website.
+SELECT set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
+SELECT public.admin_set_organization_status((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'active', 'rollback test');
+SELECT set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
+SELECT public.create_api_key((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'Rollback', ARRAY['quotes', 'bookings:read']);
+SELECT public.add_widget_origin((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'https://rollback.example');
+SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false);
+SELECT public.api_begin((SELECT key_hash FROM public.api_keys LIMIT 1), 'quotes');
+SELECT set_config('request.jwt.claims', '', false);
+
 -- What exists before the rollback, for the comparison afterwards.
 CREATE TABLE public.zz_rollback_before AS
 SELECT 'bookings' t, count(*) n FROM public.bookings
