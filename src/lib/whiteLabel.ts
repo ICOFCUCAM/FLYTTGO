@@ -13,6 +13,7 @@ import { supabase } from './supabase';
 import { callJson, logoUrl } from './invoicing';
 import { isFlyttgoHost } from './hosts';
 import type { PageBooking } from '../../supabase/functions/_shared/white-label';
+import type { CheckResult, TemplateChecks } from '../../supabase/functions/_shared/template-quality';
 
 export type SellerModel = 'flyttgo' | 'company';
 export type WhiteLabelStatus = 'requested' | 'active' | 'suspended' | 'ended' | 'declined';
@@ -43,6 +44,9 @@ export interface SiteTemplate {
   status: 'imported' | 'approved' | 'retired'; review_note: string | null; reviewed_at: string | null;
   /** What the pages have (templateFeatures(), found at import) and how many pages (00021). */
   features?: string[]; page_count?: number;
+  /** The automated checks (template-quality.ts) and approvals given despite failing ones (00021). */
+  checks?: TemplateChecks | Record<string, never>;
+  check_overrides?: { at: string; by: string; reason: string; checks: string[]; checked_at: string | null }[];
 }
 
 /** A template's catalogue thumbnail (asset 'thumbnail', drawn by the importer), if it has one. */
@@ -177,14 +181,14 @@ export async function loadTemplateHome(id: string): Promise<{ path: string; html
 /** The catalogue: approved templates (companies) or every template (FlyttGo administrators), without their pages. */
 export async function loadTemplateList(withFlags = false): Promise<SiteTemplateSummary[]> {
   const { data } = await supabase.from('site_templates')
-    .select(`id, name, industry, style, assets, status, review_note, reviewed_at, features, page_count${withFlags ? ', content_flags' : ''}`).order('name');
+    .select(`id, name, industry, style, assets, status, review_note, reviewed_at, features, page_count${withFlags ? ', content_flags, checks' : ''}`).order('name');
   return (data ?? []) as unknown as SiteTemplateSummary[];
 }
 
 /** One template with its pages (for a preview or a review). */
 export async function loadTemplate(id: string): Promise<SiteTemplate | null> {
   const { data } = await supabase.from('site_templates')
-    .select('id, name, industry, style, pages, assets, content_flags, status, review_note, reviewed_at, features, page_count').eq('id', id).maybeSingle();
+    .select('id, name, industry, style, pages, assets, content_flags, status, review_note, reviewed_at, features, page_count, checks, check_overrides').eq('id', id).maybeSingle();
   return (data ?? null) as SiteTemplate | null;
 }
 
@@ -225,10 +229,18 @@ export async function updateTemplatePage(id: string, path: string, html: string)
   return err((await supabase.rpc('admin_update_site_template_page', { p_id: id, p_path: path, p_html: html })).error);
 }
 
-export async function reviewTemplate(id: string, approve: boolean, contentChecked: boolean, note: string): Promise<string | null> {
+/** Approve or retire a template. Approval despite failing automated checks needs `overrideReason` (kept with the template). */
+export async function reviewTemplate(id: string, approve: boolean, contentChecked: boolean, note: string,
+                                     overrideReason?: string | null): Promise<string | null> {
   return err((await supabase.rpc('admin_review_site_template', {
     p_id: id, p_approve: approve, p_content_checked: contentChecked, p_note: note,
+    ...(overrideReason ? { p_override_reason: overrideReason } : {}),
   })).error);
+}
+
+/** After a page is saved: its checks that need no browser and its content flags, found again from the saved page. */
+export async function recordPageChecks(id: string, path: string, results: CheckResult[], flags: SiteTemplate['content_flags']): Promise<string | null> {
+  return err((await supabase.rpc('admin_record_site_template_page_checks', { p_id: id, p_path: path, p_results: results, p_flags: flags })).error);
 }
 
 /* ── The public page ───────────────────────────────────────────────── */

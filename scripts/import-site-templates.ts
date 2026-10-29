@@ -52,6 +52,19 @@
 //   --limit N
 //   --no-snapshot        skip the browser step (not recommended)
 //
+// Quality gate (supabase/functions/_shared/template-quality.ts): every
+// template's pages are checked automatically (overflow at 320/375/390 px
+// with a long company name, broken images, images without alt text,
+// booking links that lead elsewhere, what is left of the sample company,
+// unsafe HTML, pages that do not render); the results are stored with the
+// template and listed in report.md. Approval is refused while one fails
+// unless the administrator gives a reason. After an administrator edits a
+// page, the browser's checks of it are out of date; run them again with
+//   FLYTTGO_SUPABASE_URL=… FLYTTGO_SERVICE_ROLE_KEY=… \
+//     node scripts/import-site-templates.ts --recheck [--ids a,b]
+// (reads the stored templates, writes only their checks and flags; needs
+// the owner's approval like --to-flyttgo).
+//
 // An export file is the JSON array of site_masters rows (id, name,
 // industry, style, pages, preview_assets), for example from the SQL editor:
 //   select json_agg(m) from (select id, name, industry, style, pages,
@@ -61,12 +74,15 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   categoryLabel, hostsOf, prepareTemplate, renderTemplatePage, replaceForms, templateCategory, TEMPLATE_CATEGORIES, OTHER_CATEGORY,
-  type Brand, type MasterRow, type PreparedTemplate, type TemplateAsset, type TemplatePage,
+  contentFlags, type Brand, type ContentFlag, type MasterRow, type PreparedTemplate, type TemplateAsset, type TemplatePage,
 } from '../supabase/functions/_shared/site-template.ts';
+import {
+  CHECKS, OVERFLOW_WIDTHS, browserChecks, combine, failingChecks, staticChecks, type CheckResult, type TemplateChecks,
+} from '../supabase/functions/_shared/template-quality.ts';
 import { snapshotter, type Snapshotter } from './template-snapshot.ts';
 
-/** A prepared template with its thumbnail (JPEG bytes; not part of the JSON). */
-type Imported = PreparedTemplate & { thumbnail?: string; thumbnailJpeg?: Uint8Array };
+/** A prepared template with its checks and thumbnail (JPEG bytes; not part of the JSON). */
+type Imported = PreparedTemplate & { checks?: TemplateChecks; thumbnail?: string; thumbnailJpeg?: Uint8Array };
 
 /**
  * The neutral sample brand thumbnails are drawn with: the template's own
@@ -76,10 +92,31 @@ const SAMPLE_BRAND: Brand = { name: 'Your Company', tagline: 'Your tagline here'
   email: 'post@example.com', city: 'Your town' };
 
 
-/** The rendered home page of a template, as a company with the sample brand would see it. */
-function samplePage(t: PreparedTemplate, html: string): string {
-  return renderTemplatePage(html, { brand: SAMPLE_BRAND, assets: t.assets, pageUrl: () => '#', bookingUrl: '#', sellerNotice: '',
+/** The brand the overflow check draws pages with: a long name, as some companies have. */
+const CHECK_BRAND: Brand = { ...SAMPLE_BRAND, name: 'Nordvik Flytting og Transport Aksjeselskap' };
+
+/** A page of a template, as a company with this brand would see it. */
+function samplePage(t: Pick<PreparedTemplate, 'assets'>, html: string, brand: Brand = SAMPLE_BRAND): string {
+  return renderTemplatePage(html, { brand, assets: t.assets, pageUrl: () => '#', bookingUrl: '#', sellerNotice: 'Seller notice',
                                     assetHosts: hostsOf(t.assets) });
+}
+
+/**
+ * The automated checks (supabase/functions/_shared/template-quality.ts):
+ * those without a browser always, the browser's (renders, overflow at
+ * 320/375/390 px with a long name, images that fail to load) with one.
+ */
+async function checkTemplate(t: Pick<PreparedTemplate, 'pages' | 'assets' | 'flags'> & { flag_names?: string[] },
+                             snap: Snapshotter | null): Promise<TemplateChecks> {
+  const base = staticChecks(t.pages, t.assets, t.flags);
+  const browser: CheckResult[] = [];
+  if (snap) {
+    for (const p of t.pages) {
+      const seen = await snap.inspect(samplePage(t, p.html, CHECK_BRAND), hostsOf(t.assets), OVERFLOW_WIDTHS);
+      browser.push(...browserChecks(p.path, seen));
+    }
+  }
+  return { version: 1, ran_at: new Date().toISOString(), sample_names: t.flag_names, results: combine(base, browser) };
 }
 
 const IMAGE_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -160,6 +197,7 @@ async function prepare(row: MasterRow, snap: Snapshotter | null): Promise<Import
     const home = t.pages.find(p => p.path === '/') ?? t.pages[0];
     if (home) t.thumbnailJpeg = await snap.thumbnail(samplePage(t, home.html), hostsOf(t.assets));
   }
+  t.checks = await checkTemplate(t, snap);
   return t;
 }
 
@@ -169,21 +207,27 @@ function report(templates: Imported[]): string {
     '- **price**: remove; prices come from the booking page.',
     '- **review**, **claim**: remove unless true for the company that uses the template.',
     '- **sample_name**, **phone**, **email**: what is left of the sample company.', '',
-    '- **hidden**: part of the page only shows with scripts; fix the page before approval.', '',
+    '- **hidden**: part of the page only shows with scripts; fix the page before approval.',
+    '- **address**, **statistic**: a sample address (US town and state, street) or figure ("18,000+", "98%").', '',
+    'Automated checks (approval is refused while one fails, unless the administrator gives a reason): '
+      + CHECKS.map(c => `**${c.id}** ${c.label.toLowerCase()}`).join('; ') + '.', '',
     '| Category | Templates |', '|---|---|'];
   const byCat = new Map<string, number>();
   for (const t of templates) { const c = templateCategory(t.industry) ?? 'other'; byCat.set(c, (byCat.get(c) ?? 0) + 1); }
   for (const [c, n] of [...byCat].sort((a, b) => b[1] - a[1])) lines.push(`| ${categoryLabel(c)} | ${n} |`);
-  lines.push('', '| Template | Category | Industries | Pages | Features | price | review | claim | other | hidden | Removed (scripts, forms, handlers) |',
-    '|---|---|---|---|---|---|---|---|---|---|---|');
+  lines.push('', '| Template | Category | Industries | Pages | Features | Checks failing | price | review | claim | other | hidden | Removed (scripts, forms, handlers) |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const t of templates) {
     const n = (k: string) => t.flags.filter(f => f.kind === k).length;
-    lines.push(`| ${t.id} (${t.name}) | ${categoryLabel(templateCategory(t.industry) ?? 'other')} | ${t.industry.join(', ')} | ${t.pages.length} | ${t.features.join(', ')} | `
-      + `${n('price')} | ${n('review')} | ${n('claim')} | ${n('sample_name') + n('phone') + n('email')} | ${n('hidden')} | `
+    lines.push(`| ${t.id} (${t.name}) | ${categoryLabel(templateCategory(t.industry) ?? 'other')} | ${t.industry.join(', ')} | ${t.pages.length} | ${t.features.join(', ')} | ${[...new Set(failingChecks(t.checks).map(r => r.id))].join(', ') || '–'} | `
+      + `${n('price')} | ${n('review')} | ${n('claim')} | ${n('sample_name') + n('phone') + n('email') + n('address') + n('statistic')} | ${n('hidden')} | `
       + `${t.removed.scripts}, ${t.removed.forms}, ${t.removed.handlers} |`);
   }
   for (const t of templates) {
     lines.push('', `## ${t.id}`, '');
+    for (const r of failingChecks(t.checks)) {
+      lines.push(`- **check ${r.id}** (${r.page}): ${r.detail}${r.items?.length ? ` ${r.items.slice(0, 5).join('; ').replace(/\|/g, '/')}` : ''}`);
+    }
     for (const f of t.flags.slice(0, 40)) lines.push(`- ${f.kind} (${f.page}): …${f.sample.replace(/\|/g, '/')}…`);
   }
   return lines.join('\n') + '\n';
@@ -230,14 +274,50 @@ async function toFlyttgo(templates: Imported[]) {
       headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ p: { id: t.id, name: t.name, industry: t.industry, style: t.style, pages: t.pages,
                                   assets, source: 'architect-ai', source_id: t.source_id, flags: t.flags,
-                                  features: t.features } }),
+                                  features: t.features, checks: t.checks } }),
     });
     if (!res.ok) throw new Error(`${t.id}: ${res.status} ${await res.text()}`);
     console.log(`stored ${t.id}: ${t.pages.length} pages, ${assets.length}/${t.assets.length} images, ${t.flags.length} things to check`);
   }
 }
 
+/** --recheck: check the templates stored in FlyttGo again (after administrators edited pages) and store the results. */
+async function recheck(snap: Snapshotter | null) {
+  const url = env('FLYTTGO_SUPABASE_URL');
+  const key = env('FLYTTGO_SERVICE_ROLE_KEY');
+  const ids = arg('ids')?.split(',').map(x => x.trim()).filter(Boolean);
+  const filter = ids?.length ? `&id=in.(${ids.map(encodeURIComponent).join(',')})` : '';
+  const res = await fetch(`${url}/rest/v1/site_templates?select=id,name,pages,assets,content_flags,checks&order=id${filter}`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` },
+  });
+  if (!res.ok) throw new Error(`FlyttGo: ${res.status} ${await res.text()}`);
+  const rows = await res.json() as { id: string; name: string; pages: TemplatePage[]; assets: TemplateAsset[];
+                                      content_flags: ContentFlag[]; checks: { sample_names?: string[] } }[];
+  for (const r of rows) {
+    const names = r.checks?.sample_names ?? [r.name];
+    // The flags found again in the pages as they are now; 'hidden' (found at import, with scripts) is kept.
+    const flags = [...r.content_flags.filter(f => f.kind === 'hidden'),
+                   ...r.pages.flatMap(p => contentFlags(p.html, p.path, names[0], names.slice(1)))];
+    const checks = await checkTemplate({ pages: r.pages, assets: r.assets, flags, flag_names: names }, snap);
+    const up = await fetch(`${url}/rest/v1/rpc/record_site_template_checks`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_id: r.id, p_checks: checks, p_flags: flags }),
+    });
+    if (!up.ok) throw new Error(`${r.id}: ${up.status} ${await up.text()}`);
+    const failing = [...new Set(failingChecks(checks).map(x => x.id))];
+    console.log(`checked ${r.id}: ${failing.length ? `failing ${failing.join(', ')}` : 'all checks pass'}`);
+  }
+}
+
 async function main() {
+  if (has('recheck')) {
+    env('FLYTTGO_SUPABASE_URL'); env('FLYTTGO_SERVICE_ROLE_KEY');
+    const snap = await snapshotter();
+    if (!snap) console.warn('Playwright is not available: only the checks that need no browser are run.');
+    try { await recheck(snap); } finally { await snap?.close(); }
+    return;
+  }
   const source = arg('from-file');
   const rows = has('from-architect') ? await fromArchitect() : source ? await fromFile(source) : null;
   if (!rows) throw new Error('say where to read from: --from-architect or --from-file <export.json>');

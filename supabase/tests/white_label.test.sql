@@ -337,6 +337,9 @@ BEGIN;
 CREATE TEMP TABLE tpl ON COMMIT DROP AS SELECT jsonb_build_object(
   'id', 'moving-swiftmv01', 'name', 'Swiftmove', 'industry', jsonb_build_array('moving', 'movers'), 'style', 'bold',
   'source_id', 'moving-swiftmv01',
+  -- The importer's automated checks (00021): here one that passes.
+  'checks', jsonb_build_object('version', 1, 'ran_at', '2026-10-29T12:00:00Z', 'results',
+    jsonb_build_array(jsonb_build_object('id', 'image_alt', 'page', '/', 'status', 'pass', 'detail', 'ok'))),
   'pages', jsonb_build_array(
     jsonb_build_object('path', '/', 'html', '<html><head><style>.p{color:red}</style></head><body><h1>{{brand.name}}</h1><p>Crews from $129/hr</p><a href="{{BOOKING_URL}}">Book</a></body></html>'),
     jsonb_build_object('path', '/contact', 'html', '<p>Call {{brand.phone}}</p>'))) AS p;
@@ -362,6 +365,9 @@ SELECT tests.throws($$SELECT public.admin_update_site_template_page('moving-swif
   'an edited page must stay clean');
 SELECT public.admin_update_site_template_page('moving-swiftmv01', '/',
   '<html><body><h1>{{brand.name}}</h1><p>See your price when you book.</p><a href="{{BOOKING_URL}}">Book</a></body></html>');
+-- The admin panel records the edited page's checks again (00021).
+SELECT public.admin_record_site_template_page_checks('moving-swiftmv01', '/',
+  '[{"id": "image_alt", "page": "/", "status": "pass", "detail": "ok"}]', '[]');
 SELECT tests.throws($$SELECT public.admin_review_site_template('moving-swiftmv01', true, false, NULL)$$, '55000',
   'and the reviewer must confirm sample reviews and claims were dealt with');
 SELECT tests.ok((SELECT status = 'approved' AND reviewed_by = :admin
