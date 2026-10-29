@@ -138,6 +138,10 @@ Every item must pass before production is touched ([`PREDEPLOY_REVIEW.md`](PREDE
 - [ ] **Admins are not members (negative).** As `admin1`, `invite_member`, `change_member_role` and `update_organization` on a company are refused. `admin_transfer_ownership` with a reason works and is logged.
 - [ ] **Invitation email.** `send-organization-invitation` emails the invitee (check the Resend log). The link opens `/business/invite`; signing in with the invited, confirmed address joins the company with the invited role. The token disappears from the address bar.
 - [ ] **Rate limit.** The 21st invitation within an hour is refused (429).
+- [ ] **Dashboard as a visitor.** Signed out, `/business/dashboard` shows the preview unchanged.
+- [ ] **Dashboard after registering.** Signed in without a company: register one. The sidebar shows it as "Awaiting verification", the notice appears, and modules show the sample-data label.
+- [ ] **Team tab by role.** As owner, invite, change a role, withdraw an invitation and remove a member. As a booker, no invite form and no role controls.
+- [ ] **Admin → Companies.** Check Brønnøysund; activation is enabled only after a passed check; then suspend and close, each with a reason.
 
 ## 10. Rollback rehearsal (on the copy)
 

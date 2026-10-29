@@ -1,6 +1,7 @@
 // FULL FINAL VERSION — PRODUCTION CONTROL CENTER BUILD
 import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { supabase, callFunction } from "../lib/supabase";
+import CompaniesPanel from "./admin/CompaniesPanel";
 import { activePlansByUser, ASSIGNABLE_PLANS } from "../lib/plans";
 import { useAuth } from "../lib/auth";
 
@@ -16,6 +17,7 @@ type AdminTab =
   | "applications"
   | "revenue"
   | "disputes"
+  | "companies"
   | "settings";
 
 /* ── CSV export helper ──────────────────────────────────────────
@@ -143,6 +145,7 @@ export default function AdminDashboard() {
     "applications",
     "revenue",
     "disputes",
+    "companies",
     "settings",
   ];
 
@@ -968,6 +971,8 @@ export default function AdminDashboard() {
             </table>
           </div>
         )}
+
+        {tab === "companies" && <CompaniesPanel />}
 
         {tab === "settings" && (
           <div>

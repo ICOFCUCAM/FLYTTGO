@@ -51,9 +51,17 @@ This is step 2 of the corporate portal plan: the tenant foundation only. The cor
 
 Production has these two tables (both empty, not defined in this repository, admin-only since 00003). They are left untouched. New company work uses `organizations`. Decide whether to drop them once nothing refers to them.
 
+## In the app (step 3, connect dashboard)
+
+- **Corporate dashboard** (`/business/dashboard`, `CorporateDashboard.tsx`). Visitors still see the preview with sample figures.
+  - A signed-in member sees their company (a switcher if they belong to several), its status and a notice while it awaits verification.
+  - The **Team** tab is real (`components/corporate/TeamPanel.tsx`): members, roles, removing, leaving, invitations by email and withdrawing them. Only the buttons the member's role allows are shown; the database still decides.
+  - A signed-in person without a company gets **Register your company** (`RegisterCompany.tsx`).
+  - Modules not connected yet (overview figures, shipments, recurring, invoices, API) keep their preview, marked as sample data.
+- **Admin → Companies** (`components/admin/CompaniesPanel.tsx`): filter by status, check in Brønnøysund, record a manual check, activate (only with a current passed check), suspend, close, and restore an owner.
+
 ## Not yet built
 
-- An admin screen for verification and activation (step 3, connect dashboard). Today: the `verify-organization` function and the RPCs.
 - Per-member spending limits and approval rules (step 4, company bookings). Bookings, invoices, credit and API keys will require `is_active_org_member()`.
 
 ## Tests

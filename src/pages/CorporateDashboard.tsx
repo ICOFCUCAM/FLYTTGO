@@ -1,5 +1,15 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useApp } from '../lib/store';
+import { useAuth } from '../lib/auth';
+import { ORG_STATUS_LABELS, myMemberships, type Membership } from '../lib/organizations';
+import TeamPanel from '../components/corporate/TeamPanel';
+import RegisterCompany from '../components/corporate/RegisterCompany';
+
+/* Visitors see the dashboard preview with sample figures. A signed-in
+ * member of a company sees their company, its status and its real team
+ * (organisations, 00005/00006); modules not connected yet keep their
+ * preview and say it is sample data. A signed-in person without a
+ * company can register one. */
 
 type DashTab = 'overview' | 'shipments' | 'recurring' | 'invoices' | 'drivers' | 'analytics' | 'api' | 'team' | 'documents' | 'support';
 
@@ -45,9 +55,25 @@ const NAV_ITEMS: { id: DashTab; icon: string; label: string }[] = [
 
 export default function CorporateDashboard() {
   const { setPage, setShowAuthModal, setAuthMode } = useApp();
+  const { user } = useAuth();
+  const [memberships, setMemberships] = useState<Membership[] | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
   const [tab, setTab] = useState<DashTab>('overview');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+
+  const loadMemberships = useCallback(async () => {
+    if (!user) { setMemberships(null); return; }
+    const m = await myMemberships(user.id);
+    setMemberships(m);
+    setOrgId(prev => (prev && m.some(x => x.organization.id === prev)) ? prev : (m[0]?.organization.id ?? null));
+  }, [user]);
+  useEffect(() => { loadMemberships(); }, [loadMemberships]);
+
+  const current = memberships?.find(m => m.organization.id === orgId) ?? null;
+  const live = !!current;                                    // a real company, not the preview
+  const needsCompany = !!user && memberships !== null && memberships.length === 0;
+  const SAMPLE_TABS: DashTab[] = ['overview', 'shipments', 'recurring', 'invoices', 'api'];
 
   const filteredShipments = SHIPMENTS.filter(s => {
     const matchSearch = s.id.toLowerCase().includes(search.toLowerCase()) || s.from.toLowerCase().includes(search.toLowerCase()) || s.to.toLowerCase().includes(search.toLowerCase());
@@ -78,13 +104,30 @@ export default function CorporateDashboard() {
         </nav>
 
         <div className="p-5 border-t border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-xs font-bold">AB</div>
-            <div>
-              <div className="text-xs font-medium">Acme Logistics AS</div>
-              <div className="text-xs text-white/50">Enterprise Plan</div>
+          {live && current ? (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-xs font-bold">
+                {current.organization.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                {memberships && memberships.length > 1 ? (
+                  <select value={orgId ?? ''} onChange={e => setOrgId(e.target.value)}
+                    className="bg-transparent text-xs font-medium w-full outline-none">
+                    {memberships.map(m => <option key={m.organization.id} value={m.organization.id} className="text-gray-900">{m.organization.name}</option>)}
+                  </select>
+                ) : <div className="text-xs font-medium truncate">{current.organization.name}</div>}
+                <div className="text-xs text-white/50">{ORG_STATUS_LABELS[current.organization.status]}</div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-xs font-bold">AB</div>
+              <div>
+                <div className="text-xs font-medium">Acme Logistics AS</div>
+                <div className="text-xs text-white/50">Enterprise Plan</div>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -95,18 +138,48 @@ export default function CorporateDashboard() {
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div>
             <h1 className="text-xl font-bold text-gray-900 capitalize">{NAV_ITEMS.find(n => n.id === tab)?.label || 'Overview'}</h1>
-            <p className="text-xs text-gray-400">FlyttGo Corporate · Enterprise Dashboard Preview</p>
+            <p className="text-xs text-gray-400">
+              {live && current ? `FlyttGo Corporate · ${current.organization.name}` : 'FlyttGo Corporate · Enterprise Dashboard Preview'}
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden sm:block text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full font-medium">⚡ Live Mode</span>
-            <button onClick={() => { setShowAuthModal(true); setAuthMode('signup'); }}
-              className="px-4 py-2 bg-[#0B2E59] text-white rounded-xl text-sm font-semibold hover:bg-[#1a4a8a] transition">
-              Activate Account
-            </button>
+            {live && current ? (
+              <span className={`hidden sm:block text-xs px-3 py-1.5 rounded-full font-medium ${current.organization.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                {ORG_STATUS_LABELS[current.organization.status]}
+              </span>
+            ) : (
+              <>
+                <span className="hidden sm:block text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full font-medium">⚡ Live Mode</span>
+                {!user && (
+                  <button onClick={() => { setShowAuthModal(true); setAuthMode('signup'); }}
+                    className="px-4 py-2 bg-[#0B2E59] text-white rounded-xl text-sm font-semibold hover:bg-[#1a4a8a] transition">
+                    Activate Account
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </header>
 
         <main className="flex-1 p-6 overflow-auto">
+
+          {needsCompany && (
+            <div className="mb-6"><RegisterCompany onCreated={loadMemberships} /></div>
+          )}
+
+          {live && current && current.organization.status !== 'active' && (
+            <div className="mb-6 rounded-2xl border border-yellow-200 bg-yellow-50 px-5 py-4 text-sm text-yellow-800">
+              {current.organization.status === 'pending'
+                ? 'Your company is awaiting verification. FlyttGo checks it in Brønnøysundregistrene before bookings and invoicing are switched on; meanwhile you can set up your team.'
+                : `This company is ${ORG_STATUS_LABELS[current.organization.status].toLowerCase()}${current.organization.status_reason ? `: ${current.organization.status_reason}` : ''}. Contact FlyttGo support.`}
+            </div>
+          )}
+
+          {live && SAMPLE_TABS.includes(tab) && (
+            <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-xs text-gray-500">
+              Sample data: this module is not connected to your company yet. The figures below are an example, not your company's.
+            </div>
+          )}
 
           {/* ── OVERVIEW ── */}
           {tab === 'overview' && (
@@ -331,7 +404,10 @@ export default function CorporateDashboard() {
           )}
 
           {/* ── TEAM ── */}
-          {tab === 'team' && (
+          {tab === 'team' && live && current && user && (
+            <TeamPanel key={current.organization.id} membership={current} userId={user.id} onLeft={loadMemberships} />
+          )}
+          {tab === 'team' && !live && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-gray-500">4 team members · 2 pending invites</p>

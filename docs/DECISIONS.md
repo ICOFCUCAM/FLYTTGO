@@ -29,4 +29,3 @@ On 2026-10-29 the owner adopted the recommendations in [`PREDEPLOY_REVIEW.md`](P
 - **Over-time charges on Vipps.** An approved extra charge above the reservation can't be captured from it. The release then stops with a clear message until the extra is paid separately. This needs a payment flow for the extra.
 - **`pg_cron`:** enable it and schedule `docs/subscription-expiry-cron.sql`.
 - **Secrets** for the new functions: `RESEND_API_KEY`, `FLYTTGO_FROM`, `FLYTTGO_REPLY_TO`, `FRONTEND_URL` (as for the existing functions).
-- **An admin screen** for company verification and activation (today: the `verify-organization` function and the RPCs). It belongs to step 3 of the corporate plan, "connect dashboard".
