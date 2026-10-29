@@ -29,7 +29,7 @@ export interface Invoice {
   id: string; kind: 'invoice' | 'credit_note'; number: number; credits_number?: number | null;
   issue_date: string; due_date: string; delivery_from?: string | null; delivery_to?: string | null;
   currency: string; kid: string | null; reference?: string | null; notes?: string | null;
-  seller: Party; buyer: Party; branding?: { name?: string; logo_path?: string | null } | null;
+  seller: Party; buyer: Party; branding?: { name?: string; logo_path?: string | null; own?: boolean } | null;
   net_total: number; vat_total: number; total: number;
   amount_paid?: number; amount_credited?: number; fees_total?: number; status?: string; reminder_level?: number;
 }

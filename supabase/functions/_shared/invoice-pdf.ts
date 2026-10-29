@@ -10,7 +10,9 @@
 //   payment the bank account and KID.
 //
 // On the special plan the company's own name and logo head the invoice
-// (branding); the legal seller is still FlyttGo and stays stated.
+// (branding); the legal seller is still FlyttGo and stays stated. A
+// company's own sales invoice (00011, branding.own) is the company's
+// throughout: it is the seller.
 // Standard Helvetica (WinAnsi: æ ø å and the usual punctuation).
 // ============================================================================
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from 'npm:pdf-lib@1.17.1';
@@ -179,7 +181,7 @@ export async function invoicePdf(
       s.email, s.phone,
     ].filter(Boolean).join('   ·   ');
     p.drawLine({ start: { x: M, y: 64 }, end: { x: W - M, y: 64 }, thickness: 0.6, color: RULE });
-    text(p, inv.branding ? `Utstedt av ${s.name} for ${inv.branding.name}` : '', M, 50, 7, font, MUTED);
+    text(p, inv.branding && !inv.branding.own ? `Utstedt av ${s.name} for ${inv.branding.name}` : '', M, 50, 7, font, MUTED);
     text(p, legal, M, 38, 7, font, MUTED);
   }
   return await doc.save();

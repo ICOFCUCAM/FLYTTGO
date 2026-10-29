@@ -19,6 +19,7 @@ DECLARE v_org uuid; v_tok text;
 BEGIN
   PERFORM tests.login('c0000000-0000-0000-0000-000000000001');
   SELECT id INTO v_org FROM public.create_organization('Acme AS', 'acme', '923609016', 'Faktura@Acme.no');
+  PERFORM public.set_organization_industry(v_org, 'transport');          -- 00010
   SELECT token INTO v_tok FROM public.invite_member(v_org, 'DRV1@test', 'booker');
   PERFORM tests.login('d0000000-0000-0000-0000-000000000001');
   PERFORM public.accept_invitation(v_tok);

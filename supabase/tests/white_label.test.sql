@@ -53,7 +53,8 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA tests TO anon, authenticated, service_r
 BEGIN;
 SET LOCAL ROLE anon;
 SELECT tests.login(NULL, 'anon');
-SELECT tests.ok((SELECT count(*) FROM public.white_label_plans) = 3, 'anyone reads the three plans');
+SELECT tests.ok((SELECT count(*) FROM public.white_label_plans WHERE code IN ('branded', 'branded_domain', 'own_seller')) = 3,
+  'anyone reads the three transport plans');
 SELECT tests.ok((SELECT code FROM public.white_label_plans WHERE is_default) = 'branded'
                 AND (SELECT seller_model FROM public.white_label_plans WHERE is_default) = 'flyttgo',
   'the default plan is Model A: FlyttGo sells');
