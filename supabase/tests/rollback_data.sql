@@ -46,6 +46,21 @@ UPDATE public.bookings SET captured_at = now(), captured_amount = 2875 WHERE id 
 SELECT public.record_organization_verification((SELECT id FROM public.organizations WHERE slug = 'rollback-as'),
                                                'brreg', true, '{"navn":"ROLLBACK AS"}');
 
+-- 00020: a shop's delivery options, a product with a size and an unpaid
+-- order holding it.
+INSERT INTO public.shop_settings (organization_id, pickup_address)
+SELECT id, 'Torget 1, 0150 Oslo' FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_products (id, organization_id, name, price, track_stock, variant_label)
+SELECT '5a000000-0000-0000-0000-000000000001', id, 'Mug', 199, true, 'Size' FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_variants (id, product_id, organization_id, name, stock)
+SELECT '5b000000-0000-0000-0000-000000000001', '5a000000-0000-0000-0000-000000000001', id, 'L', 2 FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_orders (id, organization_id, number, customer_user_id, customer, delivery_method, items_total, total, expires_at)
+SELECT '5c000000-0000-0000-0000-000000000001', id, 1, 'c0000000-0000-0000-0000-000000000002', '{"name":"Kari"}', 'pickup', 199, 199, now() + interval '1 hour'
+  FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_order_lines (order_id, line_no, product_id, variant_id, name, quantity, unit_price, vat_rate, total, stock_reserved)
+VALUES ('5c000000-0000-0000-0000-000000000001', 1, '5a000000-0000-0000-0000-000000000001', '5b000000-0000-0000-0000-000000000001',
+        'Mug (L)', 1, 199, 25, 199, true);
+
 -- What exists before the rollback, for the comparison afterwards.
 CREATE TABLE public.zz_rollback_before AS
 SELECT 'bookings' t, count(*) n FROM public.bookings

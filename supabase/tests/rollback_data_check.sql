@@ -14,6 +14,9 @@ SELECT tests.ok((SELECT subscription_status FROM public.driver_subscriptions WHE
 SELECT tests.ok(to_regclass('public.payment_refunds') IS NULL AND to_regclass('public.organizations') IS NULL,
   'refund records and organisations are dropped (export them first)');
 
+SELECT tests.ok(to_regclass('public.shop_orders') IS NULL AND to_regclass('public.shop_products') IS NULL,
+  'shop catalogues and orders are dropped (export them first)');
+
 \echo '── left NOT VALID by the rollback (rows written while the migrations were in force):'
 SELECT c.relname || '.' || con.conname AS constraint_not_valid
   FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid JOIN pg_namespace n ON n.oid = c.relnamespace

@@ -8,6 +8,7 @@ Owner's decision (2026-10-29): use the recommendation, which is `pg_cron` and `p
 | `flyttgo-invoice-run` | daily 05:15 | 06:15 winter, 07:15 summer | `invoice-run`: invoices what is due, plan fees, reminders ([`INVOICING.md`](INVOICING.md)) |
 | `flyttgo-appointment-reminders` | every hour, :10 | | `appointment-reminders`: emails the day before, once each ([`SERVICE_PLATFORM.md`](SERVICE_PLATFORM.md)) |
 | `flyttgo-accounting-cancellations` | daily 00:20 | 01:20 winter, 02:20 summer | `accounting.apply_cancellations()`: a cancelled accounting add-on ends after its last day ([`ACCOUNTING_CORE.md`](ACCOUNTING_CORE.md)) |
+| `flyttgo-shop-expiry` | every 5 minutes | | `expire_shop_orders()` (00020): unpaid shop orders past their time are cancelled and their stock comes back ([`SERVICE_PLATFORM.md`](SERVICE_PLATFORM.md)). Each new order does the same for its shop first, so the job only keeps the catalogue's stock current between orders. |
 
 pg_cron on Supabase runs in UTC, so the invoice run moves an hour with summer time. That is harmless: it runs once a day either way and each step is done once.
 

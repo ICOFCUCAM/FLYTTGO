@@ -21,7 +21,7 @@ cd "$(dirname "$0")/../.."
 DB="${FLYTTGO_TEST_DB:-flyttgo_test}"
 REPLICA=supabase/schema/production-2026-10-29.sql
 EXPECTED_FP=supabase/schema/production-2026-10-29.fingerprint
-MIGRATIONS=(supabase/migrations/0000[2-9]_*.sql supabase/migrations/00[1-9][0-9]_*.sql)
+MIGRATIONS=(supabase/migrations/0000[2-9]_*.sql supabase/migrations/000[1-9][0-9]_*.sql)
 PSQL=(psql -X -q -v ON_ERROR_STOP=1)
 export PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
 
@@ -53,12 +53,15 @@ echo "── repo ──"
 fresh
 "${PSQL[@]}" -d "$DB" -f supabase/migrations/00001_complete_schema.sql
 migrate
-run_tests supabase/tests/p0_security.test.sql supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql
+run_tests supabase/tests/p0_security.test.sql supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql supabase/tests/shop.test.sql
 
 # The scheduled jobs (supabase/ops/schedules.sql), with stand-ins for
 # pg_cron, pg_net and Vault.
 PGOPTIONS='-c client_min_messages=notice' "${PSQL[@]}" -d "$DB" -f supabase/tests/schedules.test.sql 2>&1 \
   | grep -E '^(psql:.*)?(NOTICE:  ok|ERROR|FAIL)|passed' | sed 's/^psql:[^ ]* //'
+
+# Online shops under load: competing orders for the last items (00020).
+bash supabase/tests/shop_concurrency.sh "$DB"
 
 echo "── production ──"
 fresh
@@ -69,7 +72,7 @@ fi
 echo "replica matches the production fingerprint"
 migrate
 run_tests supabase/tests/p0_security.test.sql supabase/tests/p0_production.test.sql \
-  supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql
+  supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql supabase/tests/shop.test.sql
 
 echo "── rollback ──"
 # Function bodies and settings (the fingerprint covers structure, not
