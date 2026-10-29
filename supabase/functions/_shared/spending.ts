@@ -9,7 +9,7 @@
 // No Deno or browser imports, so Vitest tests it directly.
 // ============================================================================
 
-export type ApprovalReason = 'per_booking_limit' | 'monthly_limit' | 'amount_over' | 'role';
+export type ApprovalReason = 'per_booking_limit' | 'monthly_limit' | 'amount_over' | 'role' | 'price_changed';
 export type ApprovalStatus = 'not_required' | 'pending' | 'approved' | 'refused' | 'expired' | 'withdrawn';
 
 export const APPROVAL_REASON_LABELS: Record<ApprovalReason, string> = {
@@ -17,6 +17,7 @@ export const APPROVAL_REASON_LABELS: Record<ApprovalReason, string> = {
   monthly_limit:     'over your monthly limit',
   amount_over:       'above the amount your company approves',
   role:              'your company approves every booking by your role',
+  price_changed:     'at a different price from the one approved',
 };
 
 export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {

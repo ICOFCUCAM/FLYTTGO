@@ -4,15 +4,16 @@
  * that sell themselves), sets up its page, and sees what is still needed
  * before FlyttGo approves it. Owners and admins make changes; an owner
  * accepts the data processing agreement and connects Stripe (Model B).
+ * Add-on modules on the plan (00022) are listed here; FlyttGo enables them.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../lib/store';
 import type { Membership } from '../../lib/organizations';
 import { formatNok } from '../../lib/invoicing';
 import {
-  DPA_VERSION, SELLER_LABELS, STATUS_LABELS, acceptDpa, endPlan, loadOrgWhiteLabel, loadPlans, loadStats, loadTemplateList,
-  missingFor, requestPlan, saveBrand, setDomain, setSite, stripeConnect, verifyDomain,
-  type OrgWhiteLabel, type SiteTemplateSummary, type WhiteLabelPlan,
+  ADDON_LABELS, DPA_VERSION, PRICE_STATUS_LABELS, SELLER_LABELS, STATUS_LABELS, acceptDpa, addonPrice, endPlan, loadAddons,
+  loadOrgWhiteLabel, loadPlans, loadStats, loadTemplateList, missingFor, requestPlan, saveBrand, setDomain, setSite, stripeConnect, verifyDomain,
+  type OrgAddon, type OrgWhiteLabel, type SiteTemplateSummary, type WhiteLabelPlan,
 } from '../../lib/whiteLabel';
 import { sellerSplit } from '../../../supabase/functions/_shared/white-label';
 import { INDUSTRIES, setIndustry } from '../../lib/services';
@@ -31,6 +32,7 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
   const [missing, setMissing] = useState<string[]>([]);
   const [templates, setTemplates] = useState<SiteTemplateSummary[]>([]);
   const [stats, setStats] = useState<Awaited<ReturnType<typeof loadStats>>>([]);
+  const [addons, setAddons] = useState<OrgAddon[]>([]);
   const [choice, setChoice] = useState<string>('');
   const [brand, setBrand] = useState({ display_name: '', primary_color: '', accent_color: '', tagline: '', support_email: '',
                                        support_phone: '', terms_url: '', privacy_url: '', markup_pct: 0 });
@@ -43,8 +45,8 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const reload = useCallback(async () => {
-    const [p, w, t] = await Promise.all([loadPlans(), loadOrgWhiteLabel(org.id), loadTemplateList()]);
-    setPlans(p); setWl(w); setTemplates(t);
+    const [p, w, t, a] = await Promise.all([loadPlans(), loadOrgWhiteLabel(org.id), loadTemplateList(), loadAddons(org.id)]);
+    setPlans(p); setWl(w); setTemplates(t); setAddons(a);
     setChoice(w?.requested_plan_code ?? w?.plan_code ?? p.find(x => x.is_default)?.code ?? '');
     if (w) {
       setBrand({ display_name: w.display_name ?? '', primary_color: w.primary_color ?? '', accent_color: w.accent_color ?? '',
@@ -135,7 +137,10 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
               <div className="font-semibold">{p.name}</div>
               <div className="text-sm mt-1">{formatNok(p.monthly_fee)}/month{p.setup_fee ? ` + ${formatNok(p.setup_fee)} set-up` : ''}</div>
               {p.seller_model === 'company' && <div className="text-xs text-gray-600">+ {String(p.platform_fee_pct).replace('.', ',')} % platform fee, min. {formatNok(p.platform_fee_min)} per booking</div>}
-              <div className="text-xs text-gray-400 mt-1">excl. MVA{p.price_status !== 'confirmed' ? ' · proposed price' : ''}</div>
+              <div className="text-xs text-gray-400 mt-1">excl. MVA{p.price_status !== 'confirmed' ? ` · ${PRICE_STATUS_LABELS[p.price_status].toLowerCase()}` : ''}</div>
+              {p.setup_fee > 0 && (p.setup_fee_includes?.length ?? 0) > 0 && (
+                <div className="text-xs text-gray-500 mt-1">Set-up includes: {p.setup_fee_includes!.map(f => f.split(':')[0].toLowerCase()).join(', ')}</div>
+              )}
             </label>
           ))}
         </div>
@@ -267,6 +272,28 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
               </div>
             </div>
           )}
+
+          {/* Add-on modules (00022) */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <h3 className="font-bold text-gray-900 mb-1">Add-on modules</h3>
+            <p className="text-sm text-gray-500 mb-3">
+              Modules on top of your plan, for example an online shop beside your bookings, or access to the API. They share your company,
+              brand, team and booking set-up; each keeps its own settings and permissions. FlyttGo enables them, priced by a written quote.
+            </p>
+            {addons.filter(a => a.status === 'active').length === 0
+              ? <p className="text-sm text-gray-400">None. Ask FlyttGo for a quote.</p>
+              : (
+                <ul className="divide-y divide-gray-50 text-sm">
+                  {addons.filter(a => a.status === 'active').map(a => (
+                    <li key={a.id} className="py-2 flex flex-wrap justify-between gap-2">
+                      <span className="font-medium">{ADDON_LABELS[a.module] ?? a.module}</span>
+                      <span className="text-gray-500 text-xs">{addonPrice(a, formatNok)} · since {new Date(a.enabled_at).toLocaleDateString('nb-NO')}</span>
+                      {a.price_note && <span className="basis-full text-xs text-gray-400">{a.price_note}</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+          </div>
 
           {/* Numbers */}
           {stats.length > 0 && (

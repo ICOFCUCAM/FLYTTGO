@@ -13,6 +13,7 @@
 --   flyttgo-appointment-reminders    every hour :10       appointment-reminders (00013, 00019)
 --   flyttgo-accounting-cancellations daily 00:20          accounting.apply_cancellations() (00014): ledgers past their last day end
 --   flyttgo-shop-expiry              every 5 minutes      expire_shop_orders() (00020): unpaid orders past their time, stock back
+--   flyttgo-approval-expiry          every 15 minutes     expire_booking_approvals() (00017): approval requests past their deadline end
 --
 -- The two functions are called with the service role key, read at each run
 -- from Supabase Vault. Nothing secret is in this file. Before running it,
@@ -78,7 +79,7 @@ DO $$
 DECLARE j text;
 BEGIN
   FOREACH j IN ARRAY ARRAY['auto-downgrade-expired-subscriptions', 'flyttgo-invoice-run', 'flyttgo-appointment-reminders',
-                           'flyttgo-accounting-cancellations', 'flyttgo-shop-expiry'] LOOP
+                           'flyttgo-accounting-cancellations', 'flyttgo-shop-expiry', 'flyttgo-approval-expiry'] LOOP
     IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = j) THEN PERFORM cron.unschedule(j); END IF;
   END LOOP;
 END $$;
@@ -97,3 +98,9 @@ SELECT cron.schedule('flyttgo-appointment-reminders', '10 * * * *',
 -- new order also does this for its shop first).
 SELECT cron.schedule('flyttgo-shop-expiry', '*/5 * * * *',
   $$ SELECT public.expire_shop_orders() $$);
+-- Company bookings waiting for approval: a request past its deadline ends
+-- and its unpaid booking is cancelled without a fee. Nothing can approve a
+-- request after its deadline in the meantime (decide_booking_approval), so
+-- the job only keeps the lists and the bookings current.
+SELECT cron.schedule('flyttgo-approval-expiry', '*/15 * * * *',
+  $$ SELECT public.expire_booking_approvals(NULL) $$);

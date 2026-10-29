@@ -3,7 +3,8 @@
 -- Each block runs in its own transaction and rolls back. Uses the fixtures
 -- of the earlier suites: tests.acme(), tests.activate(), tests.seller()
 -- (cust1 owns Acme, drv1 is its booker, cust2 is outside), tests.jobs_acme()
--- and tests.ap_acme().
+-- and tests.ap_acme(). API access is the add-on 'api' (00022), which
+-- FlyttGo enables: tests.api_addon().
 -- ============================================================================
 
 \set ON_ERROR_STOP 1
@@ -12,7 +13,16 @@
 \set cust2   '''c0000000-0000-0000-0000-000000000002'''
 \set drv1    '''d0000000-0000-0000-0000-000000000001'''
 
--- Acme (transport) active, with invoicing switched on by FlyttGo. Claims kept.
+-- FlyttGo enables the API add-on for p_org, on a written quote (00022). Claims kept.
+CREATE OR REPLACE FUNCTION tests.api_addon(p_org uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE v_claims text := current_setting('request.jwt.claims', true);
+BEGIN
+  PERFORM tests.login('a0000000-0000-0000-0000-000000000001');
+  PERFORM public.admin_enable_addon(p_org, 'api', 'quote', NULL, NULL, 'Q-2026-API-' || left(p_org::text, 8), NULL);
+  PERFORM set_config('request.jwt.claims', coalesce(v_claims, ''), true);
+END $$;
+-- Acme (transport) active, with invoicing switched on by FlyttGo and the
+-- API add-on. Claims kept.
 CREATE OR REPLACE FUNCTION tests.api_acme() RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE v_org uuid; v_claims text := current_setting('request.jwt.claims', true);
 BEGIN
@@ -21,10 +31,11 @@ BEGIN
   PERFORM tests.activate(v_org);
   PERFORM tests.login('a0000000-0000-0000-0000-000000000001');
   PERFORM public.admin_set_invoicing(v_org, true, NULL, 'standard');
+  PERFORM tests.api_addon(v_org);
   PERFORM set_config('request.jwt.claims', coalesce(v_claims, ''), true);
   RETURN v_org;
 END $$;
--- Beta (transport), owned by cust2, active with invoicing. Claims kept.
+-- Beta (transport), owned by cust2, active with invoicing and the API add-on. Claims kept.
 CREATE OR REPLACE FUNCTION tests.api_beta() RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE v_org uuid; v_claims text := current_setting('request.jwt.claims', true);
 BEGIN
@@ -34,6 +45,7 @@ BEGIN
   PERFORM tests.activate(v_org);
   PERFORM tests.login('a0000000-0000-0000-0000-000000000001');
   PERFORM public.admin_set_invoicing(v_org, true, NULL, 'standard');
+  PERFORM tests.api_addon(v_org);
   PERFORM set_config('request.jwt.claims', coalesce(v_claims, ''), true);
   RETURN v_org;
 END $$;
@@ -98,6 +110,9 @@ SELECT tests.throws($$SELECT public.create_api_key((SELECT id FROM o), 'ERP', AR
 SELECT tests.activate((SELECT id FROM o));
 SELECT tests.ok(public.api_scopes_available((SELECT id FROM o)) = ARRAY['quotes', 'bookings:read'],
   'an active transport company without invoicing can use quotes and bookings:read');
+SELECT tests.throws($$SELECT public.create_api_key((SELECT id FROM o), 'ERP', ARRAY['quotes'])$$, '55000',
+  'without the API add-on an active company''s owner creates no key');
+SELECT tests.api_addon((SELECT id FROM o));
 SELECT tests.throws($$SELECT public.create_api_key((SELECT id FROM o), 'ERP', ARRAY['bookings:write'])$$, '55000',
   'bookings:write needs invoicing switched on by FlyttGo (API bookings are paid on invoice)');
 SELECT tests.throws($$SELECT public.create_api_key((SELECT id FROM o), 'ERP', ARRAY['jobs'])$$, '55000',
@@ -134,6 +149,7 @@ ROLLBACK;
 BEGIN;
 SET LOCAL ROLE authenticated;
 CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.jobs_acme() AS id;
+SELECT tests.api_addon((SELECT id FROM o));
 SELECT tests.login(:cust1);
 SELECT tests.ok(public.api_scopes_available((SELECT id FROM o)) = ARRAY['quotes', 'bookings:read', 'jobs'],
   'the Jobs plan makes the jobs scope available (not appointments)');
@@ -171,6 +187,7 @@ ROLLBACK;
 BEGIN;
 SET LOCAL ROLE authenticated;
 CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.ap_acme() AS id;
+SELECT tests.api_addon((SELECT id FROM o));
 SELECT tests.login(:cust1);
 CREATE TEMP TABLE k ON COMMIT DROP AS SELECT public.create_api_key((SELECT id FROM o), 'Website', ARRAY['appointments']) ->> 'key' AS key;
 GRANT SELECT ON o, k TO service_role;
@@ -246,6 +263,7 @@ SELECT public.change_member_role((SELECT id FROM o), :drv1, 'admin');
 CREATE TEMP TABLE k ON COMMIT DROP AS
   SELECT (public.create_api_key((SELECT id FROM o), 'One', ARRAY['quotes']) ->> 'key') AS one,
          (public.create_api_key((SELECT id FROM o), 'Two', ARRAY['quotes']) ->> 'key') AS two;
+SELECT public.create_api_key((SELECT id FROM o), 'Three', ARRAY['quotes']);
 SELECT tests.login(:drv1);
 INSERT INTO k (one, two) SELECT public.create_api_key((SELECT id FROM o), 'Drv', ARRAY['quotes', 'bookings:write']) ->> 'key', NULL;
 GRANT SELECT ON o, k TO service_role;
@@ -267,14 +285,28 @@ SELECT tests.ok(public.api_begin(tests.key_hash((SELECT one FROM k WHERE two IS 
 SELECT tests.throws($$SELECT public.api_write(tests.key_hash((SELECT one FROM k WHERE two IS NOT NULL)), 'booking.create', tests.api_move())$$, '28000',
   'and cannot write');
 SELECT tests.ok((public.api_begin(tests.key_hash((SELECT two FROM k WHERE two IS NOT NULL)), 'quotes') ->> 'ok')::boolean, 'the other key still works');
--- drv1 made a key as admin; demoted to booker, their key stops.
+-- drv1 made a key as admin; demoted to booker, their key is revoked at
+-- once (00022). The check at each use stays behind it.
 SET LOCAL ROLE authenticated;
 SELECT tests.login(:cust1);
 SELECT public.change_member_role((SELECT id FROM o), :drv1, 'booker');
+SELECT tests.ok((SELECT revoked_at IS NOT NULL AND revoked_by = :cust1 AND revoked_reason LIKE 'Revoked automatically%'
+                   FROM public.api_keys WHERE name = 'Drv'),
+  'a key is revoked the moment its creator is no longer an owner or admin');
+SELECT tests.ok((SELECT details ->> 'cause' = 'creator_role_changed' AND (details ->> 'automatic')::boolean AND actor_id = :cust1
+                   FROM public.api_events WHERE action = 'key.revoked' AND api_key_id = (SELECT id FROM public.api_keys WHERE name = 'Drv')),
+  'logged in the key log, with the cause and who changed the role');
 SET LOCAL ROLE service_role;
 SELECT tests.as_server();
+SELECT tests.ok(public.api_begin(tests.key_hash((SELECT one FROM k WHERE two IS NULL)), 'quotes') ->> 'error' = 'key_revoked',
+  'the key no longer works');
+SET LOCAL ROLE postgres;
+UPDATE public.api_keys SET revoked_at = NULL WHERE name = 'Drv';
+SET LOCAL ROLE service_role;
 SELECT tests.ok(public.api_begin(tests.key_hash((SELECT one FROM k WHERE two IS NULL)), 'quotes') ->> 'error' = 'creator_not_member',
-  'a key stops when its creator is no longer an owner or admin');
+  'and were it not revoked, the check at use still refuses a creator who is no longer an owner or admin');
+SET LOCAL ROLE postgres;
+UPDATE public.api_keys SET revoked_at = now() WHERE name = 'Drv';
 -- The company suspended: every key stops; reactivated, they work again.
 SET LOCAL ROLE postgres;
 SELECT tests.login(:admin);
@@ -292,7 +324,7 @@ SELECT tests.ok((SELECT revoked_at IS NOT NULL FROM public.revoke_api_key((SELEC
   'but its owner can still revoke them');
 SET LOCAL ROLE postgres;
 SELECT tests.login(:admin);
-SELECT tests.ok((SELECT revoked_by FROM public.revoke_api_key((SELECT id FROM public.api_keys WHERE name = 'Drv'), 'abuse')) = :admin,
+SELECT tests.ok((SELECT revoked_by FROM public.revoke_api_key((SELECT id FROM public.api_keys WHERE name = 'Three'), 'abuse')) = :admin,
   'FlyttGo''s administrators can revoke a key (logged with their name)');
 -- An expired key.
 UPDATE public.api_keys SET expires_at = now() - interval '1 second', revoked_at = NULL WHERE name = 'Two';
@@ -400,6 +432,108 @@ SET LOCAL ROLE authenticated;
 SELECT tests.login(:cust1);
 SELECT public.remove_widget_origin((SELECT id FROM o), 'https://www.acme.no/');
 SELECT tests.ok((SELECT array_agg(origin) FROM public.organization_widget_origins) = ARRAY['http://localhost:5173'], 'an owner removes a website');
+ROLLBACK;
+
+-- ── The API add-on (00022): the gate on keys and on every call ────────────
+BEGIN;
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.api_acme() AS id;
+SELECT tests.login(:cust1);
+CREATE TEMP TABLE k ON COMMIT DROP AS SELECT public.create_api_key((SELECT id FROM o), 'ERP', ARRAY['quotes', 'bookings:read']) ->> 'key' AS key;
+GRANT SELECT ON o, k TO service_role;
+SELECT tests.ok(public.org_has_module((SELECT id FROM o), 'api'), 'the add-on counts as a module (org_has_module)');
+SELECT tests.throws($$SELECT public.admin_end_addon((SELECT id FROM o), 'api', 'not paid')$$, '42501', 'the company cannot end it itself');
+SELECT tests.throws($$SELECT public.admin_enable_addon((SELECT id FROM o), 'api', 'quote', NULL, NULL, 'Q-1', NULL)$$, '42501',
+  'nor enable it');
+SELECT tests.login(:admin);
+SELECT public.admin_end_addon((SELECT id FROM o), 'api', 'quote expired');
+SET LOCAL ROLE service_role;
+SELECT tests.as_server();
+SELECT tests.ok((SELECT r ->> 'error' = 'api_not_enabled' AND (r ->> 'status')::int = 403 AND r ->> 'message' LIKE 'API access is an add-on%'
+                   FROM (SELECT public.api_begin(tests.key_hash((SELECT key FROM k)), 'quotes') AS r) x),
+  'once FlyttGo ends the add-on every call is refused (403, api_not_enabled)');
+SELECT tests.throws($$SELECT public.api_read(tests.key_hash((SELECT key FROM k)), 'bookings.list')$$, '42501', 'and reads nothing');
+SET LOCAL ROLE authenticated;
+SELECT tests.login(:cust1);
+SELECT tests.throws($$SELECT public.create_api_key((SELECT id FROM o), 'More', ARRAY['quotes'])$$, '55000', 'no new key is created');
+SELECT tests.throws($$SELECT public.update_api_key((SELECT id FROM public.api_keys WHERE name = 'ERP'), 'ERP 2', ARRAY['quotes'])$$, '55000',
+  'nor an existing one changed');
+SELECT tests.ok((SELECT revoked_at IS NULL FROM public.api_keys WHERE name = 'ERP'), 'the key itself is kept (the owner may revoke it)');
+SELECT tests.login(:admin);
+SELECT public.admin_enable_addon((SELECT id FROM o), 'api', 'pilot', 0, 490, NULL, 'Pilot price for the API, approved 2026-10-29');
+SET LOCAL ROLE service_role;
+SELECT tests.as_server();
+SELECT tests.ok((public.api_begin(tests.key_hash((SELECT key FROM k)), 'quotes') ->> 'ok')::boolean, 'enabled again, the key works');
+-- The widget needs no add-on: a company without it lists its websites.
+SET LOCAL ROLE authenticated;
+SELECT tests.login(:cust2);
+CREATE TEMP TABLE o2 ON COMMIT DROP AS SELECT id FROM public.create_organization('Widget AS', 'widget-as');
+SELECT tests.ok(public.add_widget_origin((SELECT id FROM o2), 'https://widget.example') = 'https://widget.example'
+                AND NOT public.org_has_module((SELECT id FROM o2), 'api'),
+  'the booking widget''s websites need no API add-on');
+ROLLBACK;
+
+-- ── Keys revoked at once when their creator leaves or is suspended ────────
+BEGIN;
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.api_acme() AS acme, tests.api_beta() AS beta;
+SELECT tests.login(:cust1);
+SELECT public.change_member_role((SELECT acme FROM o), :drv1, 'admin');
+SELECT public.create_api_key((SELECT acme FROM o), 'Owner key', ARRAY['quotes']);
+SELECT tests.login(:drv1);
+CREATE TEMP TABLE k ON COMMIT DROP AS SELECT public.create_api_key((SELECT acme FROM o), 'Admin key', ARRAY['quotes']) ->> 'key' AS key;
+SELECT public.create_api_key((SELECT acme FROM o), 'Admin key 2', ARRAY['quotes']);
+SELECT tests.login(:cust2);
+SELECT public.create_api_key((SELECT beta FROM o), 'Beta key', ARRAY['quotes']);
+GRANT SELECT ON o, k TO service_role;
+-- Removed from the company: both of drv1's keys, and only theirs.
+SELECT tests.login(:cust1);
+SELECT public.remove_member((SELECT acme FROM o), :drv1);
+SET LOCAL ROLE postgres;
+SELECT tests.ok((SELECT array_agg(name ORDER BY name) FROM public.api_keys WHERE revoked_at IS NOT NULL) = ARRAY['Admin key', 'Admin key 2'],
+  'removing a member revokes every key they created there at once, and no other key');
+SELECT tests.ok((SELECT count(*) FROM public.api_events WHERE action = 'key.revoked' AND details ->> 'cause' = 'creator_removed'
+                   AND organization_id = (SELECT acme FROM o)) = 2, 'each revocation is in the company''s key log');
+SET LOCAL ROLE service_role;
+SELECT tests.as_server();
+SELECT tests.ok(public.api_begin(tests.key_hash((SELECT key FROM k)), 'quotes') ->> 'error' = 'key_revoked', 'the removed member''s key is refused');
+-- Suspended as a member: the owner's own keys stay unless the owner is suspended.
+SET LOCAL ROLE postgres;
+SELECT tests.login(:cust1);
+SELECT tests.ok((SELECT revoked_at IS NULL FROM public.api_keys WHERE name = 'Owner key'), 'the owner''s key is untouched');
+INSERT INTO public.organization_members (organization_id, user_id, role) VALUES ((SELECT acme FROM o), 'e0000000-0000-0000-0000-000000000001', 'owner');
+UPDATE public.organization_members SET status = 'suspended' WHERE organization_id = (SELECT acme FROM o) AND user_id = :cust1;
+SELECT tests.ok((SELECT revoked_at IS NOT NULL FROM public.api_keys WHERE name = 'Owner key')
+                AND (SELECT details ->> 'cause' FROM public.api_events WHERE action = 'key.revoked'
+                      AND api_key_id = (SELECT id FROM public.api_keys WHERE name = 'Owner key')) = 'creator_suspended',
+  'a suspended membership revokes the member''s keys, however it is changed (here directly in SQL)');
+SELECT tests.ok((SELECT revoked_at IS NULL FROM public.api_keys WHERE name = 'Beta key'),
+  'cust2''s key at Beta is not touched by what happens at Acme');
+-- An unchanged role (an update of something else) revokes nothing.
+UPDATE public.organization_members SET updated_at = now() WHERE organization_id = (SELECT beta FROM o) AND user_id = :cust2;
+SELECT tests.ok((SELECT revoked_at IS NULL FROM public.api_keys WHERE name = 'Beta key'), 'an owner who stays an owner keeps their keys');
+-- Beta's owner sees none of it.
+SET LOCAL ROLE authenticated;
+SELECT tests.login(:cust2);
+SELECT tests.ok(NOT EXISTS (SELECT 1 FROM public.api_events WHERE organization_id = (SELECT acme FROM o))
+                AND NOT EXISTS (SELECT 1 FROM public.api_keys WHERE organization_id = (SELECT acme FROM o)),
+  'no other company reads the keys or the log');
+ROLLBACK;
+
+-- ── 60 requests a minute per key, by default ──────────────────────────────
+BEGIN;
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.api_acme() AS id;
+SELECT tests.login(:cust1);
+CREATE TEMP TABLE k ON COMMIT DROP AS SELECT public.create_api_key((SELECT id FROM o), 'ERP', ARRAY['quotes']) ->> 'key' AS key;
+GRANT SELECT ON o, k TO service_role;
+SET LOCAL ROLE service_role;
+SELECT tests.as_server();
+CREATE TEMP TABLE r ON COMMIT DROP AS
+  SELECT n, public.api_begin(tests.key_hash((SELECT key FROM k)), 'quotes') AS r FROM generate_series(1, 61) n;
+SELECT tests.ok((SELECT bool_and((r ->> 'ok')::boolean) FROM r WHERE n <= 60) AND (SELECT (r ->> 'remaining')::int FROM r WHERE n = 60) = 0,
+  '60 requests in a minute are answered');
+SELECT tests.ok((SELECT r ->> 'error' = 'rate_limited' AND (r ->> 'status')::int = 429 FROM r WHERE n = 61), 'the 61st is refused (429)');
 ROLLBACK;
 
 \echo 'api keys: all checks passed'

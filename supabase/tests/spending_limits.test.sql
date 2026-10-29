@@ -213,7 +213,11 @@ SELECT tests.ok((SELECT status = 'approved' AND decided_by = :cust2
   'finance approves the owner''s booking');
 SELECT tests.ok(tests.check((SELECT id FROM b), 1500) ->> 'status' = 'pending', 'a higher server price than approved asks again');
 SELECT public.decide_booking_approval((SELECT id FROM b), true, NULL);
-SELECT tests.ok(tests.check((SELECT id FROM b)) ->> 'status' = 'approved', 'up to the approved amount the check passes it');
+SELECT tests.ok(tests.check((SELECT id FROM b), 1500) ->> 'status' = 'approved', 'the approved amount passes the check');
+SELECT tests.ok((tests.check((SELECT id FROM b)) -> 'reasons') ? 'price_changed',
+  'a lower price than approved asks again too: an approval is for its amount (00022)');
+SELECT public.decide_booking_approval((SELECT id FROM b), true, NULL, 1200);
+SELECT tests.ok(tests.check((SELECT id FROM b)) ->> 'status' = 'approved', 'approved again for 1200, the check passes it');
 SET LOCAL ROLE service_role;
 SELECT tests.as_server();
 SELECT public.book_on_invoice((SELECT id FROM b), :cust1);

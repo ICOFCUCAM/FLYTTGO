@@ -56,12 +56,22 @@ export function sellerSplit(flyttgoPrice: number, pricing: SellerPricing): Selle
 }
 
 /** What a company's page books (docs/SERVICE_PLATFORM.md): FlyttGo's moves
- * on a transport plan, otherwise the company's own module from its plan
- * ('none' when it only has others, e.g. a shop, 00020). */
+ * on a transport plan, otherwise the company's own module from its plan or
+ * an add-on on it ('none' when it only has others, e.g. a shop, 00020).
+ * The API add-on (00022) is not on the page and changes nothing here. */
 export type PageBooking = 'moves' | 'jobs' | 'appointments' | 'restaurant' | 'hotel' | 'none';
 
+/** Modules a company can have that are not part of its page. */
+const NOT_ON_PAGE: readonly string[] = ['api'];
+
+/** Whether the page shows a shop beside (or instead of) its booking: in the
+ * header and its navigation, and at /b/<slug>/shop. */
+export function pageHasShop(modules: readonly string[] | null | undefined): boolean {
+  return (modules ?? []).includes('shop');
+}
+
 export function bookingFor(modules: readonly string[] | null | undefined): PageBooking {
-  const m = modules ?? [];
+  const m = (modules ?? []).filter(x => !NOT_ON_PAGE.includes(x));
   if (m.includes('jobs')) return 'jobs';
   if (m.includes('appointments')) return 'appointments';
   if (m.includes('hotel_reservations')) return 'hotel';
@@ -84,7 +94,7 @@ export function sellerNotice(site: {
 }): string {
   const s = site.seller ?? {};
   const org = s.org_number ? ` (org. nr. ${s.org_number})` : '';
-  const outsideTransport = site.booking ? site.booking !== 'moves' : (site.modules?.length ?? 0) > 0;
+  const outsideTransport = site.booking ? site.booking !== 'moves' : bookingFor(site.modules) !== 'moves';
   if (outsideTransport) {
     return `${s.name ?? site.display_name ?? 'The company'}${org} is the seller of everything offered on this page. FlyttGo AS provides the booking and payment platform.`;
   }

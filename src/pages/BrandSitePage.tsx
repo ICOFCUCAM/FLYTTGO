@@ -55,6 +55,11 @@ export default function BrandSitePage() {
             : shopOnly ? 'Order online: pick up in the shop or have it delivered.' : 'Book online in a minute.')}</p>
           <button onClick={() => setPage(shopOnly ? 'shop' : 'booking')} style={{ background: accent, color: textOn(accent) }}
             className="px-6 py-3 rounded-xl font-semibold text-lg">{shopOnly ? 'Visit the shop' : bookingLabel(site.booking, 'Get a price and book')}</button>
+          {/* A booking module and a shop (an add-on, 00022): both ways in. */}
+          {site.shop && !shopOnly && (
+            <button onClick={() => setPage('shop')} style={{ borderColor: textOn(bg), color: textOn(bg) }}
+              className="ms-3 px-6 py-3 rounded-xl font-semibold text-lg border-2">Visit the shop</button>
+          )}
         </div>
       </section>
       {site.booking === 'moves' && <section className="max-w-4xl mx-auto px-4 py-12 grid md:grid-cols-3 gap-6 text-sm text-gray-600">

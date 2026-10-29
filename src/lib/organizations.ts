@@ -169,8 +169,9 @@ export const setMemberLimits = (orgId: string, userId: string, perBooking: numbe
   rpc('set_member_spending_limits', { p_org: orgId, p_user: userId, p_per_booking: perBooking, p_monthly: monthly });
 export const setSpendingRules = (orgId: string, approvalAbove: number | null, roles: OrgRole[], expiryHours: number) =>
   rpc('set_spending_rules', { p_org: orgId, p_approval_above: approvalAbove, p_approval_roles: roles, p_expiry_hours: expiryHours });
-export const decideApproval = (bookingId: string, approve: boolean, reason: string | null) =>
-  rpc('decide_booking_approval', { p_booking: bookingId, p_approve: approve, p_reason: reason });
+/** With the amount the approver saw: refused if the request has changed since (00022). */
+export const decideApproval = (bookingId: string, approve: boolean, reason: string | null, amount?: number | null) =>
+  rpc('decide_booking_approval', { p_booking: bookingId, p_approve: approve, p_reason: reason, p_amount: amount ?? null });
 
 /** The company's approval requests (RLS: owners, admins, finance; a booker their own). Ends expired ones first. */
 export async function loadApprovals(orgId: string): Promise<BookingApproval[]> {

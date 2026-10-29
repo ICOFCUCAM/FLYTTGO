@@ -1,7 +1,8 @@
 /**
  * The frame of a company's white-label page: its header (logo, name,
- * "Book a move", or its shop) and footer (who sells, terms, privacy, contact) in place
- * of FlyttGo's own. The seller is always stated (docs/WHITE_LABEL.md).
+ * "Book a move", or its shop, or both when the company has a booking module
+ * and a shop: 00022 add-ons) and footer (who sells, terms, privacy, contact)
+ * in place of FlyttGo's own. The seller is always stated (docs/WHITE_LABEL.md).
  */
 import { useApp } from '../../lib/store';
 import { bookingLabel, textOn, type PublicSite } from '../../lib/whiteLabel';
@@ -19,12 +20,20 @@ export function BrandHeader({ site }: { site: PublicSite }) {
             : null}
           <span className="font-bold text-lg truncate">{site.display_name}</span>
         </a>
-        {/* A page with only a shop: the shop in place of booking (00020). */}
-        <button onClick={() => setPage(site.shop && site.booking === 'none' ? 'shop' : 'booking')}
-          style={{ background: site.accent_color ?? '#10b981', color: textOn(site.accent_color ?? '#10b981') }}
-          className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">
-          {site.shop && site.booking === 'none' ? 'Shop' : bookingLabel(site.booking)}
-        </button>
+        <nav className="flex items-center gap-3">
+          {/* A booking module and a shop: the shop is a link beside the booking button. */}
+          {site.shop && site.booking !== 'none' && (
+            <button onClick={() => setPage('shop')} className="text-sm font-semibold underline-offset-4 hover:underline whitespace-nowrap">
+              Shop
+            </button>
+          )}
+          {/* A page with only a shop: the shop in place of booking (00020). */}
+          <button onClick={() => setPage(site.shop && site.booking === 'none' ? 'shop' : 'booking')}
+            style={{ background: site.accent_color ?? '#10b981', color: textOn(site.accent_color ?? '#10b981') }}
+            className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">
+            {site.shop && site.booking === 'none' ? 'Shop' : bookingLabel(site.booking)}
+          </button>
+        </nav>
       </div>
     </header>
   );

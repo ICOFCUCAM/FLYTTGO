@@ -9,6 +9,7 @@ Owner's decision (2026-10-29): use the recommendation, which is `pg_cron` and `p
 | `flyttgo-appointment-reminders` | every hour, :10 | | `appointment-reminders`: emails the day before an appointment or a table reservation and the day before a hotel arrival, once each ([`SERVICE_PLATFORM.md`](SERVICE_PLATFORM.md)) |
 | `flyttgo-accounting-cancellations` | daily 00:20 | 01:20 winter, 02:20 summer | `accounting.apply_cancellations()`: a cancelled accounting add-on ends after its last day ([`ACCOUNTING_CORE.md`](ACCOUNTING_CORE.md)) |
 | `flyttgo-shop-expiry` | every 5 minutes | | `expire_shop_orders()` (00020): unpaid shop orders past their time are cancelled and their stock comes back ([`SERVICE_PLATFORM.md`](SERVICE_PLATFORM.md)). Each new order does the same for its shop first, so the job only keeps the catalogue's stock current between orders. |
+| `flyttgo-approval-expiry` | every 15 minutes | | `expire_booking_approvals(NULL)` (00017), pure SQL: company bookings whose approval request is past its deadline are cancelled without a fee, and the request is logged as expired ([`ORGANIZATIONS.md`](ORGANIZATIONS.md), owner's decision 2026-10-29, [`DECISIONS.md`](DECISIONS.md) #42). A request past its deadline cannot be approved even before the job has run (`decide_booking_approval`); the job keeps the lists, the notifications and the bookings current. |
 
 pg_cron on Supabase runs in UTC, so the invoice run moves an hour with summer time. That is harmless: it runs once a day either way and each step is done once.
 

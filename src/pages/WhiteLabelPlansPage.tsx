@@ -2,11 +2,13 @@
  * Public page: white-label plans and prices (docs/WHITE_LABEL.md).
  * The two seller models side by side, who does what, what each plan
  * needs, and the prices from the database. Prices FlyttGo has not yet
- * confirmed are shown as proposals.
+ * confirmed are shown as proposals, or as pilot pricing where FlyttGo has
+ * accepted them provisionally for the pilot (00022), with what the set-up
+ * fee includes. Add-on modules and the API are priced by written quote.
  */
 import { useEffect, useState } from 'react';
 import { useApp } from '../lib/store';
-import { loadPlans, type WhiteLabelPlan } from '../lib/whiteLabel';
+import { PRICE_STATUS_LABELS, loadPlans, type WhiteLabelPlan } from '../lib/whiteLabel';
 import { formatNok } from '../lib/invoicing';
 import { supabase } from '../lib/supabase';
 import type { PriceTier } from '../accounting/types';
@@ -22,7 +24,8 @@ export default function WhiteLabelPlansPage() {
   useEffect(() => { loadPlans().then(setPlans); }, []);
   const [accounting, setAccounting] = useState<{ tiers: PriceTier[]; price_status: string } | null>(null);
   useEffect(() => { supabase.rpc('accounting_price').then(({ data }) => setAccounting(data ?? null)); }, []);
-  const proposed = (plans ?? []).some(p => p.price_status !== 'confirmed');
+  const proposed = (plans ?? []).some(p => p.price_status === 'proposed');
+  const pilot = (plans ?? []).some(p => p.price_status === 'pilot');
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -79,6 +82,11 @@ export default function WhiteLabelPlansPage() {
             Proposed prices: FlyttGo has not confirmed this price list yet. The price that applies is the one in your agreement.
           </div>
         )}
+        {pilot && (
+          <div className="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+            Pilot pricing: the plans marked so are priced provisionally for FlyttGo's pilot. The price that applies is the one in your agreement.
+          </div>
+        )}
         {plans === null ? <p className="text-sm text-gray-500">Loading plans…</p> : plans.length === 0 ? (
           <p className="text-sm text-gray-500">The price list can't be shown right now. Contact FlyttGo for prices.</p>
         ) : (
@@ -97,7 +105,17 @@ export default function WhiteLabelPlansPage() {
                     + platform fee {String(p.platform_fee_pct).replace('.', ',')} % of FlyttGo's price per booking, at least {formatNok(p.platform_fee_min)}
                   </div>
                 )}
-                {p.price_status !== 'confirmed' && <div className="text-xs text-yellow-700 mt-1">Proposed price</div>}
+                {p.price_status !== 'confirmed' && (
+                  <div className={`text-xs mt-1 ${p.price_status === 'pilot' ? 'text-sky-700 font-semibold' : 'text-yellow-700'}`}>
+                    {PRICE_STATUS_LABELS[p.price_status]} · excl. MVA
+                  </div>
+                )}
+                {p.setup_fee > 0 && (p.setup_fee_includes?.length ?? 0) > 0 && (
+                  <div className="text-xs text-gray-600 mt-2">
+                    <span className="font-semibold text-gray-700">The set-up fee includes:</span>
+                    <ul className="list-disc ms-4 mt-0.5 space-y-0.5">{p.setup_fee_includes!.map(f => <li key={f}>{f}</li>)}</ul>
+                  </div>
+                )}
                 {p.for_whom && <p className="text-xs text-gray-500 mt-3">{p.for_whom}</p>}
                 <ul className="text-sm text-gray-700 space-y-1.5 mt-4">{p.features.map(f => <Check key={f}>{f}</Check>)}</ul>
                 <div className="mt-4 text-xs">
@@ -117,6 +135,26 @@ export default function WhiteLabelPlansPage() {
             ))}
           </div>
         )}
+
+        <div className="mt-10 grid md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 text-sm text-gray-600">
+            <div className="text-xs font-semibold text-gray-500 mb-1">ADD-ON MODULES · ON YOUR PLAN</div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Combine modules</h3>
+            <p>
+              One plan per company, with modules added to it: for example, a salon on Appointments can add an online shop.
+              Your name, brand, team and booking set-up are shared; each module keeps its own settings and who may use it.
+              FlyttGo enables an add-on for you, priced by a written quote (or a pilot price agreed with you in writing).
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 text-sm text-gray-600">
+            <div className="text-xs font-semibold text-gray-500 mb-1">INCLUDED · AND AN ADD-ON</div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Booking widget and API</h3>
+            <p>
+              The booking widget for your own website is included in every plan. Access to the API (connecting your own systems with API keys)
+              is an add-on FlyttGo enables, priced by written quote. Bookings through the API are paid on your company's invoice.
+            </p>
+          </div>
+        </div>
 
         {accounting && accounting.tiers.length > 0 && (
           <div className="mt-10 bg-white rounded-2xl border border-gray-200 p-6">
