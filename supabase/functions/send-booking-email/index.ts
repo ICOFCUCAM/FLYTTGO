@@ -33,9 +33,11 @@
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { APPROVAL_REASON_LABELS, type ApprovalReason } from '../_shared/spending.ts';
 
 interface EmailRequest {
-  template: 'booking_confirmed' | 'driver_assigned' | 'delivery_complete' | 'payment_released' | 'reset_password';
+  template: 'booking_confirmed' | 'driver_assigned' | 'delivery_complete' | 'payment_released' | 'reset_password'
+          | 'approval_requested';
   to: string;
   bookingId?: string;
   data?: Record<string, unknown>;
@@ -134,6 +136,32 @@ function tplResetPassword(d: Record<string, unknown>): TemplateOutput {
   };
 }
 
+/* A company booking waits for an owner's, admin's or finance member's
+ * approval (spending limits, migration 00017). Sent by booking-charge.ts. */
+function tplApprovalRequested(d: Record<string, unknown>): TemplateOutput {
+  const esc = (v: unknown) => String(v ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const company = String(d.company ?? 'your company');
+  const amount  = Math.round(Number(d.amount ?? 0)).toLocaleString('nb-NO');
+  const reasons = Array.isArray(d.reasons) ? (d.reasons as unknown[]).map(r => APPROVAL_REASON_LABELS[r as ApprovalReason] ?? String(r)) : [];
+  const why     = reasons.join('; ') || 'it needs approval';
+  const until   = d.expiresAt ? new Date(String(d.expiresAt)).toLocaleString('nb-NO', { timeZone: 'Europe/Oslo' }) : null;
+  const pickup  = String(d.pickupAddress ?? 'TBC');
+  const dropoff = String(d.dropoffAddress ?? 'TBC');
+  const link    = 'https://flyttgo.no/business/dashboard';
+  return {
+    subject: `A booking for ${company} is waiting for your approval`,
+    text: `A booking of ${amount} NOK for ${company} is waiting for your approval: ${why}.\n`
+      + `Pickup: ${pickup}\nDelivery: ${dropoff}\n`
+      + (until ? `Without a decision by ${until} it is cancelled without any fee.\n` : '')
+      + `Approve or refuse it under Shipments: ${link}`,
+    html: `<div style="font-family: sans-serif;"><h1>Waiting for your approval</h1>`
+      + `<p>A booking of <strong>${esc(amount)} NOK</strong> for ${esc(company)} is waiting for your approval: ${esc(why)}.</p>`
+      + `<p>Pickup: ${esc(pickup)}<br>Delivery: ${esc(dropoff)}</p>`
+      + (until ? `<p>Without a decision by ${esc(until)} it is cancelled without any fee.</p>` : '')
+      + `<p><a href="${link}">Approve or refuse it under Shipments</a></p></div>`,
+  };
+}
+
 function buildTemplate(template: EmailRequest['template'], data: Record<string, unknown> = {}): TemplateOutput {
   switch (template) {
     case 'booking_confirmed': return tplBookingConfirmed(data);
@@ -141,6 +169,7 @@ function buildTemplate(template: EmailRequest['template'], data: Record<string, 
     case 'delivery_complete': return tplDeliveryComplete(data);
     case 'payment_released':  return tplPaymentReleased(data);
     case 'reset_password':    return tplResetPassword(data);
+    case 'approval_requested': return tplApprovalRequested(data);
     default: throw new Error(`Unknown template: ${template}`);
   }
 }

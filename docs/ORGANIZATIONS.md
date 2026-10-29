@@ -74,9 +74,33 @@ Production has these two tables (both empty, not defined in this repository, adm
 
 FlyttGo's own invoicing, payment terms per company, branding on the special plan and the dormant credit check: see [`INVOICING.md`](INVOICING.md).
 
+## Spending limits and approval (migration 00017)
+
+Migration `supabase/migrations/00017_spending_limits.sql`, rollback `supabase/rollback/00017_down.sql`. **Not applied anywhere.** It uses the one booking, payment and dispatch engine; nothing here creates, prices, pays or dispatches a booking.
+
+| | |
+|---|---|
+| **Limits per member** | A limit per booking and a monthly limit (NOK incl. MVA; empty: no limit). The month is the Europe/Oslo calendar month the booking was made in. Set in the Team tab. Owners set anyone's limits but their own; admins those below admin (booker, finance, viewer, staff); finance those of bookers, viewers and staff. Nobody sets their own. The limits go with the membership: a member who leaves and rejoins starts without limits. |
+| **What counts towards the month** | The member's company bookings made that month that are not cancelled and are either paid (or on invoice) or have passed the server's check (within limits, waiting or approved). An unpaid booking the server never checked commits nothing yet. Cancelling a booking, refused and expired ones included, takes it out. |
+| **Approval rules** | Per company, set by owners, admins and finance: bookings above an amount, and every booking by members with given roles (owner, admin, booker). Going over a member's limit always needs approval. Requests expire after a set number of hours (default 168, at most 720), or at the move date if that comes first. |
+| **Where it is enforced** | On the server, when a company booking is about to be paid: `chargeForBooking()` (`_shared/booking-charge.ts`), used by `book-on-invoice`, `create-checkout-session` and `create-vipps-session`, prices the booking and calls `company_booking_check(booking, caller, amount)` with the server's price, never the browser's. Within the limits and rules it goes ahead as before. Otherwise nothing is charged: the function answers `409 { awaitingApproval: true, approval }`, the approvers are told in the app (notifications) and by email (`send-booking-email`, template `approval_requested`), and the booker sees "Sent for approval". |
+| **The waiting booking** | It stays an ordinary unpaid booking (`status` and `payment_status` both `pending`), which already keeps it out of the driver pool, dispatch and the invoice run. While the request is open, the trigger `hold_booking_for_approval` refuses paying it, putting it on invoice, capturing it, assigning a driver or moving its status, for every role, the server and administrators included (so no webhook or manual dispatch can get round it). Only cancelling works; it withdraws the request. No second booking state, engine or status value. |
+| **Approving** | `decide_booking_approval(booking, approve, reason)`: an owner, admin or finance member of the active company, never the person who booked, whatever role they hold. A refusal needs a reason. After approval the booker completes the booking as usual (My bookings → Complete payment; card, Vipps or invoice); the next check passes it up to the approved amount, and a higher server price asks again. |
+| **Refused or expired** | The booking is cancelled by the platform with the reason. It was never paid or invoiced: no fee, nothing to refund, and the invoice run does not bill it as a cancellation. `expire_booking_approvals(org)` ends overdue requests; the app runs it before showing the list, and the server can run it for all companies. |
+| **Log** | Every check and decision (`within_limits`, `requested`, `amount_changed`, `approved`, `refused`, `expired`, `withdrawn`) is in `company_booking_approval_events`, append-only for every role. Changes of limits and rules go to `organization_events` (`spending.limits`, `spending.rules`). |
+| **Who reads** | Owners, admins and finance: the company's limits, requests and log, everyone's spend this month (`organization_spending(org)`). A member: their own limits and spend, the rules, and the requests for their own bookings with the decision and reason. Other companies and anonymous visitors: nothing. Nobody writes the tables directly. |
+
+In the app: the **Team** tab shows each member's limits and this month's spend, with **Limits** to change them and the **Approval rules** card; **Shipments** lists "Waiting for approval" with Approve and Refuse… and an Approval column; **My bookings** and the payment page show the booker the status and the reason.
+
+**Deploying** needs the migration first, then the changed functions `book-on-invoice`, `create-checkout-session`, `create-vipps-session` (all through `_shared/booking-charge.ts`) and `send-booking-email`, and the frontend (the earlier payment page shows the waiting message as an error). Without the migration the changed functions refuse company bookings (the check function is missing).
+
+**Rolling back** cancels the bookings still waiting for approval first (by the platform, without a fee; a notice says how many), since without the hold they would become payable unapproved, then drops the four tables and their functions.
+
+**Tests:** `supabase/tests/spending_limits.test.sql` (75 checks, on both schemas: limits per booking and per month, the Oslo month, rules by amount and role, approval by another role, self-approval refused, waiting bookings not payable, not on invoice, not seen or taken by drivers, not invoiced, refusal and expiry without a fee, the append-only log, isolation between companies); the rollback-with-data pass leaves a booking waiting; `src/test/spending.test.ts` for the shared rules (`_shared/spending.ts`).
+
 ## Not yet built
 
-- Per-member spending limits and approval rules (step 4, company bookings). Bookings, invoices, credit and API keys will require `is_active_org_member()`.
+- Company API keys (the dashboard's API tab is still a preview). Like bookings, invoices and credit, they will require `is_active_org_member()`.
 
 ## Tests
 

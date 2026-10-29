@@ -46,7 +46,9 @@
 // be awaiting payment. The amount is computed on the server from the
 // booking (_shared/booking-charge.ts); an `amount` in the body is
 // ignored. Driver subscriptions are not sold through Vipps yet: a
-// `type: "subscription"` request is refused with 400.
+// `type: "subscription"` request is refused with 400. A company booking
+// that needs the company's approval (spending limits, migration 00017)
+// gets no Vipps payment: 409 { awaitingApproval: true, approval }.
 //
 // FRONTEND RESPONSE (200)
 // -----------------------
@@ -61,7 +63,7 @@
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { serviceClient, getCaller } from '../_shared/auth.ts';
-import { chargeForBooking } from '../_shared/booking-charge.ts';
+import { chargeForBooking, chargeRefusal } from '../_shared/booking-charge.ts';
 import { VIPPS_BASE, vippsApiHeaders, vippsMissingConfig } from '../_shared/vipps.ts';
 
 /* ─── Env ──────────────────────────────────────────────────────── */
@@ -206,7 +208,8 @@ serve(async (req: Request) => {
   }
 
   const charge = await chargeForBooking(db, body.bookingId, caller.id);
-  if (!charge.ok) return json({ error: charge.error }, charge.status);
+  /* Waits for the company's approval (409, awaitingApproval): no Vipps payment yet. */
+  if (!charge.ok) return json(chargeRefusal(charge), charge.status);
 
   try {
     const session = await createCheckoutSession({ bookingId: body.bookingId, amount: charge.amountNok });
