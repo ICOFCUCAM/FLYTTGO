@@ -40,8 +40,8 @@ SELECT tests.throws($$SELECT accounting.request_ledger((SELECT id FROM o), make_
 SELECT tests.login(:cust1);
 SELECT tests.throws($$SELECT accounting.request_ledger((SELECT id FROM o), make_date((SELECT last FROM y), 1, 15))$$, '22023',
   'the books start on the first day of a month');
-SELECT accounting.request_ledger((SELECT id FROM o), make_date((SELECT last FROM y), 1, 1));
-SELECT tests.ok((SELECT status FROM accounting.ledgers WHERE id = tests.ledger()) = 'requested', 'the owner asks for it');
+SELECT accounting.request_ledger((SELECT id FROM o), make_date((SELECT last FROM y), 1, 1), 'bimonthly', 3500000);
+SELECT tests.ok((SELECT status FROM accounting.ledgers WHERE id = tests.ledger()) = 'requested', 'the owner asks for it, stating the turnover');
 SELECT tests.throws($$SELECT accounting.decide_ledger(tests.ledger(), true, 199, NULL)$$, '42501', 'the company cannot approve itself');
 SELECT tests.throws($$SELECT accounting.post_voucher(tests.ledger(), current_date, 'x', '[]')$$, '55000', 'nothing is posted before approval');
 
@@ -55,11 +55,10 @@ SELECT public.issue_invoice((SELECT id FROM i1));
 
 SELECT tests.login(:admin);
 SET LOCAL ROLE authenticated;
-SELECT tests.throws($$SELECT accounting.decide_ledger(tests.ledger(), true, NULL, NULL)$$, '22023', 'approving needs the monthly price');
-SELECT accounting.decide_ledger(tests.ledger(), true, 199, 'Velkommen');
-SELECT tests.ok((SELECT monthly_fee FROM accounting.ledgers WHERE id = tests.ledger()) = 199
+SELECT accounting.decide_ledger(tests.ledger(), true, NULL, 'Velkommen');
+SELECT tests.ok((SELECT monthly_fee FROM accounting.ledgers WHERE id = tests.ledger()) IS NULL
                 AND (SELECT status FROM accounting.ledgers WHERE id = tests.ledger()) = 'active',
-  'FlyttGo approves it with its monthly price');
+  'FlyttGo approves it on the price list (no agreed price)');
 SELECT tests.ok((SELECT count(*) FROM accounting.accounts WHERE ledger_id = tests.ledger()) = 0,
   'FlyttGo''s administrators see the ledger row, never the company''s books');
 
@@ -232,8 +231,14 @@ SELECT tests.ok((SELECT count(*) FROM accounting.vouchers WHERE ledger_id = test
 -- Billing the add-on
 SET LOCAL ROLE service_role;
 SELECT tests.login(NULL, 'service_role');
-SELECT tests.ok((SELECT monthly_fee FROM public.accounting_billable(current_date) WHERE ledger_id = tests.ledger()) = 199,
-  'the invoice run bills the add-on at its approved price');
+SELECT tests.ok((SELECT tier || ':' || monthly_fee FROM public.accounting_billable(current_date) WHERE ledger_id = tests.ledger()) = 'Start:199',
+  'priced by last year''s income in the books (a few thousand kroner): Start, 199 a month');
+SELECT tests.ok((public.accounting_tier(tests.ledger(), make_date((SELECT last FROM y), 6, 1)) ->> 'tier') = 'Small',
+  'a year whose previous year is not in the books uses the declared 3.5 million: Small');
+RESET ROLE;
+UPDATE accounting.ledgers SET monthly_fee = 9900 WHERE id = tests.ledger();
+SET LOCAL ROLE service_role;
+SELECT tests.ok((public.accounting_tier(tests.ledger()) ->> 'monthly_fee')::numeric = 9900, 'an agreed price wins over the list');
 SET LOCAL ROLE authenticated;
 
 -- Ending

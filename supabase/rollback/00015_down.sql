@@ -18,8 +18,9 @@ DROP FUNCTION IF EXISTS public.accounting_post_reminder(uuid);
 DROP FUNCTION IF EXISTS public.accounting_post_payment(uuid);
 DROP FUNCTION IF EXISTS public.accounting_post_invoice(uuid);
 DROP FUNCTION IF EXISTS public.accounting_billable(date);
+DROP FUNCTION IF EXISTS public.accounting_tier(uuid, date);
 DROP FUNCTION IF EXISTS public.accounting_price();
-DELETE FROM public.platform_config WHERE config_key IN ('accounting_monthly_fee', 'accounting_price_status');
+DELETE FROM public.platform_config WHERE config_key IN ('accounting_price_tiers', 'accounting_price_status');
 
 DO $$
 BEGIN

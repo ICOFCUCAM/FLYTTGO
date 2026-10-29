@@ -103,7 +103,8 @@ CREATE TABLE IF NOT EXISTS accounting.ledgers (
   start_date     date        NOT NULL CHECK (extract(day FROM start_date) = 1),
   auto_post      boolean     NOT NULL DEFAULT true,
   locked_until   date,
-  monthly_fee    numeric     CHECK (monthly_fee IS NULL OR monthly_fee >= 0),
+  monthly_fee    numeric     CHECK (monthly_fee IS NULL OR monthly_fee >= 0),   -- agreed price; null: the host's price list
+  declared_turnover numeric  CHECK (declared_turnover IS NULL OR declared_turnover >= 0),  -- a year's income, as the company states it at the start
   requested_by   uuid,
   decided_by     uuid,
   decided_at     timestamptz,
@@ -506,7 +507,9 @@ END $$;
 
 
 -- ── 6. Opening and running a ledger ─────────────────────────────────────────
-CREATE OR REPLACE FUNCTION accounting.request_ledger(p_tenant uuid, p_start date, p_mva_term text DEFAULT 'bimonthly')
+DROP FUNCTION IF EXISTS accounting.request_ledger(uuid, date, text);
+CREATE OR REPLACE FUNCTION accounting.request_ledger(p_tenant uuid, p_start date, p_mva_term text DEFAULT 'bimonthly',
+                                                    p_declared_turnover numeric DEFAULT NULL)
 RETURNS accounting.ledgers
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
@@ -526,11 +529,16 @@ BEGIN
   IF FOUND AND l.status IN ('active', 'ended') THEN
     RAISE EXCEPTION 'accounting: the company''s ledger is already %', l.status USING ERRCODE = '55000';
   END IF;
-  INSERT INTO accounting.ledgers AS x (tenant_id, status, legal_name, org_number, vat_registered, mva_term, start_date, requested_by)
+  IF p_declared_turnover IS NOT NULL AND p_declared_turnover < 0 THEN
+    RAISE EXCEPTION 'accounting: the turnover cannot be negative' USING ERRCODE = '22023';
+  END IF;
+  INSERT INTO accounting.ledgers AS x (tenant_id, status, legal_name, org_number, vat_registered, mva_term, start_date,
+                                       declared_turnover, requested_by)
   VALUES (p_tenant, 'requested', t ->> 'legal_name', t ->> 'org_number', coalesce((t ->> 'vat_registered')::boolean, false),
-          coalesce(p_mva_term, 'bimonthly'), p_start, auth.uid())
+          coalesce(p_mva_term, 'bimonthly'), p_start, p_declared_turnover, auth.uid())
   ON CONFLICT (tenant_id) DO UPDATE SET status = 'requested', legal_name = EXCLUDED.legal_name, org_number = EXCLUDED.org_number,
     vat_registered = EXCLUDED.vat_registered, start_date = EXCLUDED.start_date, mva_term = EXCLUDED.mva_term,
+    declared_turnover = EXCLUDED.declared_turnover,
     requested_by = EXCLUDED.requested_by, decided_by = NULL, decided_at = NULL, decision_note = NULL
   RETURNING * INTO l;
   PERFORM accounting.log(l.id, 'ledger.requested', jsonb_build_object('start_date', p_start, 'mva_term', l.mva_term));
@@ -547,7 +555,6 @@ BEGIN
   IF NOT accounting.host_is_operator() THEN RAISE EXCEPTION 'accounting: the platform''s administrators decide' USING ERRCODE = '42501'; END IF;
   SELECT * INTO l FROM accounting.ledgers WHERE id = p_ledger FOR UPDATE;
   IF NOT FOUND OR l.status <> 'requested' THEN RAISE EXCEPTION 'accounting: nothing to decide' USING ERRCODE = '55000'; END IF;
-  IF p_approve AND p_monthly_fee IS NULL THEN RAISE EXCEPTION 'accounting: approving needs the monthly price' USING ERRCODE = '22023'; END IF;
   UPDATE accounting.ledgers SET status = CASE WHEN p_approve THEN 'active' ELSE 'declined' END,
          monthly_fee = CASE WHEN p_approve THEN p_monthly_fee END,
          decided_by = auth.uid(), decided_at = now(), decision_note = nullif(btrim(coalesce(p_note, '')), '')
@@ -1029,6 +1036,17 @@ BEGIN
 END $$;
 
 
+-- The income in a period (accounts 3xxx, without the year-end transfer):
+-- what a price by turnover reads.
+CREATE OR REPLACE FUNCTION accounting.turnover(p_ledger uuid, p_from date, p_to date)
+RETURNS numeric
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+  SELECT coalesce(sum(vl.credit - vl.debit), 0)
+    FROM accounting.voucher_lines vl JOIN accounting.vouchers v ON v.id = vl.voucher_id
+   WHERE vl.ledger_id = p_ledger AND vl.account_code LIKE '3%' AND v.voucher_date BETWEEN p_from AND p_to;
+$$;
+
 -- ── 8. Reports ──────────────────────────────────────────────────────────────
 -- Saldobalanse: per account, the balance before the period, its debits and
 -- credits, and the balance after. Income statement accounts (3–8) start
@@ -1256,7 +1274,7 @@ GRANT EXECUTE ON FUNCTION
   accounting.invite(uuid, text, text, text, text, date), accounting.accept_invitation(text), accounting.revoke_invitation(uuid),
   accounting.update_member(uuid, uuid, text, date), accounting.remove_member(uuid, uuid, text),
   accounting.add_note(uuid, uuid, text), accounting.my_ledgers(),
-  accounting.request_ledger(uuid, date, text), accounting.decide_ledger(uuid, boolean, numeric, text),
+  accounting.request_ledger(uuid, date, text, numeric), accounting.decide_ledger(uuid, boolean, numeric, text),
   accounting.open_house_ledger(text, text, date, text), accounting.set_settings(uuid, jsonb),
   accounting.save_account(uuid, text, text, text, boolean), accounting.set_posting_account(uuid, text, text),
   accounting.end_ledger(uuid, text), accounting.post_voucher(uuid, date, text, jsonb),

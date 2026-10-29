@@ -77,10 +77,17 @@ BEGIN
 END $$;
 
 
--- ── 2. The add-on's price (excl. MVA), proposed until FlyttGo confirms it ──
+-- ── 2. The add-on's price (excl. MVA), by the company's turnover ──────────
+-- Owner's decision 2026-10-29: the price follows the company's size. The
+-- band is read from the books: last calendar year's income (accounts 3xxx)
+-- once the books hold that whole year, before that the turnover the
+-- company declared when it asked. Reassessed each 1 January, never in the
+-- middle of a year. Above the last band the price is agreed (the ledger's
+-- monthly_fee); an agreed price always wins. Proposed until FlyttGo
+-- confirms it.
 INSERT INTO public.platform_config (config_key, config_value)
-SELECT 'accounting_monthly_fee', '199'
- WHERE NOT EXISTS (SELECT 1 FROM public.platform_config WHERE config_key = 'accounting_monthly_fee');
+SELECT 'accounting_price_tiers', '[{"name":"Start","up_to":1000000,"monthly_fee":199},{"name":"Small","up_to":5000000,"monthly_fee":499},{"name":"Medium","up_to":20000000,"monthly_fee":1290},{"name":"Large","up_to":100000000,"monthly_fee":2990},{"name":"Enterprise","up_to":null,"monthly_fee":null}]'
+ WHERE NOT EXISTS (SELECT 1 FROM public.platform_config WHERE config_key = 'accounting_price_tiers');
 INSERT INTO public.platform_config (config_key, config_value)
 SELECT 'accounting_price_status', 'proposed'
  WHERE NOT EXISTS (SELECT 1 FROM public.platform_config WHERE config_key = 'accounting_price_status');
@@ -90,22 +97,53 @@ CREATE OR REPLACE FUNCTION public.accounting_price()
 RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
 AS $$
-  SELECT jsonb_build_object('monthly_fee', public.config_text('accounting_monthly_fee')::numeric,
+  SELECT jsonb_build_object('tiers', coalesce(public.config_text('accounting_price_tiers'), '[]')::jsonb,
                             'price_status', coalesce(public.config_text('accounting_price_status'), 'proposed'));
 $$;
 GRANT EXECUTE ON FUNCTION public.accounting_price() TO anon, authenticated;
 
+-- The band and price of a ledger for a month: the turnover it is based on
+-- and where that came from.
+CREATE OR REPLACE FUNCTION public.accounting_tier(p_ledger uuid, p_month date DEFAULT NULL)
+RETURNS jsonb
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE l accounting.ledgers%ROWTYPE; v_month date := date_trunc('month', coalesce(p_month, current_date))::date;
+        v_year integer := extract(year FROM v_month)::int - 1; v_turnover numeric; v_basis text; t jsonb;
+BEGIN
+  SELECT * INTO l FROM accounting.ledgers WHERE id = p_ledger;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  IF NOT (public.is_admin() OR public.is_server() OR accounting.can_read(p_ledger) OR accounting.can_manage(p_ledger)) THEN
+    RAISE EXCEPTION 'accounting: not your ledger' USING ERRCODE = '42501';
+  END IF;
+  IF l.start_date <= make_date(v_year, 1, 1) THEN
+    v_turnover := accounting.turnover(p_ledger, make_date(v_year, 1, 1), make_date(v_year, 12, 31)); v_basis := 'books ' || v_year;
+  ELSE
+    v_turnover := coalesce(l.declared_turnover, 0); v_basis := 'declared';
+  END IF;
+  SELECT x INTO t FROM jsonb_array_elements(coalesce(public.config_text('accounting_price_tiers'), '[]')::jsonb) x
+   WHERE x ->> 'up_to' IS NULL OR v_turnover < (x ->> 'up_to')::numeric
+   ORDER BY coalesce((x ->> 'up_to')::numeric, 'Infinity'::numeric) LIMIT 1;
+  RETURN jsonb_build_object('tier', t ->> 'name', 'turnover', v_turnover, 'basis', v_basis,
+                            'list_fee', (t ->> 'monthly_fee')::numeric, 'agreed_fee', l.monthly_fee,
+                            'monthly_fee', coalesce(l.monthly_fee, (t ->> 'monthly_fee')::numeric));
+END $$;
+GRANT EXECUTE ON FUNCTION public.accounting_tier(uuid, date) TO authenticated, service_role;
+
 -- What the invoice run bills for the add-on: each active company ledger,
--- monthly in advance from the month it was approved.
+-- monthly in advance from the month it was approved. A ledger in the
+-- Enterprise band without an agreed price is listed with no fee, for
+-- FlyttGo to agree one; nothing is billed for it until then.
 CREATE OR REPLACE FUNCTION public.accounting_billable(p_month date)
-RETURNS TABLE (organization_id uuid, ledger_id uuid, monthly_fee numeric)
+RETURNS TABLE (organization_id uuid, ledger_id uuid, tier text, turnover numeric, monthly_fee numeric)
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
 AS $$
 BEGIN
   IF NOT public.is_server() THEN RAISE EXCEPTION 'accounting: the server only' USING ERRCODE = '42501'; END IF;
   RETURN QUERY
-  SELECT l.tenant_id, l.id, l.monthly_fee FROM accounting.ledgers l
-   WHERE l.tenant_id IS NOT NULL AND l.status = 'active' AND coalesce(l.monthly_fee, 0) > 0
+  SELECT l.tenant_id, l.id, t ->> 'tier', (t ->> 'turnover')::numeric, (t ->> 'monthly_fee')::numeric
+    FROM accounting.ledgers l CROSS JOIN LATERAL public.accounting_tier(l.id, p_month) t
+   WHERE l.tenant_id IS NOT NULL AND l.status = 'active'
      AND date_trunc('month', l.decided_at AT TIME ZONE 'Europe/Oslo')::date <= date_trunc('month', p_month)::date;
 END $$;
 REVOKE ALL ON FUNCTION public.accounting_billable(date) FROM PUBLIC, anon, authenticated;
