@@ -25,6 +25,7 @@ const WhiteLabelDpaPage    = lazy(() => import('../pages/WhiteLabelDpaPage'));
 const BrandSitePage        = lazy(() => import('../pages/BrandSitePage'));
 const ServiceBookingPage   = lazy(() => import('../pages/ServiceBookingPage'));
 const MyServicesPage       = lazy(() => import('../pages/MyServicesPage'));
+const ShopPage             = lazy(() => import('../pages/ShopPage'));
 const AccountingPage       = lazy(() => import('../pages/AccountingPage'));
 const ServicesPage       = lazy(() => import('../pages/ServicesPage'));
 const CorporatePage             = lazy(() => import('../pages/CorporatePage'));
@@ -63,9 +64,11 @@ export default function AppLayout() {
   /* On a company's white-label page its own header and footer replace
    * FlyttGo's (the booking flow keeps working as usual underneath). */
   const { site } = useWhiteLabel();
-  const branded = !!site && ['brand-site', 'booking', 'payment', 'my-bookings', 'my-services', 'tracking', 'auth-callback', 'terms', 'privacy'].includes(currentPage);
-  /* A company outside moving books its own jobs or appointments, not moves. */
+  const branded = !!site && ['brand-site', 'booking', 'shop', 'payment', 'my-bookings', 'my-services', 'tracking', 'auth-callback', 'terms', 'privacy'].includes(currentPage);
+  /* A company outside moving books its own jobs or appointments, not moves;
+   * a page with only a shop sends "book" to the shop (00020). */
   const ownBooking = !!site && (site.booking === 'jobs' || site.booking === 'appointments');
+  const shopOnly = !!site && site.booking === 'none' && !!site.shop;
 
   /* Scroll to the top of the viewport whenever the current page
    * changes. Without this, clicking a link from deep down the page
@@ -81,12 +84,12 @@ export default function AppLayout() {
    * for Supabase email-confirmation / OAuth redirects — chrome would
    * just be visual noise during the ~100 ms session handoff. */
   const showHeader = currentPage !== 'auth-callback';
-  const showFooter = !['booking', 'driver-portal', 'admin', 'auth-callback'].includes(currentPage) || (currentPage === 'booking' && ownBooking);
+  const showFooter = !['booking', 'driver-portal', 'admin', 'auth-callback'].includes(currentPage) || (currentPage === 'booking' && (ownBooking || shopOnly));
 
   const renderPage = () => {
     switch (currentPage) {
       case 'home':             return <HomePage />;
-      case 'booking':          return ownBooking ? <ServiceBookingPage /> : <BookingFlow />;
+      case 'booking':          return ownBooking ? <ServiceBookingPage /> : shopOnly ? <ShopPage /> : <BookingFlow />;
       case 'driver-portal':    return <DriverPortal />;
       case 'driver-onboarding':return <DriverOnboarding />;
       case 'checklist':        return <MovingChecklist />;
@@ -125,6 +128,7 @@ export default function AppLayout() {
       case 'white-label-dpa':        return <WhiteLabelDpaPage />;
       case 'brand-site':             return <BrandSitePage />;
       case 'my-services':            return <MyServicesPage />;
+      case 'shop':                   return <ShopPage />;
       case 'accounting':             return <AccountingPage />;
       case 'not-found':              return <NotFoundPage />;
       default:                       return <NotFoundPage />;

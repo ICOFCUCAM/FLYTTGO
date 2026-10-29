@@ -54,6 +54,8 @@ export interface PublicSite {
   seller_notice: string;
   /** What the page books: FlyttGo's moves, or the company's Jobs or Appointments. */
   booking: 'moves' | 'jobs' | 'appointments' | 'none';
+  /** The page has a shop (module 'shop', 00020): /b/<slug>/shop. */
+  shop?: boolean;
   modules: string[];
   pages: string[];
   page: { path: string; html: string } | null;

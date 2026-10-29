@@ -8,7 +8,8 @@
 // database decides that (white_label_public).
 //
 // Returns the brand, the seller (FlyttGo under Model A, the company under
-// Model B), the seller notice, a short-lived link to the logo and, when the
+// Model B), the seller notice, which booking and whether a shop the page
+// offers, a short-lived link to the logo and, when the
 // company chose a website template, the requested page rendered with its
 // brand (_shared/site-template.ts: sanitised again here; the browser shows
 // it in a sandboxed iframe without scripts).
@@ -49,13 +50,15 @@ serve(async (req: Request) => {
     const { data } = await db.storage.from('organization-logos').createSignedUrl(site.logo_path, 3600);
     logoUrl = data?.signedUrl ?? null;
   }
-  const notice = sellerNotice(site);
   /* Which booking the page offers: FlyttGo's moves (transport plans), or the
    * company's own Jobs or Appointments module (docs/SERVICE_PLATFORM.md). */
   const { data: plan } = await db.from('white_label_plans').select('modules').eq('code', site.plan).maybeSingle();
   const modules: string[] = plan?.modules ?? [];
+  const notice = sellerNotice({ ...site, modules });
   const booking = modules.includes('jobs') ? 'jobs' : modules.includes('appointments') ? 'appointments'
     : modules.length === 0 ? 'moves' : 'none';
+  /* And whether it has a shop (00020): the catalogue at /b/<slug>/shop. */
+  const shop = modules.includes('shop');
 
   let page: { path: string; html: string } | null = null;
   let pages: string[] = [];
@@ -74,7 +77,8 @@ serve(async (req: Request) => {
                      city: site.city, primaryColor: site.primary_color, accentColor: site.accent_color },
             assets: (t.assets ?? []) as TemplateAsset[],
             pageUrl: (path) => path === '/' ? (base || '/') : `${base || '/'}?page=${encodeURIComponent(path)}`,
-            bookingUrl: `${base}/book`,
+            /* A page with only a shop: its "book" links lead to the shop. */
+            bookingUrl: shop && booking === 'none' ? `${base}/shop` : `${base}/book`,
             sellerNotice: notice,
             assetHosts: [new URL(Deno.env.get('SUPABASE_URL')!).host],
           }),
@@ -83,5 +87,5 @@ serve(async (req: Request) => {
     }
   }
 
-  return json({ ...site, logo_path: undefined, logo_url: logoUrl, seller_notice: notice, modules, booking, pages, page });
+  return json({ ...site, logo_path: undefined, logo_url: logoUrl, seller_notice: notice, modules, booking, shop, pages, page });
 });

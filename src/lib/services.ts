@@ -32,7 +32,7 @@ const rpc = async (fn: string, args: Record<string, unknown>) => err((await supa
 /* ── Company ───────────────────────────────────────────────────────── */
 export const setIndustry = (orgId: string, industry: string) => rpc('set_organization_industry', { p_org: orgId, p_industry: industry });
 
-export async function hasModule(orgId: string, module: 'jobs' | 'appointments' | 'sales_invoicing'): Promise<boolean> {
+export async function hasModule(orgId: string, module: 'jobs' | 'appointments' | 'shop' | 'sales_invoicing'): Promise<boolean> {
   const { data } = await supabase.rpc('org_has_module', { p_org: orgId, p_module: module });
   return !!data;
 }

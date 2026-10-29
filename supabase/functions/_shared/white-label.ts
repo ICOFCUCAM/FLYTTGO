@@ -55,14 +55,20 @@ export function sellerSplit(flyttgoPrice: number, pricing: SellerPricing): Selle
   };
 }
 
-/** The public page's seller notice, shown on every page and at payment. */
+/** The public page's seller notice, shown on every page and at payment.
+ *  A page outside transport (its plan has modules: jobs, appointments, a
+ *  shop) sells the company's own work and goods, not moves. */
 export function sellerNotice(site: {
   seller_model: 'flyttgo' | 'company';
   display_name?: string | null;
   seller?: { name?: string | null; org_number?: string | null } | null;
+  modules?: string[] | null;
 }): string {
   const s = site.seller ?? {};
   const org = s.org_number ? ` (org. nr. ${s.org_number})` : '';
+  if (site.seller_model === 'company' && (site.modules?.length ?? 0) > 0) {
+    return `${s.name ?? site.display_name ?? 'The company'}${org} is the seller of everything offered on this page. FlyttGo AS provides the booking and payment platform.`;
+  }
   return site.seller_model === 'company'
     ? `${s.name ?? site.display_name ?? 'The company'}${org} sells the moves booked here. FlyttGo AS carries them out as its subcontractor.`
     : `Moves booked here are sold and carried out by ${s.name ?? 'FlyttGo AS'}${org}, for ${site.display_name ?? 'this company'}.`;

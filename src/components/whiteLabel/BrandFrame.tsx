@@ -1,6 +1,6 @@
 /**
  * The frame of a company's white-label page: its header (logo, name,
- * "Book a move") and footer (who sells, terms, privacy, contact) in place
+ * "Book a move", or its shop) and footer (who sells, terms, privacy, contact) in place
  * of FlyttGo's own. The seller is always stated (docs/WHITE_LABEL.md).
  */
 import { useApp } from '../../lib/store';
@@ -19,10 +19,12 @@ export function BrandHeader({ site }: { site: PublicSite }) {
             : null}
           <span className="font-bold text-lg truncate">{site.display_name}</span>
         </a>
-        <button onClick={() => setPage('booking')}
+        {/* A page with only a shop: the shop in place of booking (00020). */}
+        <button onClick={() => setPage(site.shop && site.booking === 'none' ? 'shop' : 'booking')}
           style={{ background: site.accent_color ?? '#10b981', color: textOn(site.accent_color ?? '#10b981') }}
           className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">
-          {site.booking === 'jobs' ? 'Ask for a job' : site.booking === 'appointments' ? 'Book a time' : 'Book a move'}
+          {site.shop && site.booking === 'none' ? 'Shop'
+            : site.booking === 'jobs' ? 'Ask for a job' : site.booking === 'appointments' ? 'Book a time' : 'Book a move'}
         </button>
       </div>
     </header>

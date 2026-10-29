@@ -67,16 +67,24 @@ export async function stripeRefund(
   secretKey: string,
   r: { paymentIntentId: string; amountOre: number; idempotencyKey: string; refundId: string; bookingId: string;
        /** White label, Model B: the company's connected account the payment was made on. */
-       stripeAccount?: string | null },
+       stripeAccount?: string | null;
+       /** Whether FlyttGo gives back its application fee in proportion; by
+        *  default on a connected account. Off for payments FlyttGo took no
+        *  fee from (shops, 00020). */
+       refundApplicationFee?: boolean;
+       /** The refund's metadata instead of refund_id and booking_id (a shop
+        *  refund is not a booking's: stripe-webhook routes it by type). */
+       metadata?: Record<string, string> },
 ): Promise<RefundOutcome> {
   const body = new URLSearchParams();
   body.set('payment_intent', r.paymentIntentId);
   body.set('amount', String(r.amountOre));
   /* Model B: FlyttGo gives back its share of the refund (its price and
    * platform fee, in proportion), so the company does not pay it alone. */
-  if (r.stripeAccount) body.set('refund_application_fee', 'true');
-  body.set('metadata[refund_id]', r.refundId);
-  body.set('metadata[booking_id]', r.bookingId);
+  if (r.refundApplicationFee ?? !!r.stripeAccount) body.set('refund_application_fee', 'true');
+  for (const [k, v] of Object.entries(r.metadata ?? { refund_id: r.refundId, booking_id: r.bookingId })) {
+    body.set(`metadata[${k}]`, v);
+  }
 
   let res;
   try {
