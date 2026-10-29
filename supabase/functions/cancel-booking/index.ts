@@ -44,6 +44,13 @@ function json(body: unknown, status = 200): Response {
 
 const CANCELLABLE = ['pending', 'confirmed', 'driver_assigned'];
 
+interface BookingRow {
+  id: string; customer_id: string; status: string; payment_status: string | null;
+  payment_provider: string | null; cancelled_by: string | null; cancelled_at: string | null;
+  price_estimate: number | null; paid_amount: number | null; manual_refund_percent: number | null;
+  move_date: string | null; move_time: string | null;
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST')    return json({ error: 'Method not allowed' }, 405);
@@ -60,7 +67,8 @@ serve(async (req: Request) => {
   }
   if (!body?.bookingId || typeof body.bookingId !== 'string') return json({ error: 'bookingId is required' }, 400);
 
-  const read = async () => (await db.from('bookings').select(REFUND_BOOKING_COLUMNS).eq('id', body.bookingId).maybeSingle()).data;
+  const read = async () =>
+    (await db.from('bookings').select(REFUND_BOOKING_COLUMNS).eq('id', body.bookingId).maybeSingle()).data as BookingRow | null;
   let booking = await read();
   if (!booking || booking.customer_id !== caller.id) return json({ error: 'booking not found' }, 404);
 
@@ -79,6 +87,7 @@ serve(async (req: Request) => {
       await db.from('bookings').update({ cancellation_reason: String(body.reason).slice(0, 500) }).eq('id', booking.id);
     }
     booking = await read();
+    if (!booking) return json({ error: 'booking not found' }, 404);
   } else if (booking.cancelled_by !== 'customer') {
     return json({ cancelled: true, refund: null, note: 'cancelled by FlyttGo; the refund is handled by support' });
   }

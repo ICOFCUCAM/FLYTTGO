@@ -118,7 +118,8 @@ The pre-deployment review and its fixes: [`PREDEPLOY_REVIEW.md`](PREDEPLOY_REVIE
 | `npm run build` | passes |
 | `npm test` (Vitest) | **56 / 56**: cancellation policy (Oslo time, 24 h), Vipps confirm/capture/fee-then-cancel, Brønnøysund check, pricing and browser/server formula parity, refunds against fake Stripe/Vipps (success, pending, refusal, retry, idempotency key reuse, uncaptured cancel, no double call), tracking (beacon id, customer map follow/stop) |
 | `npm run test:db` | **repo schema 236 / 236; production replica 260 / 260** (P0, organisations, launch decisions); **each rollback returns exactly to the state before its migration**, and all of them to production; **rollback with data** succeeds and keeps every core row |
-| Edge functions | Strict TypeScript with stand-in Deno/URL types passes. Real `deno check` runs in CI (deno.land is blocked here). |
+| Edge functions | `deno check` (Deno 2.9.6) of every function passes. Here deno.land and esm.sh are blocked, so the two remote imports were mapped to `npm:@supabase/supabase-js@2` and a `Deno.serve` stand-in for std's `serve`. CI checks the real URLs. |
+| PostgreSQL 17 | `npm run test:db` also passes on PostgreSQL 17.6, production's version: the same counts, fingerprint and rollbacks. |
 
 `npm run test:db` checks, on each schema:
 - Customers can't mark bookings paid, change prices, confirm for the driver, see others' bookings, run dispatch, credit wallets or become admin.
