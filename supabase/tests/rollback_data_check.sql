@@ -11,6 +11,9 @@ SELECT tests.ok((SELECT payment_intent_id FROM public.bookings WHERE id = 'b0000
   'the provider reference stays (the column predates 00004)');
 SELECT tests.ok((SELECT subscription_status FROM public.driver_subscriptions WHERE driver_id = 'd0000000-0000-0000-0000-000000000002') = 'expired',
   'an expired subscription stays, under a CHECK left NOT VALID');
+SELECT tests.ok((SELECT status = 'cancelled' AND payment_status = 'pending' FROM public.bookings
+                  WHERE id = 'b0000000-0000-0000-0000-000000000017'),
+  'a booking that waited for approval is cancelled, unpaid, rather than left payable without approval');
 SELECT tests.ok(to_regclass('public.payment_refunds') IS NULL AND to_regclass('public.organizations') IS NULL,
   'refund records and organisations are dropped (export them first)');
 

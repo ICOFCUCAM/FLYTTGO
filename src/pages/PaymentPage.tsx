@@ -5,6 +5,8 @@ import { useAuth } from '../lib/auth';
 import { supabase, callFunction } from '../lib/supabase';
 import { useWhiteLabel } from '../lib/whiteLabelContext';
 import { sellerSplit } from '../../supabase/functions/_shared/white-label';
+import { approvalNotice } from '../../supabase/functions/_shared/spending';
+import { loadMyApprovals } from '../lib/organizations';
 
 type PayMethod = 'card' | 'vipps' | 'google_pay' | 'invoice';
 
@@ -53,6 +55,9 @@ export default function PaymentPage() {
   const [company, setCompany] = useState<{ name: string; invoicing_enabled?: boolean; payment_terms_type?: string;
                                            payment_terms_days?: number; payment_terms_day?: number | null } | null>(null);
   const [invoiceBooked, setInvoiceBooked] = useState(false);
+  /* A company booking over the booker's limit or under the company's
+   * approval rules (00017): the server answers awaitingApproval and nothing is paid. */
+  const [approvalHold, setApprovalHold] = useState<{ message: string; expiresAt: string | null } | null>(null);
   const [booking, setBooking] = useState<any>(null);
   const isCorporate = profile?.role === 'customer'; // extend when corporate role exists
 
@@ -115,7 +120,18 @@ export default function PaymentPage() {
     if (!booking?.organization_id) { setCompany(null); return; }
     supabase.from('organizations').select('name, invoicing_enabled, payment_terms_type, payment_terms_days, payment_terms_day')
       .eq('id', booking.organization_id).maybeSingle().then(({ data }) => setCompany(data ?? null));
-  }, [booking?.organization_id]);
+    /* Already waiting for the company's approval: say so instead of offering payment. */
+    loadMyApprovals([booking.id]).then(m => {
+      const a = m[booking.id];
+      if (a?.status === 'pending') setApprovalHold({ message: approvalNotice(a.reasons), expiresAt: a.expires_at });
+    });
+  }, [booking?.organization_id, booking?.id]);
+
+  function holdFrom(d: any): boolean {
+    if (!d?.awaitingApproval) return false;
+    setApprovalHold({ message: d.error ?? approvalNotice([]), expiresAt: d.approval?.expiresAt ?? null });
+    return true;
+  }
 
   /* bookings.price_estimate is the total INCLUDING 25% MVA (it is
    * calculate-price's price_total). The payment functions charge that
@@ -161,6 +177,7 @@ export default function PaymentPage() {
       try {
         const res = await callFunction('book-on-invoice', { bookingId: booking.id });
         const d = await res.json().catch(() => ({}));
+        if (holdFrom(d)) { setProcessing(false); return; }
         if (res.ok) { setInvoiceBooked(true); setProcessing(false); return; }
         setError(d.error ?? 'Invoice payment could not be arranged. Please try again.');
       } catch {
@@ -179,6 +196,7 @@ export default function PaymentPage() {
         ? { bookingId: booking.id }
         : { bookingId: booking.id, method });
       const d = await res.json().catch(() => ({}));
+      if (holdFrom(d)) { setProcessing(false); return; }
       const redirect = method === 'vipps' ? d.redirectUrl : d.url;
       if (res.ok && redirect) { window.location.href = redirect; return; }
       setError(d.error ? `Payment could not be started: ${d.error}` : 'Payment could not be started. Please try again.');
@@ -187,6 +205,21 @@ export default function PaymentPage() {
     }
     setProcessing(false);
   }
+
+  if (approvalHold) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-3xl shadow-xl p-10 max-w-md w-full text-center">
+        <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-5"><span className="text-4xl">⏳</span></div>
+        <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Sent for approval</h2>
+        <p className="text-gray-500 mb-6 text-sm leading-relaxed">
+          {approvalHold.message} {company?.name ?? 'Your company'}'s approvers have been told.
+          {approvalHold.expiresAt ? ` Without a decision by ${new Date(approvalHold.expiresAt).toLocaleString('nb-NO', { timeZone: 'Europe/Oslo' })} it is cancelled without any fee.` : ''}
+          {' '}Once it is approved, complete it under My bookings.
+        </p>
+        <button onClick={() => setPage('my-bookings')} className="px-6 py-3 rounded-xl bg-[#0B2E59] text-white font-semibold">View my bookings</button>
+      </div>
+    </div>
+  );
 
   if (invoiceBooked) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">

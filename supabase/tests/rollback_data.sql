@@ -46,6 +46,21 @@ UPDATE public.bookings SET captured_at = now(), captured_amount = 2875 WHERE id 
 SELECT public.record_organization_verification((SELECT id FROM public.organizations WHERE slug = 'rollback-as'),
                                                'brreg', true, '{"navn":"ROLLBACK AS"}');
 
+-- 00017: the company is activated, has an approval rule and a member
+-- limit, and a booking waits for approval (the rollback cancels it).
+SELECT set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
+SELECT public.admin_set_organization_status((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'active', 'rollback test');
+SELECT set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
+SELECT public.set_spending_rules((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 1000, ARRAY['owner'], 168);
+INSERT INTO public.bookings (id, customer_id, organization_id, price_estimate, original_price, estimated_hours,
+                             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, van_type)
+SELECT 'b0000000-0000-0000-0000-000000000017', 'c0000000-0000-0000-0000-000000000001', id, 1200, 1200, 1,
+       59.91, 10.75, 59.95, 10.80, 'medium_van'
+  FROM public.organizations WHERE slug = 'rollback-as';
+SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false);
+SELECT public.company_booking_check('b0000000-0000-0000-0000-000000000017', 'c0000000-0000-0000-0000-000000000001', 1200);
+SELECT set_config('request.jwt.claims', '', false);
+
 -- What exists before the rollback, for the comparison afterwards.
 CREATE TABLE public.zz_rollback_before AS
 SELECT 'bookings' t, count(*) n FROM public.bookings
