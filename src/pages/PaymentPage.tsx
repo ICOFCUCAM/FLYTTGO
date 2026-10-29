@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import { supabase, callFunction } from '../lib/supabase';
 import { useWhiteLabel } from '../lib/whiteLabelContext';
 import { sellerSplit } from '../../supabase/functions/_shared/white-label';
+import { isEmbedded } from '../lib/embed';
 
 type PayMethod = 'card' | 'vipps' | 'google_pay' | 'invoice';
 
@@ -53,6 +54,9 @@ export default function PaymentPage() {
   const [company, setCompany] = useState<{ name: string; invoicing_enabled?: boolean; payment_terms_type?: string;
                                            payment_terms_days?: number; payment_terms_day?: number | null } | null>(null);
   const [invoiceBooked, setInvoiceBooked] = useState(false);
+  /* In the booking widget's frame (src/lib/embed.ts) Stripe and Vipps
+   * refuse to run: the payment page opens in a new tab from a link. */
+  const [payInNewTab, setPayInNewTab] = useState<string | null>(null);
   const [booking, setBooking] = useState<any>(null);
   const isCorporate = profile?.role === 'customer'; // extend when corporate role exists
 
@@ -180,7 +184,10 @@ export default function PaymentPage() {
         : { bookingId: booking.id, method });
       const d = await res.json().catch(() => ({}));
       const redirect = method === 'vipps' ? d.redirectUrl : d.url;
-      if (res.ok && redirect) { window.location.href = redirect; return; }
+      if (res.ok && redirect) {
+        if (isEmbedded()) { setPayInNewTab(redirect); setProcessing(false); return; }
+        window.location.href = redirect; return;
+      }
       setError(d.error ? `Payment could not be started: ${d.error}` : 'Payment could not be started. Please try again.');
     } catch (e) {
       setError('Payment could not be processed. Please try again.');
@@ -198,6 +205,19 @@ export default function PaymentPage() {
           for <strong>{total.toLocaleString()} NOK</strong> after the move, on the company's payment terms.
         </p>
         <button onClick={() => setPage('my-bookings')} className="px-6 py-3 rounded-xl bg-[#0B2E59] text-white font-semibold">View my bookings</button>
+      </div>
+    </div>
+  );
+
+  if (payInNewTab) return (
+    <div className="bg-gray-50 flex items-center justify-center px-4 py-10">
+      <div className="bg-white rounded-3xl shadow-xl p-8 max-w-md w-full text-center">
+        <h2 className="text-xl font-extrabold text-gray-900 mb-2">Pay in a new tab</h2>
+        <p className="text-gray-500 mb-6 text-sm leading-relaxed">
+          Your booking is saved. The secure payment page opens in a new tab; the booking is confirmed when the payment is through.
+        </p>
+        <a href={payInNewTab} target="_blank" rel="noopener noreferrer"
+           className="inline-block px-6 py-3 rounded-xl bg-[#0B2E59] text-white font-semibold">Open the payment page</a>
       </div>
     </div>
   );

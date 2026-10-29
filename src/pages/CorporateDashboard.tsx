@@ -11,6 +11,7 @@ import JobsPanel from '../components/corporate/JobsPanel';
 import AppointmentsPanel from '../components/corporate/AppointmentsPanel';
 import SalesInvoicesPanel from '../components/corporate/SalesInvoicesPanel';
 import AccountingPanel from '../components/corporate/AccountingPanel';
+import ApiWidgetPanel from '../components/corporate/ApiWidgetPanel';
 import { hasModule } from '../lib/services';
 
 /* Visitors see the dashboard preview with sample figures. A signed-in
@@ -56,7 +57,8 @@ const NAV_ITEMS: { id: DashTab; icon: string; label: string }[] = [
   { id: 'invoices',   icon: '💳', label: 'Invoices' },
   { id: 'drivers',    icon: '👤', label: 'Drivers' },
   { id: 'analytics',  icon: '📈', label: 'Analytics' },
-  { id: 'api',        icon: '🔗', label: 'API & Webhooks' },
+  /* API keys, the booking widget and its websites (00018). */
+  { id: 'api',        icon: '🔗', label: 'API and widget' },
   { id: 'team',       icon: '👥', label: 'Team' },
   { id: 'white-label', icon: '🏷️', label: 'Plan and website' },
   /* Shown when the company's plan includes the module (00010–00013). */
@@ -99,7 +101,7 @@ export default function CorporateDashboard() {
     && (n.id !== 'accounting' || (!!current && ['owner', 'admin', 'finance'].includes(current.role))));
   const live = !!current;                                    // a real company, not the preview
   const needsCompany = !!user && memberships !== null && memberships.length === 0;
-  const SAMPLE_TABS: DashTab[] = ['overview', 'recurring', 'api'];
+  const SAMPLE_TABS: DashTab[] = ['overview', 'recurring'];
 
   const filteredShipments = SHIPMENTS.filter(s => {
     const matchSearch = s.id.toLowerCase().includes(search.toLowerCase()) || s.from.toLowerCase().includes(search.toLowerCase()) || s.to.toLowerCase().includes(search.toLowerCase());
@@ -386,9 +388,16 @@ export default function CorporateDashboard() {
             </div>
           )}
 
-          {/* ── API ── */}
-          {tab === 'api' && (
+          {/* ── API AND WIDGET ── */}
+          {tab === 'api' && live && current && (
+            <ApiWidgetPanel key={current.organization.id} membership={current} onOpenPlan={() => setTab('white-label')} />
+          )}
+          {tab === 'api' && !live && (
             <div className="space-y-6">
+              <div className="rounded-2xl border border-gray-200 bg-white px-5 py-3 text-xs text-gray-500">
+                Example figures. Sign in to your company to create API keys and set up the booking widget for your website.{' '}
+                <button className="underline text-[#0B2E59]" onClick={() => setPage('corporate-api-access')}>About the API</button>
+              </div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <StatCard icon="⚡" label="API Calls Today" value="12,482" sub="↑ 8% vs yesterday" color="blue"/>
                 <StatCard icon="✅" label="Success Rate" value="99.8%" sub="Last 30 days" color="emerald"/>
@@ -414,7 +423,8 @@ export default function CorporateDashboard() {
                 </div>
               </div>
               <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                <h3 className="font-bold text-gray-900 mb-4">Webhook Endpoints</h3>
+                <h3 className="font-bold text-gray-900 mb-1">Webhook Endpoints</h3>
+                <p className="text-xs text-gray-400 mb-4">Example only: webhooks are planned and not available yet.</p>
                 {[
                   { url: 'https://erp.acme.no/webhooks/flyttgo', events: 'delivery.completed, delivery.failed', status: 'Active' },
                   { url: 'https://wms.acme.no/hooks/inbound', events: 'booking.created, booking.cancelled', status: 'Active' },

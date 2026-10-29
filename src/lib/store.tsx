@@ -24,6 +24,9 @@ export type Page =
   /* White label: plans and prices, the data processing agreement, and a
    * company's own page (/b/<slug>, its domain or subdomain). */
   | 'white-label' | 'white-label-dpa' | 'brand-site'
+  /* The company's booking flow in the widget's frame on its own website
+   * (/embed/<slug>, public/widget.js). */
+  | 'embed'
   /* Customers' jobs and appointments with companies outside moving. */
   | 'my-services'
   /* Books someone was invited to (accountants, auditors), and invitation links. */

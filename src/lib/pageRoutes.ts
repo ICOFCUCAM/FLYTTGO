@@ -46,6 +46,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   'white-label':             '/business/white-label',
   'white-label-dpa':         '/business/white-label/agreement',
   'brand-site':              '/b',
+  'embed':                   '/embed',
   'my-services':             '/my-services',
   'accounting':              '/accounting',
 
@@ -136,6 +137,7 @@ const PAGE_TITLES: Record<Page, string> = {
   'white-label':             'White label: plans and prices · FlyttGo Business',
   'white-label-dpa':         'Data processing agreement (white label) · FlyttGo',
   'brand-site':              'Book a move',
+  'embed':                   'Booking',
   'my-services':             'My jobs and appointments',
   'accounting':              'Regnskap · Accounting · FlyttGo',
   'not-found':               'Page Not Found · FlyttGo',
@@ -188,7 +190,7 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
   'invoice-billing':
     'Consolidated monthly invoicing, MVA-compliant receipts and flexible payment terms for FlyttGo business customers.',
   'corporate-api-access':
-    'The FlyttGo REST API — create bookings, track deliveries and reconcile invoices straight from your ERP, WMS or e-commerce platform.',
+    'The FlyttGo REST API for companies: price moves, book them on your company\u2019s invoice and follow their status from your ERP, WMS or web shop.',
   'terms':
     'FlyttGo\u2019s Terms of Service — the rules that govern using the FlyttGo marketplace as a customer or business.',
   'privacy':
@@ -225,6 +227,8 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     'The data processing agreement for companies that sell moving under their own name on FlyttGo (plan Own seller).',
   'brand-site':
     'Book a move online: instant price, verified drivers and live tracking.',
+  'embed':
+    'Book online with the company.',
   'my-services':
     'Your jobs and appointments with companies on FlyttGo, and their invoices.',
   'accounting':
@@ -313,6 +317,8 @@ export function pathToPage(path: string): Page {
    * booking; on a company's own domain or subdomain, its front page. */
   const brand = /^\/b\/[a-z0-9-]{3,63}(\/book)?$/.exec(normalised);
   if (brand) return brand[1] ? 'booking' : 'brand-site';
+  /* The booking widget's frame on a company's own website. */
+  if (/^\/embed\/[a-z0-9-]{3,63}$/.test(normalised)) return 'embed';
   if (normalised === '/' && typeof window !== 'undefined' && !isFlyttgoHost(window.location.hostname)) return 'brand-site';
   /* Unknown paths resolve to 'not-found' rather than silently
    * serving the homepage. NotFoundPage sets robots=noindex so

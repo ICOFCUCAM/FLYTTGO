@@ -4,6 +4,7 @@ import Header from './Header';
 import { useWhiteLabel } from '../lib/whiteLabelContext';
 import { BrandFooter, BrandHeader } from './whiteLabel/BrandFrame';
 import AuthModal from './AuthModal';
+import { isEmbedded, useEmbedResize } from '../lib/embed';
 
 const HomePage           = lazy(() => import('./HomePage'));
 const BookingFlow        = lazy(() => import('./BookingFlow'));
@@ -23,6 +24,7 @@ const AcceptInvitationPage = lazy(() => import('../pages/AcceptInvitationPage'))
 const WhiteLabelPlansPage  = lazy(() => import('../pages/WhiteLabelPlansPage'));
 const WhiteLabelDpaPage    = lazy(() => import('../pages/WhiteLabelDpaPage'));
 const BrandSitePage        = lazy(() => import('../pages/BrandSitePage'));
+const EmbedPage            = lazy(() => import('../pages/EmbedPage'));
 const ServiceBookingPage   = lazy(() => import('../pages/ServiceBookingPage'));
 const MyServicesPage       = lazy(() => import('../pages/MyServicesPage'));
 const AccountingPage       = lazy(() => import('../pages/AccountingPage'));
@@ -66,6 +68,10 @@ export default function AppLayout() {
   const branded = !!site && ['brand-site', 'booking', 'payment', 'my-bookings', 'my-services', 'tracking', 'auth-callback', 'terms', 'privacy'].includes(currentPage);
   /* A company outside moving books its own jobs or appointments, not moves. */
   const ownBooking = !!site && (site.booking === 'jobs' || site.booking === 'appointments');
+  /* In the booking widget's frame on the company's own website (src/lib/embed.ts):
+   * no header or footer, and the frame follows the page's height. */
+  const embedded = currentPage === 'embed' || isEmbedded();
+  useEmbedResize(embedded && currentPage !== 'embed');
 
   /* Scroll to the top of the viewport whenever the current page
    * changes. Without this, clicking a link from deep down the page
@@ -80,8 +86,8 @@ export default function AppLayout() {
   /* The auth callback page is a transient, full-screen landing surface
    * for Supabase email-confirmation / OAuth redirects — chrome would
    * just be visual noise during the ~100 ms session handoff. */
-  const showHeader = currentPage !== 'auth-callback';
-  const showFooter = !['booking', 'driver-portal', 'admin', 'auth-callback'].includes(currentPage) || (currentPage === 'booking' && ownBooking);
+  const showHeader = currentPage !== 'auth-callback' && !embedded;
+  const showFooter = !embedded && (!['booking', 'driver-portal', 'admin', 'auth-callback'].includes(currentPage) || (currentPage === 'booking' && ownBooking));
 
   const renderPage = () => {
     switch (currentPage) {
@@ -124,6 +130,7 @@ export default function AppLayout() {
       case 'white-label':            return <WhiteLabelPlansPage />;
       case 'white-label-dpa':        return <WhiteLabelDpaPage />;
       case 'brand-site':             return <BrandSitePage />;
+      case 'embed':                  return <EmbedPage />;
       case 'my-services':            return <MyServicesPage />;
       case 'accounting':             return <AccountingPage />;
       case 'not-found':              return <NotFoundPage />;
@@ -132,7 +139,7 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className={embedded ? 'bg-white' : 'min-h-screen bg-white'}>
       {showHeader && (branded && site ? <BrandHeader site={site} /> : <Header />)}
       <AuthModal />
       <Suspense fallback={<Loading />}>
@@ -143,7 +150,7 @@ export default function AppLayout() {
           <Footer />
         </Suspense>
       ))}
-      {currentPage === 'brand-site' && site && !site.page && <BrandFooter site={site} />}
+      {currentPage === 'brand-site' && site && !site.page && !embedded && <BrandFooter site={site} />}
     </div>
   );
 }
