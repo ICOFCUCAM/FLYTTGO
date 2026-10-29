@@ -154,6 +154,12 @@ export async function loadStats(orgId: string) {
 /** A template as the catalogue lists it: no pages (they are loaded when one is opened). */
 export type SiteTemplateSummary = Omit<SiteTemplate, 'pages' | 'content_flags'> & { content_flags?: SiteTemplate['content_flags'] };
 
+/** A template's home page only, for the catalogue's miniature of it (one page instead of five). */
+export async function loadTemplateHome(id: string): Promise<{ path: string; html: string } | null> {
+  const { data } = await supabase.from('site_templates').select('home:pages->0').eq('id', id).maybeSingle();
+  return ((data as { home?: { path: string; html: string } } | null)?.home) ?? null;
+}
+
 /** The catalogue: approved templates (companies) or every template (FlyttGo administrators), without their pages. */
 export async function loadTemplateList(withFlags = false): Promise<SiteTemplateSummary[]> {
   const { data } = await supabase.from('site_templates')

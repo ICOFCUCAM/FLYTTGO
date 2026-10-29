@@ -1,7 +1,8 @@
 /**
  * The website catalogue (docs/WHITE_LABEL.md → Website templates): every
- * approved template, by category, with its picture, and a full preview of
- * each page in the company's own name and colours before it is chosen.
+ * approved template, by category, each card showing its home page in
+ * miniature (TemplateThumb), and a full preview of each page in the
+ * company's own name and colours before it is chosen.
  * Previews are sandboxed without scripts, as the published site is.
  */
 import { useEffect, useMemo, useState } from 'react';
@@ -9,17 +10,15 @@ import {
   OTHER_CATEGORY, TEMPLATE_CATEGORIES, categoryLabel, renderTemplatePage, templateCategory, type Brand,
 } from '../../../supabase/functions/_shared/site-template';
 import { loadTemplate, type SiteTemplate, type SiteTemplateSummary } from '../../lib/whiteLabel';
+import TemplateThumb from './TemplateThumb';
 
 const btn = 'px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50';
 
 const hostsOf = (assets: { url: string }[]) =>
   assets.map(a => { try { return new URL(a.url).host; } catch { return ''; } }).filter(Boolean);
 
-/** The template's main picture: its hero image, else its first one. */
-function coverOf(t: SiteTemplateSummary): string | null {
-  const a = t.assets.find(x => x.key === 'hero') ?? t.assets.find(x => x.key.startsWith('hero')) ?? t.assets[0];
-  return a?.url ?? null;
-}
+/** How tall each card's miniature of the home page is. */
+const THUMB_HEIGHT = 260;
 
 const pageName = (path: string) => path === '/' ? 'Home' : path.replace(/^\//, '').replace(/[-/]/g, ' ').replace(/^./, c => c.toUpperCase());
 
@@ -84,7 +83,7 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className={`rounded-xl border-2 overflow-hidden ${selected === '' ? 'border-[#0B2E59]' : 'border-gray-200'}`}>
-          <div className="h-36 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-sm text-gray-500">Simple branded front page</div>
+          <div className="bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-sm text-gray-500" style={{ height: THUMB_HEIGHT }}>Simple branded front page</div>
           <div className="p-3 flex items-center justify-between">
             <div><div className="font-semibold text-sm">No template</div><div className="text-xs text-gray-500">Your name, colours and a booking button</div></div>
             {selected === '' ? <span className="text-xs font-semibold text-[#0B2E59]">Chosen</span>
@@ -92,13 +91,12 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
           </div>
         </div>
         {shown.map(t => {
-          const cover = coverOf(t);
           return (
             <div key={t.id} className={`rounded-xl border-2 overflow-hidden ${selected === t.id ? 'border-[#0B2E59]' : 'border-gray-200'}`}>
-              <button onClick={() => open(t.id)} className="block w-full h-36 bg-gray-100 relative" title={`Preview ${t.name}`}>
-                {cover && <img src={cover} alt="" loading="lazy" className="w-full h-full object-cover" />}
-                <span className="absolute bottom-2 left-2 text-[11px] font-semibold bg-white/90 rounded px-2 py-0.5">
-                  {loading === t.id ? 'Opening…' : 'Preview'}
+              <button onClick={() => open(t.id)} className="block w-full relative border-b border-gray-100" title={`Preview ${t.name}`}>
+                <TemplateThumb template={t} brand={brand} sellerNotice={sellerNotice} height={THUMB_HEIGHT} />
+                <span className="absolute bottom-2 left-2 text-[11px] font-semibold bg-white/90 rounded px-2 py-0.5 shadow-sm">
+                  {loading === t.id ? 'Opening…' : 'Preview all pages'}
                 </span>
               </button>
               <div className="p-3 flex items-center justify-between gap-2">
