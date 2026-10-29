@@ -2,8 +2,9 @@
  * Admin → Invoicing (migration 00008, docs/INVOICING.md): FlyttGo's own
  * invoice ledger. Settings (seller details, reminders, interest, and the
  * credit-check switch), every company's invoices with their actions,
- * manual invoices, bank payments matched by KID, the invoice run and the
- * export for the accountant. Every action is a database function that
+ * manual invoices, bank payments matched by KID (pasted rows, or a Nets
+ * OCR / camt.054 bank file, 00016), the invoice run and the export for the
+ * accountant. Every action is a database function that
  * checks the caller and is logged on the invoice.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -14,6 +15,8 @@ import {
   type InvoiceRow, type InvoiceSettings,
 } from '../../lib/invoicing';
 import { invoicesCsv, parseBankRows } from '../../../supabase/functions/_shared/invoices';
+import { importPastedRows } from '../../lib/bank-import';
+import BankFileImport from '../invoicing/BankFileImport';
 
 type Filter = 'open' | 'overdue' | 'drafts' | 'paid' | 'all';
 
@@ -35,6 +38,7 @@ export default function InvoicingPanel() {
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [bankText, setBankText] = useState('');
+  const [bankKey, setBankKey] = useState(0);
   const [manual, setManual] = useState({ org: '', description: '', quantity: 1, price: 0, vat: 25 });
 
   const reload = useCallback(async () => {
@@ -208,11 +212,20 @@ export default function InvoicingPanel() {
         {/* ── Bank file ── */}
         <div className="bg-white rounded-lg shadow p-5 space-y-3">
           <h3 className="font-bold">Bank payments (match by KID)</h3>
-          <p className="text-xs text-gray-500">Paste rows from the bank: date;amount;KID;reference. Rows already recorded are skipped; unmatched KIDs are listed.</p>
+          <p className="text-xs text-gray-500">Paste rows from the bank: date;amount;KID;reference. Rows already recorded are skipped; unmatched KIDs are listed. For the bank's own file (Nets OCR, camt.054), use Bank file below.</p>
           <textarea className={`${input} h-28 font-mono text-xs`} value={bankText} onChange={e => setBankText(e.target.value)} placeholder={'29.10.2026;1200,00;000000018;NETS-123'} />
           <button disabled={busy || !bankText.trim()} className={`${btn} bg-gray-900 text-white`} onClick={() => run(async () => {
             const rows = parseBankRows(bankText);
             if (!rows.length) return 'no rows recognised';
+            // Recorded as an import (00016), so unmatched rows stay listed under Bank file;
+            // without 00016 in the database, row by row as before.
+            const imp = await importPastedRows(null, bankText);
+            if (imp.result) {
+              setBankText(''); setBankKey(k => k + 1);
+              const open = imp.result.unmatched + imp.result.overpayments;
+              return open ? `${imp.result.matched} matched, ${imp.result.already_recorded + imp.result.already_imported} already recorded. ${open} not matched: listed under Bank file → To handle by hand.` : null;
+            }
+            if (!imp.missing) return imp.error ?? 'failed';
             const unmatched: string[] = []; const failed: string[] = [];
             for (const r of rows) {
               const { invoiceId, error } = await recordPaymentByKid(r.kid, r.amount, r.paid_on, r.reference);
@@ -224,6 +237,12 @@ export default function InvoicingPanel() {
               : null;
           }, 'All payments matched.')}>Record payments</button>
         </div>
+      </div>
+
+      {/* ── Bank file (00016) ── */}
+      <div className="bg-white rounded-lg shadow p-5 space-y-3">
+        <h3 className="font-bold">Bank file (Nets OCR, camt.054)</h3>
+        <BankFileImport key={bankKey} orgId={null} onChanged={reload} />
       </div>
 
       {/* ── Settings ── */}

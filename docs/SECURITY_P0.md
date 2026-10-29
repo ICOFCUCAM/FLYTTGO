@@ -94,7 +94,7 @@ Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.s
 - a refund in Stripe test mode, and in Vipps test mode.
 
 **Production, in one maintenance window:**
-1. Apply `00002` → `00008` in one session (`00005`–`00008` hold the organisations, the launch decisions, company bookings and invoicing; each needs the one before). Then `00009` → `00015` (white label, other industries, company invoicing, jobs, appointments, accounting), each in order; for `00014`/`00015` add `accounting` to the exposed schemas (Project settings → API) and deploy `accounting-invite` ([`ACCOUNTING_CORE.md`](ACCOUNTING_CORE.md)).
+1. Apply `00002` → `00008` in one session (`00005`–`00008` hold the organisations, the launch decisions, company bookings and invoicing; each needs the one before). Then `00009` → `00016` (white label, other industries, company invoicing, jobs, appointments, accounting, bank import), each in order; for `00014`/`00015` add `accounting` to the exposed schemas (Project settings → API) and deploy `accounting-invite` ([`ACCOUNTING_CORE.md`](ACCOUNTING_CORE.md)).
 2. Set the secrets: `EMAIL_FUNCTION_SECRET` and `app.email_function_secret`, plus the Vipps and Stripe secrets if not set, and `RESEND_API_KEY`, `FLYTTGO_FROM`, `FLYTTGO_REPLY_TO`, `FRONTEND_URL`. Add `refund.created`, `refund.updated` and `refund.failed` to the Stripe webhook's events.
 3. Deploy the new functions the new frontend calls: `cancel-booking`, `verify-organization`, `send-organization-invitation`, `refund-payment`, `book-on-invoice`, `invoice-run`, `invoice-document`, `invoice-send`, `credit-check`. Nothing old calls them. Schedule `invoice-run` daily ([`SCHEDULES.md`](SCHEDULES.md)).
 4. Deploy the frontend.

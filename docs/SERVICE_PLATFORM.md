@@ -94,7 +94,7 @@ The import tool takes a group: `--group transport` (default), `field-service`, `
 
 - **Accounting export** to Fiken, Tripletex and PowerOffice (their APIs), or SAF-T; today the company downloads PDF and EHF.
 - **DSB register lookup:** authorisations are checked by hand in the public register; DSB has no open API that has been agreed for this.
-- **Bank import for companies** (KID matching from the company's bank file): FlyttGo's own bank file matches only FlyttGo's series; companies record payments by hand or are paid by card.
+- **Bank import for companies:** built (00016, [`INVOICING.md`](INVOICING.md) → Bank import): the company's owners, admins and finance upload its Nets OCR or camt.054 file and payments are matched by KID within its own series. The automatic fetch from the company's bank needs the company's own bank or Nets agreement; none is connected.
 - **SMS reminders:** email only.
 - **Calendar sync** (Google, Outlook) for staff.
 
