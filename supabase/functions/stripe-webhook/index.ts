@@ -57,6 +57,7 @@
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { paidAmountMatches } from '../_shared/pricing.ts';
 
 /* ─── Env ──────────────────────────────────────────────────────── */
 const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!;
@@ -194,6 +195,21 @@ async function markBookingPaid(bookingId: string, sessionId: string) {
   return { ok: true, idempotent: false, sessionId };
 }
 
+/**
+ * Record that a provider reported a payment that does not match what
+ * we charged. The booking stays unpaid (no escrow, no dispatch) until
+ * someone reviews it; the provider gets a 200 so it stops retrying.
+ */
+async function flagPaymentReview(bookingId: string, reason: string) {
+  console.error(`payment held for review — booking ${bookingId}: ${reason}`);
+  const { error } = await supabase
+    .from('bookings')
+    .update({ payment_review_reason: reason.slice(0, 500) })
+    .eq('id', bookingId);
+  if (error) console.warn(`payment_review_reason update failed: ${error.message}`);
+  return { ok: true, held: true, reason: 'amount mismatch; held for review' };
+}
+
 /* ─── Subscription paid path ───────────────────────────────────── */
 
 /**
@@ -328,19 +344,38 @@ async function handleEvent(event: StripeEvent) {
     return { ok: true, ignored: true, reason: `session payment_status=${session.payment_status}` };
   }
 
+  /* The amount must be exactly what create-checkout-session asked
+   * for (metadata.amount_ore is written by the server, never the
+   * browser). Sessions created before that field existed carried a
+   * browser-chosen amount and are held for review, not marked paid. */
+  const expectedOre = Number(metadata.amount_ore);
+  const amountOk = Number.isFinite(expectedOre) && expectedOre > 0 &&
+    paidAmountMatches(session.amount_total, session.currency, expectedOre / 100);
+
   if (kind === 'booking') {
     const bookingId = metadata.bookingId ?? null;
     if (!bookingId) {
       return { ok: true, ignored: true, reason: 'booking type without metadata.bookingId' };
     }
+    if (!amountOk) {
+      const reason = `stripe ${sessionId}: paid ${session.amount_total} ${session.currency ?? '?'}, expected ${metadata.amount_ore ?? 'unknown'} øre`;
+      return await flagPaymentReview(bookingId, reason);
+    }
     return await markBookingPaid(bookingId, sessionId);
   }
 
   if (kind === 'subscription') {
-    const driverId = metadata.driverId ?? null;
+    /* driver_subscriptions.driver_id is the auth user id. Sessions
+     * created before this change put driver_profiles.id in driverId
+     * and the auth id in userId, so prefer the user id fields. */
+    const driverId = metadata.user_id ?? metadata.userId ?? metadata.driverId ?? null;
     const planId   = metadata.planId   ?? null;
     if (!driverId || !planId) {
       return { ok: true, ignored: true, reason: 'subscription type missing driverId/planId' };
+    }
+    if (!amountOk) {
+      console.error(`stripe-webhook: subscription ${sessionId} for ${driverId} paid ${session.amount_total} ${session.currency}, expected ${metadata.amount_ore ?? 'unknown'} øre — not activated`);
+      return { ok: true, ignored: true, reason: 'amount mismatch; held for review' };
     }
     return await markSubscriptionPaid(driverId, planId, sessionId);
   }

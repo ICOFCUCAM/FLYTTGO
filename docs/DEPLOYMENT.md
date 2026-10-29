@@ -55,6 +55,9 @@ supabase secrets set ROUTE_PROVIDER_URL=https://router.project-osrm.org
 supabase secrets set RESEND_API_KEY=re_...
 supabase secrets set FLYTTGO_FROM="FlyttGo <bookings@flyttgo.no>"
 supabase secrets set FLYTTGO_REPLY_TO=support@flyttgo.no
+# send-booking-email refuses callers without this (or the service-role key);
+# the pg_net helper sends it, see docs/email-confirmations-setup.md
+supabase secrets set EMAIL_FUNCTION_SECRET=<long random string>
 ```
 
 ### Stripe
@@ -87,7 +90,7 @@ supabase functions deploy <name> --no-verify-jwt
 
 | Function | Purpose | Callers |
 |---|---|---|
-| `send-booking-email` | Resend transactional emails | `BookingFlow`, pg trigger |
+| `send-booking-email` | Resend transactional emails (server callers only: service-role key or `EMAIL_FUNCTION_SECRET`) | pg trigger |
 | `route-distance` | OSRM/ORS driving distance lookup | `routing.ts` (home widget + BookingFlow preview) |
 | `process-payment` | Dual-confirm escrow release + recalc | `CustomerDashboard`, `DriverPortal`, `MyBookings` |
 | `create-checkout-session` | Stripe Checkout session | `PaymentPage`, `DriverPortal.subscribeToPlan` |
@@ -140,7 +143,7 @@ The `callbackAuthorizationToken` is the value of `VIPPS_WEBHOOK_SECRET` — both
 - `profiles`
 
 ### RPCs (must be deployed as stored procedures)
-- `increment_driver_wallet(p_driver_id uuid, p_amount numeric)` — called by `process-payment` to credit the driver wallet on escrow release
+- `increment_driver_wallet(p_driver_id uuid, p_amount numeric)` — service role only. Since `00002_p0_security_hardening.sql` the wallet is credited by the `settle_driver_wallet_after_release` trigger when escrow is released with a `driver_earning`; `process-payment` no longer calls this
 - `decrement_driver_wallet(p_driver_id uuid, p_amount numeric)` — called by `AdminDashboard` for refunds
 - `change_driver_subscription(p_driver_id uuid, p_new_plan text)` — called by `DriverPortal.subscribeToPlan` to swap plans
 

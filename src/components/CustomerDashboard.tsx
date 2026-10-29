@@ -2,7 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { useApp } from "../lib/store";
-import { supabase, supabaseFunctionUrl } from "../lib/supabase";
+import { supabase, callFunction } from "../lib/supabase";
 
 /* Lazy-load Leaflet so the ~150 KB map bundle is only fetched when
  * there's actually an in-flight booking to render. MyBookings uses
@@ -82,7 +82,7 @@ export default function CustomerDashboard() {
     await supabase.from("bookings").update({ customer_confirmation: true }).eq("id", bookingId);
     const { data: booking } = await supabase.from("bookings").select("driver_confirmation").eq("id", bookingId).single();
     if (booking?.driver_confirmation === true) {
-      await fetch(supabaseFunctionUrl("process-payment"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "release_escrow", bookingId }) });
+      await callFunction("process-payment", { action: "release_escrow", bookingId });
       alert("Job complete! Payment released to driver.");
     } else { alert("Confirmed! Waiting for driver confirmation."); }
     loadData();

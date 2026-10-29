@@ -51,6 +51,7 @@
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { paidAmountMatches } from '../_shared/pricing.ts';
 
 /* ─── Env ──────────────────────────────────────────────────────── */
 const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!;
@@ -111,11 +112,11 @@ function extractBookingId(reference: string | undefined | null): string | null {
  * until the delivery is confirmed). If the booking is already paid
  * or beyond, return { idempotent: true } and do nothing.
  */
-async function markBookingPaid(bookingId: string, amountOre: number) {
+async function markBookingPaid(bookingId: string, amountOre: number, currency: string) {
   /* Check current state first so we can bail out idempotently. */
   const { data: booking, error: readErr } = await supabase
     .from('bookings')
-    .select('id, payment_status')
+    .select('id, payment_status, price_estimate')
     .eq('id', bookingId)
     .maybeSingle();
 
@@ -128,6 +129,20 @@ async function markBookingPaid(bookingId: string, amountOre: number) {
   const alreadyProcessed = ['paid', 'escrow', 'released', 'refunded'];
   if (alreadyProcessed.includes(String(booking.payment_status))) {
     return { ok: true, idempotent: true, previousStatus: booking.payment_status };
+  }
+
+  /* The paid amount must equal the server price create-vipps-session
+   * charged (it writes that price to bookings.price_estimate before
+   * opening the session). Otherwise hold the booking for review. */
+  if (!paidAmountMatches(amountOre, currency, booking.price_estimate)) {
+    const reason = `vipps: paid ${amountOre} ${currency}, expected ${Math.round(Number(booking.price_estimate) * 100)} øre`;
+    console.error(`payment held for review — booking ${bookingId}: ${reason}`);
+    const { error: flagErr } = await supabase
+      .from('bookings')
+      .update({ payment_review_reason: reason })
+      .eq('id', bookingId);
+    if (flagErr) console.warn(`payment_review_reason update failed: ${flagErr.message}`);
+    return { ok: true, held: true, reason: 'amount mismatch; held for review' };
   }
 
   /* 1) bookings.payment_status = 'paid' */
@@ -179,6 +194,7 @@ serve(async (req: Request) => {
   const sessionState = String(event.sessionState ?? '');
   const reference    = typeof event.reference === 'string' ? event.reference : null;
   const amount       = (event.amount as { value?: number } | undefined)?.value ?? 0;
+  const currency     = (event.amount as { currency?: string } | undefined)?.currency ?? 'NOK';
 
   /* Only act on successful payments — everything else gets a 200 so
    * Vipps stops retrying. */
@@ -196,7 +212,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const result = await markBookingPaid(bookingId, amount);
+    const result = await markBookingPaid(bookingId, amount, currency);
     return json({ ...result, bookingId, reference });
   } catch (err) {
     console.error('vipps-webhook markBookingPaid error:', err);

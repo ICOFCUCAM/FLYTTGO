@@ -28,14 +28,27 @@
 // Uses the service-role key automatically injected by Supabase Edge
 // Functions (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY), so it bypasses
 // RLS and can read/update booking state that the customer/driver
-// clients can't. All state-changing paths assert booking preconditions
-// (both confirmations must be set for release, both start/end times
-// must exist for recalculation) so random callers can't forge state.
+// clients can't. Every call must carry the signed-in user's token:
+//   recalculate_price — the booking's assigned driver, or an admin
+//   release_escrow    — the booking's customer or assigned driver, or an admin
+// and the booking preconditions still hold (both confirmations set for
+// release, start/end times for recalculation). The confirmation flags
+// themselves can only be set by their own party (database guard in
+// supabase/migrations/00002_p0_security_hardening.sql).
 //
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+/* Pricing formula and commission brackets: one copy, shared with
+ * calculate-price and the payment functions. */
+import {
+  VAN_HOURLY_RATES,
+  PRICING,
+  calculateServerPrice,
+  computeCommission,
+} from '../_shared/pricing.ts';
+import { getCaller, driverProfileIdOf } from '../_shared/auth.ts';
 
 /* ─── Env (Supabase injects these automatically) ─────────────── */
 const SUPABASE_URL             = Deno.env.get('SUPABASE_URL')!;
@@ -45,87 +58,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-/* ─── Pricing constants (mirrored from src/lib/constants.ts) ─── */
-
-const VAN_HOURLY_RATES: Record<string, number> = {
-  small_van:  850,
-  medium_van: 1150,
-  large_van:  1500,
-  luton_van:  1900,
-};
-
-const PRICING = {
-  minimumHours: 2,
-  distancePricing: { includedKm: 20, extraPerKm: 8 },
-  extras: {
-    extra_helper:         350,
-    furniture_assembly:   250,
-    cleaning:             400,
-    parking_assistance:   200,
-    packing_service:      500,
-    furniture_dismantling: 300,
-  },
-  vat: 0.25,
-};
-
-interface PriceInputs {
-  vanType:    string;
-  hours:      number;
-  distanceKm: number;
-  helpers:    number;
-  extras:     string[];
-}
-
-/**
- * Mirror of src/lib/constants.ts#calculatePrice. Kept inline so the
- * edge function has zero shared-code dependencies. If the frontend
- * formula changes, update this mirror too.
- */
-function calculatePrice(inp: PriceInputs) {
-  const safeHours      = Math.max(inp.hours ?? 0, PRICING.minimumHours);
-  const extraKm        = Math.max(0, (inp.distanceKm ?? 0) - PRICING.distancePricing.includedKm);
-  const basePrice      = (VAN_HOURLY_RATES[inp.vanType] ?? 850) * safeHours;
-  const distanceCharge = extraKm * PRICING.distancePricing.extraPerKm;
-  const helpersCharge  = (inp.helpers ?? 0) * PRICING.extras.extra_helper * safeHours;
-  const extrasCharge   = (inp.extras ?? []).reduce(
-    (sum, e) => sum + ((PRICING.extras as Record<string, number>)[e] ?? 0),
-    0,
-  );
-  const subtotal = basePrice + distanceCharge + helpersCharge + extrasCharge;
-  const vat      = subtotal * PRICING.vat;
-  return { basePrice, distanceCharge, helpersCharge, extrasCharge, subtotal, vat, total: subtotal + vat };
-}
-
-/* ─── Commission (mirrored from src/lib/constants.ts) ────────── */
-
-/**
- * Small mirror of the bracketed commission model so we don't have
- * to pull constants.ts into Deno. Returns the commission to
- * deduct and the driver's take-home.
- */
-function computeCommission(
-  price: number,
-  plan:  string,
-): { commission: number; earning: number; ratePct: number } {
-  const p = Math.max(0, Number(price) || 0);
-  if (p <= 500) return { commission: 0, earning: p, ratePct: 0 };
-
-  if (plan === 'unlimited') return { commission: 0, earning: p, ratePct: 0 };
-
-  /* Bracket model: rate depends on price band and driver plan. */
-  const BY_PLAN: Record<string, Record<string, number>> = {
-    basic:    { low: 20, mid: 15, high: 10 },
-    pro_mini: { low: 10, mid:  5, high:  4 },
-    pro:      { low: 10, mid:  5, high:  4 },
-  };
-  const plans = BY_PLAN[plan] ?? BY_PLAN.basic;
-
-  let ratePct = plans.high;
-  if      (p <= 1500) ratePct = plans.low;
-  else if (p <= 5000) ratePct = plans.mid;
-
-  const commission = Math.round((p * ratePct) / 100);
-  return { commission, earning: p - commission, ratePct };
+function calculatePrice(inp: { vanType: string; hours: number; distanceKm: number; helpers: number; extras: string[] }) {
+  return calculateServerPrice(inp);
 }
 
 /* ─── Handler ──────────────────────────────────────────────────── */
@@ -162,7 +96,22 @@ serve(async (req: Request) => {
     return json({ error: 'action and bookingId are required' }, 400);
   }
 
+  const caller = await getCaller(req, supabase);
+  if (!caller) return json({ error: 'Sign in required' }, 401);
+
   try {
+    const { data: party } = await supabase
+      .from('bookings')
+      .select('customer_id, driver_id')
+      .eq('id', body.bookingId)
+      .maybeSingle();
+    if (!party) return json({ error: 'booking not found' }, 404);
+    const callerDriverId = await driverProfileIdOf(supabase, caller.id);
+    const isDriver   = !!callerDriverId && party.driver_id === callerDriverId;
+    const isCustomer = party.customer_id === caller.id;
+    const allowed = caller.isAdmin || (body.action === 'recalculate_price' ? isDriver : (isDriver || isCustomer));
+    if (!allowed) return json({ error: 'booking not found' }, 404);
+
     if (body.action === 'recalculate_price') return await recalculatePrice(body.bookingId);
     if (body.action === 'release_escrow')    return await releaseEscrow(body.bookingId);
     return json({ error: `Unknown action: ${body.action}` }, 400);
@@ -282,6 +231,20 @@ async function releaseEscrow(bookingId: string) {
   if (escrowErr) return json({ error: 'escrow fetch failed', detail: escrowErr.message }, 500);
   if (!escrow)   return json({ error: 'escrow row not found for booking' }, 404);
 
+  /* Already settled: both parties confirm and both call this, so the
+   * second call must not pay the driver again. (Production's
+   * release_booking_escrow_after_confirmation trigger may already have
+   * set status='released' without a driver_earning; that row is not
+   * settled yet and is completed here.) */
+  if (escrow.status === 'refunded' || booking.payment_status === 'released'
+      || (escrow.status === 'released' && escrow.driver_earning != null)) {
+    return json({ ok: true, idempotent: true, status: escrow.status });
+  }
+  /* Money must have been captured by a provider webhook first. */
+  if (!['paid', 'escrow'].includes(String(booking.payment_status))) {
+    return json({ error: `booking payment_status is ${booking.payment_status}; nothing captured to release` }, 409);
+  }
+
   /* If the recalculation bumped the price, the customer has to
    * approve the delta before we capture. */
   const hasAdjustment = escrow.adjusted_amount != null && Number(escrow.adjusted_amount) > 0;
@@ -309,18 +272,33 @@ async function releaseEscrow(bookingId: string) {
    * calculation. Default to 'basic' if anything's missing. */
   let plan = 'basic';
   if (booking.driver_id) {
-    const { data: sub } = await supabase
-      .from('driver_subscriptions')
-      .select('plan')
-      .eq('driver_id', booking.driver_id)
-      .eq('subscription_status', 'active')
+    /* bookings.driver_id is driver_profiles.id; driver_subscriptions
+     * is keyed by the driver's auth user id. */
+    const { data: dp } = await supabase
+      .from('driver_profiles')
+      .select('user_id')
+      .eq('id', booking.driver_id)
       .maybeSingle();
-    if (sub?.plan) plan = sub.plan;
+    if (dp?.user_id) {
+      const { data: sub } = await supabase
+        .from('driver_subscriptions')
+        .select('plan')
+        .eq('driver_id', dp.user_id)
+        .eq('subscription_status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (sub?.plan) plan = sub.plan;
+    }
   }
   const { commission, earning, ratePct } = computeCommission(amount, plan);
 
-  /* Update escrow_payments → released. */
-  const { error: releaseErr } = await supabase
+  /* Update escrow_payments → released with the driver's earning. The
+   * wallet is credited by the settle_driver_wallet_after_release
+   * trigger (supabase/migrations/00002), once, when driver_earning is
+   * first set on a released row. Compare-and-set on driver_earning so
+   * two simultaneous calls settle once. */
+  const { data: released, error: releaseErr } = await supabase
     .from('escrow_payments')
     .update({
       status:            'released',
@@ -329,8 +307,13 @@ async function releaseEscrow(bookingId: string) {
       driver_earning:    earning,
       final_price:       amount,
     })
-    .eq('booking_id', bookingId);
+    .eq('booking_id', bookingId)
+    .is('driver_earning', null)
+    .select('id');
   if (releaseErr) return json({ error: 'escrow release failed', detail: releaseErr.message }, 500);
+  if (!released || released.length === 0) {
+    return json({ ok: true, idempotent: true, status: 'released' });
+  }
 
   /* Mark booking payment_status = 'released'. */
   const { error: bStatusErr } = await supabase
@@ -338,18 +321,6 @@ async function releaseEscrow(bookingId: string) {
     .update({ payment_status: 'released' })
     .eq('id', bookingId);
   if (bStatusErr) console.warn('booking payment_status update failed:', bStatusErr.message);
-
-  /* Credit the driver's wallet. Uses the existing RPC so we don't
-   * race against other wallet updates. Fails silently if the RPC
-   * isn't present — the escrow row still tells ops exactly how much
-   * to pay out. */
-  if (booking.driver_id && earning > 0) {
-    const { error: rpcErr } = await supabase.rpc('increment_driver_wallet', {
-      p_driver_id: booking.driver_id,
-      p_amount:    earning,
-    });
-    if (rpcErr) console.warn('wallet credit RPC failed:', rpcErr.message);
-  }
 
   return json({
     ok:             true,

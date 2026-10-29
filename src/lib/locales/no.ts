@@ -1,4 +1,4 @@
-import type { TranslationKeys } from './en';
+import type { PartialTranslationKeys } from './en';
 
 /**
  * FlyttGo — Norwegian (Bokmål) translations.
@@ -8,7 +8,7 @@ import type { TranslationKeys } from './en';
  * Norwegian doesn't break the site — it just shows English in those
  * spots until you add the translation.
  */
-export const no: TranslationKeys = {
+export const no: PartialTranslationKeys = {
   /* ─── Header / nav ─── */
   header: {
     home:         'Hjem',

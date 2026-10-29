@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 import { useAuth } from '../lib/auth';
-import { supabase, supabaseFunctionUrl } from '../lib/supabase';
+import { supabase, callFunction } from '../lib/supabase';
 
 type PayMethod = 'card' | 'vipps' | 'google_pay' | 'invoice';
 
@@ -105,9 +105,13 @@ export default function PaymentPage() {
     }
   }, [user]);
 
-  const price = safeNum(booking?.price_estimate ?? (bookingData as any)?.priceEstimate ?? 2450);
-  const vat = Math.round(price * 0.25);
-  const total = price + vat;
+  /* bookings.price_estimate is the total INCLUDING 25% MVA (it is
+   * calculate-price's price_total). The payment functions charge that
+   * total, re-computed on the server; here we only split out the MVA
+   * for display. */
+  const total = safeNum(booking?.price_estimate ?? (bookingData as any)?.estimatedPrice ?? 0);
+  const vat = Math.round(total - total / 1.25);
+  const price = total - vat;
 
   function formatCard(v: string) {
     return v.replace(/\D/g,'').slice(0,16).replace(/(\d{4})/g,'$1 ').trim();
@@ -123,39 +127,28 @@ export default function PaymentPage() {
     if (method === 'card' && (!card.number || !card.expiry || !card.cvc || !card.name)) {
       setError('Please complete all card fields.'); return;
     }
+    if (!booking?.id) {
+      setError('No booking is waiting for payment.'); return;
+    }
+    if (method === 'invoice') {
+      /* Corporate invoicing needs a company account with approved
+       * invoice terms, which does not exist yet. Until it does, the
+       * booking stays unpaid rather than being treated as paid. */
+      setError('Corporate invoice is not available yet. Please pay by card or Vipps.'); return;
+    }
     setProcessing(true);
     try {
-      if (method === 'vipps') {
-        const res = await fetch(supabaseFunctionUrl('create-vipps-session'), {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookingId: booking?.id, amount: total }),
-        });
-        const d = await res.json();
-        if (d.redirectUrl) { window.location.href = d.redirectUrl; return; }
-      }
-      if (method === 'google_pay' || method === 'card') {
-        const res = await fetch(supabaseFunctionUrl('create-checkout-session'), {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bookingId: booking?.id, amount: total, method }),
-        });
-        const d = await res.json();
-        if (d.url) { window.location.href = d.url; return; }
-      }
-      /* Fallback — mark the booking as paid-into-escrow directly.
-       * BookingFlow already inserted a 'held' row in escrow_payments
-       * when the booking was submitted, so we just update that row
-       * (by booking_id) with the driver earning and flip it to
-       * 'escrow' once a provider has captured the funds. The
-       * bookings.payment_status goes to 'escrow' to match. */
-      if (booking?.id) {
-        await supabase.from('bookings')
-          .update({ payment_status: 'escrow' })
-          .eq('id', booking.id);
-        await supabase.from('escrow_payments')
-          .update({ driver_earning: price * 0.8, status: 'escrow' })
-          .eq('booking_id', booking.id);
-      }
-      setSuccess(true);
+      /* The server works out the amount from the booking; we only say
+       * which booking. Payment is recorded only by the provider's
+       * webhook, never from the browser. */
+      const fn = method === 'vipps' ? 'create-vipps-session' : 'create-checkout-session';
+      const res = await callFunction(fn, method === 'vipps'
+        ? { bookingId: booking.id }
+        : { bookingId: booking.id, method });
+      const d = await res.json().catch(() => ({}));
+      const redirect = method === 'vipps' ? d.redirectUrl : d.url;
+      if (res.ok && redirect) { window.location.href = redirect; return; }
+      setError(d.error ? `Payment could not be started: ${d.error}` : 'Payment could not be started. Please try again.');
     } catch (e) {
       setError('Payment could not be processed. Please try again.');
     }

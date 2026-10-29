@@ -68,3 +68,26 @@ export function supabaseFunctionUrl(name: string): string {
   const base = SUPABASE_URL.replace(/\/$/, '');
   return `${base}/functions/v1/${name}`;
 }
+
+/**
+ * POST to a FlyttGo Edge Function as the signed-in user.
+ *
+ * The payment and escrow functions decide what a caller may do from
+ * the caller's own session, so every browser call sends the access
+ * token (`Authorization: Bearer …`) plus the project's anon key. A
+ * call without a session goes out without a user token and the
+ * function answers 401.
+ */
+export async function callFunction(name: string, body: unknown): Promise<Response> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return fetch(supabaseFunctionUrl(name), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}

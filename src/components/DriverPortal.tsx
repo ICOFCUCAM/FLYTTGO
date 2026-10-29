@@ -2,7 +2,7 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
-import { supabase, supabaseFunctionUrl } from '../lib/supabase';
+import { supabase, callFunction } from '../lib/supabase';
 import { useDriverLocationBeacon } from '../hooks/useDriverLocationBeacon';
 
 /* Lazy-load the Leaflet-backed jobs map so drivers who never
@@ -326,25 +326,23 @@ export default function DriverPortal() {
         await loadSubscription(); await loadDriver(); setChangingPlan(null); return;
       }
       const proration = calculateProration(subscription, plan);
-      let amountExVat: number, vatAmount: number, totalAmount: number, prorationNote = '';
-      if (proration && !proration.isFullyCovered) {
-        amountExVat = proration.dueExVat; vatAmount = proration.dueVat; totalAmount = proration.dueTotal;
-        prorationNote = `Pro → Unlimited proration: ${proration.daysRemaining}d remaining on Pro → credit ${proration.creditExVat} NOK ex VAT`;
-      } else if (proration?.isFullyCovered) {
+      if (proration?.isFullyCovered) {
         await supabase.rpc('change_driver_subscription', { p_driver_id: user.id, p_new_plan: planId });
         await supabase.from('driver_wallet_transactions').insert({ driver_id: driver.id, type: 'subscription_credit', amount: proration.creditExVat, description: `Plan credit — ${proration.daysRemaining} unused Pro days` });
         alert('Upgraded to Unlimited. Your remaining Pro credit fully covered the cost — no charge.'); await loadSubscription(); await loadDriver(); setChangingPlan(null); return;
-      } else {
-        amountExVat = plan.priceNOK; vatAmount = Math.round(plan.priceNOK * VAT_RATE); totalAmount = amountExVat + vatAmount;
       }
-      const payload = { type: 'subscription', planId, planLabel: plan.label, driverId: driver.id, userId: user.id, amount: totalAmount, amountExVat, vatAmount, billing: plan.billing, prorationNote, proration: proration ? { creditApplied: proration.creditExVat, daysRemaining: proration.daysRemaining, daysInMonth: proration.daysInMonth, fromPlan: 'pro', fromPlanFullCost: 1500 } : null, description: proration ? `FlyttGo ${plan.label} (prorated ${proration.daysRemaining}d, incl. 25% MVA)` : `FlyttGo ${plan.label} Subscription (incl. 25% MVA)` };
+      /* The server prices the plan (with the same Pro → Unlimited
+       * proration as calculateProration) from the signed-in driver's
+       * current subscription; we only name the plan. Vipps does not
+       * sell subscriptions yet and answers with an error. */
+      const payload = { type: 'subscription', planId };
       if (method === 'vipps') {
-        const res = await fetch(supabaseFunctionUrl('create-vipps-session'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const res = await callFunction('create-vipps-session', payload);
         const vipps = await res.json();
         if (!vipps.redirectUrl) { alert('Unable to start Vipps payment. Please use card instead.'); setChangingPlan(null); return; }
         window.location.href = vipps.redirectUrl;
       } else {
-        const res = await fetch(supabaseFunctionUrl('create-checkout-session'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const res = await callFunction('create-checkout-session', payload);
         const checkout = await res.json();
         if (!checkout.url) { alert('Unable to start payment session. Please try again.'); setChangingPlan(null); return; }
         window.location.href = checkout.url;
@@ -394,15 +392,15 @@ export default function DriverPortal() {
     // constraint. The dual-confirmation flow uses the driver_confirmation /
     // customer_confirmation boolean flags, not a separate status value.
     await supabase.from('bookings').update({ status: 'completed', end_time: new Date().toISOString() }).eq('id', jobId);
-    await fetch(supabaseFunctionUrl('process-payment'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'recalculate_price', bookingId: jobId }) });
+    await callFunction('process-payment', { action: 'recalculate_price', bookingId: jobId });
     loadJobs();
   }
   async function confirmCompletion(jobId: string) {
     await supabase.from('bookings').update({ driver_confirmation: true }).eq('id', jobId);
     const { data: booking } = await supabase.from('bookings').select('customer_confirmation').eq('id', jobId).single();
     if (booking?.customer_confirmation === true) {
-      await fetch(supabaseFunctionUrl('process-payment'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'release_escrow', bookingId: jobId }) });
-      alert('Payment released to your wallet!');
+      const res = await callFunction('process-payment', { action: 'release_escrow', bookingId: jobId });
+      alert(res.ok ? 'Payment released to your wallet!' : 'Confirmed, but the payment could not be released yet. Please contact support if it does not appear in your wallet.');
     } else { alert('Confirmed! Waiting for customer confirmation.'); }
     loadJobs();
   }

@@ -342,24 +342,25 @@ export default function AdminDashboard() {
     loadData();
   }
 
+  /* Escrow release and refund run as one database transaction each
+   * (admin_release_escrow / admin_refund_escrow, admin-only): the
+   * wallet change, the ledger row, the escrow status and the booking
+   * status move together or not at all, and a second click on an
+   * already released or refunded booking is refused instead of
+   * crediting the wallet twice. Amounts are unchanged from before:
+   * release credits the booking's price, refund uses
+   * calculateRefundAmount(). */
   async function releasePayment(booking: any) {
-    const driverId = booking.driver_id; const driverEarning = safeNumber(booking.price_estimate);
-    // RPC parameter names per schema: p_driver_id, p_amount.
-    const { error: rpcErr } = await supabase.rpc("increment_driver_wallet", { p_driver_id: driverId, p_amount: driverEarning });
-    if (rpcErr) { alert("Release failed: " + rpcErr.message); return; }
-    await supabase.from("driver_wallet_transactions").insert({ driver_id: driverId, booking_id: booking.id, type: "escrow_release", amount: driverEarning });
-    await supabase.from("escrow_payments").update({ status: "released" }).eq("booking_id", booking.id);
-    await supabase.from("bookings").update({ payment_status: "released" }).eq("id", booking.id);
+    const { error } = await supabase.rpc("admin_release_escrow", { p_booking_id: booking.id });
+    if (error) { alert("Release failed: " + error.message); return; }
     alert("Driver wallet credited"); loadData();
   }
 
   async function refundPayment(booking: any) {
-    const refundAmount = calculateRefundAmount(booking); const driverId = booking.driver_id;
+    const refundAmount = calculateRefundAmount(booking);
     if (refundAmount === 0) { alert("Refund not allowed"); return; }
-    const { error: rpcErr } = await supabase.rpc("decrement_driver_wallet", { p_driver_id: driverId, p_amount: refundAmount });
-    if (rpcErr) { alert("Refund failed: " + rpcErr.message); return; }
-    await supabase.from("driver_wallet_transactions").insert({ driver_id: driverId, booking_id: booking.id, type: "refund_reversal", amount: refundAmount });
-    await supabase.from("escrow_payments").update({ status: "refunded", refund_amount: refundAmount }).eq("booking_id", booking.id);
+    const { error } = await supabase.rpc("admin_refund_escrow", { p_booking_id: booking.id, p_amount: refundAmount });
+    if (error) { alert("Refund failed: " + error.message); return; }
     alert("Refund processed safely"); loadData();
   }
 

@@ -67,6 +67,7 @@
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { VAN_HOURLY_RATES, PRICING, routeDistance, calculateServerPrice } from '../_shared/pricing.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -81,156 +82,9 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-/* ─── Pricing constants (mirrored from src/lib/constants.ts) ───── */
-
-const VAN_HOURLY_RATES: Record<string, number> = {
-  small_van:  850,
-  medium_van: 1150,
-  large_van:  1500,
-  luton_van:  1900,
-};
-
-const PRICING = {
-  minimumHours: 2,
-  distancePricing: { includedKm: 20, extraPerKm: 8 },
-  extras: {
-    extra_helper:          350,
-    furniture_assembly:    250,
-    cleaning:              400,
-    parking_assistance:    200,
-    packing_service:       500,
-    furniture_dismantling: 300,
-  },
-  vat: 0.25,
-};
-
-/* ─── Routing providers ────────────────────────────────────────── */
-
-interface RouteResult {
-  distance_km:      number;
-  duration_minutes: number;
-  provider:         'OSRM' | 'haversine-fallback';
-}
-
-/**
- * Straight-line great-circle distance, multiplied by 1.4 to
- * approximate Norway's fjord-heavy road network. Used as a
- * fallback when OSRM is unreachable. Duration is derived at
- * ~70 km/h average.
- */
-function haversineFallback(lat1: number, lng1: number, lat2: number, lng2: number): RouteResult {
-  const R = 6371; // km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const straightKm = R * c;
-
-  /* Norway road factor — multiplies straight-line distance by 1.4
-   * to account for fjords, valleys, and tunnel detours that make
-   * actual driving routes significantly longer than crow-flight. */
-  const distance_km      = Math.round(straightKm * 1.4 * 10) / 10;
-  const duration_minutes = Math.round(distance_km * 0.86); // ~70 km/h
-
-  return { distance_km, duration_minutes, provider: 'haversine-fallback' };
-}
-
-/**
- * Real driving distance via OSRM's public demo server. Returns
- * { distance_km, duration_minutes, provider: 'OSRM' } on success,
- * throws on any failure so the caller can fall back to haversine.
- */
-async function osrmRoute(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number,
-): Promise<RouteResult> {
-  /* OSRM URL format: /route/v1/driving/{lng1},{lat1};{lng2},{lat2}
-   * Note the lng-first ordering — this is OSRM's convention. */
-  const url =
-    `https://router.project-osrm.org/route/v1/driving/` +
-    `${lng1},${lat1};${lng2},${lat2}?overview=false&alternatives=false&steps=false`;
-
-  const res = await fetch(url, {
-    headers: { 'User-Agent': 'FlyttGo/1.0 (+https://flyttgo.no)' },
-  });
-  if (!res.ok) throw new Error(`OSRM ${res.status}`);
-
-  const data = await res.json();
-  const route = data?.routes?.[0];
-  if (!route || typeof route.distance !== 'number' || typeof route.duration !== 'number') {
-    throw new Error('OSRM returned no route');
-  }
-
-  return {
-    distance_km:      Math.round((route.distance / 1000) * 10) / 10, // m → km, 1 dp
-    duration_minutes: Math.round(route.duration / 60),                // s → min
-    provider:         'OSRM',
-  };
-}
-
-/**
- * Get driving distance + duration between two coordinates. Tries
- * OSRM first, falls back to haversine × 1.4 (Norway road factor)
- * if OSRM is unreachable or returns garbage. Never throws — the
- * booking flow must always get an answer.
- */
-async function routeDistance(
-  lat1: number, lng1: number,
-  lat2: number, lng2: number,
-): Promise<RouteResult> {
-  try {
-    return await osrmRoute(lat1, lng1, lat2, lng2);
-  } catch (err) {
-    console.warn('OSRM failed, falling back to haversine:', (err as Error).message);
-    return haversineFallback(lat1, lng1, lat2, lng2);
-  }
-}
-
-/* ─── Pricing formula ─────────────────────────────────────────── */
-
-interface PriceBreakdown {
-  base_price:      number;
-  distance_charge: number;
-  helpers_charge:  number;
-  extras_charge:   number;
-  subtotal:        number;
-  vat:             number;
-  total:           number;
-}
-
-/**
- * Mirror of src/lib/constants.ts#calculatePrice. Kept inline so
- * the edge function has zero shared-code dependencies. If the
- * frontend formula changes, update this mirror too.
- */
-function calculateServerPrice(params: {
-  vanType:    string;
-  hours:      number;
-  distanceKm: number;
-  helpers:    number;
-  extras:     string[];
-}): PriceBreakdown {
-  const safeHours = Math.max(params.hours ?? 0, PRICING.minimumHours);
-  const extraKm   = Math.max(0, (params.distanceKm ?? 0) - PRICING.distancePricing.includedKm);
-
-  const base_price      = (VAN_HOURLY_RATES[params.vanType] ?? 850) * safeHours;
-  const distance_charge = extraKm * PRICING.distancePricing.extraPerKm;
-  const helpers_charge  = (params.helpers ?? 0) * PRICING.extras.extra_helper * safeHours;
-  const extras_charge   = (params.extras ?? []).reduce(
-    (sum, e) => sum + ((PRICING.extras as Record<string, number>)[e] ?? 0),
-    0,
-  );
-
-  const subtotal = base_price + distance_charge + helpers_charge + extras_charge;
-  const vat      = subtotal * PRICING.vat;
-  const total    = subtotal + vat;
-
-  return { base_price, distance_charge, helpers_charge, extras_charge, subtotal, vat, total };
-}
+/* Pricing constants, routing (OSRM → haversine × 1.4) and the price
+ * formula live in ../_shared/pricing.ts. The payment functions charge
+ * with the same code, so the preview here is the amount charged. */
 
 /* ─── Request validation ───────────────────────────────────────── */
 

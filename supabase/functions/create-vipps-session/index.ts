@@ -37,13 +37,16 @@
 // FRONTEND REQUEST
 // ----------------
 //   POST /functions/v1/create-vipps-session
+//   Authorization: Bearer <signed-in user's access token>
 //   Content-Type: application/json
 //
-//   {
-//     "bookingId": "a1b2c3d4-e5f6-7890-...",   // uuid from bookings table
-//     "amount":    4025,                         // NOK, whole number
-//     "description": "FlyttGo booking"          // optional
-//   }
+//   { "bookingId": "a1b2c3d4-e5f6-7890-..." }
+//
+// The caller must be the booking's customer and the booking must still
+// be awaiting payment. The amount is computed on the server from the
+// booking (_shared/booking-charge.ts); an `amount` in the body is
+// ignored. Driver subscriptions are not sold through Vipps yet: a
+// `type: "subscription"` request is refused with 400.
 //
 // FRONTEND RESPONSE (200)
 // -----------------------
@@ -57,6 +60,8 @@
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { serviceClient, getCaller } from '../_shared/auth.ts';
+import { chargeForBooking } from '../_shared/booking-charge.ts';
 
 /* ─── Env ──────────────────────────────────────────────────────── */
 const VIPPS_CLIENT_ID        = Deno.env.get('VIPPS_CLIENT_ID')        ?? '';
@@ -129,7 +134,7 @@ async function getAccessToken(): Promise<string> {
 
 interface CreateSessionInput {
   bookingId:    string;
-  amount:       number;   // whole NOK
+  amount:       number;   // whole NOK, computed on the server
   description?: string;
 }
 
@@ -138,6 +143,7 @@ interface CreateSessionOutput {
   pollingUrl:   string;
   sessionToken: string;
   reference:    string;
+  amount:       number;
   provider:     'vipps';
 }
 
@@ -216,15 +222,14 @@ async function createCheckoutSession(
 
   if (!redirectUrl) throw new Error('Vipps checkout response missing checkoutFrontendUrl');
 
-  return { redirectUrl, pollingUrl, sessionToken, reference, provider: 'vipps' };
+  return { redirectUrl, pollingUrl, sessionToken, reference, amount: input.amount, provider: 'vipps' };
 }
 
 /* ─── Handler ──────────────────────────────────────────────────── */
 
 interface RequestBody {
-  bookingId:    string;
-  amount:       number;
-  description?: string;
+  bookingId?: string;
+  type?:      string;
 }
 
 serve(async (req: Request) => {
@@ -244,6 +249,10 @@ serve(async (req: Request) => {
     return json({ error: 'Vipps not configured', missing }, 500);
   }
 
+  const db     = serviceClient();
+  const caller = await getCaller(req, db);
+  if (!caller) return json({ error: 'Sign in required' }, 401);
+
   let body: RequestBody;
   try {
     body = (await req.json()) as RequestBody;
@@ -251,16 +260,19 @@ serve(async (req: Request) => {
     return json({ error: 'Invalid JSON body' }, 400);
   }
 
+  if (body?.type === 'subscription') {
+    return json({ error: 'Vipps is not available for driver subscriptions yet; pay by card' }, 400);
+  }
   if (!body?.bookingId || typeof body.bookingId !== 'string') {
     return json({ error: 'bookingId is required and must be a string' }, 400);
   }
-  if (!body?.amount || typeof body.amount !== 'number' || body.amount <= 0) {
-    return json({ error: 'amount is required and must be a positive number (NOK)' }, 400);
-  }
+
+  const charge = await chargeForBooking(db, body.bookingId, caller.id);
+  if (!charge.ok) return json({ error: charge.error }, charge.status);
 
   try {
     const token   = await getAccessToken();
-    const session = await createCheckoutSession(token, body);
+    const session = await createCheckoutSession(token, { bookingId: body.bookingId, amount: charge.amountNok });
     return json(session);
   } catch (err) {
     console.error('create-vipps-session error:', err);

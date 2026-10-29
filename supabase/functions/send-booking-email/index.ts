@@ -13,21 +13,20 @@
 //   FLYTTGO_FROM      — verified sender email (e.g. "FlyttGo <bookings@flyttgo.no>")
 //   FLYTTGO_REPLY_TO  — reply-to address (e.g. "support@flyttgo.no")
 //
-// USAGE (called from frontend):
-//   await fetch(supabaseFunctionUrl('send-booking-email'), {
-//     method: 'POST',
-//     headers: { 'Content-Type': 'application/json' },
-//     body: JSON.stringify({
-//       template: 'booking_confirmed',  // or driver_assigned | delivery_complete | reset_password
-//       to: 'customer@example.com',
-//       bookingId: 'uuid',
-//       data: { ... template-specific fields ... },
-//     }),
-//   });
+// CALLERS: server-side only. The function sends mail as FlyttGo to any
+// address, so it refuses every request that does not carry either
+//   Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>   (other functions)
+// or
+//   x-flyttgo-email-secret: <EMAIL_FUNCTION_SECRET>      (Postgres via pg_net)
+// Set the secret with `supabase secrets set EMAIL_FUNCTION_SECRET=<long random>`
+// and send it from the pg_net helper (docs/email-confirmations-setup.md).
+// Neither set → every request is refused (fail closed).
 //
 // USAGE (called from a Postgres trigger via pg_net):
 //   PERFORM net.http_post(
 //     url := 'https://<project-ref>.supabase.co/functions/v1/send-booking-email',
+//     headers := jsonb_build_object('Content-Type','application/json',
+//                                   'x-flyttgo-email-secret', <secret>),
 //     body := jsonb_build_object('template','booking_confirmed','to', NEW.customer_email, ...)
 //   );
 //
@@ -43,6 +42,23 @@ interface EmailRequest {
 }
 
 const RESEND_API_KEY   = Deno.env.get('RESEND_API_KEY');
+const EMAIL_SECRET     = Deno.env.get('EMAIL_FUNCTION_SECRET') ?? '';
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+/* Constant-time string compare so the secret can't be guessed byte by byte. */
+function safeEqual(a: string, b: string): boolean {
+  if (!a || !b || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function isTrustedCaller(req: Request): boolean {
+  const secret = req.headers.get('x-flyttgo-email-secret') ?? '';
+  if (EMAIL_SECRET && safeEqual(secret, EMAIL_SECRET)) return true;
+  const auth = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
+  return !!SERVICE_ROLE_KEY && safeEqual(auth, SERVICE_ROLE_KEY);
+}
 const FLYTTGO_FROM     = Deno.env.get('FLYTTGO_FROM')     ?? 'FlyttGo <bookings@flyttgo.no>';
 const FLYTTGO_REPLY_TO = Deno.env.get('FLYTTGO_REPLY_TO') ?? 'support@flyttgo.no';
 
@@ -143,6 +159,9 @@ serve(async (req: Request) => {
   }
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
+  }
+  if (!isTrustedCaller(req)) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403 });
   }
   if (!RESEND_API_KEY) {
     return new Response(JSON.stringify({ error: 'RESEND_API_KEY not configured' }), { status: 500 });

@@ -189,7 +189,7 @@ export default function FleetMap({ onSuspendDriver, height = 'h-[600px]', classN
       }
 
       const merged: DriverWithLocation[] = ((drv ?? []) as any[])
-        .map(d => {
+        .map((d): DriverWithLocation | null => {
           /* driver_locations.driver_id is keyed on auth.users.id
            * (the same key DriverPortal uses when upserting). */
           const loc = latestByDriver[d.user_id];
