@@ -2,6 +2,8 @@
 
 Written 2026-10-29 at the owner's request: FlyttGo is to offer companies a built-in accountant at a special price, which records every transaction and produces the Norwegian tax and accounting documents. Two existing systems were read (read-only); nothing was changed in either.
 
+> **Decided the same day (owner):** FlyttGo builds its own accounting system (Ledgera's design, built where the transactions are) and offers it as an add-on priced by the company's turnover; no accounting firm: the software records the transactions and produces the files the company's own accountant reviews; built so it can be copied into Ledgera. Built: [`ACCOUNTING_CORE.md`](ACCOUNTING_CORE.md). That replaces advice 2–4 below (connect to Fiken/Tripletex/PowerOffice; a partner firm; Ledgera later). The assessment and the Norwegian rules still apply: software in which each company keeps its own books needs no authorisation; doing the books for others would.
+
 ## What exists
 
 | | Fast Man & Van (`ICOFCUCAM/VanMan-UK`, back office → Accountant) | Ledgera (`ICOFCUCAM/FlyttgoTechGroup`, `/accounting`) | FlyttGo (this repository) |

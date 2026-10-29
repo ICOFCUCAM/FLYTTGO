@@ -51,6 +51,10 @@ On 2026-10-29 the owner adopted the recommendations in [`PREDEPLOY_REVIEW.md`](P
 | 30 | **Trade authorisations** (e.g. DSB registration for electrical work) are checked by FlyttGo; a service that needs one is offered only then | `organization_authorisations` (00010), `job_insert` (00012) |
 | 31 | **Health is left out** (patient data): no Appointments plan for health, no health templates | plan industries (00010), importer `EXCLUDED` |
 | 32 | **Scheduled jobs in the database:** `pg_cron` + `pg_net`, the service role key in Supabase Vault; subscription expiry hourly, invoice run daily, appointment reminders hourly ([`SCHEDULES.md`](SCHEDULES.md)) | `supabase/ops/schedules.sql` |
+| 33 | **FlyttGo's own accounting system** (Ledgera's design, built here where the transactions are), offered to companies as an **add-on**; no accounting firm: the software records the transactions and produces the files the company's accountant reviews | 00014, 00015, `src/accounting`, [`ACCOUNTING_CORE.md`](ACCOUNTING_CORE.md) |
+| 34 | **The add-on's price follows the company's turnover** (bands from last year's income in the books, or the declared turnover at the start; reassessed each 1 January; Enterprise by agreement); proposed until confirmed | `accounting_price_tiers`, `accounting_tier()` (00015) |
+| 35 | **Each company's accounting back office:** its owners and admins invite an accountant, bookkeeper, external auditor (with an end date) or viewer; FlyttGo's administrators never read a company's books | `accounting.invite()` (00014), `accounting-invite` |
+| 36 | **Portable:** the core and the office are copied unchanged into Ledgera; each product supplies a small adapter | schema `accounting`, `accounting.host_*` |
 
 ## Still to do before real money moves
 

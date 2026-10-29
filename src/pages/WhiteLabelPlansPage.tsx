@@ -8,6 +8,8 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../lib/store';
 import { loadPlans, type WhiteLabelPlan } from '../lib/whiteLabel';
 import { formatNok } from '../lib/invoicing';
+import { supabase } from '../lib/supabase';
+import type { PriceTier } from '../accounting/types';
 
 function Check({ children }: { children: React.ReactNode }) {
   return <li className="flex gap-2"><span className="text-emerald-600 font-bold">✓</span><span>{children}</span></li>;
@@ -17,6 +19,8 @@ export default function WhiteLabelPlansPage() {
   const { setPage } = useApp();
   const [plans, setPlans] = useState<WhiteLabelPlan[] | null>(null);
   useEffect(() => { loadPlans().then(setPlans); }, []);
+  const [accounting, setAccounting] = useState<{ tiers: PriceTier[]; price_status: string } | null>(null);
+  useEffect(() => { supabase.rpc('accounting_price').then(({ data }) => setAccounting(data ?? null)); }, []);
   const proposed = (plans ?? []).some(p => p.price_status !== 'confirmed');
 
   return (
@@ -110,6 +114,25 @@ export default function WhiteLabelPlansPage() {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {accounting && accounting.tiers.length > 0 && (
+          <div className="mt-10 bg-white rounded-2xl border border-gray-200 p-6">
+            <div className="text-xs font-semibold text-gray-500 mb-1">ADD-ON · ANY PLAN, ANY INDUSTRY</div>
+            <h3 className="text-lg font-bold text-gray-900">Accounting (FlyttGo Regnskap)</h3>
+            <p className="text-sm text-gray-600 mt-1 mb-4 max-w-3xl">
+              Your invoices, credit notes and payments on FlyttGo are posted for you; add purchases and other costs with the receipt.
+              The MVA return basis, the annual accounts draft, the basis for the tax return and SAF-T are ready when they are due, in PDF and Word,
+              for your own accountant to review. Invite your accountant, bookkeeper or auditor to your company's back office. In Norwegian or English.
+            </p>
+            <table className="text-sm"><tbody>{(() => { let lower = 0; return accounting.tiers.map(t => {
+              const row = <tr key={t.name}><td className="pe-6 py-0.5 font-medium">{t.name}</td>
+                <td className="pe-6 text-gray-500">{t.up_to === null ? `turnover from ${formatNok(lower)}` : `turnover ${formatNok(lower)} – ${formatNok(t.up_to)}`}</td>
+                <td>{t.monthly_fee === null ? 'price by agreement' : `${formatNok(t.monthly_fee)} / month`}</td></tr>;
+              lower = t.up_to ?? lower; return row; }); })()}</tbody></table>
+            <p className="text-xs text-gray-500 mt-3">Excl. MVA. The band follows last year's turnover in your books (or what you state when you start) and is reassessed each 1 January.
+              {accounting.price_status !== 'confirmed' && ' Proposed prices: FlyttGo has not confirmed them yet.'}</p>
           </div>
         )}
 

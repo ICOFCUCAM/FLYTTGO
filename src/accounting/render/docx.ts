@@ -66,9 +66,9 @@ export function renderDocx(doc: Doc): Uint8Array {
     + `<w:pgMar w:top="1020" w:right="${MARGIN}" w:bottom="1020" w:left="${MARGIN}" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>`;
   const footer = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr ${w}><w:p><w:pPr><w:jc w:val="left"/></w:pPr>`
     + run(`${doc.footer}  ·  ${doc.generated}  ·  `, { size: 14, color: '777777' })
-    + '<w:r><w:rPr><w:sz w:val="14"/><w:color w:val="777777"/></w:rPr><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:r>'
+    + '<w:fldSimple w:instr=" PAGE "><w:r><w:rPr><w:sz w:val="14"/><w:color w:val="777777"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple>'
     + run(' / ', { size: 14, color: '777777' })
-    + '<w:r><w:rPr><w:sz w:val="14"/><w:color w:val="777777"/></w:rPr><w:fldSimple w:instr="NUMPAGES"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:r></w:p></w:ftr>';
+    + '<w:fldSimple w:instr=" NUMPAGES "><w:r><w:rPr><w:sz w:val="14"/><w:color w:val="777777"/></w:rPr><w:t>1</w:t></w:r></w:fldSimple></w:p></w:ftr>';
   const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${w}>`
     + '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/><w:sz w:val="18"/><w:lang w:val="nb-NO"/></w:rPr></w:rPrDefault></w:docDefaults>'
     + '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>'

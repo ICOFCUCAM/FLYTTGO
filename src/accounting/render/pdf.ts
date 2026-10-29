@@ -23,7 +23,7 @@ function glyph(ch: string, bold: boolean): number {
 }
 export function textWidth(s: string, size: number, bold = false): number {
   let w = 0;
-  for (const ch of s) w += glyph(ch, bold);
+  for (const ch of s.replace(/\u2212/g, '-')) w += glyph(ch, bold);
   return (w * size) / 1000;
 }
 
@@ -31,7 +31,8 @@ export function textWidth(s: string, size: number, bold = false): number {
 const WINANSI: Record<string, number> = { '€': 0x80, '…': 0x85, '’': 0x92, '“': 0x93, '”': 0x94, '•': 0x95, '–': 0x96, '—': 0x97 };
 function encode(s: string): string {
   let out = '';
-  for (const ch of s.replace(/[\u00a0\u202f]/g, ' ')) {
+  // nb-NO numbers use a no-break space and the minus sign (U+2212); WinAnsi has neither.
+  for (const ch of s.replace(/[\u00a0\u202f]/g, ' ').replace(/\u2212/g, '-')) {
     let b = WINANSI[ch] ?? ch.charCodeAt(0);
     if (b > 255) b = 0x3f;                       // not in WinAnsi: '?'
     if (ch === '(' || ch === ')' || ch === '\\') out += '\\' + ch;

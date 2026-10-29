@@ -85,6 +85,11 @@ describe('accounting: files', () => {
     const offsets = pdf.slice(xref).split('\n').slice(3).filter(r => / n $/.test(r)).map(r => Number(r.slice(0, 10)));
     offsets.forEach((o, i) => expect(pdf.slice(o, o + 12)).toMatch(new RegExp(`^${i + 1} 0 obj`)));
   });
+  it('negative numbers survive in the PDF (the Norwegian minus sign is written as a hyphen)', () => {
+    const pdf = text(renderPdf(buildDoc('balance', data, 'no')));
+    expect(pdf).toContain('-200,00');
+    expect(pdf).not.toContain('?200,00');
+  });
   it('a Word file is a ZIP with the document, its styles and footer', () => {
     const docx = text(renderDocx(buildDoc('trial', data, 'no')));
     for (const part of ['[Content_Types].xml', 'word/document.xml', 'word/styles.xml', 'word/footer1.xml', 'docProps/core.xml']) expect(docx).toContain(part);

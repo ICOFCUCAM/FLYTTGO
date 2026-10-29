@@ -35,8 +35,8 @@ export default function PeopleTab() {
               {ROLES.map(r => <option key={r} value={r}>{roleLabel(t, r)}</option>)}</select>
             <input className={input} placeholder={t('name')} aria-label={t('name')} value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
             <input className={input} placeholder={t('firm')} aria-label={t('firm')} value={form.firm} onChange={e => setForm({ ...form, firm: e.target.value })} />
-            <label className="flex items-center gap-1 text-xs">{t('validUntil')}
-              <input className={`${input} flex-1`} type="date" value={form.validUntil} onChange={e => setForm({ ...form, validUntil: e.target.value })} /></label>
+            <label className="flex flex-col text-xs text-gray-600 -mt-4">{t('validUntil')}
+              <input className={`${input} w-full min-w-0`} type="date" value={form.validUntil} onChange={e => setForm({ ...form, validUntil: e.target.value })} /></label>
           </div>
           {form.role === 'auditor' && !form.validUntil && <p className="text-xs text-amber-700 mt-2">{t('auditorNeedsEnd')}</p>}
           <button disabled={busy || !form.email || (form.role === 'auditor' && !form.validUntil)} className={`${btn} bg-gray-900 text-white mt-3`}

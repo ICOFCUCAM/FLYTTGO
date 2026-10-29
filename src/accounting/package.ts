@@ -60,7 +60,8 @@ export function saftFor(d: BooksData, o: Pick<PackageOptions, 'software' | 'comp
 
 export function accountantPackage(d: BooksData, o: PackageOptions): { name: string; bytes: Uint8Array } {
   const entries: ZipEntry[] = [];
-  const folder = (n: number, s: string) => `${String(n).padStart(2, '0')} ${s}`;
+  // Folder names that every system accepts (no ':' and the like, which Windows refuses).
+  const folder = (n: number, s: string) => `${String(n).padStart(2, '0')} ${s.replace(/[:\\/*?"<>|]+/g, ' -').replace(/\s+/g, ' ').trim()}`;
   let i = 0;
   for (const k of DOC_KINDS) {
     if (k.kind === 'mva') {
