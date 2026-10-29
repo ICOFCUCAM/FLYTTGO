@@ -24,6 +24,10 @@ EXPECTED_FP=supabase/schema/production-2026-10-29.fingerprint
 MIGRATIONS=(supabase/migrations/0000[2-9]_*.sql supabase/migrations/000[1-9][0-9]_*.sql)
 PSQL=(psql -X -q -v ON_ERROR_STOP=1)
 export PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
+# The platform's days are Oslo days (due dates, invoice dates, the month):
+# the tests' current_date must be one too, or they fail between midnight
+# UTC and midnight in Oslo.
+export PGTZ=Europe/Oslo
 
 fresh() {
   "${PSQL[@]}" -d postgres -c "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" -c "CREATE DATABASE \"$DB\""
