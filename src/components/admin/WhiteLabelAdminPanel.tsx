@@ -184,7 +184,7 @@ export default function WhiteLabelAdminPanel() {
                   {tpl.content_flags.filter(f => f.page === open?.path).length === 0 && <div className="text-gray-500">Nothing flagged at import. Still read the page.</div>}
                 </div>
                 <textarea value={draft} onChange={e => setDraft(e.target.value)} className="w-full h-56 font-mono text-xs border rounded p-2" spellCheck={false} />
-                <p className="text-xs text-gray-500">Placeholders: {'{{brand.name}} {{brand.phone}} {{brand.email}} {{brand.city}} {{brand.tagline}} {{BOOKING_URL}}'}. Scripts, forms, frames and event handlers are refused.</p>
+                <p className="text-xs text-gray-500">Placeholders: {'{{brand.name}} {{brand.logo}} {{brand.phone}} {{brand.email}} {{brand.city}} {{brand.tagline}} {{BOOKING_URL}}'}; the logo slot is an element with class "fg-brand-slot" holding {'{{brand.logo}}<span class="fg-brand-name">{{brand.name}}</span>'}. Scripts, forms, frames and event handlers are refused.</p>
                 <div className="flex flex-wrap gap-2">
                   <button disabled={busy || draft === page.html} onClick={() => run(() => updateTemplatePage(tpl.id, page.path, draft), 'Page saved; the template needs approval again.')} className={`${btn} bg-[#0B2E59] text-white`}>Save page</button>
                   {tpl.status !== 'approved' && <button disabled={busy} onClick={() => {

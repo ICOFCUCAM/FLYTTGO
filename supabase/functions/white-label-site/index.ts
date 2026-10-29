@@ -71,7 +71,7 @@ serve(async (req: Request) => {
           path: p.path,
           html: renderTemplatePage(p.html, {
             brand: { name: site.display_name, tagline: site.tagline, phone: site.support?.phone, email: site.support?.email,
-                     city: site.city, primaryColor: site.primary_color, accentColor: site.accent_color },
+                     city: site.city, primaryColor: site.primary_color, accentColor: site.accent_color, logoUrl },
             assets: (t.assets ?? []) as TemplateAsset[],
             pageUrl: (path) => path === '/' ? (base || '/') : `${base || '/'}?page=${encodeURIComponent(path)}`,
             bookingUrl: `${base}/book`,

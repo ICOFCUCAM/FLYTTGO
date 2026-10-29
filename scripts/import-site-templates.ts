@@ -60,7 +60,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
-  categoryLabel, prepareTemplate, renderTemplatePage, replaceForms, templateCategory, TEMPLATE_CATEGORIES, OTHER_CATEGORY,
+  categoryLabel, hostsOf, prepareTemplate, renderTemplatePage, replaceForms, templateCategory, TEMPLATE_CATEGORIES, OTHER_CATEGORY,
   type Brand, type MasterRow, type PreparedTemplate, type TemplateAsset, type TemplatePage,
 } from '../supabase/functions/_shared/site-template.ts';
 import { snapshotter, type Snapshotter } from './template-snapshot.ts';
@@ -75,8 +75,6 @@ type Imported = PreparedTemplate & { thumbnail?: string; thumbnailJpeg?: Uint8Ar
 const SAMPLE_BRAND: Brand = { name: 'Your Company', tagline: 'Your tagline here', phone: '+47 00 00 00 00',
   email: 'post@example.com', city: 'Your town' };
 
-const hostsOf = (assets: TemplateAsset[]) =>
-  [...new Set(assets.map(a => { try { return new URL(a.url).host.toLowerCase(); } catch { return ''; } }).filter(Boolean))];
 
 /** The rendered home page of a template, as a company with the sample brand would see it. */
 function samplePage(t: PreparedTemplate, html: string): string {

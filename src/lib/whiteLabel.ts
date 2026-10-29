@@ -10,7 +10,7 @@
  * checks who may make it; this file only calls them.
  */
 import { supabase } from './supabase';
-import { callJson } from './invoicing';
+import { callJson, logoUrl } from './invoicing';
 import { isFlyttgoHost } from './hosts';
 
 export type SellerModel = 'flyttgo' | 'company';
@@ -87,6 +87,12 @@ export async function loadPlans(): Promise<WhiteLabelPlan[]> {
 export async function loadOrgWhiteLabel(orgId: string): Promise<OrgWhiteLabel | null> {
   const { data } = await supabase.from('organization_white_label').select('*').eq('organization_id', orgId).maybeSingle();
   return (data ?? null) as OrgWhiteLabel | null;
+}
+
+/** A short-lived link to the company's logo (Invoices → logo), for previews of its site. */
+export async function loadLogoUrl(orgId: string): Promise<string | null> {
+  const { data } = await supabase.from('organizations').select('logo_path').eq('id', orgId).maybeSingle();
+  return logoUrl((data as { logo_path?: string | null } | null)?.logo_path);
 }
 
 export async function missingFor(orgId: string, plan?: string | null): Promise<string[]> {

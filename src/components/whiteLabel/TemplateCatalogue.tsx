@@ -11,15 +11,13 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import {
-  OTHER_CATEGORY, TEMPLATE_CATEGORIES, bestFor, categoryLabel, featureLabel, renderTemplatePage, templateCategory, type Brand,
+  OTHER_CATEGORY, TEMPLATE_CATEGORIES, bestFor, categoryLabel, featureLabel, hostsOf, renderTemplatePage, templateCategory, type Brand,
 } from '../../../supabase/functions/_shared/site-template';
 import { loadTemplate, thumbnailOf, type SiteTemplate, type SiteTemplateSummary } from '../../lib/whiteLabel';
 import TemplateThumb from './TemplateThumb';
 
 const btn = 'px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50';
 
-const hostsOf = (assets: { url: string }[]) =>
-  assets.map(a => { try { return new URL(a.url).host; } catch { return ''; } }).filter(Boolean);
 
 /** Every card's picture has the same shape: the top of the home page, 4 : 3. */
 const THUMB_BOX = 'aspect-[4/3]';
@@ -187,7 +185,7 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
                   style={frame.width ? { width: frame.width, maxWidth: '100%' } : undefined}
                   srcDoc={renderTemplatePage(pages[at]?.html ?? '', {
                     brand, assets: preview.t.assets, pageUrl: () => '#', bookingUrl: '#', sellerNotice,
-                    assetHosts: hostsOf(preview.t.assets),
+                    assetHosts: hostsOf(preview.t.assets, brand.logoUrl),
                   })} />
               </div>
               <p className="text-xs text-gray-500 px-3 py-2 border-t">Shown with your name, colours and contact details; the wording and pictures are the template's samples. On your site every "book" button opens your booking page.</p>
