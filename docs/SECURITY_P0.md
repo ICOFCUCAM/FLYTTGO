@@ -22,8 +22,9 @@ The emergency fix is in place (seen 2026-10-29): `admin_accounts` has RLS with a
 | `00002_reconcile_production_schema.sql` | Makes production and `00001` agree on what the app relies on: one driver-identity rule, foreign keys re-pointed (rows that predate a key are kept, and the key is left NOT VALID), `plan_id` as the subscription source with `plan_slug()`, `expired` and `identity_document` allowed, review columns added, production's broken `apply_pending_plan_changes()` and `create_driver_wallet()` fixed. |
 | `00003_p0_security_hardening.sql` | RLS on every table. Column guards on bookings, escrow, profiles, driver tables and payouts. The job pool without customer details, plus `claim_job()`. Dispatch and wallet functions restricted. One-time settlement of escrow to the wallet. `change_driver_subscription` checks the caller. Live tracking: `booking_driver_user()`, the location in the realtime publication, replica identity. Admin escrow release as one transaction. Fixes for production's recursive and RLS-blind escrow triggers. |
 | `00004_payments_and_refunds.sql` | Provider reference and amount paid on bookings, `payment_events` (each webhook event processed once), `payment_refunds`, `refund_request_begin()` / `refund_mark()`. |
+| `00005_organizations.sql` | Not P0: company accounts (organisations, members, invitations) with RLS. Described in [`ORGANIZATIONS.md`](ORGANIZATIONS.md). Can be applied with the others or later. |
 
-Rollback scripts (production only) are in `supabase/rollback/000{4,3,2}_down.sql`, run newest first. They are tested to restore production's schema **and function bodies** exactly (§5).
+Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.sql`, run newest first. They are tested to restore production's schema **and function bodies** exactly (§5).
 
 ### Edge functions
 
@@ -85,7 +86,7 @@ Rollback scripts (production only) are in `supabase/rollback/000{4,3,2}_down.sql
 - a refund in Stripe test mode, and in Vipps test mode.
 
 **Production, in one maintenance window:**
-1. Apply `00002`, `00003`, `00004` in one session.
+1. Apply `00002`, `00003`, `00004` in one session (and `00005`, if organisations go live at the same time).
 2. Set the secrets: `EMAIL_FUNCTION_SECRET` and `app.email_function_secret`, plus the Vipps and Stripe secrets if not set. Add `refund.created`, `refund.updated` and `refund.failed` to the Stripe webhook's events.
 3. Deploy the frontend. It works with both old and new functions.
 4. Deploy the edge functions: `create-checkout-session`, `create-vipps-session`, `stripe-webhook`, `vipps-webhook`, `process-payment`, `calculate-price`, `send-booking-email`, `refund-payment`. Functions before the frontend would refuse the old frontend's calls.
@@ -93,7 +94,7 @@ Rollback scripts (production only) are in `supabase/rollback/000{4,3,2}_down.sql
 
 **Rollback:**
 1. Redeploy the previous frontend and functions (Vercel and Supabase keep earlier versions).
-2. Run `supabase/rollback/00004_down.sql`, `00003_down.sql`, `00002_down.sql` in that order.
+2. Run `supabase/rollback/00005_down.sql` (if 00005 was applied), `00004_down.sql`, `00003_down.sql`, `00002_down.sql` in that order.
    - Each file states the columns and tables it drops. Export `payment_refunds` first if any refund was made.
    - Wallets moved by 00002 are not moved back.
 3. The rollback re-opens the holes in §1. Use it only to return to a known state.
@@ -106,7 +107,7 @@ Rollback scripts (production only) are in `supabase/rollback/000{4,3,2}_down.sql
 | `npm run lint` | 0 errors; warnings identical to `main` |
 | `npm run build` | passes |
 | `npm test` (Vitest) | **38 / 38**: pricing and browser/server formula parity, refunds against fake Stripe/Vipps (success, pending, refusal, retry, idempotency key reuse, uncaptured cancel, no double call), tracking (beacon id, customer map follow/stop) |
-| `npm run test:db` | **repo schema 109 / 109; production replica 127 / 127; rollback restores production exactly** |
+| `npm run test:db` | **repo schema 174 / 174; production replica 192 / 192** (P0 109 and 127, organisations 65 on each); **rollback restores production exactly** |
 | Edge functions | Strict TypeScript with stand-in Deno/URL types passes. Real `deno check` runs in CI (deno.land is blocked here). |
 
 `npm run test:db` checks, on each schema:

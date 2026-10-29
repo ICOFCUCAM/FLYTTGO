@@ -50,7 +50,7 @@ echo "── repo ──"
 fresh
 "${PSQL[@]}" -d "$DB" -f supabase/migrations/00001_complete_schema.sql
 migrate
-run_tests supabase/tests/p0_security.test.sql
+run_tests supabase/tests/p0_security.test.sql supabase/tests/organizations.test.sql
 
 echo "── production ──"
 fresh
@@ -60,7 +60,8 @@ if ! diff <(fingerprint) "$EXPECTED_FP"; then
 fi
 echo "replica matches the production fingerprint"
 migrate
-run_tests supabase/tests/p0_security.test.sql supabase/tests/p0_production.test.sql
+run_tests supabase/tests/p0_security.test.sql supabase/tests/p0_production.test.sql \
+  supabase/tests/organizations.test.sql
 
 echo "── rollback ──"
 # Function bodies and settings of a fresh replica, to compare with after
