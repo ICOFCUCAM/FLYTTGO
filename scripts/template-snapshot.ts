@@ -38,8 +38,8 @@ export interface Snapshotter {
   visibleChars(html: string, scripts: boolean): Promise<number>;
   /**
    * The catalogue's thumbnail of a page (a rendered page, as served): drawn
-   * without scripts at 1280 px wide, the top 1600 px, saved as a JPEG of
-   * 640 × 800. Images load only from `hosts` (the template's asset store).
+   * without scripts in a desktop window of 1440 × 900, what a visitor sees
+   * first, saved as a JPEG of 720 × 450. Images load only from `hosts` (the template's asset store).
    */
   thumbnail(html: string, hosts: string[]): Promise<Uint8Array>;
   /**
@@ -54,7 +54,7 @@ export interface Snapshotter {
 import type { PageInspection } from '../supabase/functions/_shared/template-quality.ts';
 
 /** Thumbnails: the page width they are drawn at, how much of the page, and the scale. */
-export const THUMBNAIL = { width: 1280, height: 1600, scale: 0.5 } as const;
+export const THUMBNAIL = { width: 1440, height: 900, scale: 0.5 } as const;
 
 /** Requests to these hosts go through; every other one is refused. */
 const allowOnly = (hosts: string[]) => async (r: Route) => {

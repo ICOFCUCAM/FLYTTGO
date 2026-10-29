@@ -35,9 +35,10 @@
 // (`npx playwright install chromium` once); without it, a warning.
 //
 // The same browser draws each template's thumbnail for the catalogue: the
-// cleaned home page with a neutral sample brand ("Your Company", the
-// template's own colours), 1280 px wide, the top 1600 px, saved as a
-// 640 × 800 JPEG (images only from the template's asset store). It is
+// cleaned home page as its demo, in the template's own name and colours
+// (as theme galleries show a demo site; the company's own name and colours
+// come in the preview), a desktop window 1440 × 900, saved as a
+// 720 × 450 JPEG (images only from the template's asset store). It is
 // written to <out>/thumbnails/<id>.jpg and, with --to-flyttgo, stored
 // beside the template's images as the asset 'thumbnail'. The importer also
 // lists each template's features (pricing, gallery, team, FAQ…:
@@ -116,6 +117,9 @@ const SAMPLE_BRAND: Brand = { name: 'Your Company', tagline: 'Your tagline here'
 
 /** The brand the overflow check draws pages with: a long name, as some companies have. */
 const CHECK_BRAND: Brand = { ...SAMPLE_BRAND, name: 'Nordvik Flytting og Transport Aksjeselskap' };
+
+/** A template's own demo identity, for its thumbnail: its name and colours, sample contact details. */
+const demoBrand = (t: { name: string }): Brand => ({ ...SAMPLE_BRAND, name: t.name, tagline: null });
 
 /** A page of a template, as a company with this brand would see it. */
 function samplePage(t: Pick<PreparedTemplate, 'assets'>, html: string, brand: Brand = SAMPLE_BRAND): string {
@@ -217,9 +221,9 @@ async function prepare(row: MasterRow, snap: Snapshotter | null): Promise<Import
         t.flags.push({ kind: 'hidden', page: p.path, sample: `${Math.round(100 - (after / shown) * 100)} % of the text is not visible without scripts` });
       }
     }
-    // The catalogue's thumbnail: the cleaned home page with the sample brand.
+    // The catalogue's thumbnail: the cleaned home page as the template's own demo.
     const home = t.pages.find(p => p.path === '/') ?? t.pages[0];
-    if (home) t.thumbnailJpeg = await snap.thumbnail(samplePage(t, home.html), hostsOf(t.assets));
+    if (home) t.thumbnailJpeg = await snap.thumbnail(samplePage(t, home.html, demoBrand(t)), hostsOf(t.assets));
   }
   const sizes = new Map<string, { width: number; height: number }>();
   t.checks = await checkTemplate(t, snap, sizes);
@@ -322,7 +326,7 @@ async function toFlyttgo(templates: Imported[], snap: Snapshotter | null) {
     // With images from a manifest, the thumbnail and the browser's checks are drawn again with them.
     if (t.replacements?.size && snap) {
       const home = t.pages.find(p => p.path === '/') ?? t.pages[0];
-      if (home) t.thumbnailJpeg = await snap.thumbnail(samplePage({ assets }, home.html), hostsOf(assets));
+      if (home) t.thumbnailJpeg = await snap.thumbnail(samplePage({ assets }, home.html, demoBrand(t)), hostsOf(assets));
       t.checks = await checkTemplate({ ...t, assets }, snap);
     }
     // The thumbnail, beside the template's images (asset key 'thumbnail').

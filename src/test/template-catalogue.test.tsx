@@ -24,7 +24,7 @@ describe('the catalogue cards', () => {
 
   it('show the thumbnail lazily, in one shape, zooming only without reduced motion', () => {
     expect(html).toMatch(/<img src="https:\/\/a\.test\/salon-verve01\/thumbnail\.jpg" alt="" loading="lazy"/);
-    expect(html).toContain('aspect-[4/3]');
+    expect(html).toContain('aspect-[16/10]');
     expect(html).toContain('group-hover:scale-[1.04]');
     expect(html).toContain('motion-reduce:group-hover:scale-100');
     expect(html).not.toMatch(/translateY|--travel/);                  // no scrolling on hover
