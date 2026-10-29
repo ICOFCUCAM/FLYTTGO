@@ -48,6 +48,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   'brand-site':              '/b',
   'embed':                   '/embed',
   'my-services':             '/my-services',
+  'shop':                    '/shop',
   'accounting':              '/accounting',
 
   /* Legal */
@@ -139,6 +140,7 @@ const PAGE_TITLES: Record<Page, string> = {
   'brand-site':              'Book a move',
   'embed':                   'Booking',
   'my-services':             'My jobs and appointments',
+  'shop':                    'Shop',
   'accounting':              'Regnskap · Accounting · FlyttGo',
   'not-found':               'Page Not Found · FlyttGo',
 };
@@ -231,6 +233,8 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     'Book online with the company.',
   'my-services':
     'Your jobs and appointments with companies on FlyttGo, and their invoices.',
+  'shop':
+    'Shop online from the company: pickup or delivery, card payment, and 14 days to change your mind.',
   'accounting':
     'The books you keep or review for companies on FlyttGo: accountants, bookkeepers and auditors.',
   'not-found':
@@ -313,10 +317,11 @@ function upsertLink(rel: string, href: string) {
 export function pathToPage(path: string): Page {
   if (!path) return 'home';
   const normalised = path === '/' ? '/' : path.replace(/\/+$/, '');
-  /* A company's white-label page: /b/<slug>, and /b/<slug>/book for its
-   * booking; on a company's own domain or subdomain, its front page. */
-  const brand = /^\/b\/[a-z0-9-]{3,63}(\/book)?$/.exec(normalised);
-  if (brand) return brand[1] ? 'booking' : 'brand-site';
+  /* A company's white-label page: /b/<slug>, /b/<slug>/book for its
+   * booking and /b/<slug>/shop for its shop; on a company's own domain or
+   * subdomain, its front page. */
+  const brand = /^\/b\/[a-z0-9-]{3,63}(\/book|\/shop)?$/.exec(normalised);
+  if (brand) return brand[1] === '/shop' ? 'shop' : brand[1] ? 'booking' : 'brand-site';
   /* The booking widget's frame on a company's own website. */
   if (/^\/embed\/[a-z0-9-]{3,63}$/.test(normalised)) return 'embed';
   if (normalised === '/' && typeof window !== 'undefined' && !isFlyttgoHost(window.location.hostname)) return 'brand-site';

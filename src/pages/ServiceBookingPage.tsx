@@ -19,6 +19,7 @@ import { useWhiteLabel } from '../lib/whiteLabelContext';
 import { bookingLabel, textOn } from '../lib/whiteLabel';
 import { formatNok } from '../lib/invoicing';
 import { supabase } from '../lib/supabase';
+import { useContact } from '../hooks/useContact';
 import {
   PRICE_TYPE, addDays, bookAppointment, freeSlots, osloDateTime, osloTime, osloToday, requestJob,
   type AppointmentService, type JobService, type Resource,
@@ -42,18 +43,6 @@ export default function ServiceBookingPage() {
       <p className="text-xs text-gray-500 mt-8">{site.seller_notice}</p>
     </div>
   );
-}
-
-function useContact() {
-  const { user } = useAuth();
-  const [contact, setContact] = useState({ name: '', phone: '', email: '' });
-  useEffect(() => {
-    if (!user) return;
-    supabase.from('profiles').select('first_name, last_name, phone, email').eq('user_id', user.id).maybeSingle().then(({ data }) => {
-      if (data) setContact(c => ({ name: c.name || [data.first_name, data.last_name].filter(Boolean).join(' '), phone: c.phone || data.phone || '', email: c.email || data.email || user.email || '' }));
-    });
-  }, [user]);
-  return [contact, setContact] as const;
 }
 
 function SignInFirst() {

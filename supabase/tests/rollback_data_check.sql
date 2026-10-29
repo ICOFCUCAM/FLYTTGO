@@ -22,6 +22,9 @@ SELECT tests.ok(to_regclass('public.restaurant_reservations') IS NULL AND to_reg
 SELECT tests.ok(to_regclass('public.api_keys') IS NULL AND to_regclass('public.organization_widget_origins') IS NULL,
   'API keys, their log and the widget''s websites are dropped (every key stops working)');
 
+SELECT tests.ok(to_regclass('public.shop_orders') IS NULL AND to_regclass('public.shop_products') IS NULL,
+  'shop catalogues and orders are dropped (export them first)');
+
 \echo '── left NOT VALID by the rollback (rows written while the migrations were in force):'
 SELECT c.relname || '.' || con.conname AS constraint_not_valid
   FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid JOIN pg_namespace n ON n.oid = c.relnamespace

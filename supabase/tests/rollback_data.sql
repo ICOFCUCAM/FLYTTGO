@@ -59,8 +59,8 @@ SELECT 'b0000000-0000-0000-0000-000000000017', 'c0000000-0000-0000-0000-00000000
   FROM public.organizations WHERE slug = 'rollback-as';
 SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false);
 SELECT public.company_booking_check('b0000000-0000-0000-0000-000000000017', 'c0000000-0000-0000-0000-000000000001', 1200);
--- 00018: the company active, an API key with its log and a counted
--- request, a widget website.
+-- 00018: an API key with its log and a counted request, a widget
+-- website (the company was activated above).
 SELECT set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
 SELECT public.create_api_key((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'Rollback', ARRAY['quotes', 'bookings:read']);
 SELECT public.add_widget_origin((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'https://rollback.example');
@@ -84,6 +84,20 @@ INSERT INTO public.hotel_stays (organization_id, number, room_type_id, room_id, 
 SELECT organization_id, 1, room_type_id, id, '{"name":"Kari","phone":"+47 900 00 000"}', 2, current_date + 1, current_date + 3, 1120, 2240, 12
   FROM public.hotel_rooms;
 INSERT INTO public.hotel_stay_events (stay_id, action) SELECT id, 'stay.booked' FROM public.hotel_stays;
+-- 00020: a shop's delivery options, a product with a size and an unpaid
+-- order holding it.
+INSERT INTO public.shop_settings (organization_id, pickup_address)
+SELECT id, 'Torget 1, 0150 Oslo' FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_products (id, organization_id, name, price, track_stock, variant_label)
+SELECT '5a000000-0000-0000-0000-000000000001', id, 'Mug', 199, true, 'Size' FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_variants (id, product_id, organization_id, name, stock)
+SELECT '5b000000-0000-0000-0000-000000000001', '5a000000-0000-0000-0000-000000000001', id, 'L', 2 FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_orders (id, organization_id, number, customer_user_id, customer, delivery_method, items_total, total, expires_at)
+SELECT '5c000000-0000-0000-0000-000000000001', id, 1, 'c0000000-0000-0000-0000-000000000002', '{"name":"Kari"}', 'pickup', 199, 199, now() + interval '1 hour'
+  FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_order_lines (order_id, line_no, product_id, variant_id, name, quantity, unit_price, vat_rate, total, stock_reserved)
+VALUES ('5c000000-0000-0000-0000-000000000001', 1, '5a000000-0000-0000-0000-000000000001', '5b000000-0000-0000-0000-000000000001',
+        'Mug (L)', 1, 199, 25, 199, true);
 
 -- What exists before the rollback, for the comparison afterwards.
 CREATE TABLE public.zz_rollback_before AS

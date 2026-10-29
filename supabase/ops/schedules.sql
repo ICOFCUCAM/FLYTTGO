@@ -12,6 +12,7 @@
 --   flyttgo-invoice-run              daily 05:15          invoice-run (06:15 Oslo winter, 07:15 summer)
 --   flyttgo-appointment-reminders    every hour :10       appointment-reminders (00013, 00019)
 --   flyttgo-accounting-cancellations daily 00:20          accounting.apply_cancellations() (00014): ledgers past their last day end
+--   flyttgo-shop-expiry              every 5 minutes      expire_shop_orders() (00020): unpaid orders past their time, stock back
 --
 -- The two functions are called with the service role key, read at each run
 -- from Supabase Vault. Nothing secret is in this file. Before running it,
@@ -77,7 +78,7 @@ DO $$
 DECLARE j text;
 BEGIN
   FOREACH j IN ARRAY ARRAY['auto-downgrade-expired-subscriptions', 'flyttgo-invoice-run', 'flyttgo-appointment-reminders',
-                           'flyttgo-accounting-cancellations'] LOOP
+                           'flyttgo-accounting-cancellations', 'flyttgo-shop-expiry'] LOOP
     IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = j) THEN PERFORM cron.unschedule(j); END IF;
   END LOOP;
 END $$;
@@ -92,3 +93,7 @@ SELECT cron.schedule('flyttgo-invoice-run', '15 5 * * *',
   $$ SELECT flyttgo_ops.call_function('invoice-run', '{}'::jsonb, 150000) $$);
 SELECT cron.schedule('flyttgo-appointment-reminders', '10 * * * *',
   $$ SELECT flyttgo_ops.call_function('appointment-reminders', '{}'::jsonb, 60000) $$);
+-- Shops: an unpaid order gives its stock back once its time is up (each
+-- new order also does this for its shop first).
+SELECT cron.schedule('flyttgo-shop-expiry', '*/5 * * * *',
+  $$ SELECT public.expire_shop_orders() $$);

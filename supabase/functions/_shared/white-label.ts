@@ -56,7 +56,8 @@ export function sellerSplit(flyttgoPrice: number, pricing: SellerPricing): Selle
 }
 
 /** What a company's page books (docs/SERVICE_PLATFORM.md): FlyttGo's moves
- * on a transport plan, otherwise the company's own module from its plan. */
+ * on a transport plan, otherwise the company's own module from its plan
+ * ('none' when it only has others, e.g. a shop, 00020). */
 export type PageBooking = 'moves' | 'jobs' | 'appointments' | 'restaurant' | 'hotel' | 'none';
 
 export function bookingFor(modules: readonly string[] | null | undefined): PageBooking {
@@ -69,18 +70,23 @@ export function bookingFor(modules: readonly string[] | null | undefined): PageB
 }
 
 /** The public page's seller notice, shown on every page and at payment.
- * Outside transport (booking other than moves) the company sells its own
- * services and FlyttGo only provides the booking system. */
+ * A page outside transport (its plan has modules: jobs, appointments,
+ * tables, rooms, a shop) sells the company's own work and goods, not moves;
+ * FlyttGo only provides the booking and payment platform. Outside transport
+ * is read from the page's booking, or from its modules when no booking is
+ * given. */
 export function sellerNotice(site: {
   seller_model: 'flyttgo' | 'company';
   display_name?: string | null;
   seller?: { name?: string | null; org_number?: string | null } | null;
   booking?: PageBooking;
+  modules?: readonly string[] | null;
 }): string {
   const s = site.seller ?? {};
   const org = s.org_number ? ` (org. nr. ${s.org_number})` : '';
-  if (site.booking && site.booking !== 'moves') {
-    return `${s.name ?? site.display_name ?? 'The company'}${org} sells what is booked here. FlyttGo AS provides the booking system.`;
+  const outsideTransport = site.booking ? site.booking !== 'moves' : (site.modules?.length ?? 0) > 0;
+  if (outsideTransport) {
+    return `${s.name ?? site.display_name ?? 'The company'}${org} is the seller of everything offered on this page. FlyttGo AS provides the booking and payment platform.`;
   }
   return site.seller_model === 'company'
     ? `${s.name ?? site.display_name ?? 'The company'}${org} sells the moves booked here. FlyttGo AS carries them out as its subcontractor.`

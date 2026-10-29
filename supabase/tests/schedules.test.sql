@@ -35,14 +35,16 @@ DO $$
 DECLARE n int;
 BEGIN
   SELECT count(*) INTO n FROM cron.job;
-  IF n <> 4 THEN RAISE EXCEPTION 'FAIL: % jobs after two runs, expected 4', n; END IF;
+  IF n <> 5 THEN RAISE EXCEPTION 'FAIL: % jobs after two runs, expected 5', n; END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-accounting-cancellations' AND schedule = '20 0 * * *'
                  AND command LIKE '%accounting.apply_cancellations()%') THEN RAISE EXCEPTION 'FAIL: accounting cancellations job'; END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'auto-downgrade-expired-subscriptions' AND schedule = '0 * * * *'
                  AND command LIKE '%expire_lapsed_subscriptions(NULL)%') THEN RAISE EXCEPTION 'FAIL: expiry job'; END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-invoice-run' AND schedule = '15 5 * * *') THEN RAISE EXCEPTION 'FAIL: invoice job'; END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-appointment-reminders' AND schedule = '10 * * * *') THEN RAISE EXCEPTION 'FAIL: reminder job'; END IF;
-  RAISE NOTICE 'ok: four jobs, a re-run replaces them and the old expiry job';
+  IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-shop-expiry' AND schedule = '*/5 * * * *'
+                 AND command LIKE '%public.expire_shop_orders()%') THEN RAISE EXCEPTION 'FAIL: shop expiry job'; END IF;
+  RAISE NOTICE 'ok: five jobs, a re-run replaces them and the old expiry job';
 END $$;
 
 -- Without the Vault secrets a job fails and sends nothing.

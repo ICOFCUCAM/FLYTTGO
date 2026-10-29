@@ -26,10 +26,10 @@ describe('which booking a company page offers', () => {
     expect(ownBooking('moves') || ownBooking('none') || ownBooking(undefined)).toBe(false);
   });
 
-  it('names the company as the seller and FlyttGo as the booking system outside moving', () => {
+  it('names the company as the seller and FlyttGo as the booking and payment platform outside moving', () => {
     const site = { seller_model: 'company' as const, display_name: 'Acme Bistro', seller: { name: 'Acme Bistro AS', org_number: '987654321' } };
     expect(sellerNotice({ ...site, booking: 'restaurant' }))
-      .toBe('Acme Bistro AS (org. nr. 987654321) sells what is booked here. FlyttGo AS provides the booking system.');
+      .toBe('Acme Bistro AS (org. nr. 987654321) is the seller of everything offered on this page. FlyttGo AS provides the booking and payment platform.');
     expect(sellerNotice({ ...site, booking: 'moves' })).toContain('sells the moves booked here');
     expect(sellerNotice(site)).toContain('sells the moves booked here');
   });

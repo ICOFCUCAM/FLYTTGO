@@ -29,6 +29,8 @@ export type Page =
   | 'embed'
   /* Customers' jobs and appointments with companies outside moving. */
   | 'my-services'
+  /* A company's shop on its page (00020). */
+  | 'shop'
   /* Books someone was invited to (accountants, auditors), and invitation links. */
   | 'accounting'
   /* Fallback for URLs that don't match any known route. */

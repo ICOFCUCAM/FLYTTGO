@@ -55,7 +55,7 @@ The page is at `flyttgo.no/b/<slug>`, at `<slug>.flyttgo.no` (once the wildcard 
 - Refunds of Model B bookings go through the company's account with `refund_application_fee`, so FlyttGo gives back its share in proportion. The cancellation policy is FlyttGo's (the company's terms must not promise less).
 - Drivers, dispatch, escrow and payouts are unchanged: the escrow holds FlyttGo's price.
 - Who sees the bookings: Model B, the selling company's members (`bookings_white_label_select`); Model A, nobody at the company (they see `white_label_stats`, monthly numbers only).
-- On a plan outside transport the page books the company's own module instead (`bookingFor()` in `_shared/white-label.ts`, read by `white-label-site`): jobs, appointments, restaurant tables or hotel rooms ([`SERVICE_PLATFORM.md`](SERVICE_PLATFORM.md)); its seller notice then names the company as the seller and FlyttGo as the booking system.
+- On a plan outside transport the page books the company's own module instead (`bookingFor()` in `_shared/white-label.ts`, read by `white-label-site`): jobs, appointments, restaurant tables or hotel rooms ([`SERVICE_PLATFORM.md`](SERVICE_PLATFORM.md)), and a plan with the Shop module also shows the company's shop at `/b/<slug>/shop` (the page's only offer when it has no booking module); its seller notice then names the company as the seller of everything offered on the page and FlyttGo as the booking and payment platform.
 
 ## Website templates (from ArchitectPro)
 

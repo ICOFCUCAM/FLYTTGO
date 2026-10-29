@@ -56,6 +56,8 @@ export interface PublicSite {
   /** What the page books: FlyttGo's moves, or the company's Jobs,
    * Appointments, Restaurant or Hotel module (bookingFor()). */
   booking: PageBooking;
+  /** The page has a shop (module 'shop', 00020): /b/<slug>/shop. */
+  shop?: boolean;
   modules: string[];
   pages: string[];
   page: { path: string; html: string } | null;

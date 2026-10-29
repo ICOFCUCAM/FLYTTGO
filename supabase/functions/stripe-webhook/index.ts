@@ -31,6 +31,13 @@
 // was charged on. account.updated keeps the company's "can take
 // payments" flag current.
 //
+// Shops (00020, shop-checkout, shop-refund): metadata.type = 'shop_order'
+// on the company's connected account is recorded by record_shop_payment,
+// which checks the account and the amount again and records a payment
+// once; the customer is then emailed the order confirmation. Refund
+// events with metadata.type = 'shop_refund' go to shop_refund_mark. (On
+// the Connect endpoint, also select refund.updated and refund.failed.)
+//
 // The dual-confirmation escrow release (at delivery time) is still
 // handled by process-payment — this function is only the PAID gate,
 // not the RELEASED gate.
@@ -71,6 +78,7 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { paidAmountMatches } from '../_shared/pricing.ts';
 import { mapStripeRefundStatus } from '../_shared/refunds.ts';
+import { orderConfirmationEmail, type ShopOrder, type ShopOrderLine } from '../_shared/shop.ts';
 
 /* ─── Env ──────────────────────────────────────────────────────── */
 const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!;
@@ -78,6 +86,10 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const STRIPE_WEBHOOK_SECRET     = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '';
 /* Connect endpoint (events on companies' accounts); optional until Model B is used. */
 const STRIPE_CONNECT_WEBHOOK_SECRET = Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET') ?? '';
+/* Shop order confirmations (optional: without a key the order is still recorded). */
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
+const FLYTTGO_FROM   = Deno.env.get('FLYTTGO_FROM') ?? 'FlyttGo <faktura@flyttgo.no>';
+const FRONTEND_URL   = (Deno.env.get('FRONTEND_URL') ?? 'https://flyttgo.no').replace(/\/$/, '');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
@@ -293,7 +305,23 @@ async function markSubscriptionPaid(
  * (metadata.refund_id). refund_mark applies the database effects on the
  * first 'succeeded', once, and never moves a refund back.
  */
-async function updateRefund(refund: StripeRefund) {
+async function updateRefund(refund: StripeRefund, account: string | null) {
+  /* A shop's refund on its own account (shop-refund). */
+  if (refund.metadata?.type === 'shop_refund') {
+    const shopRefundId = refund.metadata.shop_refund_id;
+    if (!shopRefundId) return { ok: true, ignored: true, reason: 'shop_refund without shop_refund_id' };
+    const { data: r } = await supabase.from('shop_refunds').select('id, order_id').eq('id', shopRefundId).maybeSingle();
+    const { data: o } = r ? await supabase.from('shop_orders').select('connected_account_id').eq('id', r.order_id).maybeSingle() : { data: null };
+    if (!o || !account || o.connected_account_id !== account) {
+      return { ok: true, ignored: true, reason: 'shop refund not on the shop\'s account' };
+    }
+    const { error } = await supabase.rpc('shop_refund_mark', {
+      p_refund: shopRefundId, p_status: mapStripeRefundStatus(refund.status), p_provider_refund_id: refund.id,
+      p_error: refund.failure_reason ?? null,
+    });
+    if (error) throw new Error(`shop_refund_mark failed: ${error.message}`);
+    return { ok: true, shopRefundId, status: refund.status };
+  }
   const refundId = refund.metadata?.refund_id;
   if (!refundId) return { ok: true, ignored: true, reason: 'refund not created by FlyttGo' };
   const { error } = await supabase.rpc('refund_mark', {
@@ -304,6 +332,43 @@ async function updateRefund(refund: StripeRefund) {
   });
   if (error) throw new Error(`refund_mark failed: ${error.message}`);
   return { ok: true, refundId, status: refund.status };
+}
+
+/* ─── Shop order confirmation ──────────────────────────────────── */
+
+/**
+ * The customer's confirmation of a paid shop order (_shared/shop.ts), from
+ * FlyttGo's sending address in the company's name, replies to the company;
+ * once (Resend's idempotency key and confirmation_sent_at). A failure is
+ * logged and never fails the webhook: the order is recorded either way.
+ */
+async function sendShopConfirmation(orderId: string) {
+  try {
+    if (!RESEND_API_KEY) { console.warn(`shop order ${orderId}: RESEND_API_KEY not set, no confirmation sent`); return; }
+    const { data: order } = await supabase.from('shop_orders').select('*').eq('id', orderId).maybeSingle();
+    if (!order || order.confirmation_sent_at || !order.customer?.email) return;
+    const [{ data: lines }, { data: seller }, { data: wl }, { data: cfg }] = await Promise.all([
+      supabase.from('shop_order_lines').select('line_no, name, quantity, unit_price, vat_rate, total').eq('order_id', orderId),
+      supabase.rpc('organization_seller', { p_org: order.organization_id }),
+      supabase.from('organization_white_label').select('display_name, support_email, terms_url').eq('organization_id', order.organization_id).maybeSingle(),
+      supabase.from('shop_settings').select('pickup_address, pickup_note, shipping_note, return_cost_customer').eq('organization_id', order.organization_id).maybeSingle(),
+    ]);
+    const mail = orderConfirmationEmail(order as ShopOrder, (lines ?? []) as ShopOrderLine[],
+      { ...(seller ?? {}), name: seller?.name ?? wl?.display_name ?? null, email: wl?.support_email ?? seller?.email },
+      { terms_url: wl?.terms_url, ...(cfg ?? {}) }, { frontendUrl: FRONTEND_URL });
+    const company = String(wl?.display_name ?? seller?.name ?? 'FlyttGo').replace(/["<>\r\n]/g, '');
+    const address = /<([^>]+)>/.exec(FLYTTGO_FROM)?.[1] ?? FLYTTGO_FROM;
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': `shop-order-confirmation-${orderId}` },
+      body: JSON.stringify({ from: `"${company}" <${address}>`, to: [order.customer.email],
+                             ...(wl?.support_email ? { reply_to: wl.support_email } : {}), subject: mail.subject, html: mail.html }),
+    });
+    if (!res.ok) { console.warn(`shop order ${orderId}: confirmation email ${res.status}`); return; }
+    await supabase.rpc('mark_shop_confirmation_sent', { p_order: orderId });
+  } catch (err) {
+    console.warn(`shop order ${orderId}: confirmation not sent: ${(err as Error).message}`);
+  }
 }
 
 /* ─── Event router ─────────────────────────────────────────────── */
@@ -359,7 +424,7 @@ async function handleEvent(event: StripeEvent) {
     return await updateConnectedAccount(event.data.object as StripeAccount);
   }
   if (event.type === 'refund.updated' || event.type === 'refund.failed' || event.type === 'refund.created') {
-    return await updateRefund(event.data.object as StripeRefund);
+    return await updateRefund(event.data.object as StripeRefund, event.account ?? null);
   }
   if (
     event.type !== 'checkout.session.completed' &&
@@ -432,6 +497,28 @@ async function handleEvent(event: StripeEvent) {
     if (error?.code === '23505') return { ok: true, idempotent: true, invoiceId };   // a concurrent delivery won
     if (error) throw new Error(`record_invoice_payment failed: ${error.message}`);
     return { ok: true, invoiceId, paid: (session.amount_total ?? 0) / 100 };
+  }
+
+  /* A shop order paid on the company's account (00020, shop-checkout).
+   * record_shop_payment checks the account and the amount itself, records
+   * the payment once (its PaymentIntent) and makes the receipt. */
+  if (kind === 'shop_order') {
+    const orderId = metadata.order_id ?? null;
+    if (!orderId) return { ok: true, ignored: true, reason: 'shop_order without order_id' };
+    if (!event.account || metadata.connected_account !== event.account) {
+      console.error(`shop order ${orderId}: paid on ${event.account ?? 'FlyttGo'}, session made for ${metadata.connected_account ?? '?'} — not recorded`);
+      return { ok: true, ignored: true, reason: 'account mismatch; held for review' };
+    }
+    if (!amountOk) return { ok: true, ignored: true, reason: 'amount mismatch; held for review' };
+    const reference = typeof session.payment_intent === 'string' ? session.payment_intent : sessionId;
+    const { data: outcome, error } = await supabase.rpc('record_shop_payment', {
+      p_order: orderId, p_amount: (session.amount_total ?? 0) / 100, p_account: event.account,
+      p_reference: reference, p_session: sessionId,
+    });
+    if (error?.code === '23505') return { ok: true, idempotent: true, orderId };   // a concurrent delivery won
+    if (error) throw new Error(`record_shop_payment failed: ${error.message}`);
+    if (outcome === 'recorded') await sendShopConfirmation(orderId);
+    return { ok: true, orderId, outcome };
   }
 
   if (kind === 'subscription') {

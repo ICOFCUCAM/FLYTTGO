@@ -12,7 +12,7 @@ DECLARE j text;
 BEGIN
   IF to_regnamespace('cron') IS NOT NULL THEN
     FOREACH j IN ARRAY ARRAY['auto-downgrade-expired-subscriptions', 'flyttgo-invoice-run', 'flyttgo-appointment-reminders',
-                             'flyttgo-accounting-cancellations'] LOOP
+                             'flyttgo-accounting-cancellations', 'flyttgo-shop-expiry'] LOOP
       IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = j) THEN PERFORM cron.unschedule(j); END IF;
     END LOOP;
   END IF;
