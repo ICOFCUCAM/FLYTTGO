@@ -32,26 +32,28 @@
 // FRONTEND REQUEST
 // ----------------
 //   POST /functions/v1/create-checkout-session
+//   Authorization: Bearer <signed-in user's access token>
 //   Content-Type: application/json
 //
-//   {
-//     "bookingId":    "a1b2c3d4-e5f6-7890-...",      // uuid from bookings
-//     "amount":        4025,                          // whole NOK
-//     "method":        "card" | "google_pay" | ...,  // optional; honoured where it matters
-//     "customerEmail": "customer@example.com",        // optional, pre-fills Stripe email
-//     "description":   "FlyttGo booking"              // optional
-//   }
+//   { "bookingId": "a1b2c3d4-...", "method": "card" | "google_pay" | ... }
 //
-// Alternative (subscription) request shape from DriverPortal:
+// The caller must be the booking's customer and the booking must still
+// be awaiting payment. The amount is NOT taken from the request: it is
+// re-computed on the server from the booking (see
+// _shared/booking-charge.ts). An `amount` in the body is ignored.
 //
-//   {
-//     "type":      "subscription",
-//     "planId":    "pro",
-//     "planLabel": "Pro",
-//     "driverId":  "<uuid>",
-//     "userId":    "<uuid>",
-//     "amount":    1875                               // whole NOK (incl. MVA)
-//   }
+// A booking the company sells on its own page (white label, Model B) is a
+// direct charge on the company's connected Stripe account, at the
+// company's price, with FlyttGo's price and platform fee taken as the
+// application fee (docs/WHITE_LABEL.md). The customer returns to the
+// company's domain when it has one.
+//
+// Subscription request shape from DriverPortal:
+//
+//   { "type": "subscription", "planId": "pro" }
+//
+// The driver is the signed-in caller; the price (with the Pro →
+// Unlimited proration) comes from _shared/pricing.ts.
 //
 // FRONTEND RESPONSE (200)
 // -----------------------
@@ -65,6 +67,10 @@
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { serviceClient, getCaller, driverProfileIdOf } from '../_shared/auth.ts';
+import { chargeForBooking } from '../_shared/booking-charge.ts';
+import { subscriptionCharge, DRIVER_PLAN_LABELS } from '../_shared/pricing.ts';
+import { currentSubscription } from '../_shared/plans.ts';
 
 /* ─── Env ──────────────────────────────────────────────────────── */
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
@@ -86,27 +92,14 @@ function json(body: unknown, status = 200): Response {
 /* ─── Request shapes ───────────────────────────────────────────── */
 
 interface BookingRequest {
-  type?:          undefined;
-  bookingId:      string;
-  amount:         number;
-  method?:        'card' | 'google_pay' | 'apple_pay' | 'klarna' | 'link';
-  customerEmail?: string;
-  description?:   string;
+  type?:     undefined;
+  bookingId: string;
+  method?:   'card' | 'google_pay' | 'apple_pay' | 'klarna' | 'link';
 }
 
 interface SubscriptionRequest {
-  type:        'subscription';
-  planId:      string;
-  planLabel?:  string;
-  driverId:    string;
-  userId?:     string;
-  amount:      number;
-  description?:string;
-  /* Optional VAT split — our PRICING uses 25% VAT included, so
-   * amountExVat + vatAmount should equal amount. Kept loose. */
-  amountExVat?: number;
-  vatAmount?:   number;
-  billing?:     string;
+  type:   'subscription';
+  planId: string;
 }
 
 type RequestBody = BookingRequest | SubscriptionRequest;
@@ -125,6 +118,10 @@ serve(async (req: Request) => {
     return json({ error: 'STRIPE_SECRET_KEY not configured' }, 500);
   }
 
+  const db     = serviceClient();
+  const caller = await getCaller(req, db);
+  if (!caller) return json({ error: 'Sign in required' }, 401);
+
   let body: RequestBody;
   try {
     body = (await req.json()) as RequestBody;
@@ -132,47 +129,75 @@ serve(async (req: Request) => {
     return json({ error: 'Invalid JSON body' }, 400);
   }
 
-  const amount = Number((body as { amount?: unknown }).amount);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return json({ error: 'amount is required and must be a positive number (NOK)' }, 400);
-  }
-
-  /* Build the common pieces up-front and then branch on request type. */
-  const amountOre = Math.round(amount * 100); // NOK → øre
-
-  let reference:   string;
-  let productName: string;
-  const metadata:  Record<string, string> = {};
+  let amountNok:     number;
+  let reference:     string;
+  let productName:   string;
+  let description:   string | undefined;
+  let customerEmail: string | null = null;
+  let connect:       { account: string; applicationFeeOre: number; siteBase: string | null } | null = null;
+  const metadata:    Record<string, string> = {};
 
   if (isSubscription(body)) {
-    if (!body.planId || !body.driverId) {
-      return json({ error: 'planId and driverId are required for subscription type' }, 400);
+    if (!body.planId || typeof body.planId !== 'string') {
+      return json({ error: 'planId is required for subscription type' }, 400);
     }
-    reference   = `subscription-${body.driverId}-${body.planId}-${Date.now()}`;
-    productName = `FlyttGo ${body.planLabel ?? body.planId} subscription`;
+    if (!(await driverProfileIdOf(db, caller.id))) {
+      return json({ error: 'Only drivers can buy a driver subscription' }, 403);
+    }
+    /* driver_subscriptions.driver_id is the auth user id (DriverPortal,
+     * the dispatch engine and stripe-webhook all key on it). */
+    const current = await currentSubscription(db, caller.id);
+    const charge = subscriptionCharge(body.planId, current);
+    if (!charge) return json({ error: `plan ${body.planId} has nothing to pay` }, 400);
+    if (charge.total <= 0) return json({ error: 'nothing to pay for this plan change' }, 409);
+
+    amountNok   = charge.total;
+    reference   = `subscription-${caller.id}-${body.planId}-${Date.now()}`;
+    productName = `FlyttGo ${DRIVER_PLAN_LABELS[body.planId] ?? body.planId} subscription`;
+    description = charge.prorated
+      ? `Prorated: ${charge.creditExVat} NOK ex. MVA credit for unused Pro days (incl. 25% MVA)`
+      : 'Incl. 25% MVA';
     metadata.type     = 'subscription';
-    metadata.driverId = body.driverId;
+    metadata.driverId = caller.id;
     metadata.planId   = body.planId;
-    if (body.userId)      metadata.userId   = body.userId;
-    if (body.billing)     metadata.billing  = body.billing;
   } else {
-    if (!body.bookingId) {
+    if (!body.bookingId || typeof body.bookingId !== 'string') {
       return json({ error: 'bookingId is required' }, 400);
     }
-    reference   = `booking-${body.bookingId}-${Date.now()}`;
-    productName = body.description?.slice(0, 80) ?? `FlyttGo booking ${body.bookingId.slice(0, 8)}`;
+    const charge = await chargeForBooking(db, body.bookingId, caller.id, { allowConnect: true });
+    if (!charge.ok) return json({ error: charge.error }, charge.status);
+
+    amountNok     = charge.amountNok;
+    customerEmail = charge.customerEmail ?? caller.email;
+    reference     = `booking-${body.bookingId}-${Date.now()}`;
+    productName   = charge.connect
+      ? `${charge.connect.sellerName}: moving booking ${body.bookingId.slice(0, 8)}`
+      : `FlyttGo booking ${body.bookingId.slice(0, 8)}`;
+    description   = 'Incl. 25% MVA';
+    if (charge.connect) {
+      connect = charge.connect;
+      metadata.connected_account = charge.connect.account;
+      metadata.application_fee_ore = String(charge.connect.applicationFeeOre);
+    }
     metadata.type      = 'booking';
     metadata.bookingId = body.bookingId;
   }
+
+  const amountOre = Math.round(amountNok * 100); // NOK → øre
   metadata.reference = reference;
+  /* What we asked Stripe to charge. stripe-webhook compares the paid
+   * amount with this before marking anything paid. */
+  metadata.amount_ore = String(amountOre);
+  metadata.user_id    = caller.id;
 
   /* Success / cancel URLs now point at real FlyttGo paths and include
    * the Stripe session id + reference so the frontend can display
    * the right confirmation UI on return. */
-  const successUrl = `${FRONTEND_URL}/my-bookings?payment=success&session_id={CHECKOUT_SESSION_ID}&ref=${encodeURIComponent(reference)}`;
+  const base = connect?.siteBase ?? FRONTEND_URL;
+  const successUrl = `${base}/my-bookings?payment=success&session_id={CHECKOUT_SESSION_ID}&ref=${encodeURIComponent(reference)}`;
   const cancelUrl  = isSubscription(body)
     ? `${FRONTEND_URL}/driver-subscriptions?payment=cancelled`
-    : `${FRONTEND_URL}/payment?payment=cancelled&ref=${encodeURIComponent(reference)}`;
+    : `${base}/payment?payment=cancelled&ref=${encodeURIComponent(reference)}`;
 
   /* Build Stripe's URL-encoded form body. Stripe's REST API is
    * x-www-form-urlencoded with bracketed field names rather than
@@ -181,10 +206,7 @@ serve(async (req: Request) => {
    * Payment method types: we always include `card`. Stripe Checkout
    * automatically enables Google Pay / Apple Pay / Link as wallet
    * overlays on top of the card flow for supported devices, so the
-   * client-supplied `method` is a UI hint only — Stripe detects the
-   * actual wallet availability from the user agent. Adding
-   * `klarna` or `link` explicitly is only needed if you want them
-   * as their own rows in the method list. */
+   * client-supplied `method` is a UI hint only. */
   const params = new URLSearchParams();
   params.set('mode', 'payment');
   params.set('success_url', successUrl);
@@ -201,25 +223,25 @@ serve(async (req: Request) => {
   params.set('line_items[0][price_data][currency]', 'nok');
   params.set('line_items[0][price_data][unit_amount]', String(amountOre));
   params.set('line_items[0][price_data][product_data][name]', productName);
-  if (body.description) {
-    params.set('line_items[0][price_data][product_data][description]', body.description.slice(0, 240));
+  if (description) {
+    params.set('line_items[0][price_data][product_data][description]', description.slice(0, 240));
   }
 
   /* Reference + metadata — both client_reference_id and metadata
-   * make their way into the Stripe webhook event, so the webhook
-   * can look up the booking by either. client_reference_id is more
-   * visible in the Stripe dashboard. */
+   * make their way into the Stripe webhook event. */
   params.set('client_reference_id', reference);
   for (const [k, v] of Object.entries(metadata)) {
     params.set(`metadata[${k}]`, String(v));
   }
 
-  /* Pre-fill the customer's email on Stripe's form if we know it.
-   * Only for booking payments — subscription payments come from a
-   * signed-in driver whose email Stripe will already know if they've
-   * paid before. */
-  if (!isSubscription(body) && body.customerEmail) {
-    params.set('customer_email', body.customerEmail);
+  if (customerEmail) {
+    params.set('customer_email', customerEmail);
+  }
+
+  /* Model B: FlyttGo's share comes out of the company's payment. */
+  if (connect) {
+    params.set('payment_intent_data[application_fee_amount]', String(connect.applicationFeeOre));
+    for (const [k, v] of Object.entries(metadata)) params.set(`payment_intent_data[metadata][${k}]`, String(v));
   }
 
   /* Call Stripe. */
@@ -229,6 +251,7 @@ serve(async (req: Request) => {
       Authorization:  `Bearer ${STRIPE_SECRET_KEY}`,
       'Content-Type': 'application/x-www-form-urlencoded',
       'Stripe-Version': '2024-06-20',
+      ...(connect ? { 'Stripe-Account': connect.account } : {}),
     },
     body: params,
   });
@@ -261,6 +284,8 @@ serve(async (req: Request) => {
     url:       session.url,
     sessionId: session.id,
     reference,
+    amount:    amountNok,
     provider:  'stripe',
+    seller:    connect ? 'company' : 'flyttgo',
   });
 });

@@ -9,6 +9,9 @@ import { formatNorwegianAddress, validateNorwegianAddress } from '../utils/forma
 import { fetchServerPrice, ServerPriceResult } from '../lib/calculatePrice';
 import { getRouteDistance, RouteResult } from '../lib/routing';
 import { CustomerLegalAcceptance } from './LegalAcceptance';
+import { canBookFor, myMemberships, type Membership } from '../lib/organizations';
+import { useWhiteLabel } from '../lib/whiteLabelContext';
+import { sellerSplit } from '../../supabase/functions/_shared/white-label';
 
 /* ─────────────────────────────────────────────
    TYPES
@@ -56,6 +59,15 @@ export default function BookingFlow() {
 
   const [step, setStep] = useState(1);
   const TOTAL_STEPS = 6;
+
+  /* Book for a company (00007): offered to owners, admins and bookers of
+   * an active company; the database checks it again on insert. */
+  const [companies, setCompanies] = useState<Membership[]>([]);
+  const [bookFor, setBookFor] = useState<string>('');
+  useEffect(() => {
+    if (!user) { setCompanies([]); setBookFor(''); return; }
+    myMemberships(user.id).then(m => setCompanies(m.filter(canBookFor)));
+  }, [user]);
 
   /* ── Structured addresses (replaces old string fields) ──
    * Pre-fill from bookingData if the home page Booking Widget already
@@ -135,6 +147,12 @@ export default function BookingFlow() {
   const routingProvider: 'OSRM' | 'haversine-fallback' | 'osrm' | 'haversine' | null =
     serverPrice?.routing_provider ?? clientRoute?.source ?? null;
   const priceTotal     = serverPrice?.price_total            ?? clientPricing?.total       ?? 0;
+  /* On a company's page where the company sells (white label, Model B),
+   * the customer pays the company's price: FlyttGo's plus its markup. The
+   * payment function computes the same on the server. */
+  const { site: brand } = useWhiteLabel();
+  const sellerPrices = brand?.seller_model === 'company' && brand.pricing;
+  const shownTotal     = sellerPrices ? sellerSplit(priceTotal, brand.pricing).customerPrice : priceTotal;
   const priceSubtotal  = serverPrice?.price_subtotal         ?? clientPricing?.subtotal    ?? 0;
   const vatAmount      = serverPrice?.vat_amount             ?? clientPricing?.vat         ?? 0;
   const basePrice      = serverPrice?.breakdown?.base_price      ?? clientPricing?.basePrice      ?? 0;
@@ -346,6 +364,10 @@ export default function BookingFlow() {
         .from('bookings')
         .insert({
           customer_id: user.id,
+          organization_id: bookFor || null,
+          /* Booked on a company's white-label page: the database decides
+           * who sells from the company's active plan. */
+          white_label_org: brand?.organization_id ?? null,
           customer_email: email,
           customer_name: name,
           customer_phone: phone,
@@ -964,8 +986,11 @@ export default function BookingFlow() {
                       </div>
                       <div className="flex justify-between text-base font-bold text-gray-900 border-t pt-2">
                         <span>{t('booking.priceTotal')}</span>
-                        <span className="text-emerald-700">{priceTotal.toFixed(0)} NOK</span>
+                        <span className="text-emerald-700">{shownTotal.toFixed(0)} NOK</span>
                       </div>
+                      {sellerPrices && (
+                        <p className="text-[11px] text-gray-500 text-right">{brand.display_name}'s price, incl. MVA. The lines above are the moving service it buys from FlyttGo.</p>
+                      )}
                       <p className="text-[10px] text-gray-400 text-center pt-1">
                         {serverPrice
                           ? `Distance + price calculated server-side (${serverPrice.routing_provider})`
@@ -990,11 +1015,28 @@ export default function BookingFlow() {
               <CustomerLegalAcceptance onAccepted={setLegalAccepted} />
             </div>
 
+            {companies.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+                <label className="block">
+                  <span className="font-bold text-gray-900">Book for</span>
+                  <select value={bookFor} onChange={e => setBookFor(e.target.value)}
+                    className="mt-2 w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white">
+                    <option value="">Myself (personal booking)</option>
+                    {companies.map(c => <option key={c.organization.id} value={c.organization.id}>{c.organization.name}</option>)}
+                  </select>
+                </label>
+                <p className="text-gray-500 text-xs mt-2">
+                  A company booking shows in the company's dashboard for its team. You pay as usual; invoicing the company comes later.
+                </p>
+              </div>
+            )}
+
             {/* Final confirm button */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="font-bold text-gray-900 text-lg">{t('booking.totalLabel')} {priceTotal.toFixed(0)} NOK</p>
+                  <p className="font-bold text-gray-900 text-lg">{t('booking.totalLabel')} {shownTotal.toFixed(0)} NOK</p>
+                  {brand && <p className="text-gray-600 text-xs mt-1 max-w-md">{brand.seller_notice}</p>}
                   <p className="text-gray-500 text-xs">{t('booking.escrowNote')}</p>
                 </div>
                 <div className="text-right text-xs text-gray-400">
@@ -1051,7 +1093,7 @@ export default function BookingFlow() {
                   <>Calculating price…</>
                 ) : (
                   <>
-                    🔒 {t('booking.confirmPayBtn')} {priceTotal.toFixed(0)} NOK
+                    🔒 {t('booking.confirmPayBtn')} {shownTotal.toFixed(0)} NOK
                   </>
                 )}
               </button>

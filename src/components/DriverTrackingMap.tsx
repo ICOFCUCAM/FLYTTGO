@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '../lib/supabase';
+import { followBookingDriver } from '../lib/driverTracking';
 
 /**
  * DriverTrackingMap
@@ -14,22 +15,13 @@ import { supabase } from '../lib/supabase';
  *     Supabase Realtime — falls back to a one-time fetch if Realtime
  *     isn't configured for the table)
  *
- * Drop this in anywhere a booking detail is shown; pass the booking
- * row + driver id and it does the rest. If no driver_id, it shows
- * just pickup + delivery.
+ * Drop this in anywhere a booking detail is shown; pass the booking's
+ * id and it does the rest (src/lib/driverTracking.ts): it asks for the
+ * driver of the signed-in customer's own in-flight booking, reads the
+ * last position and follows updates over Realtime. Before a driver is
+ * assigned, or once the job is done, it shows just pickup + delivery.
  *
  * Leaflet is already in package.json, so no extra deps required.
- *
- * SETUP NOTE: For live tracking to actually work in production, the
- * driver_locations table needs to be added to the supabase_realtime
- * publication. Run this once in the Supabase SQL editor:
- *
- *   alter publication supabase_realtime add table public.driver_locations;
- *
- * The DriverPortal app should be calling
- *   supabase.from('driver_locations').upsert({ driver_id, lat, lng, updated_at: now() })
- * every ~10 seconds while a job is in_transit. That part isn't wired
- * yet — it's the next step on the tracking feature.
  */
 
 interface Coords {
@@ -40,7 +32,8 @@ interface Coords {
 interface Props {
   pickup: Coords;
   dropoff: Coords;
-  driverId?: string | null;
+  /** The booking whose driver to follow (the customer's own booking). */
+  bookingId?: string | null;
   className?: string;
   height?: string; // tailwind height class, default h-72
 }
@@ -73,54 +66,14 @@ const driverIcon = L.divIcon({
     "></div>`,
 });
 
-export default function DriverTrackingMap({ pickup, dropoff, driverId, className = '', height = 'h-72' }: Props) {
+export default function DriverTrackingMap({ pickup, dropoff, bookingId, className = '', height = 'h-72' }: Props) {
   const [driverPos, setDriverPos] = useState<Coords | null>(null);
 
   useEffect(() => {
-    if (!driverId) {
-      setDriverPos(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    /* One-time fetch */
-    supabase
-      .from('driver_locations')
-      .select('lat,lng,updated_at')
-      .eq('driver_id', driverId)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled || !data) return;
-        const lat = Number(data.lat);
-        const lng = Number(data.lng);
-        if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
-          setDriverPos({ lat, lng });
-        }
-      });
-
-    /* Realtime subscription. Will silently no-op if driver_locations
-     * isn't in the supabase_realtime publication yet. */
-    const channel = supabase
-      .channel(`driver-loc-${driverId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'driver_locations', filter: `driver_id=eq.${driverId}` },
-        (payload) => {
-          const row = (payload.new ?? payload.old) as { lat?: number; lng?: number } | null;
-          if (!row || row.lat == null || row.lng == null) return;
-          setDriverPos({ lat: Number(row.lat), lng: Number(row.lng) });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
-  }, [driverId]);
+    setDriverPos(null);
+    if (!bookingId) return;
+    return followBookingDriver(supabase, bookingId, setDriverPos);
+  }, [bookingId]);
 
   /* Centre the map on the midpoint of pickup → dropoff (or driver
    * position if available, so the user always sees something useful). */

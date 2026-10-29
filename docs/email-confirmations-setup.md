@@ -75,16 +75,22 @@ begin
       'bookingId', p_booking,
       'data',      p_data
     )::text,
-    headers := '{"Content-Type":"application/json"}'::jsonb
+    headers := jsonb_build_object(
+      'Content-Type',           'application/json',
+      -- send-booking-email refuses calls without this (EMAIL_FUNCTION_SECRET)
+      'x-flyttgo-email-secret', current_setting('app.email_function_secret', true)
+    )
   );
 exception when others then
   -- Never let an email failure block a booking insert.
   raise warning '[send_booking_email] %', sqlerrm;
 end $$;
 
--- Then point app.functions_url at your project URL once:
+-- Then point app.functions_url at your project URL once, and store the
+-- same secret the function has (supabase secrets set EMAIL_FUNCTION_SECRET=…):
 alter database postgres set app.functions_url
   = 'https://<project-ref>.supabase.co/functions/v1';
+alter database postgres set app.email_function_secret = '<same long random string>';
 ```
 
 Then add per-event triggers:

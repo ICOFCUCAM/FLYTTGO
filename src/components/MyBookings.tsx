@@ -1,6 +1,8 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
 import { useTranslation } from "react-i18next";
-import { supabase, supabaseFunctionUrl } from "../lib/supabase";
+import { supabase, callFunction } from "../lib/supabase";
+import { CANCELLATION_NOTICE, cancelBookingWithRefund } from "../lib/cancelBooking";
+import { releaseEscrow } from "../lib/releaseEscrow";
 import { useAuth } from "../lib/auth";
 import { useApp } from "../lib/store";
 
@@ -67,8 +69,8 @@ export default function MyBookings() {
   }
 
   async function cancelBooking(id: string) {
-    if (!confirm("Cancel this booking?")) return;
-    await supabase.from("bookings").update({ status: "cancelled" }).eq("id", id);
+    if (!confirm(CANCELLATION_NOTICE)) return;
+    alert(await cancelBookingWithRefund(id));
     fetchBookings();
   }
 
@@ -78,8 +80,10 @@ export default function MyBookings() {
     await supabase.from("bookings").update({ customer_confirmation: true }).eq("id", bookingId);
     const { data: booking } = await supabase.from("bookings").select("driver_confirmation").eq("id", bookingId).single();
     if (booking?.driver_confirmation === true) {
-      await fetch(supabaseFunctionUrl("process-payment"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "release_escrow", bookingId }) });
-      alert("Job complete! Payment released to driver.");
+      const outcome = await releaseEscrow(bookingId);
+      alert(outcome === "released" ? "Job complete! Payment released to driver."
+        : outcome === "waiting" ? "Job complete! Your payment is being collected; the driver is paid once it is."
+        : "Job complete! The payment could not be released yet; our team will follow up.");
     } else { alert("Confirmed! Waiting for driver confirmation to release payment."); }
     fetchBookings();
   }
@@ -173,7 +177,7 @@ export default function MyBookings() {
                     <DriverTrackingMap
                       pickup={{ lat: Number(booking.pickup_lat), lng: Number(booking.pickup_lng) }}
                       dropoff={{ lat: Number(booking.dropoff_lat), lng: Number(booking.dropoff_lng) }}
-                      driverId={booking.driver_id}
+                      bookingId={booking.id}
                       className="mb-3"
                     />
                   </Suspense>
@@ -207,7 +211,7 @@ export default function MyBookings() {
                     {t('myBookings.completePayment')}
                   </button>
                 )}
-                {booking.status === "pending" && <button onClick={() => cancelBooking(booking.id)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">{t('myBookings.cancel')}</button>}
+                {["pending", "confirmed", "driver_assigned"].includes(booking.status) && <button onClick={() => cancelBooking(booking.id)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">{t('myBookings.cancel')}</button>}
                 {booking.status === "completed" && !booking.customer_confirmation && <button onClick={() => confirmCompletion(booking.id)} className="px-4 py-2 bg-emerald-600 text-white rounded text-sm">{t('myBookings.confirmCompletion')}</button>}
                 <button onClick={() => repeatBooking(booking)} className="px-4 py-2 border rounded text-sm hover:bg-gray-50">{t('myBookings.repeatBooking')}</button>
               </div>

@@ -31,6 +31,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L, { LatLngBounds, LatLngTuple } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { supabase } from '../lib/supabase';
+import { activePlansByUser } from '../lib/plans';
 
 interface DriverWithLocation {
   id:                string;  // driver_profiles.id
@@ -161,12 +162,18 @@ export default function FleetMap({ onSuspendDriver, height = 'h-[600px]', classN
 
     try {
       /* Online drivers with their current subscription plan. */
-      const { data: drv, error: drvErr } = await supabase
+      const { data: drvRows, error: drvErr } = await supabase
         .from('driver_profiles')
-        .select('id, user_id, full_name, online, status, phone, driver_subscriptions(plan)')
+        .select('id, user_id, full_name, online, status, phone')
         .eq('online', true);
 
       if (drvErr) throw drvErr;
+      /* Plans live on driver_subscriptions (plan_id, keyed by user id). */
+      const plansByUser = await activePlansByUser((drvRows ?? []).map((d: any) => d.user_id));
+      const drv = (drvRows ?? []).map((d: any) => ({
+        ...d,
+        driver_subscriptions: plansByUser[d.user_id] ? [{ plan: plansByUser[d.user_id] }] : [],
+      }));
 
       /* Latest GPS fix per driver_id. We read every row and
        * dedupe client-side by (driver_id → most-recent) — the
@@ -189,7 +196,7 @@ export default function FleetMap({ onSuspendDriver, height = 'h-[600px]', classN
       }
 
       const merged: DriverWithLocation[] = ((drv ?? []) as any[])
-        .map(d => {
+        .map((d): DriverWithLocation | null => {
           /* driver_locations.driver_id is keyed on auth.users.id
            * (the same key DriverPortal uses when upserting). */
           const loc = latestByDriver[d.user_id];

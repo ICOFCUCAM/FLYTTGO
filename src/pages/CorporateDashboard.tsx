@@ -1,7 +1,26 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useApp } from '../lib/store';
+import { useAuth } from '../lib/auth';
+import { ORG_STATUS_LABELS, myMemberships, type Membership } from '../lib/organizations';
+import TeamPanel from '../components/corporate/TeamPanel';
+import RegisterCompany from '../components/corporate/RegisterCompany';
+import CompanyBookings from '../components/corporate/CompanyBookings';
+import CompanyInvoices from '../components/corporate/CompanyInvoices';
+import WhiteLabelPanel from '../components/corporate/WhiteLabelPanel';
+import JobsPanel from '../components/corporate/JobsPanel';
+import AppointmentsPanel from '../components/corporate/AppointmentsPanel';
+import SalesInvoicesPanel from '../components/corporate/SalesInvoicesPanel';
+import AccountingPanel from '../components/corporate/AccountingPanel';
+import { hasModule } from '../lib/services';
 
-type DashTab = 'overview' | 'shipments' | 'recurring' | 'invoices' | 'drivers' | 'analytics' | 'api' | 'team' | 'documents' | 'support';
+/* Visitors see the dashboard preview with sample figures. A signed-in
+ * member of a company sees their company, its status and its real team
+ * (organisations, 00005/00006); modules not connected yet keep their
+ * preview and say it is sample data. A signed-in person without a
+ * company can register one. */
+
+type DashTab = 'overview' | 'shipments' | 'recurring' | 'invoices' | 'drivers' | 'analytics' | 'api' | 'team' | 'white-label'
+  | 'jobs' | 'appointments' | 'sales' | 'accounting' | 'documents' | 'support';
 
 function StatCard({ icon, label, value, sub, color = 'emerald' }: { icon: string; label: string; value: string; sub?: string; color?: string }) {
   const colors: Record<string, string> = { emerald: 'bg-emerald-50 text-emerald-600', blue: 'bg-blue-50 text-blue-600', purple: 'bg-purple-50 text-purple-600', orange: 'bg-orange-50 text-orange-600' };
@@ -39,15 +58,48 @@ const NAV_ITEMS: { id: DashTab; icon: string; label: string }[] = [
   { id: 'analytics',  icon: '📈', label: 'Analytics' },
   { id: 'api',        icon: '🔗', label: 'API & Webhooks' },
   { id: 'team',       icon: '👥', label: 'Team' },
+  { id: 'white-label', icon: '🏷️', label: 'Plan and website' },
+  /* Shown when the company's plan includes the module (00010–00013). */
+  { id: 'jobs',         icon: '🔧', label: 'Jobs' },
+  { id: 'appointments', icon: '📅', label: 'Appointments' },
+  { id: 'sales',        icon: '🧾', label: 'Invoices to customers' },
+  /* The accounting add-on (00014/00015), for owners, admins and finance. */
+  { id: 'accounting',   icon: '📒', label: 'Accounting' },
   { id: 'documents',  icon: '📄', label: 'Documents' },
   { id: 'support',    icon: '🎧', label: 'Support' },
 ];
 
 export default function CorporateDashboard() {
   const { setPage, setShowAuthModal, setAuthMode } = useApp();
-  const [tab, setTab] = useState<DashTab>('overview');
+  const { user } = useAuth();
+  const [memberships, setMemberships] = useState<Membership[] | null>(null);
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [tab, setTab] = useState<DashTab>(() =>
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('white_label') ? 'white-label' : 'overview');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+
+  const loadMemberships = useCallback(async () => {
+    if (!user) { setMemberships(null); return; }
+    const m = await myMemberships(user.id);
+    setMemberships(m);
+    setOrgId(prev => (prev && m.some(x => x.organization.id === prev)) ? prev : (m[0]?.organization.id ?? null));
+  }, [user]);
+  useEffect(() => { loadMemberships(); }, [loadMemberships]);
+
+  const current = memberships?.find(m => m.organization.id === orgId) ?? null;
+  const [modules, setModules] = useState<string[]>([]);
+  useEffect(() => {
+    if (!current) { setModules([]); return; }
+    Promise.all((['jobs', 'appointments', 'sales_invoicing'] as const).map(async m => (await hasModule(current.organization.id, m)) ? m : null))
+      .then(r => setModules(r.filter(Boolean) as string[]));
+  }, [current?.organization.id]);
+  const MODULE_TABS: Partial<Record<DashTab, string>> = { jobs: 'jobs', appointments: 'appointments', sales: 'sales_invoicing' };
+  const navItems = NAV_ITEMS.filter(n => (!MODULE_TABS[n.id] || modules.includes(MODULE_TABS[n.id]!))
+    && (n.id !== 'accounting' || (!!current && ['owner', 'admin', 'finance'].includes(current.role))));
+  const live = !!current;                                    // a real company, not the preview
+  const needsCompany = !!user && memberships !== null && memberships.length === 0;
+  const SAMPLE_TABS: DashTab[] = ['overview', 'recurring', 'api'];
 
   const filteredShipments = SHIPMENTS.filter(s => {
     const matchSearch = s.id.toLowerCase().includes(search.toLowerCase()) || s.from.toLowerCase().includes(search.toLowerCase()) || s.to.toLowerCase().includes(search.toLowerCase());
@@ -69,7 +121,7 @@ export default function CorporateDashboard() {
         </div>
 
         <nav className="flex-1 py-4">
-          {NAV_ITEMS.map(item => (
+          {navItems.map(item => (
             <button key={item.id} onClick={() => setTab(item.id)}
               className={`w-full flex items-center gap-3 px-5 py-3 text-sm transition ${tab === item.id ? 'bg-white/10 text-white font-semibold' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
               <span>{item.icon}</span>{item.label}
@@ -78,13 +130,30 @@ export default function CorporateDashboard() {
         </nav>
 
         <div className="p-5 border-t border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-xs font-bold">AB</div>
-            <div>
-              <div className="text-xs font-medium">Acme Logistics AS</div>
-              <div className="text-xs text-white/50">Enterprise Plan</div>
+          {live && current ? (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-xs font-bold">
+                {current.organization.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                {memberships && memberships.length > 1 ? (
+                  <select value={orgId ?? ''} onChange={e => setOrgId(e.target.value)}
+                    className="bg-transparent text-xs font-medium w-full outline-none">
+                    {memberships.map(m => <option key={m.organization.id} value={m.organization.id} className="text-gray-900">{m.organization.name}</option>)}
+                  </select>
+                ) : <div className="text-xs font-medium truncate">{current.organization.name}</div>}
+                <div className="text-xs text-white/50">{ORG_STATUS_LABELS[current.organization.status]}</div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-xs font-bold">AB</div>
+              <div>
+                <div className="text-xs font-medium">Acme Logistics AS</div>
+                <div className="text-xs text-white/50">Enterprise Plan</div>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -95,18 +164,48 @@ export default function CorporateDashboard() {
         <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
           <div>
             <h1 className="text-xl font-bold text-gray-900 capitalize">{NAV_ITEMS.find(n => n.id === tab)?.label || 'Overview'}</h1>
-            <p className="text-xs text-gray-400">FlyttGo Corporate · Enterprise Dashboard Preview</p>
+            <p className="text-xs text-gray-400">
+              {live && current ? `FlyttGo Corporate · ${current.organization.name}` : 'FlyttGo Corporate · Enterprise Dashboard Preview'}
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden sm:block text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full font-medium">⚡ Live Mode</span>
-            <button onClick={() => { setShowAuthModal(true); setAuthMode('signup'); }}
-              className="px-4 py-2 bg-[#0B2E59] text-white rounded-xl text-sm font-semibold hover:bg-[#1a4a8a] transition">
-              Activate Account
-            </button>
+            {live && current ? (
+              <span className={`hidden sm:block text-xs px-3 py-1.5 rounded-full font-medium ${current.organization.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                {ORG_STATUS_LABELS[current.organization.status]}
+              </span>
+            ) : (
+              <>
+                <span className="hidden sm:block text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full font-medium">⚡ Live Mode</span>
+                {!user && (
+                  <button onClick={() => { setShowAuthModal(true); setAuthMode('signup'); }}
+                    className="px-4 py-2 bg-[#0B2E59] text-white rounded-xl text-sm font-semibold hover:bg-[#1a4a8a] transition">
+                    Activate Account
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </header>
 
         <main className="flex-1 p-6 overflow-auto">
+
+          {needsCompany && (
+            <div className="mb-6"><RegisterCompany onCreated={loadMemberships} /></div>
+          )}
+
+          {live && current && current.organization.status !== 'active' && (
+            <div className="mb-6 rounded-2xl border border-yellow-200 bg-yellow-50 px-5 py-4 text-sm text-yellow-800">
+              {current.organization.status === 'pending'
+                ? 'Your company is awaiting verification. FlyttGo checks it in Brønnøysundregistrene before bookings and invoicing are switched on; meanwhile you can set up your team.'
+                : `This company is ${ORG_STATUS_LABELS[current.organization.status].toLowerCase()}${current.organization.status_reason ? `: ${current.organization.status_reason}` : ''}. Contact FlyttGo support.`}
+            </div>
+          )}
+
+          {live && SAMPLE_TABS.includes(tab) && (
+            <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-xs text-gray-500">
+              Sample data: this module is not connected to your company yet. The figures below are an example, not your company's.
+            </div>
+          )}
 
           {/* ── OVERVIEW ── */}
           {tab === 'overview' && (
@@ -167,7 +266,8 @@ export default function CorporateDashboard() {
           )}
 
           {/* ── SHIPMENTS ── */}
-          {tab === 'shipments' && (
+          {tab === 'shipments' && live && current && <CompanyBookings membership={current} />}
+          {tab === 'shipments' && !live && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3">
                 <input value={search} onChange={e => setSearch(e.target.value)}
@@ -246,7 +346,8 @@ export default function CorporateDashboard() {
           )}
 
           {/* ── INVOICES ── */}
-          {tab === 'invoices' && (
+          {tab === 'invoices' && live && current && <CompanyInvoices key={current.organization.id} membership={current} />}
+          {tab === 'invoices' && !live && (
             <div className="space-y-4">
               <div className="grid sm:grid-cols-3 gap-4">
                 <StatCard icon="💰" label="Outstanding Balance" value="89,200 NOK" color="orange"/>
@@ -330,8 +431,26 @@ export default function CorporateDashboard() {
             </div>
           )}
 
+          {/* ── OTHER INDUSTRIES: jobs, appointments, own invoices ── */}
+          {tab === 'jobs' && live && current && <JobsPanel key={current.organization.id} membership={current} />}
+          {tab === 'appointments' && live && current && <AppointmentsPanel key={current.organization.id} membership={current} />}
+          {tab === 'sales' && live && current && <SalesInvoicesPanel key={current.organization.id} membership={current} />}
+          {tab === 'accounting' && live && current && <AccountingPanel key={current.organization.id} membership={current} />}
+
+          {/* ── WHITE LABEL ── */}
+          {tab === 'white-label' && live && current && <WhiteLabelPanel key={current.organization.id} membership={current} />}
+          {tab === 'white-label' && !live && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 text-sm text-gray-600">
+              Offer moving under your own brand. Register or sign in to your company to choose a plan.{' '}
+              <button className="underline text-[#0B2E59]" onClick={() => setPage('white-label')}>Plans and prices</button>
+            </div>
+          )}
+
           {/* ── TEAM ── */}
-          {tab === 'team' && (
+          {tab === 'team' && live && current && user && (
+            <TeamPanel key={current.organization.id} membership={current} userId={user.id} onLeft={loadMemberships} />
+          )}
+          {tab === 'team' && !live && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-gray-500">4 team members · 2 pending invites</p>

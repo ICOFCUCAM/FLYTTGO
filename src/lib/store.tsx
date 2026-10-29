@@ -19,6 +19,15 @@ export type Page =
   | 'auth-callback'
   /* Driver onboarding status (pending / approved / rejected). */
   | 'driver-application-status'
+  /* Company invitation link (send-organization-invitation). */
+  | 'accept-invitation'
+  /* White label: plans and prices, the data processing agreement, and a
+   * company's own page (/b/<slug>, its domain or subdomain). */
+  | 'white-label' | 'white-label-dpa' | 'brand-site'
+  /* Customers' jobs and appointments with companies outside moving. */
+  | 'my-services'
+  /* Books someone was invited to (accountants, auditors), and invitation links. */
+  | 'accounting'
   /* Fallback for URLs that don't match any known route. */
   | 'not-found';
 

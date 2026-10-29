@@ -1,5 +1,7 @@
 -- ============================================================================
 -- FlyttGo — auto-downgrade expired driver subscriptions
+-- Superseded by supabase/ops/schedules.sql (docs/SCHEDULES.md), which schedules
+-- the same job under the same name together with the other jobs. Kept for reference.
 -- ============================================================================
 --
 -- Runs inside Supabase as a pg_cron job. Finds every `driver_subscriptions`
@@ -46,37 +48,16 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 --    rights regardless of who the cron user is under the hood.
 CREATE OR REPLACE FUNCTION public.auto_downgrade_expired_subscriptions()
 RETURNS TABLE (downgraded_count int) AS $$
-DECLARE
-  affected int;
 BEGIN
-  /* Mark expired active subscriptions as expired, grab the driver ids
-   * that were affected, and insert a fresh 'free'/'active' row for
-   * each one. All three statements run in a single transaction so a
-   * driver is never left without a subscription record. */
-  WITH expired AS (
-    UPDATE public.driver_subscriptions
-       SET subscription_status = 'expired'
-     WHERE subscription_status = 'active'
-       AND end_date IS NOT NULL
-       AND end_date < now()
-    RETURNING driver_id
-  ),
-  inserted AS (
-    INSERT INTO public.driver_subscriptions
-      (driver_id, plan, subscription_status, start_date, end_date, created_at)
-    SELECT driver_id, 'free', 'active', now(), NULL, now()
-      FROM expired
-    RETURNING driver_id
-  )
-  SELECT count(*) INTO affected FROM inserted;
-
-  downgraded_count := COALESCE(affected, 0);
+  /* One rule for the cron and the driver portal: a plan lapses when its
+   * end date plus the grace period has passed (24 h for monthly plans,
+   * platform_config subscription_grace_hours_*), and the driver moves to
+   * Free (supabase/migrations/00006, expire_lapsed_subscriptions). */
+  downgraded_count := public.expire_lapsed_subscriptions(NULL);
   RETURN NEXT;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Allow the authenticated role to call the function directly (optional —
--- Supabase admin can always call it manually for debugging).
 GRANT EXECUTE ON FUNCTION public.auto_downgrade_expired_subscriptions() TO service_role;
 
 -- 3) Schedule the cron job. We unschedule first so re-running the file

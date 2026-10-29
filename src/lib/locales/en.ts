@@ -1285,3 +1285,7 @@ export const en = {
  */
 type Widen<T> = T extends string ? string : { [K in keyof T]: Widen<T[K]> };
 export type TranslationKeys = Widen<typeof en>;
+
+/** A locale that may leave keys out; i18next shows the English value for them. */
+type DeepPartial<T> = T extends string ? string : { [K in keyof T]?: DeepPartial<T[K]> };
+export type PartialTranslationKeys = DeepPartial<TranslationKeys>;

@@ -20,7 +20,13 @@
 //     Verifies both confirmations are set, verifies any adjustment
 //     has been approved, computes commission based on the driver's
 //     subscription plan, flips escrow_payments to 'released' and
-//     credits the driver's wallet.
+//     credits the driver's wallet. A Vipps payment is only reserved
+//     until then: it is captured here first (decided 2026-10-29, capture
+//     on delivery), and the release waits if Vipps cannot be reached.
+//
+//   • AdminDashboard → action='capture' (also the booking's parties):
+//     capture a reserved Vipps payment without releasing it, for
+//     admin_release_escrow, which requires a captured payment.
 //
 // DEPLOY:
 //   supabase functions deploy process-payment --no-verify-jwt
@@ -28,14 +34,30 @@
 // Uses the service-role key automatically injected by Supabase Edge
 // Functions (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY), so it bypasses
 // RLS and can read/update booking state that the customer/driver
-// clients can't. All state-changing paths assert booking preconditions
-// (both confirmations must be set for release, both start/end times
-// must exist for recalculation) so random callers can't forge state.
+// clients can't. Every call must carry the signed-in user's token:
+//   recalculate_price — the booking's assigned driver, or an admin
+//   release_escrow    — the booking's customer or assigned driver, or an admin
+// and the booking preconditions still hold (both confirmations set for
+// release, start/end times for recalculation). The confirmation flags
+// themselves can only be set by their own party (database guard in
+// supabase/migrations/00003_p0_security_hardening.sql).
 //
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+/* Pricing formula and commission brackets: one copy, shared with
+ * calculate-price and the payment functions. */
+import {
+  VAN_HOURLY_RATES,
+  PRICING,
+  calculateServerPrice,
+  computeCommission,
+} from '../_shared/pricing.ts';
+import { getCaller, driverProfileIdOf } from '../_shared/auth.ts';
+import { activePlanSlug } from '../_shared/plans.ts';
+import { vippsCapture } from '../_shared/vipps-payments.ts';
+import { VIPPS_BASE, vippsApiHeaders, vippsMissingConfig } from '../_shared/vipps.ts';
 
 /* ─── Env (Supabase injects these automatically) ─────────────── */
 const SUPABASE_URL             = Deno.env.get('SUPABASE_URL')!;
@@ -45,87 +67,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
 
-/* ─── Pricing constants (mirrored from src/lib/constants.ts) ─── */
-
-const VAN_HOURLY_RATES: Record<string, number> = {
-  small_van:  850,
-  medium_van: 1150,
-  large_van:  1500,
-  luton_van:  1900,
-};
-
-const PRICING = {
-  minimumHours: 2,
-  distancePricing: { includedKm: 20, extraPerKm: 8 },
-  extras: {
-    extra_helper:         350,
-    furniture_assembly:   250,
-    cleaning:             400,
-    parking_assistance:   200,
-    packing_service:      500,
-    furniture_dismantling: 300,
-  },
-  vat: 0.25,
-};
-
-interface PriceInputs {
-  vanType:    string;
-  hours:      number;
-  distanceKm: number;
-  helpers:    number;
-  extras:     string[];
-}
-
-/**
- * Mirror of src/lib/constants.ts#calculatePrice. Kept inline so the
- * edge function has zero shared-code dependencies. If the frontend
- * formula changes, update this mirror too.
- */
-function calculatePrice(inp: PriceInputs) {
-  const safeHours      = Math.max(inp.hours ?? 0, PRICING.minimumHours);
-  const extraKm        = Math.max(0, (inp.distanceKm ?? 0) - PRICING.distancePricing.includedKm);
-  const basePrice      = (VAN_HOURLY_RATES[inp.vanType] ?? 850) * safeHours;
-  const distanceCharge = extraKm * PRICING.distancePricing.extraPerKm;
-  const helpersCharge  = (inp.helpers ?? 0) * PRICING.extras.extra_helper * safeHours;
-  const extrasCharge   = (inp.extras ?? []).reduce(
-    (sum, e) => sum + ((PRICING.extras as Record<string, number>)[e] ?? 0),
-    0,
-  );
-  const subtotal = basePrice + distanceCharge + helpersCharge + extrasCharge;
-  const vat      = subtotal * PRICING.vat;
-  return { basePrice, distanceCharge, helpersCharge, extrasCharge, subtotal, vat, total: subtotal + vat };
-}
-
-/* ─── Commission (mirrored from src/lib/constants.ts) ────────── */
-
-/**
- * Small mirror of the bracketed commission model so we don't have
- * to pull constants.ts into Deno. Returns the commission to
- * deduct and the driver's take-home.
- */
-function computeCommission(
-  price: number,
-  plan:  string,
-): { commission: number; earning: number; ratePct: number } {
-  const p = Math.max(0, Number(price) || 0);
-  if (p <= 500) return { commission: 0, earning: p, ratePct: 0 };
-
-  if (plan === 'unlimited') return { commission: 0, earning: p, ratePct: 0 };
-
-  /* Bracket model: rate depends on price band and driver plan. */
-  const BY_PLAN: Record<string, Record<string, number>> = {
-    basic:    { low: 20, mid: 15, high: 10 },
-    pro_mini: { low: 10, mid:  5, high:  4 },
-    pro:      { low: 10, mid:  5, high:  4 },
-  };
-  const plans = BY_PLAN[plan] ?? BY_PLAN.basic;
-
-  let ratePct = plans.high;
-  if      (p <= 1500) ratePct = plans.low;
-  else if (p <= 5000) ratePct = plans.mid;
-
-  const commission = Math.round((p * ratePct) / 100);
-  return { commission, earning: p - commission, ratePct };
+function calculatePrice(inp: { vanType: string; hours: number; distanceKm: number; helpers: number; extras: string[] }) {
+  return calculateServerPrice(inp);
 }
 
 /* ─── Handler ──────────────────────────────────────────────────── */
@@ -143,7 +86,7 @@ function json(body: unknown, status = 200) {
 }
 
 interface ProcessPaymentRequest {
-  action:    'recalculate_price' | 'release_escrow';
+  action:    'recalculate_price' | 'release_escrow' | 'capture';
   bookingId: string;
 }
 
@@ -162,9 +105,25 @@ serve(async (req: Request) => {
     return json({ error: 'action and bookingId are required' }, 400);
   }
 
+  const caller = await getCaller(req, supabase);
+  if (!caller) return json({ error: 'Sign in required' }, 401);
+
   try {
+    const { data: party } = await supabase
+      .from('bookings')
+      .select('customer_id, driver_id')
+      .eq('id', body.bookingId)
+      .maybeSingle();
+    if (!party) return json({ error: 'booking not found' }, 404);
+    const callerDriverId = await driverProfileIdOf(supabase, caller.id);
+    const isDriver   = !!callerDriverId && party.driver_id === callerDriverId;
+    const isCustomer = party.customer_id === caller.id;
+    const allowed = caller.isAdmin || (body.action === 'recalculate_price' ? isDriver : (isDriver || isCustomer));
+    if (!allowed) return json({ error: 'booking not found' }, 404);
+
     if (body.action === 'recalculate_price') return await recalculatePrice(body.bookingId);
     if (body.action === 'release_escrow')    return await releaseEscrow(body.bookingId);
+    if (body.action === 'capture')           return await captureOnly(body.bookingId);
     return json({ error: `Unknown action: ${body.action}` }, 400);
   } catch (err) {
     console.error('process-payment error:', err);
@@ -254,6 +213,61 @@ async function recalculatePrice(bookingId: string) {
   });
 }
 
+/* ─── Capture (Vipps) ──────────────────────────────────────────── */
+
+/**
+ * Capture a reserved Vipps payment, once: the idempotency key is the
+ * booking's, and vippsCapture asks nothing if Vipps already shows it
+ * captured. Returns a Response when the caller must stop (Vipps not
+ * reachable: try again; refused: needs attention), else null with the
+ * booking's captured amount recorded (payment_capture_mark).
+ */
+async function captureIfNeeded(booking: any): Promise<{ stop: Response } | { capturedNok: number | null }> {
+  if (booking.payment_provider !== 'vipps') {
+    return { capturedNok: booking.captured_amount != null ? Number(booking.captured_amount) : null };
+  }
+  if (booking.captured_at) return { capturedNok: Number(booking.captured_amount ?? booking.paid_amount) };
+  if (!booking.payment_intent_id) {
+    return { stop: json({ error: 'the Vipps payment has no reference; capture it in the Vipps portal' }, 409) };
+  }
+  const missing = vippsMissingConfig();
+  if (missing.length) return { stop: json({ error: `Vipps not configured: ${missing.join(', ')}`, retry: true }, 503) };
+
+  const amountOre = Math.round(Number(booking.paid_amount ?? booking.price_estimate) * 100);
+  const out = await vippsCapture(fetch, { base: VIPPS_BASE, headers: await vippsApiHeaders() }, {
+    reference: booking.payment_intent_id, amountOre, idempotencyKey: `flyttgo-capture-${booking.id}`,
+  });
+  await supabase.from('payment_events').upsert({
+    provider: 'vipps', event_id: `capture-${booking.id}-${out.kind}`, kind: 'capture', booking_id: booking.id, result: out,
+  }, { onConflict: 'provider,event_id', ignoreDuplicates: true });
+
+  if (out.kind === 'retry') {
+    console.warn(`capture of ${booking.id} not confirmed: ${out.error}`);
+    return { stop: json({ status: 'capture_pending', retry: true, error: out.error }, 202) };
+  }
+  if (out.kind === 'failed') {
+    console.error(`capture of ${booking.id} refused: ${out.error}`);
+    return { stop: json({ status: 'capture_failed', error: out.error }, 502) };
+  }
+  const capturedNok = out.capturedOre / 100;
+  const { error } = await supabase.rpc('payment_capture_mark', { p_booking_id: booking.id, p_amount: capturedNok });
+  if (error) throw new Error(`payment_capture_mark failed: ${error.message}`);
+  return { capturedNok };
+}
+
+/* ─── Action: capture ──────────────────────────────────────────── */
+
+async function captureOnly(bookingId: string) {
+  const { data: booking } = await supabase.from('bookings').select('*').eq('id', bookingId).maybeSingle();
+  if (!booking) return json({ error: 'booking not found' }, 404);
+  if (!['paid', 'escrow'].includes(String(booking.payment_status))) {
+    return json({ error: `booking payment_status is ${booking.payment_status}; nothing to capture` }, 409);
+  }
+  const cap = await captureIfNeeded(booking);
+  if ('stop' in cap) return cap.stop;
+  return json({ ok: true, status: 'captured', capturedNok: cap.capturedNok });
+}
+
 /* ─── Action: release_escrow ───────────────────────────────────── */
 
 async function releaseEscrow(bookingId: string) {
@@ -282,6 +296,20 @@ async function releaseEscrow(bookingId: string) {
   if (escrowErr) return json({ error: 'escrow fetch failed', detail: escrowErr.message }, 500);
   if (!escrow)   return json({ error: 'escrow row not found for booking' }, 404);
 
+  /* Already settled: both parties confirm and both call this, so the
+   * second call must not pay the driver again. (Production's
+   * release_booking_escrow_after_confirmation trigger may already have
+   * set status='released' without a driver_earning; that row is not
+   * settled yet and is completed here.) */
+  if (escrow.status === 'refunded' || booking.payment_status === 'released'
+      || (escrow.status === 'released' && escrow.driver_earning != null)) {
+    return json({ ok: true, idempotent: true, status: escrow.status });
+  }
+  /* Money must have been captured by a provider webhook first. */
+  if (!['paid', 'escrow'].includes(String(booking.payment_status))) {
+    return json({ error: `booking payment_status is ${booking.payment_status}; nothing captured to release` }, 409);
+  }
+
   /* If the recalculation bumped the price, the customer has to
    * approve the delta before we capture. */
   const hasAdjustment = escrow.adjusted_amount != null && Number(escrow.adjusted_amount) > 0;
@@ -305,22 +333,41 @@ async function releaseEscrow(bookingId: string) {
     return json({ error: 'could not determine release amount' }, 500);
   }
 
+  /* A Vipps reservation is captured now, before any money moves to the
+   * driver; the driver is never paid more than was collected. An extra
+   * charge above the reservation (an approved over-time adjustment) has
+   * to be paid separately first. */
+  const cap = await captureIfNeeded(booking);
+  if ('stop' in cap) return cap.stop;
+  if (booking.payment_provider === 'vipps' && cap.capturedNok != null && amount > cap.capturedNok + 0.005) {
+    return json({
+      error: `the release (${amount} NOK) is more than Vipps collected (${cap.capturedNok} NOK); the extra charge must be paid first`,
+    }, 409);
+  }
+
   /* Look up the driver's active subscription plan for commission
    * calculation. Default to 'basic' if anything's missing. */
   let plan = 'basic';
   if (booking.driver_id) {
-    const { data: sub } = await supabase
-      .from('driver_subscriptions')
-      .select('plan')
-      .eq('driver_id', booking.driver_id)
-      .eq('subscription_status', 'active')
+    /* bookings.driver_id is driver_profiles.id; driver_subscriptions
+     * is keyed by the driver's auth user id, its plan by plan_id. */
+    const { data: dp } = await supabase
+      .from('driver_profiles')
+      .select('user_id')
+      .eq('id', booking.driver_id)
       .maybeSingle();
-    if (sub?.plan) plan = sub.plan;
+    if (dp?.user_id) {
+      plan = (await activePlanSlug(supabase, dp.user_id)) ?? plan;
+    }
   }
   const { commission, earning, ratePct } = computeCommission(amount, plan);
 
-  /* Update escrow_payments → released. */
-  const { error: releaseErr } = await supabase
+  /* Update escrow_payments → released with the driver's earning. The
+   * wallet is credited by the settle_driver_wallet_after_release
+   * trigger (supabase/migrations/00003), once, when driver_earning is
+   * first set on a released row. Compare-and-set on driver_earning so
+   * two simultaneous calls settle once. */
+  const { data: released, error: releaseErr } = await supabase
     .from('escrow_payments')
     .update({
       status:            'released',
@@ -329,8 +376,13 @@ async function releaseEscrow(bookingId: string) {
       driver_earning:    earning,
       final_price:       amount,
     })
-    .eq('booking_id', bookingId);
+    .eq('booking_id', bookingId)
+    .is('driver_earning', null)
+    .select('id');
   if (releaseErr) return json({ error: 'escrow release failed', detail: releaseErr.message }, 500);
+  if (!released || released.length === 0) {
+    return json({ ok: true, idempotent: true, status: 'released' });
+  }
 
   /* Mark booking payment_status = 'released'. */
   const { error: bStatusErr } = await supabase
@@ -338,18 +390,6 @@ async function releaseEscrow(bookingId: string) {
     .update({ payment_status: 'released' })
     .eq('id', bookingId);
   if (bStatusErr) console.warn('booking payment_status update failed:', bStatusErr.message);
-
-  /* Credit the driver's wallet. Uses the existing RPC so we don't
-   * race against other wallet updates. Fails silently if the RPC
-   * isn't present — the escrow row still tells ops exactly how much
-   * to pay out. */
-  if (booking.driver_id && earning > 0) {
-    const { error: rpcErr } = await supabase.rpc('increment_driver_wallet', {
-      p_driver_id: booking.driver_id,
-      p_amount:    earning,
-    });
-    if (rpcErr) console.warn('wallet credit RPC failed:', rpcErr.message);
-  }
 
   return json({
     ok:             true,

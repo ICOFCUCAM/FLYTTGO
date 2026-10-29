@@ -2,7 +2,9 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
-import { supabase, supabaseFunctionUrl } from '../lib/supabase';
+import { supabase, callFunction } from '../lib/supabase';
+import { releaseEscrow } from '../lib/releaseEscrow';
+import { withPlanSlug } from '../lib/plans';
 import { useDriverLocationBeacon } from '../hooks/useDriverLocationBeacon';
 
 /* Lazy-load the Leaflet-backed jobs map so drivers who never
@@ -20,8 +22,8 @@ function formatDuration(start?: string | null, end?: string | null) {
   return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
 }
 
-/* Commission brackets — keyed on the lowercase plan IDs stored in
- * driver_subscriptions.plan. Previously this function compared
+/* Commission brackets — keyed on the plan slug derived from
+ * driver_subscriptions.plan_id (src/lib/plans.ts). Previously this function compared
  * against display names ('Basic', 'Pro Mini', ...) which meant it
  * silently returned 0 commission whenever the plan came from the
  * DB (which uses lowercase snake_case IDs). Now aligned with the
@@ -66,7 +68,7 @@ function Card({ title, value }: any) {
 function EarningsCalculator({ plan }: { plan: string }) {
   const [jobPrice, setJobPrice] = React.useState(1000);
   const [hours, setHours] = React.useState(2);
-  /* Keyed on lowercase plan IDs to match driver_subscriptions.plan. */
+  /* Keyed on plan slugs (see src/lib/plans.ts). */
   const rates: Record<string, number> = { free: 0, basic: 0.2, pro_mini: 0.1, pro: 0.1, unlimited: 0 };
   const rate = rates[plan] ?? 0.2;
   const commission = jobPrice * rate;
@@ -196,7 +198,7 @@ export default function DriverPortal() {
    * MyBookings → DriverTrackingMap subscribes to that table over
    * Realtime and renders the moving marker. Battery-friendly: the
    * watch is torn down the moment no jobs are in flight. */
-  useDriverLocationBeacon({ driverId: user?.id ?? null, jobs });
+  useDriverLocationBeacon({ userId: user?.id ?? null, driverProfileId: driver?.id ?? null, jobs });
 
   /* Client-side opportunistic expiry check. The real enforcement lives
    * in the pg_cron job defined in docs/subscription-expiry-cron.sql,
@@ -205,35 +207,17 @@ export default function DriverPortal() {
    * their state updated immediately rather than waiting up to an hour
    * for the cron to catch up.
    *
-   * Behaviour matches the cron: mark expired active subs as 'expired',
-   * then insert a fresh 'free'/'active' row. The driver is NOT suspended
-   * — they just lose paid-tier perks until they re-subscribe. */
+   * Behaviour matches the cron: both call expire_lapsed_subscriptions,
+   * which marks a lapsed plan 'expired' and starts Free. The driver is NOT
+   * suspended — they just lose paid-tier perks until they re-subscribe. */
   async function enforceSubscriptionExpiry() {
     if (!user) return;
-    const { data: sub } = await supabase
-      .from('driver_subscriptions')
-      .select('id, driver_id, end_date, subscription_status')
-      .eq('driver_id', user.id)
-      .eq('subscription_status', 'active')
-      .maybeSingle();
-    if (!sub) return;
-    if (!sub.end_date) return;
-    if (new Date(sub.end_date) >= new Date()) return;
-
-    await supabase
-      .from('driver_subscriptions')
-      .update({ subscription_status: 'expired' })
-      .eq('id', sub.id);
-    await supabase
-      .from('driver_subscriptions')
-      .insert({
-        driver_id:           user.id,
-        plan:                'free',
-        subscription_status: 'active',
-        start_date:          new Date().toISOString(),
-        end_date:            null,
-      });
+    /* The server decides what has lapsed (end date plus the grace
+     * period: 24 h for monthly plans) and moves the driver to Free. */
+    const { error } = await supabase.rpc('expire_lapsed_subscriptions', { p_driver: user.id });
+    if (error) console.warn('expire_lapsed_subscriptions:', error.message);
   }
+
 
   async function loadDriver() {
     /* driver_profiles.user_id is a FK to auth.users.id — use
@@ -248,9 +232,13 @@ export default function DriverPortal() {
       .from('driver_profiles')
       .select('*')
       .eq('user_id', user.id)
-      .maybeSingle();
-    if (!data) return;
-    setDriver(data); setOnline(data.online || false);
+      .order('created_at', { ascending: true })
+      .limit(1);
+    /* A user can have more than one profile row (re-approvals used to add
+     * one each time); the oldest is the driver, as in my_driver_id(). */
+    const row = data?.[0];
+    if (!row) return;
+    setDriver(row); setOnline(row.online || false);
   }
 
   async function loadWallet() {
@@ -259,9 +247,16 @@ export default function DriverPortal() {
   }
 
   async function loadJobs() {
-    // 'pending' is the valid CHECK-constraint value for unassigned bookings.
-    const { data } = await supabase.from('bookings').select('*').or(`status.eq.pending,driver_id.eq.${driver.id}`);
-    if (!data) return;
+    /* Own jobs in full; the pool of paid, unassigned jobs through
+     * driver_job_pool(), which shows the area (postcode + city), not the
+     * customer's name, contact details, notes or street address. Those
+     * appear once the job is claimed. */
+    const [{ data: own }, { data: pool }] = await Promise.all([
+      supabase.from('bookings').select('*').eq('driver_id', driver.id),
+      supabase.rpc('driver_job_pool'),
+    ]);
+    if (!own && !pool) return;
+    const data = [...(own ?? []), ...((pool as any[]) ?? [])];
     /* Free-tier drivers can only see jobs ≤ 500 NOK. We now read
      * the plan from driver_subscriptions (single source of truth)
      * rather than the stale 'Free' capitalized value that used to
@@ -285,12 +280,13 @@ export default function DriverPortal() {
      * tab. */
     const { data } = await supabase
       .from('driver_subscriptions')
-      .select('*')
+      .select('*, subscription_plans(name)')
       .eq('driver_id', user.id)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    setSubscription(data ?? null);
+    /* `plan` is the plan's slug ('pro_mini'), derived from plan_id. */
+    setSubscription(withPlanSlug(data));
   }
 
   function daysLeft(endDate: string | null): number | null {
@@ -321,30 +317,33 @@ export default function DriverPortal() {
       const plan = PLAN_OPTIONS.find(p => p.id === planId);
       if (!plan) return;
       if (plan.priceNOK === 0) {
-        await supabase.rpc('change_driver_subscription', { p_driver_id: user.id, p_new_plan: planId });
+        const { error } = await supabase.rpc('change_driver_subscription', { p_driver_id: user.id, p_new_plan: planId });
+        if (error) { alert(`Could not switch plan: ${error.message}`); setChangingPlan(null); return; }
         alert(`Switched to ${plan.label} plan.`);
         await loadSubscription(); await loadDriver(); setChangingPlan(null); return;
       }
       const proration = calculateProration(subscription, plan);
-      let amountExVat: number, vatAmount: number, totalAmount: number, prorationNote = '';
-      if (proration && !proration.isFullyCovered) {
-        amountExVat = proration.dueExVat; vatAmount = proration.dueVat; totalAmount = proration.dueTotal;
-        prorationNote = `Pro → Unlimited proration: ${proration.daysRemaining}d remaining on Pro → credit ${proration.creditExVat} NOK ex VAT`;
-      } else if (proration?.isFullyCovered) {
-        await supabase.rpc('change_driver_subscription', { p_driver_id: user.id, p_new_plan: planId });
-        await supabase.from('driver_wallet_transactions').insert({ driver_id: driver.id, type: 'subscription_credit', amount: proration.creditExVat, description: `Plan credit — ${proration.daysRemaining} unused Pro days` });
-        alert('Upgraded to Unlimited. Your remaining Pro credit fully covered the cost — no charge.'); await loadSubscription(); await loadDriver(); setChangingPlan(null); return;
-      } else {
-        amountExVat = plan.priceNOK; vatAmount = Math.round(plan.priceNOK * VAT_RATE); totalAmount = amountExVat + vatAmount;
+      if (proration?.isFullyCovered) {
+        /* Paid plans are activated only by the server after payment
+         * (change_driver_subscription refuses a paid plan from the
+         * browser), so a zero-charge upgrade needs a server path that
+         * does not exist yet. With today's prices the Pro credit never
+         * covers Unlimited, so this is not reached. */
+        alert('Your credit covers this upgrade. Please contact support to apply it.');
+        setChangingPlan(null); return;
       }
-      const payload = { type: 'subscription', planId, planLabel: plan.label, driverId: driver.id, userId: user.id, amount: totalAmount, amountExVat, vatAmount, billing: plan.billing, prorationNote, proration: proration ? { creditApplied: proration.creditExVat, daysRemaining: proration.daysRemaining, daysInMonth: proration.daysInMonth, fromPlan: 'pro', fromPlanFullCost: 1500 } : null, description: proration ? `FlyttGo ${plan.label} (prorated ${proration.daysRemaining}d, incl. 25% MVA)` : `FlyttGo ${plan.label} Subscription (incl. 25% MVA)` };
+      /* The server prices the plan (with the same Pro → Unlimited
+       * proration as calculateProration) from the signed-in driver's
+       * current subscription; we only name the plan. Vipps does not
+       * sell subscriptions yet and answers with an error. */
+      const payload = { type: 'subscription', planId };
       if (method === 'vipps') {
-        const res = await fetch(supabaseFunctionUrl('create-vipps-session'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const res = await callFunction('create-vipps-session', payload);
         const vipps = await res.json();
         if (!vipps.redirectUrl) { alert('Unable to start Vipps payment. Please use card instead.'); setChangingPlan(null); return; }
         window.location.href = vipps.redirectUrl;
       } else {
-        const res = await fetch(supabaseFunctionUrl('create-checkout-session'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const res = await callFunction('create-checkout-session', payload);
         const checkout = await res.json();
         if (!checkout.url) { alert('Unable to start payment session. Please try again.'); setChangingPlan(null); return; }
         window.location.href = checkout.url;
@@ -354,31 +353,17 @@ export default function DriverPortal() {
   }
 
   async function acceptJob(job: any) {
-    /* Race-safe accept: use a compare-and-swap UPDATE that only
-     * succeeds if the booking is STILL unassigned at the moment
-     * the UPDATE hits the DB. Two drivers clicking Accept on the
-     * same pool job will race — only the one whose UPDATE matches
-     * an unassigned row wins; the other gets 0 rows back and sees
-     * a friendly "job was taken" alert.
-     *
-     * Without the `.is('driver_id', null)` guard + `.select()`,
-     * Postgres would happily let both drivers UPDATE the row
-     * sequentially and the second write would silently overwrite
-     * the first driver's assignment, leaving them with a ghost
-     * job they don't actually own. */
-    const { data: won, error } = await supabase
-      .from('bookings')
-      .update({ driver_id: driver.id, status: 'driver_assigned' })
-      .eq('id', job.id)
-      .is('driver_id', null)
-      .select('id');
+    /* claim_job() is a compare-and-swap on the server: it assigns the
+     * job only if it is still unassigned and paid, so two drivers
+     * clicking Accept on the same job cannot both win. false = taken. */
+    const { data: won, error } = await supabase.rpc('claim_job', { p_booking_id: job.id });
 
     if (error) {
       alert('Accept failed: ' + error.message);
       return;
     }
 
-    if (!won || won.length === 0) {
+    if (!won) {
       /* Another driver beat us to it. Refresh the job list so the
        * now-taken job disappears from our pool view. */
       alert(t('driverPortal.jobTaken'));
@@ -394,15 +379,17 @@ export default function DriverPortal() {
     // constraint. The dual-confirmation flow uses the driver_confirmation /
     // customer_confirmation boolean flags, not a separate status value.
     await supabase.from('bookings').update({ status: 'completed', end_time: new Date().toISOString() }).eq('id', jobId);
-    await fetch(supabaseFunctionUrl('process-payment'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'recalculate_price', bookingId: jobId }) });
+    await callFunction('process-payment', { action: 'recalculate_price', bookingId: jobId });
     loadJobs();
   }
   async function confirmCompletion(jobId: string) {
     await supabase.from('bookings').update({ driver_confirmation: true }).eq('id', jobId);
     const { data: booking } = await supabase.from('bookings').select('customer_confirmation').eq('id', jobId).single();
     if (booking?.customer_confirmation === true) {
-      await fetch(supabaseFunctionUrl('process-payment'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'release_escrow', bookingId: jobId }) });
-      alert('Payment released to your wallet!');
+      const outcome = await releaseEscrow(jobId);
+      alert(outcome === 'released' ? 'Payment released to your wallet!'
+        : outcome === 'waiting' ? 'Confirmed. The payment is being collected from the customer and will reach your wallet shortly.'
+        : 'Confirmed, but the payment could not be released yet. Please contact support if it does not appear in your wallet.');
     } else { alert('Confirmed! Waiting for customer confirmation.'); }
     loadJobs();
   }

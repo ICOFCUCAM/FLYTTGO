@@ -37,13 +37,16 @@
 // FRONTEND REQUEST
 // ----------------
 //   POST /functions/v1/create-vipps-session
+//   Authorization: Bearer <signed-in user's access token>
 //   Content-Type: application/json
 //
-//   {
-//     "bookingId": "a1b2c3d4-e5f6-7890-...",   // uuid from bookings table
-//     "amount":    4025,                         // NOK, whole number
-//     "description": "FlyttGo booking"          // optional
-//   }
+//   { "bookingId": "a1b2c3d4-e5f6-7890-..." }
+//
+// The caller must be the booking's customer and the booking must still
+// be awaiting payment. The amount is computed on the server from the
+// booking (_shared/booking-charge.ts); an `amount` in the body is
+// ignored. Driver subscriptions are not sold through Vipps yet: a
+// `type: "subscription"` request is refused with 400.
 //
 // FRONTEND RESPONSE (200)
 // -----------------------
@@ -57,20 +60,14 @@
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
+import { serviceClient, getCaller } from '../_shared/auth.ts';
+import { chargeForBooking } from '../_shared/booking-charge.ts';
+import { VIPPS_BASE, vippsApiHeaders, vippsMissingConfig } from '../_shared/vipps.ts';
 
 /* ─── Env ──────────────────────────────────────────────────────── */
-const VIPPS_CLIENT_ID        = Deno.env.get('VIPPS_CLIENT_ID')        ?? '';
-const VIPPS_CLIENT_SECRET    = Deno.env.get('VIPPS_CLIENT_SECRET')    ?? '';
-const VIPPS_SUBSCRIPTION_KEY = Deno.env.get('VIPPS_SUBSCRIPTION_KEY') ?? '';
-const VIPPS_MSN              = Deno.env.get('VIPPS_MSN')              ?? '';
 const VIPPS_WEBHOOK_SECRET   = Deno.env.get('VIPPS_WEBHOOK_SECRET')   ?? '';
-const VIPPS_MODE             = (Deno.env.get('VIPPS_MODE') ?? 'test').toLowerCase();
 const FRONTEND_URL           = Deno.env.get('FRONTEND_URL')           ?? 'https://flyttgo.no';
 const SUPABASE_URL           = Deno.env.get('SUPABASE_URL')           ?? '';
-
-const VIPPS_BASE = VIPPS_MODE === 'production'
-  ? 'https://api.vipps.no'
-  : 'https://apitest.vipps.no';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -85,51 +82,11 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-/* ─── Access token (cached across invocations of the same instance) ── */
-
-interface TokenCache { token: string; expiresAt: number }
-let tokenCache: TokenCache | null = null;
-
-async function getAccessToken(): Promise<string> {
-  if (tokenCache && tokenCache.expiresAt > Date.now()) return tokenCache.token;
-
-  const res = await fetch(`${VIPPS_BASE}/accesstoken/get`, {
-    method: 'POST',
-    headers: {
-      /* Per Vipps Access Token API — these are custom header names, NOT
-       * HTTP Basic auth. All four must be present. */
-      'client_id':                VIPPS_CLIENT_ID,
-      'client_secret':            VIPPS_CLIENT_SECRET,
-      'Ocp-Apim-Subscription-Key': VIPPS_SUBSCRIPTION_KEY,
-      'Merchant-Serial-Number':   VIPPS_MSN,
-      'Vipps-System-Name':        'FlyttGo',
-      'Vipps-System-Version':     '1.0.0',
-      'Vipps-System-Plugin-Name': 'flyttgo-backend',
-      'Vipps-System-Plugin-Version': '1.0.0',
-    },
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`Vipps access-token ${res.status}: ${body.slice(0, 200)}`);
-  }
-
-  const data = await res.json();
-  const token = data.access_token as string | undefined;
-  const ttlSec = Number(data.expires_in ?? 3600);
-
-  if (!token) throw new Error('Vipps access-token response missing access_token field');
-
-  /* Subtract 60 s so we never serve an about-to-expire token. */
-  tokenCache = { token, expiresAt: Date.now() + (ttlSec - 60) * 1000 };
-  return token;
-}
-
 /* ─── Checkout session creation ────────────────────────────────── */
 
 interface CreateSessionInput {
   bookingId:    string;
-  amount:       number;   // whole NOK
+  amount:       number;   // whole NOK, computed on the server
   description?: string;
 }
 
@@ -138,12 +95,12 @@ interface CreateSessionOutput {
   pollingUrl:   string;
   sessionToken: string;
   reference:    string;
+  amount:       number;
   provider:     'vipps';
 }
 
 async function createCheckoutSession(
-  accessToken: string,
-  input:       CreateSessionInput,
+  input: CreateSessionInput,
 ): Promise<CreateSessionOutput> {
   const amountOre = Math.round(input.amount * 100); // NOK → øre
   if (!Number.isFinite(amountOre) || amountOre <= 0) {
@@ -189,16 +146,7 @@ async function createCheckoutSession(
 
   const res = await fetch(`${VIPPS_BASE}/checkout/v3/session`, {
     method: 'POST',
-    headers: {
-      'Authorization':              `Bearer ${accessToken}`,
-      'Ocp-Apim-Subscription-Key':  VIPPS_SUBSCRIPTION_KEY,
-      'Merchant-Serial-Number':     VIPPS_MSN,
-      'Vipps-System-Name':          'FlyttGo',
-      'Vipps-System-Version':       '1.0.0',
-      'Vipps-System-Plugin-Name':   'flyttgo-backend',
-      'Vipps-System-Plugin-Version':'1.0.0',
-      'Content-Type':               'application/json',
-    },
+    headers: { ...(await vippsApiHeaders()), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
 
@@ -216,15 +164,14 @@ async function createCheckoutSession(
 
   if (!redirectUrl) throw new Error('Vipps checkout response missing checkoutFrontendUrl');
 
-  return { redirectUrl, pollingUrl, sessionToken, reference, provider: 'vipps' };
+  return { redirectUrl, pollingUrl, sessionToken, reference, amount: input.amount, provider: 'vipps' };
 }
 
 /* ─── Handler ──────────────────────────────────────────────────── */
 
 interface RequestBody {
-  bookingId:    string;
-  amount:       number;
-  description?: string;
+  bookingId?: string;
+  type?:      string;
 }
 
 serve(async (req: Request) => {
@@ -233,16 +180,16 @@ serve(async (req: Request) => {
 
   /* Env guard — fail fast with a useful message rather than silently
    * hitting Vipps with an empty header. */
-  const missing: string[] = [];
-  if (!VIPPS_CLIENT_ID)        missing.push('VIPPS_CLIENT_ID');
-  if (!VIPPS_CLIENT_SECRET)    missing.push('VIPPS_CLIENT_SECRET');
-  if (!VIPPS_SUBSCRIPTION_KEY) missing.push('VIPPS_SUBSCRIPTION_KEY');
-  if (!VIPPS_MSN)              missing.push('VIPPS_MSN');
+  const missing = vippsMissingConfig();
   if (!VIPPS_WEBHOOK_SECRET)   missing.push('VIPPS_WEBHOOK_SECRET');
   if (!SUPABASE_URL)           missing.push('SUPABASE_URL');
   if (missing.length) {
     return json({ error: 'Vipps not configured', missing }, 500);
   }
+
+  const db     = serviceClient();
+  const caller = await getCaller(req, db);
+  if (!caller) return json({ error: 'Sign in required' }, 401);
 
   let body: RequestBody;
   try {
@@ -251,16 +198,18 @@ serve(async (req: Request) => {
     return json({ error: 'Invalid JSON body' }, 400);
   }
 
+  if (body?.type === 'subscription') {
+    return json({ error: 'Vipps is not available for driver subscriptions yet; pay by card' }, 400);
+  }
   if (!body?.bookingId || typeof body.bookingId !== 'string') {
     return json({ error: 'bookingId is required and must be a string' }, 400);
   }
-  if (!body?.amount || typeof body.amount !== 'number' || body.amount <= 0) {
-    return json({ error: 'amount is required and must be a positive number (NOK)' }, 400);
-  }
+
+  const charge = await chargeForBooking(db, body.bookingId, caller.id);
+  if (!charge.ok) return json({ error: charge.error }, charge.status);
 
   try {
-    const token   = await getAccessToken();
-    const session = await createCheckoutSession(token, body);
+    const session = await createCheckoutSession({ bookingId: body.bookingId, amount: charge.amountNok });
     return json(session);
   } catch (err) {
     console.error('create-vipps-session error:', err);
