@@ -20,7 +20,7 @@ const btn = 'px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50';
 
 
 /** Every card's picture has the same shape: the top of the home page, 4 : 3. */
-const THUMB_BOX = 'aspect-[4/3]';
+const THUMB_BOX = 'aspect-[16/10]';
 const tag = 'inline-block rounded-full px-2 py-0.5 text-[11px] font-medium';
 
 /** The preview's screen sizes: a desktop (the full width), a tablet and a phone. */
@@ -110,7 +110,7 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
               <button onClick={() => open(t.id)} className={`group block w-full relative overflow-hidden border-b border-gray-100 bg-gray-100 ${THUMB_BOX}`}
                 title={`Preview ${t.name}`} aria-label={`Preview ${t.name}`}>
                 {thumb ? (
-                  <img src={thumb} alt="" loading="lazy" decoding="async" width={640} height={800}
+                  <img src={thumb} alt="" loading="lazy" decoding="async" width={720} height={450}
                     className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 ease-out group-hover:scale-[1.04] group-focus-visible:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100 motion-reduce:group-focus-visible:scale-100" />
                 ) : (
                   <TemplateThumb template={t} brand={brand} sellerNotice={sellerNotice} />
