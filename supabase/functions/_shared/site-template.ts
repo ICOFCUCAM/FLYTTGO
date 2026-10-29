@@ -44,7 +44,10 @@ export interface SanitiseReport {
   forms: number; links: number; imports: number; refresh: number; externalSrc: number;
 }
 
-export interface ContentFlag { kind: 'price' | 'review' | 'claim' | 'phone' | 'email' | 'sample_name' | 'hidden'; page: string; sample: string }
+export interface ContentFlag {
+  kind: 'price' | 'review' | 'claim' | 'phone' | 'email' | 'sample_name' | 'hidden' | 'address' | 'statistic';
+  page: string; sample: string;
+}
 
 /**
  * Catalogue categories for companies choosing a website. A template is in
@@ -163,6 +166,8 @@ export interface PreparedTemplate {
   features: string[];
   /** The sample company's name and the short forms its logo uses (sampleShortNames()). */
   sample_names: string[];
+  /** Of those, the ones looked for in the text (the name, and short forms that are not everyday words). */
+  flag_names: string[];
 }
 
 export interface Brand {
@@ -269,6 +274,12 @@ const REVIEW_RE = /(?:★|&#9733;|\btestimonial|\breviews?\b|\brated\s+\d|\b\d(?
 const CLAIM_RE = /(?:\bsince\s+(?:19|20)\d\d\b|\b\d[\d,.]*\+?\s?(?:moves|customers|clients|years|trucks|deliveries|shipments|countries|cities)\b|\b(?:licensed|insured|bonded|award[- ]winning|#1|number one|guaranteed)\b)/gi;
 const PHONE_RE = /(?:\+?1[ .-]?)?\(?\b\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b|\+\d{2}[ \d]{8,14}\d/g;
 const EMAIL_RE = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
+const US_STATES = 'AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC';
+/** A sample street address, US town and state ("Nashville, TN", "Cedar Grove OH 43004") or suite. */
+const ADDRESS_RE = new RegExp(`\\b\\d{1,5}\\s+(?:[A-Z][a-z]+\\.?\\s+){1,3}(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Way|Court|Ct|Place|Pl|Parkway|Pkwy|Highway|Hwy)\\b\\.?`
+  + `|\\b[A-Z][a-z]+(?:\\s[A-Z][a-z]+)?,?\\s(?:${US_STATES})\\b(?:\\s\\d{5}(?:-\\d{4})?)?|\\b(?:Suite|Ste\\.)\\s\\d+\\b`, 'g');
+/** A sample figure: "18,000+", "500+", "98%", "12k+". */
+const STATISTIC_RE = /\b\d{1,3}(?:,\d{3})+\s?\+?|\b\d+(?:\.\d+)?\s?(?:%|k\+|\+)(?![\d\w])/g;
 
 function visibleText(html: string): string {
   return html.replace(/<style\b[\s\S]*?<\/style\s*>/gi, ' ').replace(/<[^>]+>/g, ' ')
@@ -277,7 +288,9 @@ function visibleText(html: string): string {
 
 /** What a person must still check on a page before approval. */
 export function contentFlags(html: string, page: string, sampleName?: string, shortNames: string[] = []): ContentFlag[] {
-  const text = visibleText(html);
+  // What a visitor reads, and the description search engines show.
+  const meta = [...html.matchAll(/<meta\b[^>]*\sname\s*=\s*"description"[^>]*\scontent\s*=\s*"([^"]*)"/gi)].map(m => m[1]).join(' ');
+  const text = `${visibleText(html)} ${meta}`.trim();
   const out: ContentFlag[] = [];
   const add = (kind: ContentFlag['kind'], re: RegExp) => {
     for (const m of text.matchAll(re)) {
@@ -291,6 +304,8 @@ export function contentFlags(html: string, page: string, sampleName?: string, sh
   add('claim', CLAIM_RE);
   add('phone', PHONE_RE);
   add('email', EMAIL_RE);
+  add('address', ADDRESS_RE);
+  add('statistic', STATISTIC_RE);
   if (sampleName && sampleName.length >= 3) {
     add('sample_name', new RegExp(`\\b${sampleName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'));
   }
@@ -431,6 +446,34 @@ function fillBrandSlots(html: string, names: string[]): string {
   return out + html.slice(at);
 }
 
+/** A link a visitor follows to book: "Book now", "Reserve", "Get a free quote", "Request an appointment"… */
+export const BOOKING_TEXT = /^(?:book(?:\s|$)|book(?:ing)? (?:now|online|a|an|your|today)|reserve|request (?:a |an |your )?(?:quote|estimate|appointment|reservation|booking|service|table|callback|visit|seating)|get (?:a |an |your )?(?:free |instant |fast )?(?:quote|estimate|price)|free (?:quote|estimate)|schedule (?:a |an |your )?(?:visit|service|appointment|consultation|pickup|move|call)|make (?:a |an )?(?:booking|reservation|appointment)|claim (?:offer|your (?:discount|offer)))/i;
+
+/** The visible text of each link of a page, with its href. */
+export function pageLinks(html: string): { href: string; text: string; start: number; end: number; open: string }[] {
+  const out: ReturnType<typeof pageLinks> = [];
+  const re = /<a\b([^>]*)>([\s\S]*?)<\/a\s*>/gi;
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    const href = /\shref\s*=\s*("|')([^"']*)\1/i.exec(m[1])?.[2] ?? '';
+    out.push({ href, text: decodeText(m[2]).replace(/^[^\p{L}\p{N}]+/u, ''), start: m.index, end: m.index + m[0].length, open: `<a${m[1]}>` });
+  }
+  return out;
+}
+
+/** A booking link that does not lead to the booking page (tel: and mailto: links are calls and emails, not bookings). */
+export const strayBookingLink = (l: { href: string; text: string }) =>
+  BOOKING_TEXT.test(l.text) && l.href !== '{{BOOKING_URL}}' && !/^(?:tel|sms|mailto):/i.test(l.href);
+
+/** Every link that reads as booking leads to the booking page. */
+function bookingLinksToBooking(html: string): string {
+  return html.replace(/<a\b([^>]*)>([\s\S]*?)<\/a\s*>/gi, (m, attrs: string, inner: string) => {
+    const href = /\shref\s*=\s*("|')([^"']*)\1/i.exec(attrs)?.[2] ?? '';
+    if (!strayBookingLink({ href, text: decodeText(inner).replace(/^[^\p{L}\p{N}]+/u, '') })) return m;
+    const a = /\shref\s*=/i.test(attrs) ? attrs.replace(/\shref\s*=\s*("|')[^"']*\1/i, ' href="{{BOOKING_URL}}"') : `${attrs} href="{{BOOKING_URL}}"`;
+    return `<a${a}>${inner}</a>`;
+  });
+}
+
 /**
  * Import step. Sanitises each page, replaces the sample company's name,
  * phones and emails with placeholders, sends quote links and forms to the
@@ -466,6 +509,8 @@ export function prepareTemplate(row: MasterRow, assetHosts: string[] = []): Prep
     h = h.replace(/href\s*=\s*("|')\s*(?:tel|sms):[^"']*\1/gi, 'href=$1tel:{{brand.phone_tel}}$1');
     h = h.replace(/href\s*=\s*("|')\s*mailto:[^"']*\1/gi, 'href=$1mailto:{{brand.email}}$1');
     h = h.replace(/href\s*=\s*("|')#(?:quote|estimate|booking|book|get-quote)[\w-]*\1/gi, 'href=$1{{BOOKING_URL}}$1');
+    // …and so does every other link that reads as booking ("Book now" pointing at the contact page).
+    h = bookingLinksToBooking(h);
     // Text only (not inside tags): the sample company's name, phones, emails.
     h = h.replace(/>([^<]+)</g, (_m, text: string) => {
       let t = text;
@@ -478,10 +523,15 @@ export function prepareTemplate(row: MasterRow, assetHosts: string[] = []): Prep
       if (!re) continue;
       h = h.replace(/(<title>[^<]*)/i, (m) => m.replace(re, '{{brand.name}}'));
       // …and in what screen readers read out: image descriptions and labels.
-      h = h.replace(/(\s(?:alt|title|aria-label)\s*=\s*")([^"]*)"/gi, (_m, a: string, v: string) => `${a}${v.replace(re, '{{brand.name}}')}"`);      // …and in the description search engines show.
-      h = h.replace(/(<meta\b[^>]*\sname\s*=\s*"(?:description|og:title|og:description|twitter:title|twitter:description)"[^>]*\scontent\s*=\s*")([^"]*)"/gi,
-        (_m, a: string, v: string) => `${a}${v.replace(re, '{{brand.name}}')}"`);
+      h = h.replace(/(\s(?:alt|title|aria-label)\s*=\s*")([^"]*)"/gi, (_m, a: string, v: string) => `${a}${v.replace(re, '{{brand.name}}')}"`);
     }
+    // …and in the description search engines show: name, phones and emails.
+    h = h.replace(/(<meta\b[^>]*\sname\s*=\s*"(?:description|og:title|og:description|twitter:title|twitter:description)"[^>]*\scontent\s*=\s*")([^"]*)"/gi,
+      (_m, a: string, v: string) => {
+        let t = v;
+        for (const re of [nameRe, shortRe]) if (re) t = t.replace(re, '{{brand.name}}');
+        return `${a}${t.replace(EMAIL_RE, '{{brand.email}}').replace(PHONE_RE, '{{brand.phone}}')}"`;
+      });
     // The logo: the company's name (and its logo, when it has one).
     h = fillBrandSlots(h, [name, escapeHtml(name), ...shortNames]);
     flags.push(...contentFlags(h, path, name, textShort));
@@ -491,6 +541,7 @@ export function prepareTemplate(row: MasterRow, assetHosts: string[] = []): Prep
     id: templateId(row.id), name, industry: (row.industry ?? []).map(String), style: row.style ?? null,
     pages: out, assets: assets.filter(a => a && typeof a.key === 'string' && typeof a.url === 'string'),
     source_id: String(row.id), flags, removed, features: templateFeatures(out), sample_names: [name, ...shortNames],
+    flag_names: [name, ...textShort],
   };
 }
 

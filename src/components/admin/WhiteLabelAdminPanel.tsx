@@ -6,16 +6,25 @@
  *   Plans     the price list: change prices (they become proposals) and
  *             confirm them.
  *   Templates the website template library: check each imported template's
- *             wording (sample prices, reviews, claims), correct its pages,
- *             approve or retire it. Previews are sandboxed, without scripts.
+ *             wording (sample prices, reviews, claims) and its automated
+ *             checks (template-quality.ts: overflow on phones, images, alt
+ *             texts, booking links, sample content, unsafe HTML), correct
+ *             its pages, approve or retire it. Approval despite a failing
+ *             check needs a reason, which is kept. Previews are sandboxed,
+ *             without scripts.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { formatNok } from '../../lib/invoicing';
 import {
   SELLER_LABELS, STATUS_LABELS, decide, loadAllWhiteLabels, loadPlans, loadTemplate, loadTemplateList, missingFor, reviewTemplate,
-  setStatus, updatePlan, updateTemplatePage, type SiteTemplate, type SiteTemplateSummary, type WhiteLabelPlan,
+  recordPageChecks, setStatus, updatePlan, updateTemplatePage, type SiteTemplate, type SiteTemplateSummary, type WhiteLabelPlan,
 } from '../../lib/whiteLabel';
-import { OTHER_CATEGORY, TEMPLATE_CATEGORIES, categoryLabel, renderTemplatePage, templateCategory } from '../../../supabase/functions/_shared/site-template';
+import {
+  OTHER_CATEGORY, TEMPLATE_CATEGORIES, categoryLabel, contentFlags, renderTemplatePage, templateCategory, type ContentFlag,
+} from '../../../supabase/functions/_shared/site-template';
+import {
+  CHECKS, checkLabel, failingChecks, pageStaticChecks, type CheckResult, type TemplateChecks,
+} from '../../../supabase/functions/_shared/template-quality';
 
 type Row = Awaited<ReturnType<typeof loadAllWhiteLabels>>[number];
 const btn = 'px-2.5 py-1 rounded text-xs font-medium disabled:opacity-50';
@@ -159,6 +168,13 @@ export default function WhiteLabelAdminPanel() {
                   <div className="text-xs text-gray-500">{categoryLabel(catOf(t))} · {t.style} · {t.industry.slice(0, 3).join(', ')}</div>
                   {t.status !== 'approved' && <div className="text-xs text-gray-500">{flags.length} things to check{prices ? `, ${prices} prices` : ''}</div>}
                   {hidden > 0 && <div className="text-xs text-red-700">{hidden} page(s) show less without scripts: fix before approval</div>}
+                  {t.status !== 'approved' && (() => {
+                    const failing = new Set(failingChecks(t.checks as TemplateChecks).map(r => r.id));
+                    const never = !(t.checks as TemplateChecks | undefined)?.results;
+                    return never ? <div className="text-xs text-red-700">Not checked automatically yet</div>
+                      : failing.size ? <div className="text-xs text-red-700">{failing.size} automated check(s) fail: {[...failing].map(checkLabel).join(', ').toLowerCase()}</div>
+                      : <div className="text-xs text-emerald-700">Automated checks pass</div>;
+                  })()}
                 </button>
               );
             })}
@@ -183,15 +199,29 @@ export default function WhiteLabelAdminPanel() {
                   {tpl.content_flags.filter(f => f.page === open?.path).map((f, i) => <div key={i}><span className="font-medium">{f.kind}</span>: …{f.sample}…</div>)}
                   {tpl.content_flags.filter(f => f.page === open?.path).length === 0 && <div className="text-gray-500">Nothing flagged at import. Still read the page.</div>}
                 </div>
+                <QualityChecks template={tpl} path={page.path} draft={draft === page.html ? null : draft} />
                 <textarea value={draft} onChange={e => setDraft(e.target.value)} className="w-full h-56 font-mono text-xs border rounded p-2" spellCheck={false} />
                 <p className="text-xs text-gray-500">Placeholders: {'{{brand.name}} {{brand.logo}} {{brand.phone}} {{brand.email}} {{brand.city}} {{brand.tagline}} {{BOOKING_URL}}'}; the logo slot is an element with class "fg-brand-slot" holding {'{{brand.logo}}<span class="fg-brand-name">{{brand.name}}</span>'}. Scripts, forms, frames and event handlers are refused.</p>
                 <div className="flex flex-wrap gap-2">
-                  <button disabled={busy || draft === page.html} onClick={() => run(() => updateTemplatePage(tpl.id, page.path, draft), 'Page saved; the template needs approval again.')} className={`${btn} bg-[#0B2E59] text-white`}>Save page</button>
+                  <button disabled={busy || draft === page.html} onClick={() => run(async () => {
+                    const e = await updateTemplatePage(tpl.id, page.path, draft);
+                    if (e) return e;
+                    // The checks that need no browser, and the page's flags, from the saved page.
+                    const flags = draftFlags(tpl, page.path, draft);
+                    return recordPageChecks(tpl.id, page.path, pageStaticChecks({ path: page.path, html: draft }, tpl.assets, flags), flags);
+                  }, 'Page saved and checked again (the checks that need a browser wait for a re-check); the template needs approval again.')} className={`${btn} bg-[#0B2E59] text-white`}>Save page</button>
                   {tpl.status !== 'approved' && <button disabled={busy} onClick={() => {
                     if (!confirm('Have you removed or corrected every sample price, review, figure and claim on all pages?')) return;
+                    const failing = failingIds(tpl);
+                    let reason: string | null = null;
+                    if (failing.length) {
+                      reason = prompt(`${failing.length} automated check(s) fail or are out of date: ${failing.map(checkLabel).join('; ')}.\n\n`
+                        + 'Fix the pages (and run the checks again), or give the reason to approve anyway. The reason is kept with the template.')?.trim() || null;
+                      if (!reason) return;
+                    }
                     const note = prompt('Review note (optional):') ?? '';
-                    run(() => reviewTemplate(tpl.id, true, true, note), 'Template approved: companies can choose it.');
-                  }} className={`${btn} bg-emerald-600 text-white`}>Approve</button>}
+                    run(() => reviewTemplate(tpl.id, true, true, note, reason), reason ? 'Template approved despite failing checks; your reason is kept.' : 'Template approved: companies can choose it.');
+                  }} className={`${btn} bg-emerald-600 text-white`}>Approve{failingIds(tpl).length ? ' (checks fail)' : ''}</button>}
                   {tpl.status !== 'retired' && <button disabled={busy} onClick={() => { const note = prompt('Why retire this template?') ?? ''; run(() => reviewTemplate(tpl.id, false, false, note), 'Template retired.'); }} className={`${btn} bg-gray-100 text-gray-700`}>Retire</button>}
                 </div>
               </div>
@@ -233,6 +263,91 @@ function PlanEditor({ plan, busy, onSave }: {
         <button disabled={busy} onClick={() => onSave(v, false)} className={`${btn} bg-gray-100 text-gray-800`}>Save as proposal</button>
         <button disabled={busy} onClick={() => { if (confirm(`Confirm these prices for ${plan.name}? They apply to new charges from now.`)) onSave(v, true); }} className={`${btn} bg-emerald-600 text-white`}>Confirm prices</button>
       </div>
+    </div>
+  );
+}
+
+/** The automated checks that stop approval, as the database counts them ('not_checked' when never checked). */
+function failingIds(t: SiteTemplate): string[] {
+  const checks = t.checks as TemplateChecks | undefined;
+  if (!checks?.results) return ['not_checked'];
+  return [...new Set(failingChecks(checks).map(r => r.id))];
+}
+
+/** A draft page's content flags, found as the importer finds them (the sample names it recorded). */
+function draftFlags(t: SiteTemplate, path: string, html: string): ContentFlag[] {
+  const names = (t.checks as TemplateChecks | undefined)?.sample_names ?? [t.name];
+  return contentFlags(html, path, names[0], names.slice(1));
+}
+
+const STATUS_STYLE: Record<CheckResult['status'], string> = {
+  pass: 'bg-emerald-50 text-emerald-800 border-emerald-200', fail: 'bg-red-50 text-red-800 border-red-200',
+  stale: 'bg-amber-50 text-amber-900 border-amber-200', not_run: 'bg-gray-50 text-gray-600 border-gray-200',
+};
+const STATUS_WORD: Record<CheckResult['status'], string> = { pass: 'pass', fail: 'fail', stale: 'out of date', not_run: 'not run' };
+
+/**
+ * The template's automated checks (template-quality.ts), by check and page,
+ * with what failed; the checks that need no browser run live on an unsaved
+ * draft; and the approvals given despite failing checks.
+ */
+function QualityChecks({ template, path, draft }: { template: SiteTemplate; path: string; draft: string | null }) {
+  const checks = template.checks as TemplateChecks | undefined;
+  const results = checks?.results ?? [];
+  const pages = template.pages.map(p => p.path);
+  const live = draft === null ? [] : pageStaticChecks({ path, html: draft }, template.assets, draftFlags(template, path, draft)).filter(r => r.status === 'fail');
+  const failing = failingChecks(checks);
+  return (
+    <div className="bg-white rounded-lg shadow p-3 text-xs space-y-2" aria-label="Automated checks">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span className="font-semibold">Automated checks</span>
+        {checks?.ran_at ? <span className="text-gray-500">run {new Date(checks.ran_at).toLocaleString('nb-NO')}</span>
+          : <span className="text-red-700">never run: import the template again or run the importer with --recheck</span>}
+        {results.length > 0 && <span className={failing.length ? 'text-red-700 font-semibold' : 'text-emerald-700 font-semibold'}>
+          {failing.length ? `${new Set(failing.map(r => r.id)).size} check(s) stop approval` : 'nothing stops approval'}</span>}
+      </div>
+      {results.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead><tr className="text-left text-gray-500"><th className="py-1 pr-2 font-medium">Check</th>
+              {pages.map(p => <th key={p} className={`py-1 px-1 font-medium ${p === path ? 'text-gray-900' : ''}`}>{p}</th>)}</tr></thead>
+            <tbody>{CHECKS.map(c => (
+              <tr key={c.id} className="border-t border-gray-100">
+                <td className="py-1 pr-2">{c.label}{c.overridable ? '' : ' (never overridden)'}</td>
+                {pages.map(p => {
+                  const r = results.find(x => x.id === c.id && x.page === p);
+                  return <td key={p} className="py-1 px-1">{r
+                    ? <span title={r.detail} className={`inline-block rounded border px-1.5 py-0.5 ${STATUS_STYLE[r.status]}`}>{STATUS_WORD[r.status]}</span>
+                    : <span className="text-gray-400">–</span>}</td>;
+                })}
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
+      {failing.filter(r => r.page === path).map(r => (
+        <div key={r.id} className="border-l-2 border-red-300 pl-2">
+          <div><span className="font-medium">{checkLabel(r.id)}</span>: {r.detail}</div>
+          {r.items?.slice(0, 6).map((it, i) => <div key={i} className="text-gray-600 truncate">{it}</div>)}
+        </div>
+      ))}
+      {failing.some(r => r.status === 'stale') && (
+        <p className="text-amber-900">Out of date: the page changed after the browser checked it. Run <code>node scripts/import-site-templates.ts --recheck --ids {template.id}</code> (needs the owner's go-ahead: it writes to the database), or approve with a reason.</p>
+      )}
+      {live.length > 0 && (
+        <div className="rounded border border-amber-200 bg-amber-50 p-2">
+          <div className="font-medium text-amber-900">This draft (not saved yet)</div>
+          {live.map(r => <div key={r.id}>{checkLabel(r.id)}: {r.detail} {r.items?.slice(0, 3).join('; ')}</div>)}
+        </div>
+      )}
+      {(template.check_overrides ?? []).length > 0 && (
+        <div className="border-t pt-2">
+          <div className="font-medium mb-1">Approved despite failing checks</div>
+          {(template.check_overrides ?? []).map((o, i) => (
+            <div key={i} className="text-gray-700">{new Date(o.at).toLocaleString('nb-NO')}: {o.checks.map(checkLabel).join(', ').toLowerCase()}. Reason: “{o.reason}”</div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

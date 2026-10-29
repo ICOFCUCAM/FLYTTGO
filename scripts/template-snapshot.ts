@@ -25,6 +25,7 @@ type Page = {
   route(url: string, handler: (r: Route) => Promise<void>): Promise<void>;
   waitForTimeout(ms: number): Promise<void>;
   screenshot(o: { type: 'jpeg'; quality: number }): Promise<Uint8Array>;
+  setViewportSize(s: { width: number; height: number }): Promise<void>;
   close(): Promise<void>;
 };
 type Context = { newPage(): Promise<Page>; close(): Promise<void> };
@@ -41,8 +42,16 @@ export interface Snapshotter {
    * 640 × 800. Images load only from `hosts` (the template's asset store).
    */
   thumbnail(html: string, hosts: string[]): Promise<Uint8Array>;
+  /**
+   * The quality checks' measurements of a rendered page (without scripts):
+   * whether it draws text, how wide it is at each phone width (and what
+   * sticks out), and each image: loaded or not, its size.
+   */
+  inspect(html: string, hosts: string[], widths: readonly number[]): Promise<PageInspection>;
   close(): Promise<void>;
 }
+
+import type { PageInspection } from '../supabase/functions/_shared/template-quality.ts';
 
 /** Thumbnails: the page width they are drawn at, how much of the page, and the scale. */
 export const THUMBNAIL = { width: 1280, height: 1600, scale: 0.5 } as const;
@@ -133,6 +142,42 @@ export async function snapshotter(): Promise<Snapshotter | null> {
         await page.setContent(html, { waitUntil: 'load', timeout: 30000 }).catch(() => { /* draw what has loaded */ });
         await page.waitForTimeout(300);
         return await page.screenshot({ type: 'jpeg', quality: 80 });
+      } finally {
+        await ctx.close();
+      }
+    },
+    async inspect(html, hosts, widths) {
+      const ctx = await browser.newContext({ reducedMotion: 'reduce', javaScriptEnabled: false, viewport: { width: 1280, height: 900 } });
+      try {
+        const page = await ctx.newPage();
+        await page.route('**/*', allowOnly(hosts.map(h => h.toLowerCase())));
+        let rendered = true;
+        await page.setContent(html, { waitUntil: 'load', timeout: 30000 }).catch(() => { rendered = false; });
+        const found = await page.evaluate(() => ({
+          textChars: (document.body?.innerText ?? '').replace(/\s+/g, '').length,
+          images: [...document.images].map(i => ({ src: i.getAttribute('src') ?? '', loaded: i.complete && i.naturalWidth > 0,
+                                                  width: i.naturalWidth, height: i.naturalHeight })),
+        }));
+        const overflow: PageInspection['overflow'] = [];
+        for (const width of widths) {
+          await page.setViewportSize({ width, height: 800 });
+          await page.waitForTimeout(50);
+          overflow.push(await page.evaluate(() => {
+            const w = document.documentElement.clientWidth;
+            const culprits: string[] = [];
+            for (const el of document.body.querySelectorAll('*')) {
+              const r = el.getBoundingClientRect();
+              if (r.width > 0 && r.right > w + 1 && getComputedStyle(el).position !== 'fixed') {
+                // The outermost element that sticks out, named by tag and classes.
+                if (el.parentElement && el.parentElement.getBoundingClientRect().right > w + 1) continue;
+                culprits.push(`${el.tagName.toLowerCase()}${el.classList.length ? `.${[...el.classList].join('.')}` : ''}`);
+                if (culprits.length >= 5) break;
+              }
+            }
+            return { width: w, scrollWidth: document.documentElement.scrollWidth, culprits };
+          }));
+        }
+        return { rendered, ...found, overflow };
       } finally {
         await ctx.close();
       }
