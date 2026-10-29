@@ -62,6 +62,7 @@ export default function Footer() {
     { label: t('booking.recurring', 'Recurring Deliveries'), page: 'recurring-deliveries' },
     { label: t('payment.invoice', 'Invoice & Billing'),      page: 'invoice-billing' },
     { label: t('booking.apiAccess', 'API Access'),           page: 'corporate-api-access' },
+    { label: 'White label',                                  page: 'white-label' },
     { label: t('dashboard.title', 'Corporate Dashboard'),    page: 'corporate-dashboard' },
   ];
 

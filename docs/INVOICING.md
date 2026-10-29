@@ -38,6 +38,10 @@ FlyttGo issues invoices itself, with its own invoice system (owner's decision, 2
 4. **Schedule `invoice-run` daily:** for example with `pg_cron` and `pg_net` calling it with the service role key, or Supabase scheduled functions.
 5. **Secrets:** `RESEND_API_KEY`, `FLYTTGO_FROM` (an invoice sender address on a verified domain), `FLYTTGO_REPLY_TO`.
 
+## White-label plans
+
+The invoice run also bills companies' white-label plans (set-up, monthly fee, and for Model B what FlyttGo kept from customer payments, recorded as paid at once). See [`WHITE_LABEL.md`](WHITE_LABEL.md) → Plans and prices.
+
 ## Integration points (not connected)
 
 - **Sending EHF through Peppol.** The EHF file is complete, but sending it into a customer's accounting system needs a Peppol access point (a provider agreement). Until then EHF is attached to the email and downloadable.

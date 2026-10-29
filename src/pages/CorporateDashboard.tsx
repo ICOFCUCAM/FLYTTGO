@@ -6,6 +6,7 @@ import TeamPanel from '../components/corporate/TeamPanel';
 import RegisterCompany from '../components/corporate/RegisterCompany';
 import CompanyBookings from '../components/corporate/CompanyBookings';
 import CompanyInvoices from '../components/corporate/CompanyInvoices';
+import WhiteLabelPanel from '../components/corporate/WhiteLabelPanel';
 
 /* Visitors see the dashboard preview with sample figures. A signed-in
  * member of a company sees their company, its status and its real team
@@ -13,7 +14,7 @@ import CompanyInvoices from '../components/corporate/CompanyInvoices';
  * preview and say it is sample data. A signed-in person without a
  * company can register one. */
 
-type DashTab = 'overview' | 'shipments' | 'recurring' | 'invoices' | 'drivers' | 'analytics' | 'api' | 'team' | 'documents' | 'support';
+type DashTab = 'overview' | 'shipments' | 'recurring' | 'invoices' | 'drivers' | 'analytics' | 'api' | 'team' | 'white-label' | 'documents' | 'support';
 
 function StatCard({ icon, label, value, sub, color = 'emerald' }: { icon: string; label: string; value: string; sub?: string; color?: string }) {
   const colors: Record<string, string> = { emerald: 'bg-emerald-50 text-emerald-600', blue: 'bg-blue-50 text-blue-600', purple: 'bg-purple-50 text-purple-600', orange: 'bg-orange-50 text-orange-600' };
@@ -51,6 +52,7 @@ const NAV_ITEMS: { id: DashTab; icon: string; label: string }[] = [
   { id: 'analytics',  icon: '📈', label: 'Analytics' },
   { id: 'api',        icon: '🔗', label: 'API & Webhooks' },
   { id: 'team',       icon: '👥', label: 'Team' },
+  { id: 'white-label', icon: '🏷️', label: 'White label' },
   { id: 'documents',  icon: '📄', label: 'Documents' },
   { id: 'support',    icon: '🎧', label: 'Support' },
 ];
@@ -60,7 +62,8 @@ export default function CorporateDashboard() {
   const { user } = useAuth();
   const [memberships, setMemberships] = useState<Membership[] | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
-  const [tab, setTab] = useState<DashTab>('overview');
+  const [tab, setTab] = useState<DashTab>(() =>
+    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('white_label') ? 'white-label' : 'overview');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
@@ -404,6 +407,15 @@ export default function CorporateDashboard() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ── WHITE LABEL ── */}
+          {tab === 'white-label' && live && current && <WhiteLabelPanel key={current.organization.id} membership={current} />}
+          {tab === 'white-label' && !live && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 text-sm text-gray-600">
+              Offer moving under your own brand. Register or sign in to your company to choose a plan.{' '}
+              <button className="underline text-[#0B2E59]" onClick={() => setPage('white-label')}>Plans and prices</button>
             </div>
           )}
 

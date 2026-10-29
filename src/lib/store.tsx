@@ -21,6 +21,9 @@ export type Page =
   | 'driver-application-status'
   /* Company invitation link (send-organization-invitation). */
   | 'accept-invitation'
+  /* White label: plans and prices, the data processing agreement, and a
+   * company's own page (/b/<slug>, its domain or subdomain). */
+  | 'white-label' | 'white-label-dpa' | 'brand-site'
   /* Fallback for URLs that don't match any known route. */
   | 'not-found';
 

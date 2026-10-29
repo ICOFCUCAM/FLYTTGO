@@ -1,4 +1,5 @@
 import type { Page } from './store';
+import { isFlyttgoHost } from './hosts';
 
 /**
  * Bidirectional map between in-app Page ids and URL paths.
@@ -42,6 +43,9 @@ const PAGE_TO_PATH: Record<Page, string> = {
   'invoice-billing':         '/business/invoicing',
   'corporate-api-access':    '/business/api',
   'accept-invitation':       '/business/invite',
+  'white-label':             '/business/white-label',
+  'white-label-dpa':         '/business/white-label/agreement',
+  'brand-site':              '/b',
 
   /* Legal */
   'terms':                   '/terms',
@@ -127,6 +131,9 @@ const PAGE_TITLES: Record<Page, string> = {
   'auth-callback':           'Signing you in… · FlyttGo',
   'driver-application-status': 'Driver Application Status · FlyttGo',
   'accept-invitation':       'Company invitation · FlyttGo',
+  'white-label':             'White label: plans and prices · FlyttGo Business',
+  'white-label-dpa':         'Data processing agreement (white label) · FlyttGo',
+  'brand-site':              'Book a move',
   'not-found':               'Page Not Found · FlyttGo',
 };
 
@@ -208,6 +215,12 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     'Track the status of your FlyttGo driver application — pending review, approved, or rejected with next steps.',
   'accept-invitation':
     'Accept an invitation to join your company on FlyttGo Business.',
+  'white-label':
+    'Offer moving under your own brand: FlyttGo sells for you, or your company sells with FlyttGo as subcontractor. Plans, prices and who does what.',
+  'white-label-dpa':
+    'The data processing agreement for companies that sell moving under their own name on FlyttGo (plan Own seller).',
+  'brand-site':
+    'Book a move online: instant price, verified drivers and live tracking.',
   'not-found':
     "The page you were looking for doesn't exist. Find what you need from the FlyttGo homepage, or book a move from any of our services.",
 };
@@ -288,6 +301,11 @@ function upsertLink(rel: string, href: string) {
 export function pathToPage(path: string): Page {
   if (!path) return 'home';
   const normalised = path === '/' ? '/' : path.replace(/\/+$/, '');
+  /* A company's white-label page: /b/<slug>, and /b/<slug>/book for its
+   * booking; on a company's own domain or subdomain, its front page. */
+  const brand = /^\/b\/[a-z0-9-]{3,63}(\/book)?$/.exec(normalised);
+  if (brand) return brand[1] ? 'booking' : 'brand-site';
+  if (normalised === '/' && typeof window !== 'undefined' && !isFlyttgoHost(window.location.hostname)) return 'brand-site';
   /* Unknown paths resolve to 'not-found' rather than silently
    * serving the homepage. NotFoundPage sets robots=noindex so
    * Google doesn't index the garbage URL, and the user sees a

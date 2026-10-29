@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from './components/theme-provider';
 import { AuthProvider } from './lib/auth';
 import { AppProvider } from './lib/store';
+import { WhiteLabelProvider } from './lib/whiteLabelContext';
 import AppLayout from './components/AppLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import CookieConsent from './components/CookieConsent';
@@ -19,11 +20,13 @@ export default function App() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <AppProvider>
+              <WhiteLabelProvider>
               <AppLayout />
               <CookieConsent />
               <Analytics />
               <Toaster />
               <Sonner />
+              </WhiteLabelProvider>
             </AppProvider>
           </AuthProvider>
         </QueryClientProvider>

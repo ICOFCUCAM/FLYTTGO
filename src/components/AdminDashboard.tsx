@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { supabase, callFunction } from "../lib/supabase";
 import CompaniesPanel from "./admin/CompaniesPanel";
 import InvoicingPanel from "./admin/InvoicingPanel";
+import WhiteLabelAdminPanel from "./admin/WhiteLabelAdminPanel";
 import { activePlansByUser, ASSIGNABLE_PLANS } from "../lib/plans";
 import { useAuth } from "../lib/auth";
 
@@ -20,6 +21,7 @@ type AdminTab =
   | "disputes"
   | "companies"
   | "invoicing"
+  | "white-label"
   | "settings";
 
 /* ── CSV export helper ──────────────────────────────────────────
@@ -149,6 +151,7 @@ export default function AdminDashboard() {
     "disputes",
     "companies",
     "invoicing",
+    "white-label",
     "settings",
   ];
 
@@ -978,6 +981,7 @@ export default function AdminDashboard() {
         {tab === "companies" && <CompaniesPanel />}
 
         {tab === "invoicing" && <InvoicingPanel />}
+        {tab === "white-label" && <WhiteLabelAdminPanel />}
 
         {tab === "settings" && (
           <div>

@@ -1,6 +1,8 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { useApp } from '../lib/store';
 import Header from './Header';
+import { useWhiteLabel } from '../lib/whiteLabelContext';
+import { BrandFooter, BrandHeader } from './whiteLabel/BrandFrame';
 import AuthModal from './AuthModal';
 
 const HomePage           = lazy(() => import('./HomePage'));
@@ -18,6 +20,9 @@ const PrivacyPage        = lazy(() => import('../pages/PrivacyPage'));
 const LiabilityPage      = lazy(() => import('../pages/LiabilityPage'));
 const DriverTermsPage    = lazy(() => import('../pages/DriverTermsPage'));
 const AcceptInvitationPage = lazy(() => import('../pages/AcceptInvitationPage'));
+const WhiteLabelPlansPage  = lazy(() => import('../pages/WhiteLabelPlansPage'));
+const WhiteLabelDpaPage    = lazy(() => import('../pages/WhiteLabelDpaPage'));
+const BrandSitePage        = lazy(() => import('../pages/BrandSitePage'));
 const ServicesPage       = lazy(() => import('../pages/ServicesPage'));
 const CorporatePage             = lazy(() => import('../pages/CorporatePage'));
 const CorporateDashboard        = lazy(() => import('../pages/CorporateDashboard'));
@@ -52,6 +57,10 @@ function Loading() {
 
 export default function AppLayout() {
   const { currentPage } = useApp();
+  /* On a company's white-label page its own header and footer replace
+   * FlyttGo's (the booking flow keeps working as usual underneath). */
+  const { site } = useWhiteLabel();
+  const branded = !!site && ['brand-site', 'booking', 'payment', 'my-bookings', 'tracking', 'auth-callback', 'terms', 'privacy'].includes(currentPage);
 
   /* Scroll to the top of the viewport whenever the current page
    * changes. Without this, clicking a link from deep down the page
@@ -107,6 +116,9 @@ export default function AppLayout() {
       case 'auth-callback':          return <AuthCallbackPage />;
       case 'driver-application-status': return <DriverApplicationStatusPage />;
       case 'accept-invitation':      return <AcceptInvitationPage />;
+      case 'white-label':            return <WhiteLabelPlansPage />;
+      case 'white-label-dpa':        return <WhiteLabelDpaPage />;
+      case 'brand-site':             return <BrandSitePage />;
       case 'not-found':              return <NotFoundPage />;
       default:                       return <NotFoundPage />;
     }
@@ -114,16 +126,17 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-white">
-      {showHeader && <Header />}
+      {showHeader && (branded && site ? <BrandHeader site={site} /> : <Header />)}
       <AuthModal />
       <Suspense fallback={<Loading />}>
         {renderPage()}
       </Suspense>
-      {showFooter && (
+      {showFooter && currentPage !== 'brand-site' && (branded && site ? <BrandFooter site={site} /> : (
         <Suspense fallback={null}>
           <Footer />
         </Suspense>
-      )}
+      ))}
+      {currentPage === 'brand-site' && site && !site.page && <BrandFooter site={site} />}
     </div>
   );
 }

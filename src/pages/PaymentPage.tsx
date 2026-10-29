@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { supabase, callFunction } from '../lib/supabase';
+import { useWhiteLabel } from '../lib/whiteLabelContext';
+import { sellerSplit } from '../../supabase/functions/_shared/white-label';
 
 type PayMethod = 'card' | 'vipps' | 'google_pay' | 'invoice';
 
@@ -119,7 +121,15 @@ export default function PaymentPage() {
    * calculate-price's price_total). The payment functions charge that
    * total, re-computed on the server; here we only split out the MVA
    * for display. */
-  const total = safeNum(booking?.price_estimate ?? (bookingData as any)?.estimatedPrice ?? 0);
+  /* White label, Model B: the company sells at its own price and is paid
+   * into its own Stripe account, by card only (the server computes the
+   * same price: customer_price once it has priced the booking). */
+  const { site: brand } = useWhiteLabel();
+  const companySells = booking?.seller_model === 'company';
+  const flyttgoTotal = safeNum(booking?.price_estimate ?? (bookingData as any)?.estimatedPrice ?? 0);
+  const total = companySells
+    ? safeNum(booking?.customer_price) || (brand?.pricing ? sellerSplit(flyttgoTotal, brand.pricing).customerPrice : flyttgoTotal)
+    : flyttgoTotal;
   const vat = Math.round(total - total / 1.25);
   const price = total - vat;
 
@@ -245,7 +255,9 @@ export default function PaymentPage() {
                   { id: 'vipps', label: t('payment.vipps'), icon: <VippsIcon/>, sub: t('payment.vippsSub') },
                   { id: 'google_pay', label: t('payment.googlePay'), icon: <GooglePayIcon/>, sub: t('payment.googlePaySub') },
                   { id: 'invoice', label: t('payment.invoice'), icon: <StripeIcon/>, sub: t('payment.invoiceSub') },
-                ] as { id: PayMethod; label: string; icon: React.ReactNode; sub: string }[]).map(m => (
+                ] as { id: PayMethod; label: string; icon: React.ReactNode; sub: string }[])
+                  .filter(m => !companySells || m.id === 'card' || m.id === 'google_pay')
+                  .map(m => (
                   <button key={m.id} onClick={() => setMethod(m.id)}
                     className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition ${
                       method === m.id ? 'border-[#0B2E59] bg-[#0B2E59]/5' : 'border-gray-200 hover:border-gray-300'
@@ -256,6 +268,12 @@ export default function PaymentPage() {
                   </button>
                 ))}
               </div>
+
+              {booking?.white_label_org && brand && (
+                <p className="text-xs text-gray-600 bg-gray-50 rounded-xl px-4 py-3 mb-5">
+                  {brand.seller_notice}{companySells ? ' You pay by card into its own account.' : ''}
+                </p>
+              )}
 
               {/* CARD FORM */}
               {method === 'card' && (

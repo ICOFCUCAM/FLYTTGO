@@ -31,6 +31,15 @@ On 2026-10-29 the owner adopted the recommendations in [`PREDEPLOY_REVIEW.md`](P
 | 20 | **Each company chooses its payment terms:** 14 or 30 days, its own number of days (up to 60), or a fixed day of the following month | `set_billing_preferences`, Invoices tab |
 | 21 | **Credit check built but off,** active only when the admin setting is ticked | `credit_check_enabled`, `credit-check`, `record_credit_check` |
 
+## White label (owner, 2026-10-29)
+
+| # | Decision | Implemented in |
+|---|---|---|
+| 22 | **Both seller models are built and each company chooses.** Model A (FlyttGo sells under the company's brand) is the **default**; Model B (the company sells, FlyttGo is its subcontractor) is for larger companies that choose it | 00009 (`white_label_plans`, `organization_white_label`), [`WHITE_LABEL.md`](WHITE_LABEL.md) |
+| 23 | **The choices are stated with their plans and prices** on a public page, with who does what and what each plan needs. Prices ship as proposals until FlyttGo confirms them | `/business/white-label`, `admin_update_white_label_plan` |
+| 24 | **Model A needs more of FlyttGo** (payment, receipts, customer service, refunds, complaints) and is priced as a monthly fee on top of FlyttGo's own sale; Model B adds a platform fee per booking | Plan seed in 00009 |
+| 25 | **ArchitectPro's website templates are brought in** as a FlyttGo template library (moving and logistics first), sanitised, checked by FlyttGo before they are offered, never with scripts | `site_templates`, `_shared/site-template.ts`, `scripts/import-site-templates.ts` |
+
 ## Still to do before real money moves
 
 - **Legal review** of the cancellation terms and the MVA wording (angrerettloven, avtaleloven § 36, prisopplysningsforskriften). The Terms page dates (`LAST_UPDATED`, `EFFECTIVE_DATE`) must be set when the new text is published.
