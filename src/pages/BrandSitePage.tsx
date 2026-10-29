@@ -42,16 +42,16 @@ export default function BrandSitePage() {
       <section style={{ background: bg, color: textOn(bg) }} className="px-4 py-20">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4">{site.display_name}</h1>
-          <p className="text-lg opacity-90 mb-8">{site.tagline ?? 'Book your move online: an instant price, verified drivers and live tracking.'}</p>
+          <p className="text-lg opacity-90 mb-8">{site.tagline ?? (site.booking === 'moves' ? 'Book your move online: an instant price, verified drivers and live tracking.' : 'Book online in a minute.')}</p>
           <button onClick={() => setPage('booking')} style={{ background: accent, color: textOn(accent) }}
-            className="px-6 py-3 rounded-xl font-semibold text-lg">Get a price and book</button>
+            className="px-6 py-3 rounded-xl font-semibold text-lg">{site.booking === 'appointments' ? 'Book a time' : site.booking === 'jobs' ? 'Ask for a job' : 'Get a price and book'}</button>
         </div>
       </section>
-      <section className="max-w-4xl mx-auto px-4 py-12 grid md:grid-cols-3 gap-6 text-sm text-gray-600">
+      {site.booking === 'moves' && <section className="max-w-4xl mx-auto px-4 py-12 grid md:grid-cols-3 gap-6 text-sm text-gray-600">
         <div><h2 className="font-bold text-gray-900 mb-1">Price before you book</h2>The price is calculated from your addresses, van size and helpers. No surprises.</div>
         <div><h2 className="font-bold text-gray-900 mb-1">Verified drivers</h2>Every move is carried out by a vetted driver with goods-in-transit insurance.</div>
         <div><h2 className="font-bold text-gray-900 mb-1">Follow your move</h2>Track the driver live on the day and get messages along the way.</div>
-      </section>
+      </section>}
     </div>
   );
 }

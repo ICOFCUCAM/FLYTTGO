@@ -40,6 +40,17 @@ On 2026-10-29 the owner adopted the recommendations in [`PREDEPLOY_REVIEW.md`](P
 | 24 | **Model A needs more of FlyttGo** (payment, receipts, customer service, refunds, complaints) and is priced as a monthly fee on top of FlyttGo's own sale; Model B adds a platform fee per booking | Plan seed in 00009 |
 | 25 | **ArchitectPro's website templates are brought in** as a FlyttGo template library (moving and logistics first), sanitised, checked by FlyttGo before they are offered, never with scripts | `site_templates`, `_shared/site-template.ts`, `scripts/import-site-templates.ts` |
 
+## Other industries (owner, 2026-10-29)
+
+| # | Decision | Implemented in |
+|---|---|---|
+| 26 | **FlyttGo also serves companies outside moving** (trades, appointment businesses, and website-and-invoicing for the rest) on one platform. **Transport launches first**; the rest is built and ready | 00010–00013, [`SERVICE_PLATFORM.md`](SERVICE_PLATFORM.md) |
+| 27 | **Outside transport the company is always the seller.** Model A (FlyttGo sells) is for moving and delivery only | `white_label_plans_modules_check`, `white_label_missing` (00010) |
+| 28 | **Booking modules side by side**, sharing companies, payments, invoicing and websites: Transport (unchanged), Jobs and Appointments | 00012, 00013 |
+| 29 | **Invoices in each company's own name** through FlyttGo's invoice engine (own number series, KID, bank account); accounting stays with the company and its accountant | 00011 |
+| 30 | **Trade authorisations** (e.g. DSB registration for electrical work) are checked by FlyttGo; a service that needs one is offered only then | `organization_authorisations` (00010), `job_insert` (00012) |
+| 31 | **Health is left out** (patient data): no Appointments plan for health, no health templates | plan industries (00010), importer `EXCLUDED` |
+
 ## Still to do before real money moves
 
 - **Legal review** of the cancellation terms and the MVA wording (angrerettloven, avtaleloven § 36, prisopplysningsforskriften). The Terms page dates (`LAST_UPDATED`, `EFFECTIVE_DATE`) must be set when the new text is published.

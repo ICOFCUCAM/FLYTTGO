@@ -22,7 +22,7 @@ export function BrandHeader({ site }: { site: PublicSite }) {
         <button onClick={() => setPage('booking')}
           style={{ background: site.accent_color ?? '#10b981', color: textOn(site.accent_color ?? '#10b981') }}
           className="px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">
-          Book a move
+          {site.booking === 'jobs' ? 'Ask for a job' : site.booking === 'appointments' ? 'Book a time' : 'Book a move'}
         </button>
       </div>
     </header>

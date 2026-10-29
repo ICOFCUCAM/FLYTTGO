@@ -52,6 +52,9 @@ export interface PublicSite {
   support: { email: string | null; phone: string | null };
   terms_url: string | null; privacy_url: string | null;
   seller_notice: string;
+  /** What the page books: FlyttGo's moves, or the company's Jobs or Appointments. */
+  booking: 'moves' | 'jobs' | 'appointments' | 'none';
+  modules: string[];
   pages: string[];
   page: { path: string; html: string } | null;
 }

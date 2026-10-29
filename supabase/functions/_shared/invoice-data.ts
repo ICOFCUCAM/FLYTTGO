@@ -9,7 +9,17 @@ const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const FLYTTGO_FROM   = Deno.env.get('FLYTTGO_FROM') ?? 'FlyttGo <faktura@flyttgo.no>';
 const REPLY_TO       = Deno.env.get('FLYTTGO_REPLY_TO') ?? 'support@flyttgo.no';
 
-export interface LoadedInvoice { invoice: Invoice & { organization_id: string }; lines: InvoiceLine[] }
+export interface LoadedInvoice { invoice: Invoice & { organization_id: string | null; issuer_org?: string | null }; lines: InvoiceLine[] }
+
+/** The sender of an invoice email: FlyttGo for its own invoices; the
+ *  company's name (on FlyttGo's sending address) for a company's own
+ *  invoices (00011), with replies going to the company. */
+export function invoiceSender(inv: { issuer_org?: string | null; seller: { name?: string | null; email?: string | null } }) {
+  if (!inv.issuer_org) return { from: FLYTTGO_FROM, replyTo: REPLY_TO };
+  const address = /<([^>]+)>/.exec(FLYTTGO_FROM)?.[1] ?? FLYTTGO_FROM;
+  const name = String(inv.seller.name ?? 'Faktura').replace(/["<>\r\n]/g, '').slice(0, 70);
+  return { from: `"${name}" <${address}>`, replyTo: inv.seller.email || REPLY_TO };
+}
 
 /** An issued invoice with its lines (service client: the caller was checked before). */
 export async function loadInvoice(db: SupabaseClient, id: string): Promise<LoadedInvoice | null> {
@@ -77,7 +87,7 @@ export async function emailInvoice(
   if (!RESEND_API_KEY) return 'email is not configured (RESEND_API_KEY)';
   const inv = li.invoice;
   const to = inv.buyer.email;
-  if (!to) return 'the company has no billing email';
+  if (!to) return inv.issuer_org ? 'the customer has no email address' : 'the company has no billing email';
   const pdf = await renderPdf(db, li);
   const owed = inv.total + (inv.fees_total ?? 0) - (inv.amount_paid ?? 0) - (inv.amount_credited ?? 0);
   const brand = inv.branding?.name ?? inv.seller.name ?? 'FlyttGo';
@@ -100,7 +110,7 @@ export async function emailInvoice(
                /* The first send and each reminder go once; an administrator's resend is a new email. */
                'Idempotency-Key': `invoice-${inv.id}-${purpose}-${reminderLevel}${opts.resend ? `-${Date.now()}` : ''}` },
     body: JSON.stringify({
-      from: FLYTTGO_FROM, to: [to], reply_to: REPLY_TO, subject, html,
+      from: invoiceSender(inv).from, to: [to], reply_to: invoiceSender(inv).replyTo, subject, html,
       attachments: [
         { filename: fileName(inv, 'pdf'), content: b64(pdf) },
         { filename: fileName(inv, 'xml'), content: btoa(unescape(encodeURIComponent(renderEhf(li)))) },

@@ -15,6 +15,7 @@ import {
   type OrgWhiteLabel, type SiteTemplate, type WhiteLabelPlan,
 } from '../../lib/whiteLabel';
 import { sellerSplit } from '../../../supabase/functions/_shared/white-label';
+import { INDUSTRIES, setIndustry } from '../../lib/services';
 
 const input = 'w-full border border-gray-200 rounded-xl px-3 py-2 text-sm';
 const btn = 'px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50';
@@ -36,6 +37,7 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
   const [records, setRecords] = useState<{ txt: { name: string; value: string }; cname: { name: string; value: string } } | null>(null);
   const [template, setTemplate] = useState<string>('');
   const [city, setCity] = useState('');
+  const [industry, setIndustryValue] = useState<string>(org.industry ?? '');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -108,6 +110,17 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
         {wl && missing.length === 0 && wl.status === 'requested' && (
           <p className="mt-4 text-sm text-emerald-700">Everything is in place. FlyttGo will review and approve your page.</p>
         )}
+      </div>
+
+      {/* Industry: decides which plans fit */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <h3 className="font-bold text-gray-900 mb-1">Your industry</h3>
+        <p className="text-sm text-gray-500 mb-3">FlyttGo sells only moving and delivery. In every other industry your company is the seller, and FlyttGo gives you the booking, invoicing and website.</p>
+        <select className={input + ' max-w-md'} disabled={!canEdit} value={industry}
+          onChange={e => { const v = e.target.value; run(async () => { const er = await setIndustry(org.id, v); if (!er) setIndustryValue(v); return er; }, 'Industry saved.'); }}>
+          <option value="" disabled>Choose…</option>
+          {INDUSTRIES.map(i => <option key={i.id} value={i.id}>{i.label}</option>)}
+        </select>
       </div>
 
       {/* Plan */}

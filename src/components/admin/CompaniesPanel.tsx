@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { callFunction, supabase } from '../../lib/supabase';
 import { ORG_STATUS_LABELS, type Organization, type OrgStatus } from '../../lib/organizations';
 import { adminSetInvoicing, callJson, formatNok, recordManualCreditCheck } from '../../lib/invoicing';
+import { AUTHORISATION_KINDS, INDUSTRIES, loadAuthorisations, recordAuthorisation, revokeAuthorisation } from '../../lib/services';
 
 interface Verification { id: string; organization_id: string; source: string; passed: boolean; org_number: string | null; findings: any; checked_at: string }
 
@@ -111,6 +112,28 @@ export default function CompaniesPanel() {
     return recordManualCreditCheck(o.id, passed, '', lim.trim() ? Number(lim) : null, evidence.trim());
   }, `Credit check recorded for ${o.name}.`);
 
+  /* Trade authorisations (00010): checked in the public register, recorded
+   * with what was checked; a service that needs one is offered only then. */
+  const authorisations = (o: Organization) => run(o.id, async () => {
+    const list = await loadAuthorisations(o.id);
+    const valid = list.filter(a => a.status === 'valid');
+    const action = prompt(`${o.name}: authorisations on record\n${valid.map((a, i) => `${i + 1}. ${AUTHORISATION_KINDS[a.kind]} · ${a.register} ${a.reference ?? ''}${a.valid_until ? ` until ${a.valid_until}` : ''}`).join('\n') || '(none)'}\n\nType "add" to record one, or a number to revoke it:`);
+    if (!action) return 'Nothing changed.';
+    if (action.trim().toLowerCase() === 'add') {
+      const kinds = Object.keys(AUTHORISATION_KINDS);
+      const k = prompt(`Kind (number):\n${kinds.map((x, i) => `${i + 1}. ${AUTHORISATION_KINDS[x]}`).join('\n')}`, '1');
+      const kind = kinds[Number(k) - 1]; if (!kind) return 'No kind chosen.';
+      const register = prompt('Register checked (e.g. DSB elvirksomhetsregisteret)', kind === 'electrical' ? 'DSB elvirksomhetsregisteret' : '') ?? '';
+      const reference = prompt('Registration number') ?? '';
+      const until = prompt('Valid until (YYYY-MM-DD, empty if open-ended)') ?? '';
+      const checked = prompt('What you checked (search date, document)') ?? '';
+      return recordAuthorisation(o.id, kind, register, reference, until.trim() || null, checked);
+    }
+    const a = valid[Number(action) - 1]; if (!a) return 'No such authorisation.';
+    const why = prompt(`Reason for revoking ${AUTHORISATION_KINDS[a.kind]}`); if (!why) return 'Nothing changed.';
+    return revokeAuthorisation(a.id, why);
+  }, `Authorisations updated for ${o.name}.`);
+
   const shown = orgs.filter(o => filter === 'all' || o.status === filter);
   const btn = 'px-2.5 py-1 rounded text-xs font-medium disabled:opacity-50';
 
@@ -141,7 +164,8 @@ export default function CompaniesPanel() {
               const current = c && c.passed && c.org_number === o.org_number && Date.now() - new Date(c.checked_at).getTime() < 30 * 86_400_000;
               return (
                 <tr key={o.id} className="border-t align-top">
-                  <td className="p-3"><div className="font-medium">{o.name}</div><div className="text-xs text-gray-400">{o.slug} · {o.billing_email ?? 'no billing email'}</div></td>
+                  <td className="p-3"><div className="font-medium">{o.name}</div><div className="text-xs text-gray-400">{o.slug} · {o.billing_email ?? 'no billing email'}</div>
+                    {o.industry && <div className="text-xs text-gray-500">{INDUSTRIES.find(i => i.id === o.industry)?.label ?? o.industry}</div>}</td>
                   <td className="p-3 font-mono text-xs">{o.org_number ?? '—'}{o.vat_registered ? ' · MVA' : ''}</td>
                   <td className="p-3">{members[o.id] ?? 0}</td>
                   <td className="p-3">
@@ -176,6 +200,7 @@ export default function CompaniesPanel() {
                       <button disabled={busy === o.id} onClick={() => restoreOwner(o)} className={`${btn} bg-gray-100 text-gray-700`}>Restore owner</button>
                       <button disabled={busy === o.id} onClick={() => setInvoicing(o as any)} className={`${btn} bg-indigo-600 text-white`}>Invoicing…</button>
                       <button disabled={busy === o.id} onClick={() => creditCheck(o)} className={`${btn} bg-gray-100 text-gray-700`}>Credit check</button>
+                      {o.industry && o.industry !== 'transport' && <button disabled={busy === o.id} onClick={() => authorisations(o)} className={`${btn} bg-gray-100 text-gray-700`}>Authorisations…</button>}
                     </div>
                   </td>
                 </tr>

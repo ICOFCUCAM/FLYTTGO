@@ -33,7 +33,12 @@ export default function WhiteLabelPlansPage() {
       </section>
 
       <section className="max-w-5xl mx-auto px-4 py-10">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Two ways to sell</h2>
+        <div className="mb-8 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 text-sm text-indigo-900">
+          <strong>Not a moving company?</strong> Plumbers, electricians, cleaners, salons, fitness studios, consultants and others use the
+          same platform with their own booking (jobs or appointments), invoices in their own name and a website. Your company is the seller;
+          see the plans Jobs, Appointments and Website and invoicing below.
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Two ways to sell (moving and delivery)</h2>
         <div className="grid md:grid-cols-2 gap-4 mb-10">
           <div className="bg-white rounded-2xl border-2 border-emerald-500 p-6">
             <div className="text-xs font-semibold text-emerald-700 mb-1">MODEL A · THE DEFAULT</div>

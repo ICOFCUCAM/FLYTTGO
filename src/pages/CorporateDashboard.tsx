@@ -7,6 +7,10 @@ import RegisterCompany from '../components/corporate/RegisterCompany';
 import CompanyBookings from '../components/corporate/CompanyBookings';
 import CompanyInvoices from '../components/corporate/CompanyInvoices';
 import WhiteLabelPanel from '../components/corporate/WhiteLabelPanel';
+import JobsPanel from '../components/corporate/JobsPanel';
+import AppointmentsPanel from '../components/corporate/AppointmentsPanel';
+import SalesInvoicesPanel from '../components/corporate/SalesInvoicesPanel';
+import { hasModule } from '../lib/services';
 
 /* Visitors see the dashboard preview with sample figures. A signed-in
  * member of a company sees their company, its status and its real team
@@ -14,7 +18,8 @@ import WhiteLabelPanel from '../components/corporate/WhiteLabelPanel';
  * preview and say it is sample data. A signed-in person without a
  * company can register one. */
 
-type DashTab = 'overview' | 'shipments' | 'recurring' | 'invoices' | 'drivers' | 'analytics' | 'api' | 'team' | 'white-label' | 'documents' | 'support';
+type DashTab = 'overview' | 'shipments' | 'recurring' | 'invoices' | 'drivers' | 'analytics' | 'api' | 'team' | 'white-label'
+  | 'jobs' | 'appointments' | 'sales' | 'documents' | 'support';
 
 function StatCard({ icon, label, value, sub, color = 'emerald' }: { icon: string; label: string; value: string; sub?: string; color?: string }) {
   const colors: Record<string, string> = { emerald: 'bg-emerald-50 text-emerald-600', blue: 'bg-blue-50 text-blue-600', purple: 'bg-purple-50 text-purple-600', orange: 'bg-orange-50 text-orange-600' };
@@ -52,7 +57,11 @@ const NAV_ITEMS: { id: DashTab; icon: string; label: string }[] = [
   { id: 'analytics',  icon: '📈', label: 'Analytics' },
   { id: 'api',        icon: '🔗', label: 'API & Webhooks' },
   { id: 'team',       icon: '👥', label: 'Team' },
-  { id: 'white-label', icon: '🏷️', label: 'White label' },
+  { id: 'white-label', icon: '🏷️', label: 'Plan and website' },
+  /* Shown when the company's plan includes the module (00010–00013). */
+  { id: 'jobs',         icon: '🔧', label: 'Jobs' },
+  { id: 'appointments', icon: '📅', label: 'Appointments' },
+  { id: 'sales',        icon: '🧾', label: 'Invoices to customers' },
   { id: 'documents',  icon: '📄', label: 'Documents' },
   { id: 'support',    icon: '🎧', label: 'Support' },
 ];
@@ -76,6 +85,14 @@ export default function CorporateDashboard() {
   useEffect(() => { loadMemberships(); }, [loadMemberships]);
 
   const current = memberships?.find(m => m.organization.id === orgId) ?? null;
+  const [modules, setModules] = useState<string[]>([]);
+  useEffect(() => {
+    if (!current) { setModules([]); return; }
+    Promise.all((['jobs', 'appointments', 'sales_invoicing'] as const).map(async m => (await hasModule(current.organization.id, m)) ? m : null))
+      .then(r => setModules(r.filter(Boolean) as string[]));
+  }, [current?.organization.id]);
+  const MODULE_TABS: Partial<Record<DashTab, string>> = { jobs: 'jobs', appointments: 'appointments', sales: 'sales_invoicing' };
+  const navItems = NAV_ITEMS.filter(n => !MODULE_TABS[n.id] || modules.includes(MODULE_TABS[n.id]!));
   const live = !!current;                                    // a real company, not the preview
   const needsCompany = !!user && memberships !== null && memberships.length === 0;
   const SAMPLE_TABS: DashTab[] = ['overview', 'recurring', 'api'];
@@ -100,7 +117,7 @@ export default function CorporateDashboard() {
         </div>
 
         <nav className="flex-1 py-4">
-          {NAV_ITEMS.map(item => (
+          {navItems.map(item => (
             <button key={item.id} onClick={() => setTab(item.id)}
               className={`w-full flex items-center gap-3 px-5 py-3 text-sm transition ${tab === item.id ? 'bg-white/10 text-white font-semibold' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
               <span>{item.icon}</span>{item.label}
@@ -409,6 +426,11 @@ export default function CorporateDashboard() {
               </div>
             </div>
           )}
+
+          {/* ── OTHER INDUSTRIES: jobs, appointments, own invoices ── */}
+          {tab === 'jobs' && live && current && <JobsPanel key={current.organization.id} membership={current} />}
+          {tab === 'appointments' && live && current && <AppointmentsPanel key={current.organization.id} membership={current} />}
+          {tab === 'sales' && live && current && <SalesInvoicesPanel key={current.organization.id} membership={current} />}
 
           {/* ── WHITE LABEL ── */}
           {tab === 'white-label' && live && current && <WhiteLabelPanel key={current.organization.id} membership={current} />}

@@ -50,6 +50,12 @@ serve(async (req: Request) => {
     logoUrl = data?.signedUrl ?? null;
   }
   const notice = sellerNotice(site);
+  /* Which booking the page offers: FlyttGo's moves (transport plans), or the
+   * company's own Jobs or Appointments module (docs/SERVICE_PLATFORM.md). */
+  const { data: plan } = await db.from('white_label_plans').select('modules').eq('code', site.plan).maybeSingle();
+  const modules: string[] = plan?.modules ?? [];
+  const booking = modules.includes('jobs') ? 'jobs' : modules.includes('appointments') ? 'appointments'
+    : modules.length === 0 ? 'moves' : 'none';
 
   let page: { path: string; html: string } | null = null;
   let pages: string[] = [];
@@ -77,5 +83,5 @@ serve(async (req: Request) => {
     }
   }
 
-  return json({ ...site, logo_path: undefined, logo_url: logoUrl, seller_notice: notice, pages, page });
+  return json({ ...site, logo_path: undefined, logo_url: logoUrl, seller_notice: notice, modules, booking, pages, page });
 });

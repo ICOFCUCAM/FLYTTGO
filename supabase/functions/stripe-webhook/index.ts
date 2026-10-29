@@ -404,6 +404,30 @@ async function handleEvent(event: StripeEvent) {
     return await markBookingPaid(bookingId, session, event.account ?? null);
   }
 
+  /* A company's own invoice paid by card on its connected account (00011,
+   * pay-sales-invoice): recorded on the invoice once the account and the
+   * amount match. */
+  if (kind === 'sales_invoice') {
+    const invoiceId = metadata.invoice_id ?? null;
+    if (!invoiceId) return { ok: true, ignored: true, reason: 'sales_invoice without invoice_id' };
+    const { data: inv } = await supabase.from('invoices').select('id, issuer_org').eq('id', invoiceId).maybeSingle();
+    const { data: wl } = inv?.issuer_org
+      ? await supabase.from('organization_white_label').select('stripe_account_id').eq('organization_id', inv.issuer_org).maybeSingle()
+      : { data: null };
+    if (!inv || !wl?.stripe_account_id || event.account !== wl.stripe_account_id || metadata.connected_account !== wl.stripe_account_id) {
+      console.error(`sales invoice ${invoiceId}: paid on ${event.account ?? 'FlyttGo'}, not the issuer's account — not recorded`);
+      return { ok: true, ignored: true, reason: 'account mismatch; held for review' };
+    }
+    if (!amountOk) return { ok: true, ignored: true, reason: 'amount mismatch; held for review' };
+    const { error } = await supabase.rpc('record_invoice_payment', {
+      p_invoice: invoiceId, p_amount: (session.amount_total ?? 0) / 100,
+      p_paid_on: new Date().toISOString().slice(0, 10), p_method: 'card',
+      p_reference: typeof session.payment_intent === 'string' ? session.payment_intent : sessionId,
+    });
+    if (error) throw new Error(`record_invoice_payment failed: ${error.message}`);
+    return { ok: true, invoiceId, paid: (session.amount_total ?? 0) / 100 };
+  }
+
   if (kind === 'subscription') {
     if (event.account) return { ok: true, ignored: true, reason: 'subscriptions are paid to FlyttGo, not a connected account' };
     /* driver_subscriptions.driver_id is the auth user id. Sessions

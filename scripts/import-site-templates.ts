@@ -23,8 +23,14 @@
 //     node scripts/import-site-templates.ts --from-file site_masters.json --to-flyttgo
 //
 // Options:
-//   --industries a,b,c   templates sharing any of these industries (default:
-//                        moving and logistics, below); --all for every one
+//   --group NAME         transport (default), field-service, appointments,
+//                        websites (hospitality, shops, software, education,
+//                        nonprofits and others: website and invoicing only),
+//                        or all (every group above)
+//   --industries a,b,c   instead of a group: templates sharing any of these
+//                        industries
+//   Health templates (clinics, dentists, therapists…) are always left out:
+//   patient data is outside what FlyttGo offers (docs/SERVICE_PLATFORM.md).
 //   --ids a,b            only these templates
 //   --limit N
 //
@@ -41,6 +47,29 @@ const MOVING_AND_LOGISTICS = [
   'moving', 'movers', 'relocation', 'removals', 'logistics', 'freight', 'courier', 'delivery', 'transport',
   'trucking', 'last-mile', 'warehousing', 'storage', 'parcel', 'shipping',
 ];
+const GROUPS: Record<string, string[]> = {
+  transport: MOVING_AND_LOGISTICS,
+  'field-service': ['plumbing', 'plumber', 'emergency-plumbing', 'electrician', 'electrical', 'residential-electric', 'hvac',
+    'heating-and-cooling', 'air-conditioning', 'trades', 'home-services', 'cleaning', 'house-cleaning', 'maid-service',
+    'recurring-cleaning', 'landscaping', 'lawn-care', 'hardscaping', 'construction', 'contractor', 'general-contractor',
+    'roofing', 'roofer', 'painting', 'painter', 'pest-control', 'exterminator', 'termite', 'renovation', 'remodeling',
+    'kitchen-bath', 'restoration', 'storm-damage', 'solar', 'auto-repair', 'mechanic', 'garage', 'car-care', 'detailing',
+    'mobile-detailing', 'auto-detailing', 'auto-body', 'body-shop', 'collision-repair', 'tyres', 'servicing', 'mot'],
+  appointments: ['beauty', 'salon', 'hair-salon', 'hair', 'barber', 'barbershop', 'spa', 'day-spa', 'nails', 'nail-salon',
+    'personal-care', 'skincare', 'esthetics', 'massage', 'fitness', 'gym', 'personal-training', 'personal-trainer', 'yoga',
+    'pilates', 'wellness', 'pet-care', 'pets', 'dog-grooming', 'pet-grooming', 'grooming', 'dog-training', 'tutoring',
+    'private tutor', 'music lessons', 'driving school', 'photography', 'consulting', 'coaching', 'accounting', 'bookkeeping',
+    'law-firm', 'lawyer', 'legal', 'professional-services', 'financial-advisor', 'veterinary', 'vet'],
+  websites: ['hospitality', 'hotel', 'restaurant', 'food', 'cafe', 'bakery', 'catering', 'travel', 'tours', 'tour-operator',
+    'events', 'venue', 'ecommerce', 'online-store', 'shop', 'retail', 'saas', 'software', 'b2b-software', 'education',
+    'e-learning', 'academy', 'nonprofit', 'charity', 'church', 'community', 'real-estate', 'realtor', 'property-management',
+    'manufacturing', 'agriculture', 'gaming', 'entertainment'],
+};
+/* Never imported: patient and clinical services. */
+const EXCLUDED = ['health', 'clinic', 'medical', 'dental', 'dentist', 'therapy', 'counseling', 'mental-health', 'psychology',
+  'optometry', 'eye-care', 'orthodontics', 'pediatrics', 'primary-care', 'family-medicine', 'womens-health', 'obgyn',
+  'dermatology', 'chiropractic', 'physical-therapy', 'medical-spa', 'hospital', 'healthcare'];
+
 const IMAGE_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const MAX_IMAGE = 5 * 1024 * 1024;
 
@@ -82,9 +111,14 @@ async function fromFile(path: string): Promise<MasterRow[]> {
 
 function select(rows: MasterRow[]): MasterRow[] {
   const ids = arg('ids')?.split(',').map(s => s.trim()).filter(Boolean);
-  const industries = has('all') ? null : (arg('industries')?.split(',').map(s => s.trim()) ?? MOVING_AND_LOGISTICS);
+  const group = arg('group') ?? (has('all') ? 'all' : 'transport');
+  const industries = arg('industries')?.split(',').map(s => s.trim().toLowerCase())
+    ?? (group === 'all' ? Object.values(GROUPS).flat() : GROUPS[group]);
+  if (!industries) throw new Error(`unknown group ${group}: ${Object.keys(GROUPS).join(', ')} or all`);
+  const tags = (r: MasterRow) => (r.industry ?? []).map(i => String(i).toLowerCase());
   let out = rows.filter(r => (!ids || ids.includes(r.id))
-    && (!industries || (r.industry ?? []).some(i => industries.includes(String(i).toLowerCase()))));
+    && !tags(r).some(i => EXCLUDED.includes(i))
+    && tags(r).some(i => industries.includes(i)));
   const limit = Number(arg('limit'));
   if (Number.isFinite(limit) && limit > 0) out = out.slice(0, limit);
   return out;

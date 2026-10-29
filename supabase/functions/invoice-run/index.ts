@@ -115,7 +115,8 @@ serve(async (req: Request) => {
   const every = Math.max(1, Number(cfg?.config_value ?? 7) || 7);
   const today = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Oslo' }));
   const { data: open } = await db.from('invoices').select('id, number, due_date, reminder_level')
-    .eq('kind', 'invoice').in('status', ['issued', 'partially_paid']).lt('reminder_level', MAX_REMINDERS);
+    .eq('kind', 'invoice').eq('series', 'main')            // FlyttGo's own; companies remind their customers themselves
+    .in('status', ['issued', 'partially_paid']).lt('reminder_level', MAX_REMINDERS);
   for (const i of open ?? []) {
     const due = new Date(`${i.due_date}T00:00:00`);
     const daysLate = Math.floor((today.getTime() - due.getTime()) / 86_400_000);

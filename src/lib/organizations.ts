@@ -8,12 +8,13 @@
  */
 import { callFunction, supabase } from './supabase';
 
-export type OrgRole = 'owner' | 'admin' | 'booker' | 'finance' | 'viewer';
+export type OrgRole = 'owner' | 'admin' | 'booker' | 'finance' | 'viewer' | 'staff';
 export type OrgStatus = 'pending' | 'active' | 'suspended' | 'closed';
 
-export const ORG_ROLES: OrgRole[] = ['owner', 'admin', 'booker', 'finance', 'viewer'];
+export const ORG_ROLES: OrgRole[] = ['owner', 'admin', 'booker', 'finance', 'viewer', 'staff'];
 export const ORG_ROLE_LABELS: Record<OrgRole, string> = {
   owner: 'Owner', admin: 'Administrator', booker: 'Booker', finance: 'Finance', viewer: 'Viewer',
+  staff: 'Staff (works jobs and appointments)',
 };
 export const ORG_STATUS_LABELS: Record<OrgStatus, string> = {
   pending: 'Awaiting verification', active: 'Active', suspended: 'Suspended', closed: 'Closed',
@@ -22,7 +23,7 @@ export const ORG_STATUS_LABELS: Record<OrgStatus, string> = {
 export interface Organization {
   id: string; name: string; slug: string; country: string; org_number: string | null;
   vat_registered: boolean; billing_email: string | null; billing_address: string | null;
-  status: OrgStatus; status_reason: string | null; created_at: string;
+  status: OrgStatus; status_reason: string | null; created_at: string; industry?: string | null;
 }
 export interface Membership { organization: Organization; role: OrgRole }
 export interface TeamMember {
@@ -34,7 +35,7 @@ export interface Invitation { id: string; email: string; role: OrgRole; status: 
 /** Roles a member may give or take away (owners: all; admins: below admin). */
 export function assignableRoles(myRole: OrgRole | null): OrgRole[] {
   if (myRole === 'owner') return ORG_ROLES;
-  if (myRole === 'admin') return ['booker', 'finance', 'viewer'];
+  if (myRole === 'admin') return ['booker', 'finance', 'viewer', 'staff'];
   return [];
 }
 

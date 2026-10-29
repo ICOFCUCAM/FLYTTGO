@@ -41,8 +41,10 @@ export function formatNok(n: number): string {
   return `${num(n).toLocaleString('nb-NO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} kr`;
 }
 
+/** FlyttGo's own invoices (to one company, or all for administrators).
+ *  Companies' own sales invoices (00011) are loaded by lib/services.ts. */
 export async function loadInvoices(orgId?: string): Promise<InvoiceRow[]> {
-  let q = supabase.from('invoices').select('*').order('created_at', { ascending: false }).limit(500);
+  let q = supabase.from('invoices').select('*').eq('series', 'main').order('created_at', { ascending: false }).limit(500);
   if (orgId) q = q.eq('organization_id', orgId);
   const { data } = await q;
   return (data ?? []) as InvoiceRow[];

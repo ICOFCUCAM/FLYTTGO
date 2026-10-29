@@ -24,6 +24,8 @@ export type Page =
   /* White label: plans and prices, the data processing agreement, and a
    * company's own page (/b/<slug>, its domain or subdomain). */
   | 'white-label' | 'white-label-dpa' | 'brand-site'
+  /* Customers' jobs and appointments with companies outside moving. */
+  | 'my-services'
   /* Fallback for URLs that don't match any known route. */
   | 'not-found';
 
