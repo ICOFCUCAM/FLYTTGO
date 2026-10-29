@@ -55,14 +55,33 @@ export function sellerSplit(flyttgoPrice: number, pricing: SellerPricing): Selle
   };
 }
 
-/** The public page's seller notice, shown on every page and at payment. */
+/** What a company's page books (docs/SERVICE_PLATFORM.md): FlyttGo's moves
+ * on a transport plan, otherwise the company's own module from its plan. */
+export type PageBooking = 'moves' | 'jobs' | 'appointments' | 'restaurant' | 'hotel' | 'none';
+
+export function bookingFor(modules: readonly string[] | null | undefined): PageBooking {
+  const m = modules ?? [];
+  if (m.includes('jobs')) return 'jobs';
+  if (m.includes('appointments')) return 'appointments';
+  if (m.includes('hotel_reservations')) return 'hotel';
+  if (m.includes('restaurant_reservations')) return 'restaurant';
+  return m.length === 0 ? 'moves' : 'none';
+}
+
+/** The public page's seller notice, shown on every page and at payment.
+ * Outside transport (booking other than moves) the company sells its own
+ * services and FlyttGo only provides the booking system. */
 export function sellerNotice(site: {
   seller_model: 'flyttgo' | 'company';
   display_name?: string | null;
   seller?: { name?: string | null; org_number?: string | null } | null;
+  booking?: PageBooking;
 }): string {
   const s = site.seller ?? {};
   const org = s.org_number ? ` (org. nr. ${s.org_number})` : '';
+  if (site.booking && site.booking !== 'moves') {
+    return `${s.name ?? site.display_name ?? 'The company'}${org} sells what is booked here. FlyttGo AS provides the booking system.`;
+  }
   return site.seller_model === 'company'
     ? `${s.name ?? site.display_name ?? 'The company'}${org} sells the moves booked here. FlyttGo AS carries them out as its subcontractor.`
     : `Moves booked here are sold and carried out by ${s.name ?? 'FlyttGo AS'}${org}, for ${site.display_name ?? 'this company'}.`;

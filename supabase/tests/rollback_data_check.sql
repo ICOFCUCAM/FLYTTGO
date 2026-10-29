@@ -13,6 +13,8 @@ SELECT tests.ok((SELECT subscription_status FROM public.driver_subscriptions WHE
   'an expired subscription stays, under a CHECK left NOT VALID');
 SELECT tests.ok(to_regclass('public.payment_refunds') IS NULL AND to_regclass('public.organizations') IS NULL,
   'refund records and organisations are dropped (export them first)');
+SELECT tests.ok(to_regclass('public.restaurant_reservations') IS NULL AND to_regclass('public.hotel_stays') IS NULL,
+  'table reservations and hotel stays are dropped (export them first)');
 
 \echo '── left NOT VALID by the rollback (rows written while the migrations were in force):'
 SELECT c.relname || '.' || con.conname AS constraint_not_valid

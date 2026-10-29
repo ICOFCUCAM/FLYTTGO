@@ -6,7 +6,7 @@
  * Without one, a simple branded front page.
  */
 import { useApp } from '../lib/store';
-import { textOn } from '../lib/whiteLabel';
+import { bookingLabel, textOn } from '../lib/whiteLabel';
 import { useWhiteLabel } from '../lib/whiteLabelContext';
 
 export default function BrandSitePage() {
@@ -44,7 +44,7 @@ export default function BrandSitePage() {
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4">{site.display_name}</h1>
           <p className="text-lg opacity-90 mb-8">{site.tagline ?? (site.booking === 'moves' ? 'Book your move online: an instant price, verified drivers and live tracking.' : 'Book online in a minute.')}</p>
           <button onClick={() => setPage('booking')} style={{ background: accent, color: textOn(accent) }}
-            className="px-6 py-3 rounded-xl font-semibold text-lg">{site.booking === 'appointments' ? 'Book a time' : site.booking === 'jobs' ? 'Ask for a job' : 'Get a price and book'}</button>
+            className="px-6 py-3 rounded-xl font-semibold text-lg">{bookingLabel(site.booking, 'Get a price and book')}</button>
         </div>
       </section>
       {site.booking === 'moves' && <section className="max-w-4xl mx-auto px-4 py-12 grid md:grid-cols-3 gap-6 text-sm text-gray-600">
