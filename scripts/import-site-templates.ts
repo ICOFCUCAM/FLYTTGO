@@ -34,6 +34,15 @@
 // than 90 % of the text is flagged 'hidden' for review. Needs Playwright
 // (`npx playwright install chromium` once); without it, a warning.
 //
+// The same browser draws each template's thumbnail for the catalogue: the
+// cleaned home page with a neutral sample brand ("Your Company", the
+// template's own colours), 1280 px wide, the top 1600 px, saved as a
+// 640 × 800 JPEG (images only from the template's asset store). It is
+// written to <out>/thumbnails/<id>.jpg and, with --to-flyttgo, stored
+// beside the template's images as the asset 'thumbnail'. The importer also
+// lists each template's features (pricing, gallery, team, FAQ…:
+// templateFeatures()) for the cards.
+//
 // Options:
 //   --category ID        only one catalogue category (transport, trades,
 //                        appointments, professional, hospitality, retail,
@@ -51,10 +60,29 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
-  categoryLabel, prepareTemplate, replaceForms, templateCategory, TEMPLATE_CATEGORIES, OTHER_CATEGORY,
-  type MasterRow, type PreparedTemplate, type TemplateAsset, type TemplatePage,
+  categoryLabel, prepareTemplate, renderTemplatePage, replaceForms, templateCategory, TEMPLATE_CATEGORIES, OTHER_CATEGORY,
+  type Brand, type MasterRow, type PreparedTemplate, type TemplateAsset, type TemplatePage,
 } from '../supabase/functions/_shared/site-template.ts';
 import { snapshotter, type Snapshotter } from './template-snapshot.ts';
+
+/** A prepared template with its thumbnail (JPEG bytes; not part of the JSON). */
+type Imported = PreparedTemplate & { thumbnail?: string; thumbnailJpeg?: Uint8Array };
+
+/**
+ * The neutral sample brand thumbnails are drawn with: the template's own
+ * colours, a plain name, no real contact details.
+ */
+const SAMPLE_BRAND: Brand = { name: 'Your Company', tagline: 'Your tagline here', phone: '+47 00 00 00 00',
+  email: 'post@example.com', city: 'Your town' };
+
+const hostsOf = (assets: TemplateAsset[]) =>
+  [...new Set(assets.map(a => { try { return new URL(a.url).host.toLowerCase(); } catch { return ''; } }).filter(Boolean))];
+
+/** The rendered home page of a template, as a company with the sample brand would see it. */
+function samplePage(t: PreparedTemplate, html: string): string {
+  return renderTemplatePage(html, { brand: SAMPLE_BRAND, assets: t.assets, pageUrl: () => '#', bookingUrl: '#', sellerNotice: '',
+                                    assetHosts: hostsOf(t.assets) });
+}
 
 const IMAGE_TYPES: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const MAX_IMAGE = 5 * 1024 * 1024;
@@ -114,13 +142,13 @@ function select(rows: MasterRow[]): MasterRow[] {
 }
 
 /** Settle each page with its scripts, prepare the template, then check it with scripts off. */
-async function prepare(row: MasterRow, snap: Snapshotter | null): Promise<PreparedTemplate> {
+async function prepare(row: MasterRow, snap: Snapshotter | null): Promise<Imported> {
   const pages = (typeof row.pages === 'string' ? JSON.parse(row.pages) : row.pages) as TemplatePage[];
   const settled: TemplatePage[] = [];
   for (const p of pages) {
     settled.push(snap && /<script\b/i.test(p.html) ? { ...p, html: await snap.settle(p.html) } : p);
   }
-  const t = prepareTemplate({ ...row, pages: settled });
+  const t: Imported = prepareTemplate({ ...row, pages: settled });
   if (snap) {
     for (const p of t.pages) {
       const before = settled.find(s => (s.path || '/') === p.path) ?? settled[0];
@@ -130,11 +158,14 @@ async function prepare(row: MasterRow, snap: Snapshotter | null): Promise<Prepar
         t.flags.push({ kind: 'hidden', page: p.path, sample: `${Math.round(100 - (after / shown) * 100)} % of the text is not visible without scripts` });
       }
     }
+    // The catalogue's thumbnail: the cleaned home page with the sample brand.
+    const home = t.pages.find(p => p.path === '/') ?? t.pages[0];
+    if (home) t.thumbnailJpeg = await snap.thumbnail(samplePage(t, home.html), hostsOf(t.assets));
   }
   return t;
 }
 
-function report(templates: PreparedTemplate[]): string {
+function report(templates: Imported[]): string {
   const lines = ['# Website templates to review', '',
     'Each template must be checked before approval (Admin → White label → Templates):',
     '- **price**: remove; prices come from the booking page.',
@@ -145,11 +176,11 @@ function report(templates: PreparedTemplate[]): string {
   const byCat = new Map<string, number>();
   for (const t of templates) { const c = templateCategory(t.industry) ?? 'other'; byCat.set(c, (byCat.get(c) ?? 0) + 1); }
   for (const [c, n] of [...byCat].sort((a, b) => b[1] - a[1])) lines.push(`| ${categoryLabel(c)} | ${n} |`);
-  lines.push('', '| Template | Category | Industries | Pages | price | review | claim | other | hidden | Removed (scripts, forms, handlers) |',
-    '|---|---|---|---|---|---|---|---|---|---|');
+  lines.push('', '| Template | Category | Industries | Pages | Features | price | review | claim | other | hidden | Removed (scripts, forms, handlers) |',
+    '|---|---|---|---|---|---|---|---|---|---|---|');
   for (const t of templates) {
     const n = (k: string) => t.flags.filter(f => f.kind === k).length;
-    lines.push(`| ${t.id} (${t.name}) | ${categoryLabel(templateCategory(t.industry) ?? 'other')} | ${t.industry.join(', ')} | ${t.pages.length} | `
+    lines.push(`| ${t.id} (${t.name}) | ${categoryLabel(templateCategory(t.industry) ?? 'other')} | ${t.industry.join(', ')} | ${t.pages.length} | ${t.features.join(', ')} | `
       + `${n('price')} | ${n('review')} | ${n('claim')} | ${n('sample_name') + n('phone') + n('email')} | ${n('hidden')} | `
       + `${t.removed.scripts}, ${t.removed.forms}, ${t.removed.handlers} |`);
   }
@@ -160,6 +191,18 @@ function report(templates: PreparedTemplate[]): string {
   return lines.join('\n') + '\n';
 }
 
+/** Store bytes in the asset bucket at <template>/<key>.<ext>; returns the public URL. */
+async function storeAsset(templateId: string, assetKey: string, ext: string, type: string, body: Uint8Array, url: string, key: string): Promise<string> {
+  const path = `${templateId}/${assetKey.replace(/[^a-z0-9.-]+/gi, '-')}.${ext}`;
+  const up = await fetch(`${url}/storage/v1/object/site-template-assets/${path}`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': type, 'x-upsert': 'true' },
+    body,
+  });
+  if (!up.ok) throw new Error(`upload ${path}: ${up.status} ${await up.text()}`);
+  return `${url}/storage/v1/object/public/site-template-assets/${path}`;
+}
+
 async function copyAsset(a: TemplateAsset, templateId: string, url: string, key: string): Promise<TemplateAsset | null> {
   let res: Response;
   try { res = await fetch(a.url); } catch (e) { console.warn(`  image ${a.key}: ${(e as Error).message}`); return null; }
@@ -168,17 +211,10 @@ async function copyAsset(a: TemplateAsset, templateId: string, url: string, key:
   if (!res.ok || !ext) { console.warn(`  image ${a.key}: ${res.status} ${type}, skipped`); return null; }
   const body = new Uint8Array(await res.arrayBuffer());
   if (body.byteLength > MAX_IMAGE) { console.warn(`  image ${a.key}: larger than 5 MB, skipped`); return null; }
-  const path = `${templateId}/${a.key.replace(/[^a-z0-9.-]+/gi, '-')}.${ext}`;
-  const up = await fetch(`${url}/storage/v1/object/site-template-assets/${path}`, {
-    method: 'POST',
-    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': type, 'x-upsert': 'true' },
-    body,
-  });
-  if (!up.ok) throw new Error(`upload ${path}: ${up.status} ${await up.text()}`);
-  return { key: a.key, url: `${url}/storage/v1/object/public/site-template-assets/${path}` };
+  return { key: a.key, url: await storeAsset(templateId, a.key, ext, type, body, url, key) };
 }
 
-async function toFlyttgo(templates: PreparedTemplate[]) {
+async function toFlyttgo(templates: Imported[]) {
   const url = env('FLYTTGO_SUPABASE_URL');
   const key = env('FLYTTGO_SERVICE_ROLE_KEY');
   for (const t of templates) {
@@ -187,11 +223,16 @@ async function toFlyttgo(templates: PreparedTemplate[]) {
       const copied = await copyAsset(a, t.id, url, key);
       if (copied) assets.push(copied);
     }
+    // The thumbnail, beside the template's images (asset key 'thumbnail').
+    if (t.thumbnailJpeg) {
+      assets.push({ key: 'thumbnail', url: await storeAsset(t.id, 'thumbnail', 'jpg', 'image/jpeg', t.thumbnailJpeg, url, key) });
+    }
     const res = await fetch(`${url}/rest/v1/rpc/import_site_template`, {
       method: 'POST',
       headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ p: { id: t.id, name: t.name, industry: t.industry, style: t.style, pages: t.pages,
-                                  assets, source: 'architect-ai', source_id: t.source_id, flags: t.flags } }),
+                                  assets, source: 'architect-ai', source_id: t.source_id, flags: t.flags,
+                                  features: t.features } }),
     });
     if (!res.ok) throw new Error(`${t.id}: ${res.status} ${await res.text()}`);
     console.log(`stored ${t.id}: ${t.pages.length} pages, ${assets.length}/${t.assets.length} images, ${t.flags.length} things to check`);
@@ -209,7 +250,7 @@ async function main() {
     console.warn('Playwright is not available: pages are imported without the browser step, so what their scripts '
       + 'draw (fade-ins, stars, counters) may be missing. Install it: npm i -D playwright && npx playwright install chromium');
   }
-  const templates: PreparedTemplate[] = [];
+  const templates: Imported[] = [];
   try {
     for (const r of chosen) {
       const t = await prepare(r, snap);
@@ -224,8 +265,15 @@ async function main() {
 
   const out = arg('out');
   if (out) {
-    await mkdir(out, { recursive: true });
-    for (const t of templates) await writeFile(join(out, `${t.id}.json`), JSON.stringify(t, null, 2));
+    await mkdir(join(out, 'thumbnails'), { recursive: true });
+    for (const t of templates) {
+      const { thumbnailJpeg, ...json } = t;
+      if (thumbnailJpeg) {
+        json.thumbnail = `thumbnails/${t.id}.jpg`;
+        await writeFile(join(out, json.thumbnail), thumbnailJpeg);
+      }
+      await writeFile(join(out, `${t.id}.json`), JSON.stringify(json, null, 2));
+    }
     await writeFile(join(out, 'report.md'), report(templates));
     console.log(`wrote ${templates.length} templates and report.md to ${out}`);
   }

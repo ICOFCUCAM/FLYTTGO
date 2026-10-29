@@ -1,9 +1,10 @@
 /**
- * A template's home page in miniature, as theme galleries show them: the
- * whole page drawn at desktop width in the company's name and colours,
- * scaled down to the card. Hovering scrolls slowly down the page. The page
- * is loaded only when the card comes into view, and drawn sandboxed without
- * scripts, as the published site is.
+ * A template's home page in miniature: the page drawn at desktop width in
+ * the company's name and colours, scaled down to the card. The catalogue
+ * shows the importer's thumbnail (a picture) where a template has one and
+ * this live miniature where it has none. The page is loaded only when the
+ * card comes into view, and drawn sandboxed without scripts, as the
+ * published site is. Without `height` it fills the box it is put in.
  */
 import { useEffect, useRef, useState } from 'react';
 import { renderTemplatePage, type Brand } from '../../../supabase/functions/_shared/site-template';
@@ -11,7 +12,7 @@ import { loadTemplateHome, type SiteTemplateSummary } from '../../lib/whiteLabel
 
 /** The width the page is drawn at before it is scaled down, and how much of it is drawn. */
 const PAGE_WIDTH = 1280;
-const PAGE_HEIGHT = 3200;
+const PAGE_HEIGHT = 1600;
 
 const homes = new Map<string, Promise<{ path: string; html: string } | null>>();
 /** Each home page is fetched once, however often the catalogue is filtered. */
@@ -23,7 +24,7 @@ const homeOf = (id: string) => {
 const hostsOf = (assets: { url: string }[]) =>
   assets.map(a => { try { return new URL(a.url).host; } catch { return ''; } }).filter(Boolean);
 
-export default function TemplateThumb({ template, brand, sellerNotice, height = 260 }: {
+export default function TemplateThumb({ template, brand, sellerNotice, height }: {
   template: SiteTemplateSummary; brand: Brand; sellerNotice: string; height?: number;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -59,15 +60,12 @@ export default function TemplateThumb({ template, brand, sellerNotice, height = 
   }, [visible, template.id, template.assets, brandKey, sellerNotice]);
 
   const scale = width ? width / PAGE_WIDTH : 0;
-  /* How far hovering scrolls: the drawn page less what the card shows. */
-  const travel = scale ? Math.max(0, PAGE_HEIGHT * scale - height) : 0;
-  const cover = template.assets.find(a => a.key === 'hero')?.url ?? template.assets[0]?.url;
+  const cover = template.assets.find(a => a.key === 'hero')?.url ?? template.assets.find(a => a.key !== 'thumbnail')?.url;
 
   return (
-    <div ref={box} className="group relative w-full overflow-hidden bg-gray-100" style={{ height }}>
+    <div ref={box} className={`relative w-full overflow-hidden bg-gray-100 ${height ? '' : 'h-full'}`} style={height ? { height } : undefined}>
       {doc && scale > 0 ? (
-        <div className="absolute left-0 top-0 transition-transform ease-in-out group-hover:[transform:translateY(var(--travel))]"
-          style={{ ['--travel' as string]: `-${travel}px`, transitionDuration: `${Math.max(2, travel / 120)}s` }}>
+        <div className="absolute left-0 top-0">
           <iframe title={`${template.name}: home page`} sandbox="" srcDoc={doc} tabIndex={-1} aria-hidden="true" scrolling="no"
             className="pointer-events-none border-0 bg-white origin-top-left"
             style={{ width: PAGE_WIDTH, height: PAGE_HEIGHT, transform: `scale(${scale})` }} />

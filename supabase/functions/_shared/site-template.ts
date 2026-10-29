@@ -103,6 +103,52 @@ export function categoryLabel(id: string): string {
   return TEMPLATE_CATEGORIES.find(c => c.id === id)?.label ?? OTHER_CATEGORY.label;
 }
 
+/**
+ * What a template's pages have, for the catalogue's cards: found at import
+ * from the pages' paths, headings and section names (never guessed from the
+ * template's name). In the order shown.
+ */
+export const TEMPLATE_FEATURES: { id: string; label: string; re: RegExp }[] = [
+  { id: 'services', label: 'Services', re: /\b(?:our services|services|what we do|treatments|experiences)\b/i },
+  { id: 'pricing', label: 'Prices', re: /\b(?:pric(?:e|es|ing)|rates|packages|plans and|our plans|tariffs?)\b/i },
+  { id: 'menu', label: 'Menu', re: /\b(?:menu|the courses|tasting|dishes|wine list)\b/i },
+  { id: 'gallery', label: 'Gallery', re: /\b(?:gallery|portfolio|our work|lookbook|projects|recent work)\b/i },
+  { id: 'testimonials', label: 'Testimonials', re: /\b(?:testimonials?|reviews?|what (?:our )?(?:clients|customers|guests|people|members) say|critics|kind words|trusted by)\b/i },
+  { id: 'team', label: 'Team', re: /\b(?:our team|the team|meet the|our people|our staff|stylists|friendly faces|leadership)\b/i },
+  { id: 'faq', label: 'FAQ', re: /\b(?:faqs?|frequently asked|questions|quick answers)\b/i },
+  { id: 'contact', label: 'Contact', re: /\b(?:contact|get in touch|find us|visit us|reservations?|request (?:service|an appointment)|opening hours)\b/i },
+];
+
+/** The features of a template's pages (TEMPLATE_FEATURES ids). */
+export function templateFeatures(pages: readonly TemplatePage[]): string[] {
+  const found = new Set<string>();
+  for (const p of pages) {
+    const html = String(p?.html ?? '');
+    const where = [
+      String(p?.path ?? '').replace(/[/-]+/g, ' '),
+      ...[...html.matchAll(/<h[1-4]\b[^>]*>([\s\S]*?)<\/h[1-4]\s*>/gi)].map(m => m[1].replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&')),
+      ...[...html.matchAll(/<(?:section|div|nav)\b[^>]*\s(?:id|class)\s*=\s*("|')([^"']*)\1/gi)].map(m => m[2].replace(/[-_]+/g, ' ')),
+    ].map(w => w.replace(/\s+/g, ' ')).join(' \n ');
+    for (const f of TEMPLATE_FEATURES) if (f.re.test(where)) found.add(f.id);
+  }
+  return TEMPLATE_FEATURES.map(f => f.id).filter(id => found.has(id));
+}
+
+/** The label of a feature id. */
+export const featureLabel = (id: string) => TEMPLATE_FEATURES.find(f => f.id === id)?.label ?? id;
+
+/** "Best for …": the template's industries in words, at most three (none: its category). */
+export function bestFor(industry: readonly string[] | null | undefined): string {
+  const words: string[] = [];
+  for (const i of industry ?? []) {
+    const w = String(i).toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (w && !words.some(x => x.includes(w) || w.includes(x) || (x.length >= 5 && w.startsWith(x.slice(0, 5))))) words.push(w);
+    if (words.length === 3) break;
+  }
+  if (!words.length) return categoryLabel(templateCategory(industry) ?? OTHER_CATEGORY.id).toLowerCase();
+  return words.length === 1 ? words[0] : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
+}
+
 export interface PreparedTemplate {
   id: string;
   name: string;
@@ -113,6 +159,8 @@ export interface PreparedTemplate {
   source_id: string;
   flags: ContentFlag[];
   removed: SanitiseReport;
+  /** What the pages have (pricing, gallery, team…), for the catalogue's cards (templateFeatures()). */
+  features: string[];
 }
 
 export interface Brand {
@@ -297,7 +345,7 @@ export function prepareTemplate(row: MasterRow, assetHosts: string[] = []): Prep
   return {
     id: templateId(row.id), name, industry: (row.industry ?? []).map(String), style: row.style ?? null,
     pages: out, assets: assets.filter(a => a && typeof a.key === 'string' && typeof a.url === 'string'),
-    source_id: String(row.id), flags, removed,
+    source_id: String(row.id), flags, removed, features: templateFeatures(out),
   };
 }
 
