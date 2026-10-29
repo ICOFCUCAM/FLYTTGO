@@ -52,6 +52,8 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { paidAmountMatches } from '../_shared/pricing.ts';
+import { constantTimeEqual, vippsConfirmAuthorized } from '../_shared/vipps-payments.ts';
+import { VIPPS_BASE, vippsApiHeaders, vippsMissingConfig } from '../_shared/vipps.ts';
 
 /* ─── Env ──────────────────────────────────────────────────────── */
 const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!;
@@ -86,9 +88,9 @@ function verifyVippsAuth(req: Request): boolean {
   if (!VIPPS_WEBHOOK_SECRET) return false; // fail closed if the secret isn't set
   const auth = req.headers.get('Authorization') ?? req.headers.get('authorization') ?? '';
   if (!auth) return false;
-  if (auth === VIPPS_WEBHOOK_SECRET) return true;
-  if (auth === `Bearer ${VIPPS_WEBHOOK_SECRET}`) return true;
-  return false;
+  /* Constant time, so the comparison does not reveal how much of a
+   * guess was right. */
+  return constantTimeEqual(auth, VIPPS_WEBHOOK_SECRET) || constantTimeEqual(auth, `Bearer ${VIPPS_WEBHOOK_SECRET}`);
 }
 
 /* ─── Reference parsing ────────────────────────────────────────── */
@@ -108,9 +110,14 @@ function extractBookingId(reference: string | undefined | null): string | null {
 
 /**
  * Mark the booking as paid and flip the escrow_payments row from
- * 'held' to 'escrow' (money has been captured, now sitting in escrow
- * until the delivery is confirmed). If the booking is already paid
- * or beyond, return { idempotent: true } and do nothing.
+ * 'held' to 'escrow'. The money is RESERVED at Vipps, not captured:
+ * process-payment captures it when delivery is confirmed (the escrow
+ * release point; supabase/migrations/00006 holds any release until
+ * then). If the booking is already paid or beyond, return
+ * { idempotent: true } and do nothing.
+ *
+ * The callback is only a prompt: before anything changes, Vipps itself
+ * must report the payment AUTHORIZED for the expected amount.
  */
 async function markBookingPaid(bookingId: string, amountOre: number, currency: string, reference: string) {
   /* Check current state first so we can bail out idempotently. */
@@ -145,6 +152,21 @@ async function markBookingPaid(bookingId: string, amountOre: number, currency: s
     return { ok: true, held: true, reason: 'amount mismatch; held for review' };
   }
 
+  /* Ask Vipps. A callback proves only that the sender knows the shared
+   * secret; the payment state comes from the ePayment API. An outage
+   * throws, so the webhook answers 500 and Vipps calls again. */
+  const missing = vippsMissingConfig();
+  if (missing.length) throw new Error(`Vipps not configured: ${missing.join(', ')}`);
+  const confirmed = await vippsConfirmAuthorized(fetch, { base: VIPPS_BASE, headers: await vippsApiHeaders() }, reference, amountOre);
+  if (confirmed.kind === 'retry') throw new Error(`vipps payment check: ${confirmed.error}`);
+  if (confirmed.kind === 'failed') {
+    const reason = `vipps: ${confirmed.error}`;
+    console.error(`payment held for review — booking ${bookingId}: ${reason}`);
+    const { error: flagErr } = await supabase.from('bookings').update({ payment_review_reason: reason }).eq('id', bookingId);
+    if (flagErr) console.warn(`payment_review_reason update failed: ${flagErr.message}`);
+    return { ok: true, held: true, reason: 'Vipps does not confirm the reservation; held for review' };
+  }
+
   /* 1) bookings.payment_status = 'paid', with the Vipps reference and the
    *    amount paid: refund-payment refunds or cancels against them. */
   const { error: bookingErr } = await supabase
@@ -159,8 +181,8 @@ async function markBookingPaid(bookingId: string, amountOre: number, currency: s
     .eq('id', bookingId);
   if (bookingErr) throw new Error(`booking update failed: ${bookingErr.message}`);
 
-  /* 2) escrow_payments.status flips from 'held' (reserved) to 'escrow'
-   *    (money captured, waiting on delivery confirmation). This matches
+  /* 2) escrow_payments.status flips from 'held' to 'escrow' (money
+   *    reserved at Vipps, waiting on delivery confirmation). This matches
    *    the lifecycle the process-payment release_escrow action expects
    *    ('held' → 'escrow' → 'released'). */
   const { error: escrowErr } = await supabase

@@ -4,7 +4,8 @@
 -- 2026-10-29 with catalog queries (pg_get_functiondef, pg_get_triggerdef,
 -- pg_get_constraintdef, pg_get_viewdef, pg_policies, function and table
 -- ACLs, storage.buckets). No customer data:
--- only the five subscription_plans rows, which are configuration.
+-- only the five subscription_plans rows (as in production, with their
+-- dispatch weights and job limits), which are configuration.
 --
 -- Production at that time had the emergency fix already applied
 -- (admin_accounts RLS + self-select policy; change_driver_subscription no
@@ -882,8 +883,8 @@ CREATE VIEW public.match_drivers_for_booking_view AS
      JOIN driver_service_cities dsc ON dsc.driver_id = dp.user_id
      JOIN vehicles v ON v.driver_id = dp.user_id
   WHERE dp.status = 'approved'::text;
-INSERT INTO public.subscription_plans (name, price, billing_period) VALUES
-  ('Basic', 0, 'daily'), ('Free', 0, 'none'), ('Pro', 1500, 'monthly'),
-  ('Pro Mini', 149, 'daily'), ('Unlimited', 2449, 'monthly');
+INSERT INTO public.subscription_plans (name, price, billing_period, dispatch_priority, dispatch_weight, max_job_value) VALUES
+  ('Basic', 0, 'daily', 4, 2, NULL), ('Free', 0, 'none', 5, 1, 500), ('Pro', 1500, 'monthly', 2, 4, NULL),
+  ('Pro Mini', 149, 'daily', 3, 3, NULL), ('Unlimited', 2449, 'monthly', 1, 5, NULL);
 
 RESET check_function_bodies;

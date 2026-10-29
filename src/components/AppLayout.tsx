@@ -17,6 +17,7 @@ const TermsPage          = lazy(() => import('../pages/TermsPage'));
 const PrivacyPage        = lazy(() => import('../pages/PrivacyPage'));
 const LiabilityPage      = lazy(() => import('../pages/LiabilityPage'));
 const DriverTermsPage    = lazy(() => import('../pages/DriverTermsPage'));
+const AcceptInvitationPage = lazy(() => import('../pages/AcceptInvitationPage'));
 const ServicesPage       = lazy(() => import('../pages/ServicesPage'));
 const CorporatePage             = lazy(() => import('../pages/CorporatePage'));
 const CorporateDashboard        = lazy(() => import('../pages/CorporateDashboard'));
@@ -105,6 +106,7 @@ export default function AppLayout() {
       case 'payment':                return <PaymentPage />;
       case 'auth-callback':          return <AuthCallbackPage />;
       case 'driver-application-status': return <DriverApplicationStatusPage />;
+      case 'accept-invitation':      return <AcceptInvitationPage />;
       case 'not-found':              return <NotFoundPage />;
       default:                       return <NotFoundPage />;
     }

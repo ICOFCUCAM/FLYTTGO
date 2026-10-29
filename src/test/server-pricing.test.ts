@@ -10,6 +10,7 @@ import {
   routeDistance,
   subscriptionCharge,
   refundAmountFor,
+  pickupAt,
   planSlug,
 } from '../../supabase/functions/_shared/pricing.ts';
 import { VAN_TYPES, calculatePrice as browserPrice } from '../lib/constants';
@@ -134,6 +135,36 @@ describe('refund amount (dashboard rule, on what was paid)', () => {
     expect(refundAmountFor({ status: 'pending', price_estimate: 9999, paid_amount: 2875 })).toBe(2875);
     expect(refundAmountFor({ status: 'completed', paid_amount: 2000, manual_refund_percent: 50 })).toBe(1000);
     expect(refundAmountFor({ status: 'pending', paid_amount: 2000, manual_refund_percent: 150 })).toBe(2000);
+  });
+});
+
+describe('cancellation policy (Terms §6.1)', () => {
+  const booking = { status: 'cancelled', paid_amount: 2875, move_date: '2026-11-20', move_time: '09:00' };
+  // Pickup 2026-11-20 09:00 Oslo (UTC+1) = 08:00Z.
+
+  it('reads the pickup in Oslo time, winter and summer', () => {
+    expect(pickupAt('2026-11-20', '09:00')?.toISOString()).toBe('2026-11-20T08:00:00.000Z');
+    expect(pickupAt('2026-07-01T00:00:00+00:00', '09:00:00')?.toISOString()).toBe('2026-07-01T07:00:00.000Z');
+    expect(pickupAt(null, '09:00')).toBeNull();
+  });
+
+  it('refunds in full more than 24 hours before pickup', () => {
+    expect(refundAmountFor({ ...booking, cancelled_by: 'customer', cancelled_at: '2026-11-19T07:59:00Z' })).toBe(2875);
+  });
+
+  it('keeps 50% within 24 hours', () => {
+    expect(refundAmountFor({ ...booking, cancelled_by: 'customer', cancelled_at: '2026-11-19T08:00:00Z' })).toBe(1438);
+    expect(refundAmountFor({ ...booking, cancelled_by: 'customer', cancelled_at: '2026-11-20T10:00:00Z' })).toBe(1438);
+  });
+
+  it('refunds in full when FlyttGo or the driver cancels', () => {
+    expect(refundAmountFor({ ...booking, cancelled_by: 'platform', cancelled_at: '2026-11-20T07:00:00Z' })).toBe(2875);
+    expect(refundAmountFor({ ...booking, cancelled_by: 'driver', cancelled_at: '2026-11-20T07:00:00Z' })).toBe(2875);
+  });
+
+  it('leaves a cancellation from before the policy to a manual decision', () => {
+    expect(refundAmountFor({ ...booking })).toBe(0);
+    expect(refundAmountFor({ ...booking, manual_refund_percent: 100 })).toBe(2875);
   });
 });
 

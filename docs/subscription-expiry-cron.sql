@@ -46,34 +46,16 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 --    rights regardless of who the cron user is under the hood.
 CREATE OR REPLACE FUNCTION public.auto_downgrade_expired_subscriptions()
 RETURNS TABLE (downgraded_count int) AS $$
-DECLARE
-  affected int;
-  expired_driver record;
 BEGIN
-  /* Mark expired active subscriptions as expired, then start the free
-   * plan for each of those drivers through change_driver_subscription
-   * (plan_id → subscription_plans; supabase/migrations/00002 and 00003).
-   * One transaction, so a driver is never left without a subscription. */
-  affected := 0;
-  FOR expired_driver IN
-    UPDATE public.driver_subscriptions
-       SET subscription_status = 'expired'
-     WHERE subscription_status = 'active'
-       AND end_date IS NOT NULL
-       AND end_date < now()
-    RETURNING driver_id
-  LOOP
-    PERFORM public.change_driver_subscription(expired_driver.driver_id, 'free');
-    affected := affected + 1;
-  END LOOP;
-
-  downgraded_count := COALESCE(affected, 0);
+  /* One rule for the cron and the driver portal: a plan lapses when its
+   * end date plus the grace period has passed (24 h for monthly plans,
+   * platform_config subscription_grace_hours_*), and the driver moves to
+   * Free (supabase/migrations/00006, expire_lapsed_subscriptions). */
+  downgraded_count := public.expire_lapsed_subscriptions(NULL);
   RETURN NEXT;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- Allow the authenticated role to call the function directly (optional —
--- Supabase admin can always call it manually for debugging).
 GRANT EXECUTE ON FUNCTION public.auto_downgrade_expired_subscriptions() TO service_role;
 
 -- 3) Schedule the cron job. We unschedule first so re-running the file

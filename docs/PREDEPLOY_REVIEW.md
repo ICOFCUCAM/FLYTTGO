@@ -54,6 +54,8 @@ Companion documents:
 
 ### Open: need a fix or a decision before launch
 
+> **Update 2026-10-29:** the owner adopted the recommendations in §4. Items 1, 4, 5, 6 and 7 are built on the branch (migration 00006 and the functions listed in [`DECISIONS.md`](DECISIONS.md)). Item 2 needs `pg_cron` enabled. Item 3 is reduced: eligibility reads only `driver_subscriptions`. Item 8 is unchanged by decision. Remaining for legal review and Vipps: see `DECISIONS.md`, "Still to do".
+
 1. **Dispatch finds no drivers.** `dispatch_rank_candidates` requires `driver_profiles.subscription_active = true`. Nothing sets it, and it is false on all production rows. The tests set it by hand, which hides the gap. See §4.1 for the replacement.
 2. **Subscriptions never expire on their own.** Production has no `pg_cron`. Expiry runs only when the driver opens the portal. The cron in `docs/subscription-expiry-cron.sql` needs `pg_cron` enabled.
 3. **There are four sources of truth for a driver's plan.** `driver_subscriptions` (canonical), plus `driver_profiles.subscription_plan`, `drivers.subscription_plan` and `drivers.default_plan_id`. A second, empty `subscriptions` table also points at `driver_profiles`.
@@ -180,16 +182,16 @@ The orphan rows stay as they are (your decision): investigate them, don't delete
 
 **Production (one maintenance window, only after approval):**
 1. Take a backup (Supabase dashboard → Database → Backups, plus `pg_dump`).
-2. Apply `00002`, `00003`, `00004` in one session; `00005` only if organisations go live too. Keep the NOTICE output.
+2. Apply `00002` → `00006` in one session. Keep the NOTICE output.
 3. Set the secrets and the Stripe webhook events (`SECURITY_P0.md` §5).
-4. Deploy the frontend, then the edge functions.
+4. Deploy the new functions, then the frontend, then the changed functions (`SECURITY_P0.md` §5 lists them).
 5. Run the security advisor (expect no `rls_disabled` or `security_definer_view` errors).
 6. Watch the function logs and `payment_events` for the first payments.
 
 **Rollback:**
 1. Redeploy the previous frontend and functions.
 2. Export `payment_refunds`, `payment_events` and the four organisation tables if they hold data.
-3. Run `00005_down` (if applied), `00004_down`, `00003_down` and `00002_down`, in that order.
+3. Run `00006_down`, `00005_down`, `00004_down`, `00003_down` and `00002_down`, in that order. Each returns exactly to the state before its migration (tested).
 
 What the rollback does **not** reverse, tested in "rollback with data":
 - Rows written while the migrations were in force are kept. Their foreign keys and CHECK constraints come back **NOT VALID**: the eight constraints are listed by the test and printed as NOTICEs. Production's old code then works as badly as before.

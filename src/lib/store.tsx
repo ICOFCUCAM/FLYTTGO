@@ -19,6 +19,8 @@ export type Page =
   | 'auth-callback'
   /* Driver onboarding status (pending / approved / rejected). */
   | 'driver-application-status'
+  /* Company invitation link (send-organization-invitation). */
+  | 'accept-invitation'
   /* Fallback for URLs that don't match any known route. */
   | 'not-found';
 

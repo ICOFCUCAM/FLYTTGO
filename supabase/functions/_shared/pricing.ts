@@ -304,16 +304,63 @@ export function planSlug(name: string | null | undefined): string | null {
 /* ─── Refund amount ───────────────────────────────────────────── */
 
 /**
- * How much of a booking is refunded, by its status, or by the admin's
- * manual percentage when one is set. The same rule the admin dashboard
- * used (calculateRefundAmount), now applied on the server to what was
- * actually paid (paid_amount, else price_estimate). Whole kroner.
+ * The cancellation policy published in the Terms (§6.1), decided
+ * 2026-10-29 (docs/PREDEPLOY_REVIEW.md §4.3):
+ *   FlyttGo or the driver cancels                     → 100%
+ *   customer cancels more than 24 h before pickup     → 100%
+ *   customer cancels within 24 h of pickup            → 50%
+ *   no-show or work started                           → manual decision
+ * The fee kept on a late cancellation stays with FlyttGo; no driver is
+ * paid for a job that never started.
+ */
+export const CANCELLATION_POLICY = {
+  freeUntilHoursBefore: 24,
+  lateCustomerShare:    0.5,
+} as const;
+
+/** When the pickup is: the move date (a calendar day in Norway) at the
+ *  move time, Oslo time. Null when the booking has no date. */
+export function pickupAt(moveDate?: string | null, moveTime?: string | null): Date | null {
+  if (!moveDate) return null;
+  const day = String(moveDate).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const time = /^\d{2}:\d{2}/.test(String(moveTime ?? '')) ? String(moveTime).slice(0, 5) : '00:00';
+  /* Oslo is UTC+1 in winter and UTC+2 in summer: take the offset that
+   * Intl reports for that wall-clock time. */
+  const guess = new Date(`${day}T${time}:00Z`);
+  const offsetMin = osloOffsetMinutes(guess);
+  return new Date(guess.getTime() - offsetMin * 60_000);
+}
+
+function osloOffsetMinutes(d: Date): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Oslo', hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+  }).formatToParts(d);
+  const get = (t: string) => Number(parts.find(p => p.type === t)?.value);
+  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'));
+  return Math.round((asUtc - d.getTime()) / 60_000);
+}
+
+/**
+ * How much of a booking is refunded, applied to what was actually paid
+ * (paid_amount, else price_estimate). Whole kroner.
+ *   * an admin's manual percentage wins;
+ *   * a cancelled booking follows CANCELLATION_POLICY, using who
+ *     cancelled and when (cancelled_by / cancelled_at against the
+ *     pickup); one cancelled before those were recorded needs a manual
+ *     percentage (0 until then);
+ *   * otherwise the share by status the dashboard always used.
  */
 export function refundAmountFor(b: {
   status?: string | null;
   price_estimate?: number | string | null;
   paid_amount?: number | string | null;
   manual_refund_percent?: number | string | null;
+  cancelled_by?: string | null;
+  cancelled_at?: string | null;
+  move_date?: string | null;
+  move_time?: string | null;
 }): number {
   const paid = Number(b.paid_amount ?? b.price_estimate ?? 0);
   const base = Number.isFinite(paid) && paid > 0 ? paid : 0;
@@ -322,10 +369,24 @@ export function refundAmountFor(b: {
     const pct = Math.min(100, Math.max(0, Number(manual)));
     return Math.round(base * (pct / 100));
   }
+  if (b.status === 'cancelled') return Math.round(base * cancellationShare(b));
   const share: Record<string, number> = {
     pending: 1, confirmed: 0.9, driver_assigned: 0.8,
     pickup_arrived: 0.7, loading: 0.7, in_transit: 0.5,
-    completed: 0, cancelled: 0,
+    completed: 0,
   };
   return Math.round(base * (share[String(b.status)] ?? 0));
+}
+
+/** The share of the paid amount a cancelled booking gets back. */
+export function cancellationShare(b: {
+  cancelled_by?: string | null; cancelled_at?: string | null;
+  move_date?: string | null; move_time?: string | null;
+}): number {
+  if (b.cancelled_by === 'platform' || b.cancelled_by === 'driver') return 1;
+  if (b.cancelled_by !== 'customer' || !b.cancelled_at) return 0;       // unknown: manual decision
+  const pickup = pickupAt(b.move_date, b.move_time);
+  if (!pickup) return CANCELLATION_POLICY.lateCustomerShare;            // no date: treat as late
+  const hoursBefore = (pickup.getTime() - new Date(b.cancelled_at).getTime()) / 3_600_000;
+  return hoursBefore > CANCELLATION_POLICY.freeUntilHoursBefore ? 1 : CANCELLATION_POLICY.lateCustomerShare;
 }

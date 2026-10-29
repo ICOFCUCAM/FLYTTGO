@@ -20,7 +20,13 @@
 //     Verifies both confirmations are set, verifies any adjustment
 //     has been approved, computes commission based on the driver's
 //     subscription plan, flips escrow_payments to 'released' and
-//     credits the driver's wallet.
+//     credits the driver's wallet. A Vipps payment is only reserved
+//     until then: it is captured here first (decided 2026-10-29, capture
+//     on delivery), and the release waits if Vipps cannot be reached.
+//
+//   • AdminDashboard → action='capture' (also the booking's parties):
+//     capture a reserved Vipps payment without releasing it, for
+//     admin_release_escrow, which requires a captured payment.
 //
 // DEPLOY:
 //   supabase functions deploy process-payment --no-verify-jwt
@@ -50,6 +56,8 @@ import {
 } from '../_shared/pricing.ts';
 import { getCaller, driverProfileIdOf } from '../_shared/auth.ts';
 import { activePlanSlug } from '../_shared/plans.ts';
+import { vippsCapture } from '../_shared/vipps-payments.ts';
+import { VIPPS_BASE, vippsApiHeaders, vippsMissingConfig } from '../_shared/vipps.ts';
 
 /* ─── Env (Supabase injects these automatically) ─────────────── */
 const SUPABASE_URL             = Deno.env.get('SUPABASE_URL')!;
@@ -78,7 +86,7 @@ function json(body: unknown, status = 200) {
 }
 
 interface ProcessPaymentRequest {
-  action:    'recalculate_price' | 'release_escrow';
+  action:    'recalculate_price' | 'release_escrow' | 'capture';
   bookingId: string;
 }
 
@@ -115,6 +123,7 @@ serve(async (req: Request) => {
 
     if (body.action === 'recalculate_price') return await recalculatePrice(body.bookingId);
     if (body.action === 'release_escrow')    return await releaseEscrow(body.bookingId);
+    if (body.action === 'capture')           return await captureOnly(body.bookingId);
     return json({ error: `Unknown action: ${body.action}` }, 400);
   } catch (err) {
     console.error('process-payment error:', err);
@@ -204,6 +213,61 @@ async function recalculatePrice(bookingId: string) {
   });
 }
 
+/* ─── Capture (Vipps) ──────────────────────────────────────────── */
+
+/**
+ * Capture a reserved Vipps payment, once: the idempotency key is the
+ * booking's, and vippsCapture asks nothing if Vipps already shows it
+ * captured. Returns a Response when the caller must stop (Vipps not
+ * reachable: try again; refused: needs attention), else null with the
+ * booking's captured amount recorded (payment_capture_mark).
+ */
+async function captureIfNeeded(booking: any): Promise<{ stop: Response } | { capturedNok: number | null }> {
+  if (booking.payment_provider !== 'vipps') {
+    return { capturedNok: booking.captured_amount != null ? Number(booking.captured_amount) : null };
+  }
+  if (booking.captured_at) return { capturedNok: Number(booking.captured_amount ?? booking.paid_amount) };
+  if (!booking.payment_intent_id) {
+    return { stop: json({ error: 'the Vipps payment has no reference; capture it in the Vipps portal' }, 409) };
+  }
+  const missing = vippsMissingConfig();
+  if (missing.length) return { stop: json({ error: `Vipps not configured: ${missing.join(', ')}`, retry: true }, 503) };
+
+  const amountOre = Math.round(Number(booking.paid_amount ?? booking.price_estimate) * 100);
+  const out = await vippsCapture(fetch, { base: VIPPS_BASE, headers: await vippsApiHeaders() }, {
+    reference: booking.payment_intent_id, amountOre, idempotencyKey: `flyttgo-capture-${booking.id}`,
+  });
+  await supabase.from('payment_events').upsert({
+    provider: 'vipps', event_id: `capture-${booking.id}-${out.kind}`, kind: 'capture', booking_id: booking.id, result: out,
+  }, { onConflict: 'provider,event_id', ignoreDuplicates: true });
+
+  if (out.kind === 'retry') {
+    console.warn(`capture of ${booking.id} not confirmed: ${out.error}`);
+    return { stop: json({ status: 'capture_pending', retry: true, error: out.error }, 202) };
+  }
+  if (out.kind === 'failed') {
+    console.error(`capture of ${booking.id} refused: ${out.error}`);
+    return { stop: json({ status: 'capture_failed', error: out.error }, 502) };
+  }
+  const capturedNok = out.capturedOre / 100;
+  const { error } = await supabase.rpc('payment_capture_mark', { p_booking_id: booking.id, p_amount: capturedNok });
+  if (error) throw new Error(`payment_capture_mark failed: ${error.message}`);
+  return { capturedNok };
+}
+
+/* ─── Action: capture ──────────────────────────────────────────── */
+
+async function captureOnly(bookingId: string) {
+  const { data: booking } = await supabase.from('bookings').select('*').eq('id', bookingId).maybeSingle();
+  if (!booking) return json({ error: 'booking not found' }, 404);
+  if (!['paid', 'escrow'].includes(String(booking.payment_status))) {
+    return json({ error: `booking payment_status is ${booking.payment_status}; nothing to capture` }, 409);
+  }
+  const cap = await captureIfNeeded(booking);
+  if ('stop' in cap) return cap.stop;
+  return json({ ok: true, status: 'captured', capturedNok: cap.capturedNok });
+}
+
 /* ─── Action: release_escrow ───────────────────────────────────── */
 
 async function releaseEscrow(bookingId: string) {
@@ -267,6 +331,18 @@ async function releaseEscrow(bookingId: string) {
   );
   if (!amount || amount < 0) {
     return json({ error: 'could not determine release amount' }, 500);
+  }
+
+  /* A Vipps reservation is captured now, before any money moves to the
+   * driver; the driver is never paid more than was collected. An extra
+   * charge above the reservation (an approved over-time adjustment) has
+   * to be paid separately first. */
+  const cap = await captureIfNeeded(booking);
+  if ('stop' in cap) return cap.stop;
+  if (booking.payment_provider === 'vipps' && cap.capturedNok != null && amount > cap.capturedNok + 0.005) {
+    return json({
+      error: `the release (${amount} NOK) is more than Vipps collected (${cap.capturedNok} NOK); the extra charge must be paid first`,
+    }, 409);
   }
 
   /* Look up the driver's active subscription plan for commission

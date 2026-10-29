@@ -194,6 +194,10 @@ async function markBookingPaid(bookingId: string, session: StripeCheckoutSession
       stripe_session_id: sessionId,
       paid_amount:       typeof session.amount_total === 'number' ? session.amount_total / 100 : null,
       paid_at:           new Date().toISOString(),
+      /* Checkout captures card payments at once (no capture step, unlike
+       * Vipps), so the escrow can be released without one. */
+      captured_at:       new Date().toISOString(),
+      captured_amount:   typeof session.amount_total === 'number' ? session.amount_total / 100 : null,
     })
     .eq('id', bookingId);
   if (bookingErr) throw new Error(`booking update failed: ${bookingErr.message}`);

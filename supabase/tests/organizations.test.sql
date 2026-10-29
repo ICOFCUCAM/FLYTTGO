@@ -227,6 +227,7 @@ CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.acme() AS id;
 SELECT tests.ok(public.is_org_member((SELECT id FROM o)) AND NOT public.is_active_org_member((SELECT id FROM o)),
   'a pending company''s owner is a member but not an active one');
 SELECT tests.login(:admin);
+SELECT public.record_organization_verification((SELECT id FROM o), 'manual', true, '{"evidence":"signed form"}');
 SELECT public.admin_set_organization_status((SELECT id FROM o), 'active', 'verified in Brønnøysund');
 SELECT tests.login(:cust1);
 SELECT tests.ok(public.is_active_org_member((SELECT id FROM o), ARRAY['owner']), 'after activation the owner is an active member');

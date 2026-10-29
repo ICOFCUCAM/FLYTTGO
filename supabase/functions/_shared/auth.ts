@@ -19,6 +19,20 @@ export function serviceClient(): SupabaseClient {
   );
 }
 
+/**
+ * A client that acts as the caller (their token, the anon key), so the
+ * database applies their row-level security and guards, and records them
+ * as the actor. SUPABASE_ANON_KEY is injected into Edge Functions.
+ */
+export function userClient(req: Request): SupabaseClient {
+  const token = bearer(req) ?? '';
+  return createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { auth: { persistSession: false }, global: { headers: { Authorization: `Bearer ${token}` } } },
+  );
+}
+
 export interface Caller {
   id:      string;
   email:   string | null;
@@ -61,6 +75,7 @@ export async function driverProfileIdOf(db: SupabaseClient, userId: string): Pro
     .from('driver_profiles')
     .select('id')
     .eq('user_id', userId)
-    .maybeSingle();
-  return data?.id ?? null;
+    .order('created_at', { ascending: true })      // the oldest, as my_driver_id()
+    .limit(1);
+  return data?.[0]?.id ?? null;
 }

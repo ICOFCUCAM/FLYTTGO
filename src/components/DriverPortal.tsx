@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
 import { supabase, callFunction } from '../lib/supabase';
+import { releaseEscrow } from '../lib/releaseEscrow';
 import { withPlanSlug } from '../lib/plans';
 import { useDriverLocationBeacon } from '../hooks/useDriverLocationBeacon';
 
@@ -206,28 +207,17 @@ export default function DriverPortal() {
    * their state updated immediately rather than waiting up to an hour
    * for the cron to catch up.
    *
-   * Behaviour matches the cron: mark expired active subs as 'expired',
-   * then start the free plan (change_driver_subscription). The driver is NOT suspended
-   * — they just lose paid-tier perks until they re-subscribe. */
+   * Behaviour matches the cron: both call expire_lapsed_subscriptions,
+   * which marks a lapsed plan 'expired' and starts Free. The driver is NOT
+   * suspended — they just lose paid-tier perks until they re-subscribe. */
   async function enforceSubscriptionExpiry() {
     if (!user) return;
-    const { data: sub } = await supabase
-      .from('driver_subscriptions')
-      .select('id, driver_id, end_date, subscription_status')
-      .eq('driver_id', user.id)
-      .eq('subscription_status', 'active')
-      .maybeSingle();
-    if (!sub) return;
-    if (!sub.end_date) return;
-    if (new Date(sub.end_date) >= new Date()) return;
-
-    await supabase
-      .from('driver_subscriptions')
-      .update({ subscription_status: 'expired' })
-      .eq('id', sub.id);
-    /* The free plan is a plan_id row; the RPC resolves it. */
-    await supabase.rpc('change_driver_subscription', { p_driver_id: user.id, p_new_plan: 'free' });
+    /* The server decides what has lapsed (end date plus the grace
+     * period: 24 h for monthly plans) and moves the driver to Free. */
+    const { error } = await supabase.rpc('expire_lapsed_subscriptions', { p_driver: user.id });
+    if (error) console.warn('expire_lapsed_subscriptions:', error.message);
   }
+
 
   async function loadDriver() {
     /* driver_profiles.user_id is a FK to auth.users.id — use
@@ -396,8 +386,10 @@ export default function DriverPortal() {
     await supabase.from('bookings').update({ driver_confirmation: true }).eq('id', jobId);
     const { data: booking } = await supabase.from('bookings').select('customer_confirmation').eq('id', jobId).single();
     if (booking?.customer_confirmation === true) {
-      const res = await callFunction('process-payment', { action: 'release_escrow', bookingId: jobId });
-      alert(res.ok ? 'Payment released to your wallet!' : 'Confirmed, but the payment could not be released yet. Please contact support if it does not appear in your wallet.');
+      const outcome = await releaseEscrow(jobId);
+      alert(outcome === 'released' ? 'Payment released to your wallet!'
+        : outcome === 'waiting' ? 'Confirmed. The payment is being collected from the customer and will reach your wallet shortly.'
+        : 'Confirmed, but the payment could not be released yet. Please contact support if it does not appear in your wallet.');
     } else { alert('Confirmed! Waiting for customer confirmation.'); }
     loadJobs();
   }

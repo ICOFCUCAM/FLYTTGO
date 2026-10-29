@@ -352,7 +352,7 @@ BEGIN;
 SET LOCAL ROLE service_role;
 SELECT tests.login(NULL, 'service_role');
 UPDATE public.bookings SET driver_id = :dp1, status = 'completed', payment_provider = 'vipps',
-       payment_intent_id = 'booking-test-1', paid_amount = 2875 WHERE id = :paid;
+       payment_intent_id = 'booking-test-1', paid_amount = 2875, captured_at = now() WHERE id = :paid;
 UPDATE public.escrow_payments SET status = 'released', driver_earning = 2300, commission_amount = 575 WHERE booking_id = :paid;
 SELECT tests.ok((SELECT balance FROM public.driver_wallets WHERE driver_id = :dp1) = 3300, 'driver was paid 2300');
 CREATE TEMP TABLE r3 AS SELECT * FROM public.refund_request_begin(:paid, 1000, NULL, 'partial');

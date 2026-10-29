@@ -19,9 +19,16 @@
 // not know (network error, 5xx): the row stays 'requested' and the same
 // request is repeated with the same key.
 //
+// Vipps reservations that were never captured: a full refund cancels the
+// reservation; a partial one (a cancelled booking keeping a cancellation
+// fee) is allowed only with allowCaptureRest, and captures the fee before
+// cancelling the rest.
+//
 // No Deno or network imports: fetch is passed in, so the Vitest suite
 // (src/test/refunds.test.ts) runs these against fake providers.
 // ============================================================================
+
+import { vippsCapture } from './vipps-payments.ts';
 
 export type RefundOutcome =
   | { kind: 'succeeded' | 'pending'; providerRefundId: string | null; note?: string }
@@ -113,7 +120,7 @@ function value(a: any): number {
 export async function vippsRefund(
   fetchFn: Fetch,
   api: VippsApi,
-  r: { reference: string; amountOre: number; idempotencyKey: string },
+  r: { reference: string; amountOre: number; idempotencyKey: string; allowCaptureRest?: boolean },
 ): Promise<RefundOutcome> {
   const url = `${api.base}/epayment/v1/payments/${encodeURIComponent(r.reference)}`;
 
@@ -154,6 +161,33 @@ export async function vippsRefund(
     }
   };
 
+  /* A cancelled booking keeping a fee: the refund is the uncaptured part
+   * of the reservation. Capture the fee (up to authorized − refund), then
+   * cancel the rest. Decided by what is still uncaptured, so a retry
+   * after a capture that went through cancels instead of refunding. */
+  if (r.allowCaptureRest) {
+    const uncaptured = authorized - captured - cancelled;
+    if (cancelled >= r.amountOre && captured + cancelled >= authorized && authorized > 0) {
+      return { kind: 'succeeded', providerRefundId: payment?.pspReference ?? null, note: 'fee captured and rest cancelled at Vipps' };
+    }
+    if (uncaptured >= r.amountOre && uncaptured > 0) {
+      const keepTotal = authorized - cancelled - r.amountOre;          // total to have captured
+      if (keepTotal > captured) {
+        const cap = await vippsCapture(fetchFn, api, { reference: r.reference, amountOre: keepTotal, idempotencyKey: `${r.idempotencyKey}-capture` });
+        if (cap.kind === 'retry') return cap;
+        if (cap.kind === 'failed') return { kind: 'failed', error: `keeping the fee: ${cap.error}` };
+      }
+      const out = await write('cancel', {});
+      if (out.status >= 500 || out.status === 429) return { kind: 'retry', error: `vipps cancel ${out.status}` };
+      const after = await readJson(out);
+      if (!out.ok) return { kind: 'failed', error: `vipps cancel ${out.status}: ${after?.title ?? after?.detail ?? ''}`.trim() };
+      if (value(after?.aggregate?.cancelledAmount) >= r.amountOre || after?.state === 'TERMINATED') {
+        return { kind: 'succeeded', providerRefundId: after?.pspReference ?? null, note: keepTotal > 0 ? 'fee captured, rest cancelled' : 'reservation cancelled' };
+      }
+      return { kind: 'pending', providerRefundId: after?.pspReference ?? null };
+    }
+  }
+
   if (captured - refunded >= r.amountOre) {
     const out = await write('refund', { modificationAmount: { currency: 'NOK', value: r.amountOre } });
     if (out.status >= 500 || out.status === 429) return { kind: 'retry', error: `vipps refund ${out.status}` };
@@ -167,7 +201,8 @@ export async function vippsRefund(
 
   if (captured === 0 && authorized > 0) {
     /* Reserved, never captured: the money is returned by cancelling the
-     * reservation, which is all or nothing. */
+     * reservation, which is all or nothing (unless allowCaptureRest,
+     * handled above). */
     if (r.amountOre < authorized - cancelled) {
       return { kind: 'failed', error: 'vipps payment was never captured: only a full refund (cancellation) is possible' };
     }

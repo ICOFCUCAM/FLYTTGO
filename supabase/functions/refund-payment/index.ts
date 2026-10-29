@@ -10,9 +10,10 @@
 //   Authorization: Bearer <admin's access token>
 //   { "bookingId": "<uuid>", "reason": "optional text" }
 //
-// The amount is the dashboard's rule (status share or the booking's
-// manual_refund_percent) applied on the server to what was actually paid
-// (_shared/pricing.ts refundAmountFor). The flow and its guarantees are
+// The amount is the booking's manual_refund_percent, the cancellation
+// policy for a cancelled booking, or the status share, applied on the
+// server to what was actually paid (_shared/pricing.ts refundAmountFor;
+// _shared/refund-booking.ts). The flow and its guarantees are
 // described in _shared/refunds.ts: one live refund per booking, the same
 // idempotency key on every retry, database effects only after the
 // provider confirms, once.
@@ -28,11 +29,8 @@
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { serviceClient, getCaller } from '../_shared/auth.ts';
-import { refundAmountFor } from '../_shared/pricing.ts';
-import { processRefund, stripeRefund, vippsRefund, type RefundRow } from '../_shared/refunds.ts';
-import { VIPPS_BASE, vippsApiHeaders, vippsMissingConfig } from '../_shared/vipps.ts';
+import { REFUND_BOOKING_COLUMNS, refundBooking } from '../_shared/refund-booking.ts';
 
-const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -68,58 +66,12 @@ serve(async (req: Request) => {
 
   const { data: booking, error: readErr } = await db
     .from('bookings')
-    .select('id, status, price_estimate, paid_amount, manual_refund_percent, payment_provider')
+    .select(REFUND_BOOKING_COLUMNS)
     .eq('id', body.bookingId)
     .maybeSingle();
   if (readErr)  return json({ error: 'booking read failed' }, 500);
   if (!booking) return json({ error: 'booking not found' }, 404);
 
-  const amountNok = refundAmountFor(booking);
-  if (amountNok <= 0) {
-    return json({ error: `No refund is due for a booking with status ${booking.status}` }, 409);
-  }
-
-  try {
-    const result = await processRefund({
-      begin: async () => {
-        const { data, error } = await db.rpc('refund_request_begin', {
-          p_booking_id: body.bookingId, p_amount: amountNok,
-          p_requested_by: caller.id, p_reason: body.reason?.slice(0, 500) ?? null,
-        });
-        if (error) throw Object.assign(new Error(error.message), { status: 409 });
-        return data as RefundRow;
-      },
-      mark: async (id, status, providerRefundId, error) => {
-        const { data, error: markErr } = await db.rpc('refund_mark', {
-          p_refund_id: id, p_status: status, p_provider_refund_id: providerRefundId, p_error: error,
-        });
-        if (markErr) throw new Error(`refund_mark failed: ${markErr.message}`);
-        return data as RefundRow;
-      },
-      provider: async (row) => {
-        const amountOre = Math.round(Number(row.amount) * 100);
-        if (row.provider === 'stripe') {
-          if (!STRIPE_SECRET_KEY) return { kind: 'retry', error: 'STRIPE_SECRET_KEY not configured' };
-          return stripeRefund(fetch, STRIPE_SECRET_KEY, {
-            paymentIntentId: row.provider_reference, amountOre,
-            idempotencyKey: row.idempotency_key, refundId: row.id, bookingId: row.booking_id,
-          });
-        }
-        const missing = vippsMissingConfig();
-        if (missing.length) return { kind: 'retry', error: `Vipps not configured: ${missing.join(', ')}` };
-        return vippsRefund(fetch, { base: VIPPS_BASE, headers: await vippsApiHeaders() }, {
-          reference: row.provider_reference, amountOre, idempotencyKey: row.idempotency_key,
-        });
-      },
-    });
-
-    if (result.outcome === 'retry') {
-      console.warn(`refund ${result.refund.id} not confirmed: ${result.error}`);
-      return json({ status: 'requested', retry: true, error: result.error, refund: result.refund }, 202);
-    }
-    return json({ status: result.outcome, error: result.error, note: result.note, refund: result.refund });
-  } catch (err) {
-    const status = (err as { status?: number }).status ?? 500;
-    return json({ error: (err as Error).message }, status);
-  }
+  const answer = await refundBooking(db, booking, caller.id, body.reason ?? null);
+  return json(answer.body, answer.status);
 });

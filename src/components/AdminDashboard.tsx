@@ -365,8 +365,16 @@ export default function AdminDashboard() {
    * earning and the booking status move together or not at all, the
    * settlement trigger credits the wallet once, and a second click on
    * an already released booking is refused. Amount unchanged from
-   * before: the booking's price. */
+   * before: the booking's price. A Vipps payment is only reserved until
+   * delivery: it is captured first (process-payment, action 'capture'),
+   * and the release goes ahead once Vipps confirms the capture. */
   async function releasePayment(booking: any) {
+    if (booking.payment_provider === "vipps" && !booking.captured_at) {
+      const res = await callFunction("process-payment", { action: "capture", bookingId: booking.id });
+      const out = await res.json().catch(() => ({}));
+      if (res.status === 202) { alert("Vipps did not confirm the capture yet. Try again in a moment."); return; }
+      if (!res.ok) { alert("Capture failed: " + (out.error ?? res.status)); return; }
+    }
     const { error } = await supabase.rpc("admin_release_escrow", { p_booking_id: booking.id });
     if (error) { alert("Release failed: " + error.message); return; }
     alert("Driver wallet credited"); loadData();

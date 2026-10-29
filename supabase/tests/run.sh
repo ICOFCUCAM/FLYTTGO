@@ -53,7 +53,7 @@ echo "── repo ──"
 fresh
 "${PSQL[@]}" -d "$DB" -f supabase/migrations/00001_complete_schema.sql
 migrate
-run_tests supabase/tests/p0_security.test.sql supabase/tests/organizations.test.sql
+run_tests supabase/tests/p0_security.test.sql supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql
 
 echo "── production ──"
 fresh
@@ -64,25 +64,40 @@ fi
 echo "replica matches the production fingerprint"
 migrate
 run_tests supabase/tests/p0_security.test.sql supabase/tests/p0_production.test.sql \
-  supabase/tests/organizations.test.sql
+  supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql
 
 echo "── rollback ──"
-# Function bodies and settings of a fresh replica, to compare with after
-# the rollback (the recorded fingerprint covers structure, not bodies).
+# Function bodies and settings (the fingerprint covers structure, not
+# bodies). Each migration is applied in turn and the state before it
+# recorded; rolling back newest first must return to each recorded state,
+# and in the end to production's.
 BODIES="SELECT p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ') ' || p.prosecdef || ' '
         || coalesce(array_to_string(p.proconfig, ','), '-') || ' ' || md5(p.prosrc)
           FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public' ORDER BY 1"
+state() {
+  "${PSQL[@]}" -d "$DB" -At -F' ' -f supabase/schema/fingerprint.sql
+  "${PSQL[@]}" -d "$DB" -At -c "$BODIES"
+}
+STATES=$(mktemp -d)
 fresh
 "${PSQL[@]}" -d "$DB" -f "$REPLICA"
-before_bodies=$("${PSQL[@]}" -d "$DB" -At -c "$BODIES")
-migrate
-for f in $(ls supabase/rollback/*_down.sql | sort -r); do "${PSQL[@]}" -d "$DB" -f "$f"; done
+for f in "${MIGRATIONS[@]}"; do
+  n=$(basename "$f" | cut -c1-5)
+  state > "$STATES/before-$n"
+  "${PSQL[@]}" -d "$DB" -f "$f"; "${PSQL[@]}" -d "$DB" -f "$f"
+done
+for f in $(ls supabase/rollback/*_down.sql | sort -r); do
+  n=$(basename "$f" | cut -c1-5)
+  "${PSQL[@]}" -d "$DB" -f "$f"
+  if ! diff "$STATES/before-$n" <(state) > "$STATES/diff-$n"; then
+    echo "FAIL: rolling back $n does not restore the state before it:" >&2; head -20 "$STATES/diff-$n" >&2; exit 1
+  fi
+  echo "rollback of $n restores the state before it"
+done
 if ! diff <(fingerprint) "$EXPECTED_FP"; then
   echo "FAIL: after rolling back, the schema differs from production" >&2; exit 1
 fi
-if ! diff <(echo "$before_bodies") <("${PSQL[@]}" -d "$DB" -At -c "$BODIES"); then
-  echo "FAIL: after rolling back, function bodies differ from production's" >&2; exit 1
-fi
+rm -rf "$STATES"
 echo "rollback restores the production schema and function bodies exactly"
 
 echo "── rollback with data ──"

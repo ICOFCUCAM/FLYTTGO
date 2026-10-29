@@ -129,4 +129,18 @@ SELECT tests.login(NULL, 'service_role');
 SELECT tests.ok((SELECT count(*) FROM public.dispatch_wave_priority) >= 0, 'the server can still read the views');
 ROLLBACK;
 
+-- ── Vipps: production's confirmation trigger waits for the capture ──
+BEGIN;
+UPDATE public.bookings SET driver_id = :dp1, status = 'completed', start_time = now() - interval '2 hours',
+       end_time = now(), payment_provider = 'vipps', payment_intent_id = 'booking-conf-1', paid_amount = 2875 WHERE id = :paid;
+SET LOCAL ROLE authenticated;
+SELECT tests.login(:drv1);
+UPDATE public.bookings SET driver_confirmation = true WHERE id = :paid;
+SELECT tests.login(:cust1);
+UPDATE public.bookings SET customer_confirmation = true WHERE id = :paid;
+RESET ROLE;
+SELECT tests.ok((SELECT status FROM public.escrow_payments WHERE booking_id = :paid) = 'capture_pending',
+  'both confirmations on a reserved Vipps payment leave it waiting for the capture');
+ROLLBACK;
+
 \echo 'p0_production: all tests passed'

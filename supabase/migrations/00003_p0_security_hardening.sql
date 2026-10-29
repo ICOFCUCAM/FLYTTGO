@@ -258,7 +258,7 @@ BEGIN
        AND (NEW.customer_confirmation IS NOT DISTINCT FROM OLD.customer_confirmation
             OR (NEW.customer_confirmation = true AND OLD.status = 'completed'))
        AND (NEW.status IS NOT DISTINCT FROM OLD.status
-            OR (NEW.status = 'cancelled' AND OLD.status IN ('pending', 'confirmed')))
+            OR (NEW.status = 'cancelled' AND OLD.status IN ('pending', 'confirmed', 'driver_assigned')))
     THEN
       RETURN NEW;
     END IF;

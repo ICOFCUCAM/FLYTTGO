@@ -166,7 +166,7 @@ export default function TermsPage() {
               FlyttGo operates an escrow payment system. Upon booking confirmation, the Customer's payment is held securely by FlyttGo until both parties confirm job completion. Payment is released to the Transport Provider only upon mutual confirmation of successful delivery.
             </p>
             <p className="text-gray-700 leading-relaxed mb-4">
-              All prices on the Platform are displayed excluding 25% Norwegian VAT (MVA) unless otherwise stated. The final invoice will include applicable VAT. FlyttGo charges a platform commission from the Transport Provider's earnings; this does not affect the Customer's quoted price.
+              All prices shown to customers on the Platform include 25% Norwegian VAT (MVA); the price you see is the price you pay. Business invoices state the VAT amount separately. FlyttGo charges a platform commission from the Transport Provider's earnings; this does not affect the Customer's quoted price.
             </p>
             <h3 className="font-bold text-gray-800 mb-2 text-base">6.1 Cancellation Policy</h3>
             <ul className="list-disc pl-6 space-y-2 text-gray-700 mb-4">
@@ -174,7 +174,11 @@ export default function TermsPage() {
               <li><strong>Within 24 hours of scheduled pickup:</strong> 50% cancellation fee applies.</li>
               <li><strong>No-show by Customer:</strong> Full booking amount is charged.</li>
               <li><strong>Transport Provider cancellation:</strong> Full refund to Customer; Transport Provider may be subject to penalty.</li>
+              <li><strong>Cancellation by FlyttGo:</strong> Full refund to Customer.</li>
             </ul>
+            <p className="text-gray-700 leading-relaxed mb-4">
+              The 24 hours are counted from the booked pickup date and time (Norwegian time) to the moment you cancel. You can cancel in your account until the driver arrives; the refund goes back automatically to the card or Vipps account you paid with. A card refund can take a few days to appear. With Vipps, the amount is reserved until your move is completed, so a refund before then releases the reservation, and a cancellation fee is the only part charged.
+            </p>
             <h3 className="font-bold text-gray-800 mb-2 text-base">6.2 Refunds</h3>
             <p className="text-gray-700 leading-relaxed">
               Refunds for disputed jobs are processed according to FlyttGo's Dispute Resolution process. FlyttGo's maximum liability in any refund scenario is limited to the platform commission collected; FlyttGo does not refund amounts attributable to Transport Provider earnings where services were partially rendered.

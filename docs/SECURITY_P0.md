@@ -23,6 +23,7 @@ The emergency fix is in place (seen 2026-10-29): `admin_accounts` has RLS with a
 | `00002_reconcile_production_schema.sql` | Makes production and `00001` agree on what the app relies on: one driver-identity rule, foreign keys re-pointed (rows that predate a key are kept, and the key is left NOT VALID), `plan_id` as the subscription source with `plan_slug()`, `expired` and `identity_document` allowed, review columns added, production's broken `apply_pending_plan_changes()` and `create_driver_wallet()` fixed. |
 | `00003_p0_security_hardening.sql` | RLS on every table. Column guards on bookings, escrow, profiles, driver tables and payouts. The job pool without customer details, plus `claim_job()`. Dispatch and wallet functions restricted. One-time settlement of escrow to the wallet. `change_driver_subscription` checks the caller. Live tracking: `booking_driver_user()`, the location in the realtime publication, replica identity. Admin escrow release as one transaction. Fixes for production's recursive and RLS-blind escrow triggers. |
 | `00004_payments_and_refunds.sql` | Provider reference and amount paid on bookings, `payment_events` (each webhook event processed once), `payment_refunds`, `refund_request_begin()` / `refund_mark()`. |
+| `00006_launch_decisions.sql` | The decisions of 2026-10-29 ([`DECISIONS.md`](DECISIONS.md)): dispatch eligibility from the subscription with grace periods, plan job limits and weights; cancellations stamped with who and when; Vipps capture before release (`capture_pending`); company verification before activation; platform admins out of company roles. |
 | `00005_organizations.sql` | Not P0: company accounts (organisations, members, invitations) with RLS. Described in [`ORGANIZATIONS.md`](ORGANIZATIONS.md). Can be applied with the others or later. |
 
 Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.sql`, run newest first. They are tested to restore production's schema **and function bodies** exactly (§5).
@@ -39,6 +40,11 @@ Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.s
 | `process-payment` | Caller checked; release requires a captured payment and happens once; commission from the driver's real plan; the wallet is credited by the settlement trigger only |
 | `refund-payment` (new) | Admin-only refund through Stripe (`/v1/refunds`) or Vipps (ePayment refund, or cancelling an uncaptured reservation). Each refund has an idempotency key that every retry reuses. The database changes only once the provider confirms. Answers: `succeeded`, `pending` (finished by webhook), `failed` (with the provider's reason) or `202 requested` (provider unreachable; calling again repeats the same request). |
 | `send-booking-email` | Service-role key or `EMAIL_FUNCTION_SECRET` only |
+| `cancel-booking` (new) | A customer cancels their own booking; the database records it as theirs; the refund follows the Terms (100% / 50% within 24 h) through Stripe or Vipps |
+| `verify-organization` (new) | Admin-only company check in Brønnøysundregistrene, recorded as evidence; required before activation |
+| `send-organization-invitation` (new) | An owner or admin invites by email (Resend); the database checks their role; 20 per company per hour |
+| `process-payment` (again) | `release_escrow` captures a reserved Vipps payment first and never pays the driver more than was collected; new action `capture` |
+| `vipps-webhook` (again) | Asks Vipps for the payment state before marking a booking paid; constant-time secret check |
 | `calculate-price` | Shared module; output unchanged |
 
 ### Frontend
@@ -59,7 +65,7 @@ Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.s
 4. **Corporate invoice is refused** until company accounts and invoice terms exist.
 5. **Admin release needs a captured payment** and works once; the amount is unchanged.
 6. **Commission uses the driver's real plan** (it was always Basic).
-7. **Refunds move money.** The amount follows the old dashboard rule: share by status, or the manual percentage, applied to what was actually paid. Note that the rule gives **0 for a cancelled booking**: a customer who cancels after paying is refunded only through the manual percentage. Please confirm that's intended.
+7. **Refunds move money.** A cancelled booking follows the published policy ([`DECISIONS.md`](DECISIONS.md) #8); otherwise the manual percentage, or the old share by status. Applied to what was actually paid. A booking cancelled before 00006 (no record of who cancelled) needs a manual percentage.
 8. **Driver approval requires** driver's licence, insurance, vehicle registration and **ID document**, the four documents onboarding asks for. Before, it required a profile photo nobody uploads, so no driver could be approved. Confirm, or add a profile-photo step to onboarding.
 9. **Paid bookings from before deployment** have no provider reference, so they can't be refunded automatically. The function says so; refund them in the provider's dashboard.
 10. **Stripe sessions created before deployment** carry no server amount and are held for review (`payment_review_reason`), not marked paid.
@@ -69,9 +75,8 @@ Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.s
 - **Production project.** Confirm "FlyttGo Norway" (`qzclatvpzicwhewzdiwf`) is the one Vercel production uses.
 - **Driver identity.** Confirm the rule in [`PRODUCTION_SCHEMA.md`](PRODUCTION_SCHEMA.md), and decide whether to retire the `drivers` table.
 - **Orphan test data** in production: profiles, driver profiles and documents for deleted users.
-- **Vipps capture.** Vipps payments are reserved and never captured, so the money isn't actually collected. Refunds handle that by cancelling the reservation. **Capture on delivery** (matching the escrow model) is needed before Vipps is used for real.
-- **Dispatch eligibility.** `dispatch_rank_candidates` requires `driver_profiles.subscription_active = true`, which nothing sets. Who sets it, and when?
-- Also open: refunds from a cancelled booking (§3.7), the profile photo (§3.8).
+- Decided 2026-10-29 and built (00006, [`DECISIONS.md`](DECISIONS.md)): Vipps capture on delivery, dispatch eligibility, cancellation refunds, company verification. Still open there: legal review of the terms, the Vipps reservation lifetime, over-time charges on Vipps, `pg_cron`.
+- Also open: the profile photo (§3.8).
 
 ## 5. Deploy order and rollback (when approved)
 
@@ -87,15 +92,17 @@ Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.s
 - a refund in Stripe test mode, and in Vipps test mode.
 
 **Production, in one maintenance window:**
-1. Apply `00002`, `00003`, `00004` in one session (and `00005`, if organisations go live at the same time).
-2. Set the secrets: `EMAIL_FUNCTION_SECRET` and `app.email_function_secret`, plus the Vipps and Stripe secrets if not set. Add `refund.created`, `refund.updated` and `refund.failed` to the Stripe webhook's events.
-3. Deploy the frontend. It works with both old and new functions.
-4. Deploy the edge functions: `create-checkout-session`, `create-vipps-session`, `stripe-webhook`, `vipps-webhook`, `process-payment`, `calculate-price`, `send-booking-email`, `refund-payment`. Functions before the frontend would refuse the old frontend's calls.
-5. Re-run the security advisor. Expect no `rls_disabled` findings.
+1. Apply `00002` → `00006` in one session (`00005` and `00006` hold the organisations and the launch decisions; 00006 needs 00005).
+2. Set the secrets: `EMAIL_FUNCTION_SECRET` and `app.email_function_secret`, plus the Vipps and Stripe secrets if not set, and `RESEND_API_KEY`, `FLYTTGO_FROM`, `FLYTTGO_REPLY_TO`, `FRONTEND_URL`. Add `refund.created`, `refund.updated` and `refund.failed` to the Stripe webhook's events.
+3. Deploy the new functions the new frontend calls: `cancel-booking`, `verify-organization`, `send-organization-invitation`, `refund-payment`. Nothing old calls them.
+4. Deploy the frontend.
+5. Deploy the changed edge functions: `create-checkout-session`, `create-vipps-session`, `stripe-webhook`, `vipps-webhook`, `process-payment`, `calculate-price`, `send-booking-email`. Changed functions before the frontend would refuse the old frontend's calls.
+6. Re-run the security advisor. Expect no `rls_disabled` or `security_definer_view` findings.
+7. Enable `pg_cron` and schedule `docs/subscription-expiry-cron.sql`.
 
 **Rollback:**
 1. Redeploy the previous frontend and functions (Vercel and Supabase keep earlier versions).
-2. Run `supabase/rollback/00005_down.sql` (if 00005 was applied), `00004_down.sql`, `00003_down.sql`, `00002_down.sql` in that order.
+2. Run `supabase/rollback/00006_down.sql`, `00005_down.sql`, `00004_down.sql`, `00003_down.sql`, `00002_down.sql` in that order. Each is tested to return exactly to the state before its migration.
    - Each file states the columns and tables it drops. Export `payment_refunds` first if any refund was made.
    - Wallets moved by 00002 are not moved back.
 3. The rollback re-opens the holes in §1. Use it only to return to a known state.
@@ -109,8 +116,8 @@ The pre-deployment review and its fixes: [`PREDEPLOY_REVIEW.md`](PREDEPLOY_REVIE
 | `npm run typecheck` | 0 errors |
 | `npm run lint` | 0 errors; warnings identical to `main` |
 | `npm run build` | passes |
-| `npm test` (Vitest) | **38 / 38**: pricing and browser/server formula parity, refunds against fake Stripe/Vipps (success, pending, refusal, retry, idempotency key reuse, uncaptured cancel, no double call), tracking (beacon id, customer map follow/stop) |
-| `npm run test:db` | **repo schema 189 / 189; production replica 212 / 212** (P0 109 and 132, organisations 80 on each); **rollback restores production exactly**; **rollback with data** succeeds and keeps every core row |
+| `npm test` (Vitest) | **56 / 56**: cancellation policy (Oslo time, 24 h), Vipps confirm/capture/fee-then-cancel, Brønnøysund check, pricing and browser/server formula parity, refunds against fake Stripe/Vipps (success, pending, refusal, retry, idempotency key reuse, uncaptured cancel, no double call), tracking (beacon id, customer map follow/stop) |
+| `npm run test:db` | **repo schema 236 / 236; production replica 260 / 260** (P0, organisations, launch decisions); **each rollback returns exactly to the state before its migration**, and all of them to production; **rollback with data** succeeds and keeps every core row |
 | Edge functions | Strict TypeScript with stand-in Deno/URL types passes. Real `deno check` runs in CI (deno.land is blocked here). |
 
 `npm run test:db` checks, on each schema:
@@ -128,7 +135,6 @@ What these tests don't prove: Realtime delivery and Storage signed URLs on a rea
 
 ## 7. Follow-ups not in this branch
 
-- Vipps capture on delivery (§4).
 - PaymentPage still shows its own card-number fields before redirecting to Stripe. Nothing is sent, but they should go (PCI scope).
 - CORS is `*` on all functions; restrict it to `FRONTEND_URL`.
 - The location beacon runs only while the driver portal is open in a browser.

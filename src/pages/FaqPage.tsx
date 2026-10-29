@@ -51,7 +51,7 @@ const SECTIONS: FaqSection[] = [
       { q: 'Can I change the date after I\u2019ve booked?',
         a: 'Yes. You can reschedule up to 12 hours before the pickup window at no charge. Changes made later than that incur a 20% fee to compensate the driver who reserved the slot.' },
       { q: 'What\u2019s your cancellation policy?',
-        a: 'Free cancellation up to 24 hours before pickup. Cancellations within 24 hours are charged 50% of the booking total. No-shows are charged the full amount.' },
+        a: 'Free cancellation up to 24 hours before pickup. Cancellations within 24 hours are charged 50% of the booking total. No-shows are charged the full amount. Cancel in your account until the driver arrives: the refund goes back automatically to the card or Vipps account you paid with. If the driver or FlyttGo cancels, you get everything back.' },
       { q: 'Can I track my driver in real time?',
         a: 'Yes. Once the driver accepts your job you\u2019ll see their live location on a map, an ETA, and the current stage of the delivery.' },
       { q: 'What if I need to add more items on the day?',

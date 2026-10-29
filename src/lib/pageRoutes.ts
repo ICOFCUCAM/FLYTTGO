@@ -41,6 +41,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   'company-dashboard-info':  '/business/about-dashboard',
   'invoice-billing':         '/business/invoicing',
   'corporate-api-access':    '/business/api',
+  'accept-invitation':       '/business/invite',
 
   /* Legal */
   'terms':                   '/terms',
@@ -125,6 +126,7 @@ const PAGE_TITLES: Record<Page, string> = {
   'sustainability':          'Sustainability · FlyttGo',
   'auth-callback':           'Signing you in… · FlyttGo',
   'driver-application-status': 'Driver Application Status · FlyttGo',
+  'accept-invitation':       'Company invitation · FlyttGo',
   'not-found':               'Page Not Found · FlyttGo',
 };
 
@@ -204,6 +206,8 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     'Confirming your FlyttGo account and signing you in. You\u2019ll be redirected to your dashboard automatically.',
   'driver-application-status':
     'Track the status of your FlyttGo driver application — pending review, approved, or rejected with next steps.',
+  'accept-invitation':
+    'Accept an invitation to join your company on FlyttGo Business.',
   'not-found':
     "The page you were looking for doesn't exist. Find what you need from the FlyttGo homepage, or book a move from any of our services.",
 };

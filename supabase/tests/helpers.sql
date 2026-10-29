@@ -79,10 +79,11 @@ UPDATE public.driver_profiles SET subscription_active = true;
 
 -- The plans as in production (00001 ships none). Driver 1 is on Pro,
 -- driver 2 has no subscription (treated as free: jobs up to 500 NOK).
-INSERT INTO public.subscription_plans (name, price, billing_period)
-SELECT v.name, v.price, v.billing
-  FROM (VALUES ('Free', 0, 'none'), ('Basic', 0, 'daily'), ('Pro Mini', 149, 'daily'),
-               ('Pro', 1500, 'monthly'), ('Unlimited', 2449, 'monthly')) AS v(name, price, billing)
+INSERT INTO public.subscription_plans (name, price, billing_period, dispatch_priority, dispatch_weight, max_job_value)
+SELECT v.name, v.price, v.billing, v.prio, v.weight, v.maxv
+  FROM (VALUES ('Free', 0, 'none', 5, 1, 500), ('Basic', 0, 'daily', 4, 2, NULL), ('Pro Mini', 149, 'daily', 3, 3, NULL),
+               ('Pro', 1500, 'monthly', 2, 4, NULL), ('Unlimited', 2449, 'monthly', 1, 5, NULL))
+       AS v(name, price, billing, prio, weight, maxv)
  WHERE NOT EXISTS (SELECT 1 FROM public.subscription_plans sp WHERE public.plan_slug(sp.name) = public.plan_slug(v.name));
 DO $$ BEGIN PERFORM public.change_driver_subscription('d0000000-0000-0000-0000-000000000001', 'pro'); END $$;
 

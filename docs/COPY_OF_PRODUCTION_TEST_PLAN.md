@@ -11,7 +11,7 @@ Every item must pass before production is touched ([`PREDEPLOY_REVIEW.md`](PREDE
    - Restore it into a new project, for example "FlyttGo Norway – copy 2026-11".
    - Never use a Supabase branch of production that shares its Auth or Storage.
 2. **Fingerprint.** On the copy, before migrating: `supabase/schema/fingerprint-summary.sql` must equal `production-2026-10-29.fingerprint`.
-3. **Migrations.** Apply `00002` → `00005` in one session. Save the NOTICE output (policies dropped, keys left NOT VALID, wallets moved).
+3. **Migrations.** Apply `00002` → `00006` in one session. Save the NOTICE output (policies dropped, keys left NOT VALID, wallets moved).
 4. **Secrets on the copy only.**
    - Stripe test keys (`sk_test_…`, webhook signing secret for a test endpoint);
    - Vipps test credentials (`apitest.vipps.no`) and `VIPPS_WEBHOOK_SECRET`;
@@ -115,9 +115,33 @@ Every item must pass before production is touched ([`PREDEPLOY_REVIEW.md`](PREDE
 - [ ] **Verification gate.** `admin1` activates A, and `is_active_org_member` becomes true for its members. After suspending A it is false, and A can't invite.
 - [ ] **Read-only members.** A booker or viewer sees no invitations or events.
 
+## 9a. Launch decisions (00006, [`DECISIONS.md`](DECISIONS.md))
+
+**Dispatch**
+- [ ] With `subscription_active` false for everyone, a paid booking is dispatched: Pro and Unlimited drivers outrank Free, and Free drivers never get jobs over 500 NOK.
+- [ ] A monthly plan whose end date passed 1 hour ago still dispatches as that plan. After 25 hours, the driver works as Free. The cron (or opening the portal) marks the plan expired and starts Free.
+
+**Cancellations (Stripe test mode)**
+- [ ] Book for a pickup 3 days away, pay by Stripe, and cancel from My Bookings. Expect `cancelled_by` customer, a 100% refund in the Stripe dashboard, and `payment_refunds` succeeded.
+- [ ] Book for a pickup 12 hours away and cancel. Expect a 50% refund; the booking stays paid with the fee kept.
+- [ ] **Negative:** PATCH `cancelled_by` or `cancelled_at` through the API. Expect refused.
+
+**Vipps (test mode)**
+- [ ] **Fee, then cancel.** Cancel a Vipps booking within 24 hours. In the Vipps test portal: 50% captured, the rest cancelled. Calling `cancel-booking` again changes nothing.
+- [ ] **Confirm before paid.** A forged webhook with the right secret but a reference Vipps doesn't know leaves the booking unpaid, held for review.
+- [ ] **Capture on delivery.** Both parties confirm a Vipps booking. The escrow goes to `capture_pending` until `process-payment` captures; then it is released and the driver is paid once. Vipps shows the full amount captured.
+- [ ] **Vipps outage.** With Vipps unreachable (wrong key), the release answers "being collected" and nothing is paid. With the key restored, the next call completes it.
+
+**Companies**
+- [ ] **Activation needs a check.** Activating a pending company without a check is refused. `verify-organization` against a real organisation number passes, records the evidence and sets the VAT flag; activation then succeeds.
+- [ ] **Failed checks.** A wrong name or a bankrupt test number fails, and activation stays refused.
+- [ ] **Admins are not members (negative).** As `admin1`, `invite_member`, `change_member_role` and `update_organization` on a company are refused. `admin_transfer_ownership` with a reason works and is logged.
+- [ ] **Invitation email.** `send-organization-invitation` emails the invitee (check the Resend log). The link opens `/business/invite`; signing in with the invited, confirmed address joins the company with the invited role. The token disappears from the address bar.
+- [ ] **Rate limit.** The 21st invitation within an hour is refused (429).
+
 ## 10. Rollback rehearsal (on the copy)
 
-- [ ] **Run the rollback.** After sections 2–9 have written data: export the refund, event and organisation tables, then run `00005_down` → `00002_down`.
+- [ ] **Run the rollback.** After sections 2–9 have written data: export the refund, event and organisation tables, then run `00006_down` → `00002_down`.
 - [ ] **Constraints.** Expect it to succeed. Note the NOTICEs: the NOT VALID constraints should match those listed in the review §5.
 - [ ] **Old frontend.** Redeploy the previous frontend and functions. Confirm the site loads and an existing booking is visible to its customer.
 - [ ] **Re-apply.** Apply 00002 → 00005 again and repeat the smoke items (2, 3, 4, 7: one each). Expect them to pass.

@@ -39,6 +39,13 @@ SELECT public.create_organization('Rollback AS', 'rollback-as');
 SELECT public.invite_member((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'cust2@test', 'viewer');
 SELECT set_config('request.jwt.claims', '', false);
 
+-- 00006: a cancellation stamped by the database, a captured payment,
+-- a company verification.
+UPDATE public.bookings SET status = 'cancelled' WHERE id = 'b0000000-0000-0000-0000-000000000001';
+UPDATE public.bookings SET captured_at = now(), captured_amount = 2875 WHERE id = 'b0000000-0000-0000-0000-000000000002';
+SELECT public.record_organization_verification((SELECT id FROM public.organizations WHERE slug = 'rollback-as'),
+                                               'brreg', true, '{"navn":"ROLLBACK AS"}');
+
 -- What exists before the rollback, for the comparison afterwards.
 CREATE TABLE public.zz_rollback_before AS
 SELECT 'bookings' t, count(*) n FROM public.bookings

@@ -37,19 +37,25 @@ This is step 2 of the corporate portal plan: the tenant foundation only. The cor
 - **Invitation tokens** are 64 random hex characters (two `gen_random_uuid()`s, 244 bits). Only the hash is stored. A new invitation for the same address revokes the open one.
 - Helpers for later policies on bookings and invoices: `org_role(org)` and `is_org_member(org, roles)`.
 
+## Decided 2026-10-29 (migration 00006)
+
+- **Platform administrators are not members.** They read every company, set its status, record verifications and restore an owner with `admin_transfer_ownership(org, user, reason)` (logged). They don't invite, change roles, remove members or edit details: `require_org_role` no longer lets them through.
+- **Verification before activation.** `admin_set_organization_status(org, 'active')` requires a passed check of the current organisation number, at most 30 days old.
+  - A Norwegian company is checked by `verify-organization`. It looks the company up in Brønnøysundregistrene and checks that it exists, that it isn't bankrupt, being wound up or dissolved, and that its name matches. It also takes the VAT registration from the register.
+  - Otherwise an administrator records a manual check with its evidence: `record_organization_verification(org, 'manual', passed, {"evidence": …})`.
+  - Checks are kept in `organization_verifications`, which owners and admins of the company can read.
+- **Closing releases the last owner.** In a closed company the last owner can leave or delete their account.
+- **Invitation emails:** `send-organization-invitation` creates the invitation as the inviter and emails the link `/business/invite?token=…`. The page `AcceptInvitationPage` accepts it after sign-in.
+
 ## Existing `corporate_accounts` and `corporate_orders`
 
 Production has these two tables (both empty, not defined in this repository, admin-only since 00003). They are left untouched. New company work uses `organizations`. Decide whether to drop them once nothing refers to them.
 
-## Not yet decided or built
+## Not yet built
 
-The recommended verification lifecycle (Brønnøysund lookup, invitation emails, what each status may do) is in [`PREDEPLOY_REVIEW.md`](PREDEPLOY_REVIEW.md) §4.5.
-
-- Sending the invitation email (an edge function that calls `invite_member` and mails the link). Until then, the token is returned to the inviter.
-- Whether the platform verifies organisation numbers against Brønnøysundregistrene before activation.
-- What `pending` may do. Today a pending organisation can invite its team but nothing else exists to use. Bookings will require `active`.
-- Per-member spending limits and approval rules (step 4, company bookings).
+- An admin screen for verification and activation (step 3, connect dashboard). Today: the `verify-organization` function and the RPCs.
+- Per-member spending limits and approval rules (step 4, company bookings). Bookings, invoices, credit and API keys will require `is_active_org_member()`.
 
 ## Tests
 
-`supabase/tests/organizations.test.sql` runs in `npm run test:db` on both the repository schema and the production replica (80 checks: cross-tenant isolation, invitations, roles, owner retention, pending/active, append-only log), and the rollback variant includes 00005.
+`supabase/tests/organizations.test.sql` runs in `npm run test:db` on both the repository schema and the production replica (80 checks: cross-tenant isolation, invitations, roles, owner retention, pending/active, append-only log), and `launch_decisions.test.sql` for the 2026-10-29 changes (admin powers, verification, closing), and the rollback variant includes 00005.

@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { useApp } from "../lib/store";
 import { supabase, callFunction } from "../lib/supabase";
+import { CANCELLATION_NOTICE, cancelBookingWithRefund } from "../lib/cancelBooking";
+import { releaseEscrow } from "../lib/releaseEscrow";
 
 /* Lazy-load Leaflet so the ~150 KB map bundle is only fetched when
  * there's actually an in-flight booking to render. MyBookings uses
@@ -82,8 +84,10 @@ export default function CustomerDashboard() {
     await supabase.from("bookings").update({ customer_confirmation: true }).eq("id", bookingId);
     const { data: booking } = await supabase.from("bookings").select("driver_confirmation").eq("id", bookingId).single();
     if (booking?.driver_confirmation === true) {
-      await callFunction("process-payment", { action: "release_escrow", bookingId });
-      alert("Job complete! Payment released to driver.");
+      const outcome = await releaseEscrow(bookingId);
+      alert(outcome === "released" ? "Job complete! Payment released to driver."
+        : outcome === "waiting" ? "Job complete! Your payment is being collected; the driver is paid once it is."
+        : "Job complete! The payment could not be released yet; our team will follow up.");
     } else { alert("Confirmed! Waiting for driver confirmation."); }
     loadData();
   }
@@ -94,8 +98,8 @@ export default function CustomerDashboard() {
   }
 
   async function cancelBooking(bookingId: string) {
-    await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
-    alert("Booking cancelled"); loadData();
+    if (!confirm(CANCELLATION_NOTICE)) return;
+    alert(await cancelBookingWithRefund(bookingId)); loadData();
   }
 
   /** Hand the user off to the payment page with this booking preselected.
@@ -252,7 +256,7 @@ export default function CustomerDashboard() {
               {activeBooking.status === "completed_by_driver" && (
                 <button onClick={() => confirmCompletion(activeBooking.id)} className="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-semibold">Confirm Completion</button>
               )}
-              {activeBooking.status === "awaiting_driver" && (
+              {["pending", "confirmed", "driver_assigned"].includes(activeBooking.status) && (
                 <button onClick={() => cancelBooking(activeBooking.id)} className="bg-red-600 text-white px-4 py-2 rounded text-sm font-semibold">Cancel Booking</button>
               )}
             </div>
