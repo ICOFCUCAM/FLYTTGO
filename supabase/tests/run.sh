@@ -21,7 +21,7 @@ cd "$(dirname "$0")/../.."
 DB="${FLYTTGO_TEST_DB:-flyttgo_test}"
 REPLICA=supabase/schema/production-2026-10-29.sql
 EXPECTED_FP=supabase/schema/production-2026-10-29.fingerprint
-MIGRATIONS=(supabase/migrations/0000[2-9]_*.sql supabase/migrations/0001[0-9]_*.sql)
+MIGRATIONS=(supabase/migrations/0000[2-9]_*.sql supabase/migrations/00[1-9][0-9]_*.sql)
 PSQL=(psql -X -q -v ON_ERROR_STOP=1)
 export PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
 
