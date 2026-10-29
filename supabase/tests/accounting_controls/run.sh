@@ -3,19 +3,43 @@
 # Before offering it): the replica, every migration, representative data;
 # then concurrency, duplicate deliveries, isolation, invitations, and a
 # rollback with books in place. Called by ../run.sh with its PG* settings.
+#
+# On a disposable Supabase test project instead (docs/TEST_COPY_PLAN.md):
+#   TEST_COPY_DB_URL='postgresql://postgres:…@db.<test-ref>.supabase.co:5432/postgres' \
+#     bash supabase/tests/accounting_controls/run.sh
+# It refuses FlyttGo's production project and Architect-AI, and a database
+# that already has a public schema with tables (it must be a fresh project).
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
-DB="${FLYTTGO_TEST_DB:-flyttgo_test}_ctl"
+REMOTE="${TEST_COPY_DB_URL:-}"
+if [ -n "$REMOTE" ]; then
+  case "$REMOTE" in
+    *qzclatvpzicwhewzdiwf*|*unvueybndyzvcbnltuwp*) echo "FAIL: refusing a production project; use a disposable test project" >&2; exit 1 ;;
+  esac
+  DB="$REMOTE"
+else
+  DB="${FLYTTGO_TEST_DB:-flyttgo_test}_ctl"
+fi
 PSQL=(psql -X -q -v ON_ERROR_STOP=1)
 export PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
 q() { "${PSQL[@]}" -d "$DB" -At -c "$1"; }
 show() { PGOPTIONS='-c client_min_messages=notice' "${PSQL[@]}" -d "$DB" -f "$1" 2>&1 | grep -E '^(psql:.*)?(NOTICE:  ok|ERROR|FAIL)|passed|data: ' | sed 's/^psql:[^ ]* //'; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
+ERR=$(mktemp)
 ok() { echo "NOTICE:  ok - $*"; }
 
-"${PSQL[@]}" -d postgres -c "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" -c "CREATE DATABASE \"$DB\""
-"${PSQL[@]}" -d "$DB" -f supabase/tests/supabase-stub.sql 2>&1 | grep -v -e wal_level -e HINT || true
+if [ -n "$REMOTE" ]; then
+  [ "$(q "SELECT count(*) FROM pg_tables WHERE schemaname = 'public'")" = 0 ] || fail "the test project is not empty; use a fresh project"
+  [ "$(q "SELECT to_regclass('auth.users') IS NOT NULL AND to_regclass('storage.objects') IS NOT NULL")" = t ] || fail "not a Supabase database"
+else
+  "${PSQL[@]}" -d postgres -c "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" -c "CREATE DATABASE \"$DB\""
+  "${PSQL[@]}" -d "$DB" -f supabase/tests/supabase-stub.sql 2>&1 | grep -v -e wal_level -e HINT || true
+fi
 "${PSQL[@]}" -d "$DB" -f supabase/schema/production-2026-10-29.sql
+# The copy must be production's schema before anything is applied.
+diff <("${PSQL[@]}" -d "$DB" -At -F' ' -f supabase/schema/fingerprint-summary.sql) supabase/schema/production-2026-10-29.fingerprint \
+  || fail "the copy's schema differs from production's recorded fingerprint"
+ok "the copy matches production's schema fingerprint before the migrations"
 for f in supabase/migrations/0000[2-9]_*.sql supabase/migrations/0001[0-9]_*.sql; do "${PSQL[@]}" -d "$DB" -f "$f"; done
 "${PSQL[@]}" -d "$DB" -f supabase/tests/helpers.sql
 # The fixture functions the other suites define (their own data rolls back).
@@ -70,10 +94,10 @@ ok "a close waits for a voucher being posted, then closes the period"
 ( echo "$(as $CUST2) SELECT accounting.lock_period('$LB', '$D1'); SELECT pg_sleep(2); COMMIT;" | "${PSQL[@]}" -d "$DB" >/dev/null ) & P=$!
 sleep 0.7
 if echo "$(as $CUST2) SELECT accounting.post_voucher('$LB', '$D1', 'For sent', '[{\"account\":\"6800\",\"amount\":10},{\"account\":\"1920\",\"amount\":-10}]'); COMMIT;" \
-   | "${PSQL[@]}" -d "$DB" >/dev/null 2>"$DB.err"; then fail "a voucher got into a period being closed"; fi
+   | "${PSQL[@]}" -d "$DB" >/dev/null 2>"$ERR"; then fail "a voucher got into a period being closed"; fi
 wait $P
-grep -q "is closed" "$DB.err" || fail "the late voucher failed for another reason: $(cat "$DB.err")"
-rm -f "$DB.err"
+grep -q "is closed" "$ERR" || fail "the late voucher failed for another reason: $(cat "$ERR")"
+rm -f "$ERR"
 ok "a voucher dated in a period being closed waits, then is refused"
 
 # ── The same payment delivered twice at once (Stripe webhook retries) ────
@@ -89,10 +113,10 @@ wait $P1; wait $P2
 ok "the same card payment delivered twice at once is recorded and posted once"
 INV2=$(q "SELECT id FROM public.invoices WHERE issuer_org = '$ORG_A' AND status = 'issued' AND kind = 'invoice' ORDER BY number LIMIT 1")
 q "BEGIN; SET LOCAL ROLE service_role; SELECT tests.login(NULL, 'service_role'); SELECT public.record_invoice_payment('$INV2', 100, current_date, 'card', 'pi_part'); COMMIT;" >/dev/null
-if q "BEGIN; SET LOCAL ROLE service_role; SELECT tests.login(NULL, 'service_role'); SELECT public.record_invoice_payment('$INV2', 100, current_date, 'card', 'pi_part'); COMMIT;" >/dev/null 2>"$DB.err"; then
+if q "BEGIN; SET LOCAL ROLE service_role; SELECT tests.login(NULL, 'service_role'); SELECT public.record_invoice_payment('$INV2', 100, current_date, 'card', 'pi_part'); COMMIT;" >/dev/null 2>"$ERR"; then
   fail "a second delivery of a part payment was recorded"; fi
-grep -q "invoice_payments_provider_ref_key" "$DB.err" || fail "a repeated part payment failed for another reason: $(cat "$DB.err")"
-rm -f "$DB.err"
+grep -q "invoice_payments_provider_ref_key" "$ERR" || fail "a repeated part payment failed for another reason: $(cat "$ERR")"
+rm -f "$ERR"
 ok "a repeated delivery of a part payment is refused by its provider reference (23505)"
 PID=$(q "SELECT id FROM public.invoice_payments WHERE invoice_id = '$INV2'")
 [ "$(q "SELECT public.accounting_post_payment('$PID') = public.accounting_post_payment('$PID')")" = t ] || fail "posting a payment again made a new voucher"
@@ -127,5 +151,5 @@ ok "invoicing keeps working without accounting (no posting triggers left)"
 [ "$(q "SELECT count(*) FROM accounting.ledgers")" = 0 ] && [ "$(q "${HASH//SCHEMA/$KEPT}")" = "$H1" ] || fail "re-applying touched the books set aside"
 ok "applying the migrations again starts a fresh schema and leaves the books set aside untouched"
 
-"${PSQL[@]}" -d postgres -c "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)"
+[ -n "$REMOTE" ] || "${PSQL[@]}" -d postgres -c "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)"
 echo "accounting controls: all passed"

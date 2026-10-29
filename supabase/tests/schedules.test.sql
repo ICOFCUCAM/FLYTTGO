@@ -35,12 +35,14 @@ DO $$
 DECLARE n int;
 BEGIN
   SELECT count(*) INTO n FROM cron.job;
-  IF n <> 3 THEN RAISE EXCEPTION 'FAIL: % jobs after two runs, expected 3', n; END IF;
+  IF n <> 4 THEN RAISE EXCEPTION 'FAIL: % jobs after two runs, expected 4', n; END IF;
+  IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-accounting-cancellations' AND schedule = '20 0 * * *'
+                 AND command LIKE '%accounting.apply_cancellations()%') THEN RAISE EXCEPTION 'FAIL: accounting cancellations job'; END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'auto-downgrade-expired-subscriptions' AND schedule = '0 * * * *'
                  AND command LIKE '%expire_lapsed_subscriptions(NULL)%') THEN RAISE EXCEPTION 'FAIL: expiry job'; END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-invoice-run' AND schedule = '15 5 * * *') THEN RAISE EXCEPTION 'FAIL: invoice job'; END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-appointment-reminders' AND schedule = '10 * * * *') THEN RAISE EXCEPTION 'FAIL: reminder job'; END IF;
-  RAISE NOTICE 'ok: three jobs, a re-run replaces them and the old expiry job';
+  RAISE NOTICE 'ok: four jobs, a re-run replaces them and the old expiry job';
 END $$;
 
 -- Without the Vault secrets a job fails and sends nothing.
@@ -62,7 +64,7 @@ INSERT INTO vault.secrets_stub VALUES ('flyttgo_project_url', 'https://example.s
 DO $$
 DECLARE c text;
 BEGIN
-  FOR c IN SELECT command FROM cron.job WHERE jobname <> 'auto-downgrade-expired-subscriptions' ORDER BY jobname LOOP EXECUTE c; END LOOP;
+  FOR c IN SELECT command FROM cron.job WHERE jobname NOT IN ('auto-downgrade-expired-subscriptions', 'flyttgo-accounting-cancellations') ORDER BY jobname LOOP EXECUTE c; END LOOP;
   IF NOT EXISTS (SELECT 1 FROM net.sent WHERE url = 'https://example.supabase.co/functions/v1/invoice-run'
                  AND headers ->> 'Authorization' = 'Bearer test-key' AND timeout_milliseconds = 150000) THEN RAISE EXCEPTION 'FAIL: invoice-run request'; END IF;
   IF NOT EXISTS (SELECT 1 FROM net.sent WHERE url = 'https://example.supabase.co/functions/v1/appointment-reminders') THEN RAISE EXCEPTION 'FAIL: reminder request'; END IF;

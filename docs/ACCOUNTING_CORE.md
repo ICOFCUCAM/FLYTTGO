@@ -69,29 +69,18 @@ By the company's yearly turnover (income, accounts 3xxx): last calendar year's f
 
 An agreed price on the ledger always wins (exceptional cases, and Enterprise, where approval requires one). Billed monthly on FlyttGo's invoice by `invoice-run` (each month once). Changed in `platform_config.accounting_price_tiers` (and `accounting_price_status` to `confirmed`).
 
-### Commercial terms to settle before publishing (proposals; the owner decides)
+### Pilot terms (owner, 2026-10-29; provisional like the prices)
 
-| Term | Proposal |
-|---|---|
-| Commitment and cancellation | Monthly, no minimum term; ended by the company's owner to the end of the month; books stay readable afterwards (end_ledger). Alternative: 12 months' minimum for Medium and above. |
-| What is included | Unlimited vouchers, receipts, users in the back office, documents and SAF-T; no transaction-volume limit in the pilot. Revisit if a company's volume makes it costly. |
-| Turnover for a new company | Declared at the start; if the first full year in the books falls in another band, the new band applies from the next 1 January; no back-billing either way. |
-| Enterprise quotation | The company states its turnover when it asks; FlyttGo sends a written offer; the agreed monthly price is entered when approving (required for this band) with the reference in the decision note. |
-| Price changes | Announced at least 30 days ahead; never back-dated. |
+| Term | Pilot policy | Where |
+|---|---|---|
+| Billing | Monthly, in advance, on FlyttGo's invoice | `create_accounting_invoice()`, `invoice-run` |
+| Cancellation | Effective at the end of the paid month: the service runs to the last day of the month; afterwards the books stay readable and take no new vouchers; withdrawable until then; no minimum term | `end_ledger()`, `resume_ledger()`, nightly `apply_cancellations()` |
+| Volumes | Unlimited vouchers, receipts, back-office users and documents, under fair use | below |
+| New company's band | The declared band at the start; corrected from the next 1 January when the first full year in the books falls elsewhere; no back-billing either way | `accounting_tier()` |
+| Enterprise | A written offer; the approved monthly price is recorded on the company's ledger when FlyttGo approves (required in this band), with the offer's reference in the decision note | `decide_ledger()`, Admin → Accounting |
+| Price changes | Announced in advance, applied from a future month only | |
 
-## FlyttGo specifics (00015)
-
-- Tenants are organisations; their owners, admins and finance are "owners" of the books; owners and admins manage the back office.
-- FlyttGo's administrators approve the add-on and keep FlyttGo's own books; they never read a company's books.
-- FlyttGo's own invoices post into the house ledger; a company's sales invoices into its ledger.
-
-## Before offering it
-
-1. Apply 00014 and 00015 with the rest; expose the `accounting` schema to the API; deploy `accounting-invite` (secrets as `send-organization-invitation`).
-2. Confirm the prices.
-3. **System documentation** (bokføringsforskriften § 2-1): this document, the migrations and the tests are its basis; a written version for companies and their accountants is needed.
-4. Have an authorised accountant review the chart, the grouping codes, the MVA treatment (in particular 0 % sales: code 5 or 6) and the documents before companies rely on them.
-5. Storage: the books must be kept 5 years after the year end; the database and the receipts bucket are backed up (Supabase PITR) and nothing in the system deletes them.
+**Fair use.** Unlimited means no limit for normal use of a company of its size. The technical safeguards are those every user has: a receipt is at most 10 MB and of an accepted type; at most 20 invitations an hour per company. If a company's use is extraordinary (for example tens of thousands of vouchers a month or receipts beyond tens of gigabytes), FlyttGo contacts it to agree terms before anything changes; no limit is imposed silently or contrary to the published offer.
 
 ## Test stage on a copy of production
 
@@ -105,7 +94,7 @@ An agreed price on the ledger always wins (exceptional cases, and Enterprise, wh
 6. **Invitations:** expiry, withdrawal, a replaced invitation, the wrong person, a guessed token, single use, anonymous callers, an ended ledger; the token is never stored or readable.
 7. **Rollback with books:** rolling back 00015 and 00014 keeps every voucher, line, number, receipt and log entry (compared by hash), set aside and closed to clients; invoicing keeps working; re-applying starts fresh and leaves the set-aside books untouched.
 
-Still to do on a real disposable copy (a Supabase branch or a restored backup) before production, after the accountant's review: the same steps with the copy's real data volume, and the edge functions (`accounting-invite`, `invoice-run` step 2c, `stripe-webhook`) against it.
+Next: the same runner on a disposable Supabase test project, plus the edge functions and Stripe in test mode: [`TEST_COPY_PLAN.md`](TEST_COPY_PLAN.md) (options, cost, isolation, cleanup). The runner refuses production and Architect-AI, and stops unless the copy matches production's fingerprint.
 
 ## Next
 

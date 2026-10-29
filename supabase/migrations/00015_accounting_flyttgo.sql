@@ -188,7 +188,10 @@ BEGIN
   SELECT * INTO l FROM accounting.ledgers WHERE tenant_id = p_org AND status IN ('active', 'ended') AND decided_at IS NOT NULL;
   IF NOT FOUND THEN RETURN NULL; END IF;
   INSERT INTO public.invoices (organization_id, notes, created_by) VALUES (p_org, 'Regnskap (FlyttGo)', auth.uid()) RETURNING * INTO v_inv;
-  v_end := CASE WHEN l.status = 'ended' THEN least(v_month, date_trunc('month', l.ended_at AT TIME ZONE 'Europe/Oslo')::date) ELSE v_month END;
+  -- A cancelled ledger is billed up to and including the month of its last day.
+  v_end := CASE WHEN l.cancel_at IS NOT NULL THEN least(v_month, date_trunc('month', l.cancel_at)::date)
+                WHEN l.status = 'ended' THEN least(v_month, date_trunc('month', l.ended_at AT TIME ZONE 'Europe/Oslo')::date)
+                ELSE v_month END;
   v_m := date_trunc('month', l.decided_at AT TIME ZONE 'Europe/Oslo')::date;
   WHILE v_m <= v_end LOOP
     IF NOT EXISTS (SELECT 1 FROM public.accounting_charges WHERE ledger_id = l.id AND period = v_m) THEN

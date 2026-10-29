@@ -132,7 +132,8 @@ export default function WhiteLabelPlansPage() {
                 <td className="pe-6 text-gray-500">yearly turnover NOK {bandRange(lower, t.up_to, 'en')}</td>
                 <td>{t.monthly_fee === null ? 'price by agreement' : `${formatNok(t.monthly_fee)} / month`}</td></tr>;
               lower = t.up_to ?? lower; return row; }); })()}</tbody></table>
-            <p className="text-xs text-gray-500 mt-3">Excl. MVA. The band follows last year's turnover in your books (or what you state when you start) and is reassessed each 1 January.
+            <p className="text-xs text-gray-500 mt-3">Excl. MVA, billed monthly in advance; cancel at any time, effective at the end of the paid month.
+              Unlimited vouchers, users and documents under fair use. The band follows last year's turnover in your books (or what you state when you start) and is reassessed each 1 January.
               {accounting.price_status !== 'confirmed' && ' Provisional prices for the pilot period; the price that applies is the one in your agreement.'}</p>
           </div>
         )}

@@ -7,7 +7,7 @@ import { btn, can, input, today, useOffice, useRunner } from './office';
 import { Card, Message } from './parts';
 
 export default function SettingsTab() {
-  const { api, ledger, role, lang, t, reloadLedger } = useOffice();
+  const { api, ledger, role, canManage, lang, t, reloadLedger } = useOffice();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [codes, setCodes] = useState<MvaCode[]>([]);
   const [lockDate, setLockDate] = useState('');
@@ -37,6 +37,25 @@ export default function SettingsTab() {
             onChange={e => setting({ auto_post: e.target.checked })} /> {t('autoPost')}</label>
         </div>
       </Card>
+      {canManage && ledger.tenant_id && ledger.status === 'active' && (
+        <Card title={t('cancelTitle')}>
+          {ledger.cancel_at ? (
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <span>{t('cancelledUntil')} <strong>{day(ledger.cancel_at, lang)}</strong></span>
+              <button disabled={busy} className={`${btn} bg-gray-100`} onClick={() =>
+                run(async () => { const r = await api.resume(ledger.id); await reloadLedger(); return r.error; }, t('done'))}>{t('withdraw')}</button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-gray-600 mb-3">{t('cancelBody')}</p>
+              <button disabled={busy} className={`${btn} bg-gray-100 text-red-700`} onClick={() => {
+                const reason = prompt(t('reason'));
+                if (reason !== null && confirm(t('confirm'))) run(async () => { const r = await api.end(ledger.id, reason); await reloadLedger(); return r.error; }, t('done'));
+              }}>{t('cancelButton')}</button>
+            </>
+          )}
+        </Card>
+      )}
       {editable && (
         <Card title={`${t('lockPeriod')} · ${t('closeYear')}`}>
           <p className="text-sm text-gray-600 mb-2">{ledger.locked_until ? `${t('lockedUntil')} ${day(ledger.locked_until, lang)}` : '—'}</p>

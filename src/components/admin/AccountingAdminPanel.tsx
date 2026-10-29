@@ -51,7 +51,7 @@ export default function AccountingAdminPanel() {
             return (
               <tr key={l.id} className="border-b border-gray-100">
                 <td className="py-2">{l.legal_name}<div className="text-xs text-gray-500">{l.org_number}</div></td>
-                <td>{l.status}</td>
+                <td>{l.status}{l.cancel_at ? ` (last day ${l.cancel_at})` : ""}</td>
                 <td>{tier?.tier ?? '—'} <span className="text-xs text-gray-500">({money(tier?.turnover ?? 0, 'en')}, {tier?.basis})</span></td>
                 <td className="text-right tabular-nums">{tier?.monthly_fee !== null && tier?.monthly_fee !== undefined ? money(tier.monthly_fee, 'en') : 'to agree'}{l.monthly_fee !== null ? ' (agreed)' : ''}</td>
                 <td className="text-right space-x-2 whitespace-nowrap">

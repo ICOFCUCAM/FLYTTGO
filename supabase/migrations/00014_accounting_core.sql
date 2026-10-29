@@ -110,10 +110,13 @@ CREATE TABLE IF NOT EXISTS accounting.ledgers (
   decided_at     timestamptz,
   decision_note  text,
   ended_at       timestamptz,
+  cancel_at      date,                       -- the last day of service after a cancellation (end of the paid month)
+  cancel_reason  text,
   created_at     timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT ledgers_lock_after_start CHECK (locked_until IS NULL OR locked_until >= start_date - 1)
 );
 CREATE UNIQUE INDEX IF NOT EXISTS ledgers_one_house ON accounting.ledgers ((true)) WHERE tenant_id IS NULL;
+ALTER TABLE accounting.ledgers ADD COLUMN IF NOT EXISTS cancel_at date, ADD COLUMN IF NOT EXISTS cancel_reason text;
 
 CREATE TABLE IF NOT EXISTS accounting.accounts (
   ledger_id        uuid    NOT NULL REFERENCES accounting.ledgers (id) ON DELETE RESTRICT,
@@ -728,23 +731,67 @@ BEGIN
   PERFORM accounting.log(p_ledger, 'ledger.posting_account', jsonb_build_object('key', p_key, 'code', p_code));
 END $$;
 
--- Ending the service: no new vouchers; the books stay readable (keep them
--- 5 years, bokføringsloven § 13).
+-- Cancelling the service (owner's decision 2026-10-29: monthly, effective
+-- at the end of the paid month): everything works until the last day of
+-- the current month; from the day after, no new vouchers and the books stay
+-- readable (keep them 5 years, bokføringsloven § 13). Withdrawn before
+-- then with resume_ledger().
 CREATE OR REPLACE FUNCTION accounting.end_ledger(p_ledger uuid, p_reason text)
+RETURNS accounting.ledgers
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE l accounting.ledgers%ROWTYPE; v_today date := (now() AT TIME ZONE 'Europe/Oslo')::date;
+BEGIN
+  SELECT * INTO l FROM accounting.ledgers WHERE id = p_ledger FOR UPDATE;
+  IF l.tenant_id IS NULL OR NOT accounting.host_can_manage(l.tenant_id) THEN
+    RAISE EXCEPTION 'accounting: the company''s owners and admins end it' USING ERRCODE = '42501';
+  END IF;
+  IF l.status <> 'active' THEN RAISE EXCEPTION 'accounting: the ledger is %', l.status USING ERRCODE = '55000'; END IF;
+  IF l.cancel_at IS NOT NULL THEN RAISE EXCEPTION 'accounting: already cancelled from %', l.cancel_at + 1 USING ERRCODE = '55000'; END IF;
+  UPDATE accounting.ledgers SET cancel_at = (date_trunc('month', v_today) + interval '1 month' - interval '1 day')::date,
+         cancel_reason = nullif(btrim(coalesce(p_reason, '')), '')
+   WHERE id = p_ledger RETURNING * INTO l;
+  PERFORM accounting.log(p_ledger, 'ledger.cancelled', jsonb_build_object('last_day', l.cancel_at, 'reason', p_reason));
+  PERFORM accounting.host_event(l.tenant_id, 'accounting.cancelled', jsonb_build_object('last_day', l.cancel_at, 'reason', p_reason));
+  RETURN l;
+END $$;
+
+CREATE OR REPLACE FUNCTION accounting.resume_ledger(p_ledger uuid)
 RETURNS accounting.ledgers
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
 AS $$
 DECLARE l accounting.ledgers%ROWTYPE;
 BEGIN
-  SELECT * INTO l FROM accounting.ledgers WHERE id = p_ledger;
+  SELECT * INTO l FROM accounting.ledgers WHERE id = p_ledger FOR UPDATE;
   IF l.tenant_id IS NULL OR NOT accounting.host_can_manage(l.tenant_id) THEN
-    RAISE EXCEPTION 'accounting: the company''s owners and admins end it' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'accounting: the company''s owners and admins decide this' USING ERRCODE = '42501';
   END IF;
-  IF l.status <> 'active' THEN RAISE EXCEPTION 'accounting: the ledger is %', l.status USING ERRCODE = '55000'; END IF;
-  UPDATE accounting.ledgers SET status = 'ended', ended_at = now() WHERE id = p_ledger RETURNING * INTO l;
-  PERFORM accounting.log(p_ledger, 'ledger.ended', jsonb_build_object('reason', p_reason));
-  PERFORM accounting.host_event(l.tenant_id, 'accounting.ended', jsonb_build_object('reason', p_reason));
+  IF l.status <> 'active' OR l.cancel_at IS NULL OR l.cancel_at < (now() AT TIME ZONE 'Europe/Oslo')::date THEN
+    RAISE EXCEPTION 'accounting: there is no cancellation to withdraw' USING ERRCODE = '55000';
+  END IF;
+  UPDATE accounting.ledgers SET cancel_at = NULL, cancel_reason = NULL WHERE id = p_ledger RETURNING * INTO l;
+  PERFORM accounting.log(p_ledger, 'ledger.cancellation_withdrawn', '{}'::jsonb);
+  PERFORM accounting.host_event(l.tenant_id, 'accounting.cancellation_withdrawn', '{}'::jsonb);
   RETURN l;
+END $$;
+
+-- Ends the ledgers whose last day has passed (the host runs it daily; a
+-- voucher after the last day is refused even before it runs).
+CREATE OR REPLACE FUNCTION accounting.apply_cancellations()
+RETURNS integer
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE r record; n integer := 0;
+BEGIN
+  IF NOT accounting.host_is_server() THEN RAISE EXCEPTION 'accounting: the server only' USING ERRCODE = '42501'; END IF;
+  FOR r IN SELECT id, tenant_id, cancel_at FROM accounting.ledgers
+            WHERE status = 'active' AND cancel_at < (now() AT TIME ZONE 'Europe/Oslo')::date FOR UPDATE LOOP
+    UPDATE accounting.ledgers SET status = 'ended', ended_at = now() WHERE id = r.id;
+    PERFORM accounting.log(r.id, 'ledger.ended', jsonb_build_object('last_day', r.cancel_at));
+    PERFORM accounting.host_event(r.tenant_id, 'accounting.ended', jsonb_build_object('last_day', r.cancel_at));
+    n := n + 1;
+  END LOOP;
+  RETURN n;
 END $$;
 
 
@@ -762,7 +809,8 @@ BEGIN
   IF auth.uid() IS NULL OR NOT accounting.can_manage(p_ledger) THEN
     RAISE EXCEPTION 'accounting: the company''s owners and admins manage the back office' USING ERRCODE = '42501';
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM accounting.ledgers WHERE id = p_ledger AND status = 'active') THEN
+  IF NOT EXISTS (SELECT 1 FROM accounting.ledgers WHERE id = p_ledger AND status = 'active'
+                  AND (cancel_at IS NULL OR cancel_at >= (now() AT TIME ZONE 'Europe/Oslo')::date)) THEN
     RAISE EXCEPTION 'accounting: the ledger is not active' USING ERRCODE = '55000';
   END IF;
   IF p_role = 'auditor' AND p_valid_until IS NULL THEN
@@ -930,6 +978,9 @@ BEGIN
   END IF;
   IF l.locked_until IS NOT NULL AND p_date <= l.locked_until THEN
     RAISE EXCEPTION 'accounting: the period up to % is closed', l.locked_until USING ERRCODE = '55000';
+  END IF;
+  IF l.cancel_at IS NOT NULL AND l.cancel_at < (now() AT TIME ZONE 'Europe/Oslo')::date THEN
+    RAISE EXCEPTION 'accounting: the service ended on %', l.cancel_at USING ERRCODE = '55000';
   END IF;
   IF jsonb_typeof(p_lines) IS DISTINCT FROM 'array' OR jsonb_array_length(p_lines) < 2 THEN
     RAISE EXCEPTION 'accounting: a voucher needs at least two lines' USING ERRCODE = '22023';
@@ -1368,7 +1419,7 @@ GRANT EXECUTE ON FUNCTION
   accounting.request_ledger(uuid, date, text, numeric), accounting.decide_ledger(uuid, boolean, numeric, text),
   accounting.open_house_ledger(text, text, date, text), accounting.set_settings(uuid, jsonb),
   accounting.save_account(uuid, text, text, text, boolean, text, text), accounting.set_posting_account(uuid, text, text),
-  accounting.end_ledger(uuid, text), accounting.post_voucher(uuid, date, text, jsonb),
+  accounting.end_ledger(uuid, text), accounting.resume_ledger(uuid), accounting.post_voucher(uuid, date, text, jsonb),
   accounting.reverse_voucher(uuid, date, text), accounting.lock_period(uuid, date), accounting.close_year(uuid, integer),
   accounting.add_attachment(uuid, text, text, text, bigint), accounting.trial_balance(uuid, date, date),
   accounting.general_ledger(uuid, date, date, text), accounting.income_statement(uuid, date, date),

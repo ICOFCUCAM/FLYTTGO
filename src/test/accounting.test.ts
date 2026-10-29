@@ -14,7 +14,7 @@ import type { Account, MvaCode, VoucherLine, Voucher } from '../accounting/types
 const ledger = {
   id: 'L1', tenant_id: 'T1', status: 'active' as const, legal_name: 'Oslo Rør og Varme AS', org_number: '923609016', vat_registered: true,
   mva_term: 'bimonthly' as const, zero_rate_code: '6' as const, start_date: '2025-01-01', auto_post: true, locked_until: null,
-  monthly_fee: null, declared_turnover: null, decided_at: '2025-01-01T10:00:00Z', created_at: '2025-01-01T10:00:00Z',
+  monthly_fee: null, declared_turnover: null, decided_at: '2025-01-01T10:00:00Z', created_at: '2025-01-01T10:00:00Z', cancel_at: null, cancel_reason: null,
 };
 const acc = (code: string, name: string, cat: string | null, g: string | null): Account =>
   ({ ledger_id: 'L1', code, name, default_mva_code: null, grouping_category: cat, grouping_code: g, active: true });

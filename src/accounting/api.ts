@@ -61,6 +61,7 @@ export function createAccountingApi(client: SupabaseClient, host: HostApi = {}) 
     setSettings: (ledger: string, s: Partial<Pick<Ledger, 'vat_registered' | 'mva_term' | 'zero_rate_code' | 'auto_post' | 'legal_name' | 'org_number'>>) =>
       rpc<Ledger>('set_settings', { p_ledger: ledger, p: s }),
     end: (ledger: string, reason: string) => rpc<Ledger>('end_ledger', { p_ledger: ledger, p_reason: reason }),
+    resume: (ledger: string) => rpc<Ledger>('resume_ledger', { p_ledger: ledger }),
 
     // Chart of accounts
     accounts: (ledger: string) => rows<Account>(db.from('accounts').select('*').eq('ledger_id', ledger).order('code')),

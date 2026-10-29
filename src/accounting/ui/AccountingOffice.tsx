@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AccountingApi } from '../api';
-import { bandRange, money } from '../i18n';
+import { bandRange, day, money } from '../i18n';
 import type { CheckRow, Ledger, PriceTier, Role, TierInfo, Unposted } from '../types';
 import DocumentsTab, { type DocumentsHost } from './DocumentsTab';
 import { btn, input, Office, roleLabel, translator, useLang, useOffice, useRunner, yearStart, today } from './office';
@@ -70,7 +70,8 @@ export default function AccountingOffice({ api, ledgerId, tenantId, host, defaul
         <div className="flex flex-wrap justify-between items-center gap-3">
           <div>
             <h2 className="text-xl font-bold">{t('office')} · {ledger.legal_name}</h2>
-            <p className="text-xs text-gray-500">{t('role')}: {roleLabel(t, role)}{ledger.status === 'ended' ? ` · ${t('ended')}` : ''}</p>
+            <p className="text-xs text-gray-500">{t('role')}: {roleLabel(t, role)}{ledger.status === 'ended' ? ` · ${t('ended')}` : ''}
+              {ledger.status === 'active' && ledger.cancel_at ? ` · ${t('cancelledUntil')} ${day(ledger.cancel_at, lang)}` : ''}</p>
           </div>
           {switcher}
         </div>
@@ -154,6 +155,7 @@ function Offer({ api, tenantId, ledger, t, lang, onDone }: {
             lower = tier.up_to ?? lower;
             return row;
           })}</tbody></table>
+          <p className="text-xs text-gray-500 mt-1">{t('offerTerms')}</p>
           {list.price_status !== 'confirmed' && <p className="text-xs text-amber-700 mt-1">{t('offerProposed')}</p>}
         </div>
       )}

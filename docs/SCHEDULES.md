@@ -7,6 +7,7 @@ Owner's decision (2026-10-29): use the recommendation, which is `pg_cron` and `p
 | `auto-downgrade-expired-subscriptions` | every hour, :00 | | `expire_lapsed_subscriptions()` (00006): lapsed driver plans go to Free. Replaces the job of the same name from `docs/subscription-expiry-cron.sql`. |
 | `flyttgo-invoice-run` | daily 05:15 | 06:15 winter, 07:15 summer | `invoice-run`: invoices what is due, plan fees, reminders ([`INVOICING.md`](INVOICING.md)) |
 | `flyttgo-appointment-reminders` | every hour, :10 | | `appointment-reminders`: emails the day before, once each ([`SERVICE_PLATFORM.md`](SERVICE_PLATFORM.md)) |
+| `flyttgo-accounting-cancellations` | daily 00:20 | 01:20 winter, 02:20 summer | `accounting.apply_cancellations()`: a cancelled accounting add-on ends after its last day ([`ACCOUNTING_CORE.md`](ACCOUNTING_CORE.md)) |
 
 pg_cron on Supabase runs in UTC, so the invoice run moves an hour with summer time. That is harmless: it runs once a day either way and each step is done once.
 

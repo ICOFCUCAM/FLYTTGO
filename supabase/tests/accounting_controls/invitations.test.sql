@@ -66,7 +66,10 @@ BEGIN;
 SET LOCAL ROLE authenticated;
 SELECT tests.login(:cust2);
 SELECT accounting.end_ledger(tests.l('ledger_b'), 'test');
-SELECT tests.throws($$SELECT accounting.invite(tests.l('ledger_b'), 'drv1@test', 'viewer')$$, '55000', 'an ended ledger takes no invitations');
+RESET ROLE;
+UPDATE accounting.ledgers SET cancel_at = current_date - 1 WHERE id = tests.l('ledger_b');
+SET LOCAL ROLE authenticated;
+SELECT tests.throws($$SELECT accounting.invite(tests.l('ledger_b'), 'drv1@test', 'viewer')$$, '55000', 'a ledger past its last day takes no invitations');
 ROLLBACK;
 
 \echo 'accounting invitations: all tests passed'

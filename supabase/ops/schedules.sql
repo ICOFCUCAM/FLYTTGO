@@ -11,6 +11,7 @@
 --   auto-downgrade-expired-subscriptions  every hour :00  expire_lapsed_subscriptions() (00006)
 --   flyttgo-invoice-run              daily 05:15          invoice-run (06:15 Oslo winter, 07:15 summer)
 --   flyttgo-appointment-reminders    every hour :10       appointment-reminders (00013)
+--   flyttgo-accounting-cancellations daily 00:20          accounting.apply_cancellations() (00014): ledgers past their last day end
 --
 -- The two functions are called with the service role key, read at each run
 -- from Supabase Vault. Nothing secret is in this file. Before running it,
@@ -75,11 +76,15 @@ REVOKE ALL ON FUNCTION flyttgo_ops.call_function(text, jsonb, integer) FROM PUBL
 DO $$
 DECLARE j text;
 BEGIN
-  FOREACH j IN ARRAY ARRAY['auto-downgrade-expired-subscriptions', 'flyttgo-invoice-run', 'flyttgo-appointment-reminders'] LOOP
+  FOREACH j IN ARRAY ARRAY['auto-downgrade-expired-subscriptions', 'flyttgo-invoice-run', 'flyttgo-appointment-reminders',
+                           'flyttgo-accounting-cancellations'] LOOP
     IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = j) THEN PERFORM cron.unschedule(j); END IF;
   END LOOP;
 END $$;
 
+-- Before the invoice run, so a cancelled ledger is ended before billing.
+SELECT cron.schedule('flyttgo-accounting-cancellations', '20 0 * * *',
+  $$ SELECT accounting.apply_cancellations() $$);
 SELECT cron.schedule('auto-downgrade-expired-subscriptions', '0 * * * *',
   $$ SELECT public.expire_lapsed_subscriptions(NULL) $$);
 -- invoice-run issues, emails and reminds; it can take a while.

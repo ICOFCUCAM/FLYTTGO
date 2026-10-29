@@ -19,6 +19,7 @@ const en = {
   offerProposed: 'Provisional prices for the pilot period; the price that applies is the one in your agreement.',
   under: 'under', toUnder: 'to under', andAbove: 'and above',
   offerAgreed: 'Above the last band the price is agreed.',
+  offerTerms: 'Excl. MVA, billed monthly in advance. Cancel at any time, effective at the end of the paid month. Unlimited vouchers, users and documents under fair use.',
   startDate: 'Books start on', declaredTurnover: 'Turnover last year or expected this year (NOK)', ask: 'Ask for accounting',
   requested: 'Asked for: waiting for approval.', declined: 'Declined', ended: 'Ended: the books stay readable.',
   role: 'Your role', roleOwner: 'Owner or admin', roleAccountant: 'Accountant', roleBookkeeper: 'Bookkeeper', roleAuditor: 'External auditor', roleViewer: 'Viewer',
@@ -71,6 +72,8 @@ const en = {
   calMva: 'MVA-melding, term', calMvaYear: 'MVA-melding, yearly term', calShareholders: 'Aksjonærregisteroppgaven (shareholder register return)', calTax: 'Skattemelding for næringsdrivende with næringsspesifikasjon',
   calAnnual: 'Årsregnskap to Regnskapsregisteret (limited companies)', calAmelding: 'A-melding (salaries), each month by the 5th',
   yes: 'Yes', no: 'No',
+  cancelTitle: 'Cancel accounting', cancelBody: 'Monthly, with no minimum term: the service continues to the end of this month, which is paid; after that the books stay readable but take no new vouchers. Download the accountant package first.',
+  cancelButton: 'Cancel at the end of the month', cancelledUntil: 'Cancelled: the last day is', withdraw: 'Withdraw the cancellation',
 };
 
 type Strings = typeof en;
@@ -89,6 +92,7 @@ const no: Strings = {
   offerProposed: 'Foreløpige priser i pilotperioden; prisen som gjelder, er den i avtalen din.',
   under: 'under', toUnder: 'til under', andAbove: 'og over',
   offerAgreed: 'Over øverste trinn avtales prisen.',
+  offerTerms: 'Eks. mva, faktureres månedlig forskuddsvis. Kan sies opp når som helst, med virkning fra slutten av den betalte måneden. Ubegrenset antall bilag, brukere og dokumenter ved rimelig bruk.',
   startDate: 'Regnskapet starter', declaredTurnover: 'Omsetning i fjor eller forventet i år (NOK)', ask: 'Bestill regnskap',
   requested: 'Bestilt: venter på godkjenning.', declined: 'Avslått', ended: 'Avsluttet: regnskapet kan fortsatt leses.',
   role: 'Din rolle', roleOwner: 'Eier eller administrator', roleAccountant: 'Regnskapsfører', roleBookkeeper: 'Regnskapsmedarbeider', roleAuditor: 'Ekstern revisor', roleViewer: 'Lesetilgang',
@@ -141,6 +145,8 @@ const no: Strings = {
   calMva: 'Mva-melding, termin', calMvaYear: 'Mva-melding, årstermin', calShareholders: 'Aksjonærregisteroppgaven', calTax: 'Skattemelding for næringsdrivende med næringsspesifikasjon',
   calAnnual: 'Årsregnskap til Regnskapsregisteret (aksjeselskaper)', calAmelding: 'A-melding (lønn), hver måned innen den 5.',
   yes: 'Ja', no: 'Nei',
+  cancelTitle: 'Si opp regnskap', cancelBody: 'Månedlig, uten bindingstid: tjenesten varer ut denne måneden, som er betalt; deretter kan regnskapet fortsatt leses, men tar ikke imot nye bilag. Last ned pakken til regnskapsfører først.',
+  cancelButton: 'Si opp fra slutten av måneden', cancelledUntil: 'Sagt opp: siste dag er', withdraw: 'Trekk oppsigelsen',
 };
 
 export const STRINGS: Record<Lang, Strings> = { en, no };

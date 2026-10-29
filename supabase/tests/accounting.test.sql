@@ -270,9 +270,34 @@ SELECT tests.ok((SELECT total FROM ai) = 248.75 AND (SELECT count(*) FROM public
   'FlyttGo invoices the add-on: this month, Start, 199 + 25 % MVA');
 SELECT tests.ok(public.create_accounting_invoice((SELECT id FROM o)) IS NULL, 'and never the same month twice');
 
--- Ending
+-- Cancelling: effective at the end of the paid month.
+SELECT tests.login(:drv1);
+SELECT tests.throws($$SELECT accounting.end_ledger(tests.ledger(), 'x')$$, '42501', 'a booker cannot cancel');
 SELECT tests.login(:cust1);
 SELECT accounting.end_ledger(tests.ledger(), 'Bytter system');
+SELECT tests.ok((SELECT status = 'active' AND cancel_at = (date_trunc('month', current_date) + interval '1 month' - interval '1 day')::date
+                   FROM accounting.ledgers WHERE id = tests.ledger()),
+  'a cancellation takes effect after the last day of this month; until then the ledger is active');
+SELECT accounting.post_voucher(tests.ledger(), current_date, 'Etter oppsigelse', '[{"account":"6810","amount":10},{"account":"1920","amount":-10}]');
+SELECT tests.ok(true, 'and vouchers are still posted');
+SELECT tests.throws($$SELECT accounting.end_ledger(tests.ledger(), 'igjen')$$, '55000', 'a ledger is cancelled once');
+SELECT accounting.resume_ledger(tests.ledger());
+SELECT tests.ok((SELECT cancel_at IS NULL FROM accounting.ledgers WHERE id = tests.ledger()), 'the cancellation can be withdrawn before the date');
+SELECT accounting.end_ledger(tests.ledger(), 'Bytter system');
+-- The month has passed (simulated).
+RESET ROLE;
+UPDATE accounting.ledgers SET cancel_at = current_date - 1 WHERE id = tests.ledger();
+SET LOCAL ROLE authenticated;
+SELECT tests.throws($$SELECT accounting.post_voucher(tests.ledger(), current_date, 'x', '[{"account":"6810","amount":10},{"account":"1920","amount":-10}]')$$,
+  '55000', 'after the last day no voucher is posted, even before the nightly job runs');
+SELECT tests.throws($$SELECT accounting.resume_ledger(tests.ledger())$$, '55000', 'and it can no longer be withdrawn');
+SELECT tests.throws($$SELECT accounting.apply_cancellations()$$, '42501', 'only the server runs the nightly job');
+SET LOCAL ROLE service_role;
+SELECT tests.login(NULL, 'service_role');
+SELECT tests.ok(accounting.apply_cancellations() = 1, 'the nightly job ends the ledger');
+SET LOCAL ROLE authenticated;
+SELECT tests.login(:cust1);
+SELECT tests.ok((SELECT status FROM accounting.ledgers WHERE id = tests.ledger()) = 'ended', 'the ledger is ended');
 SELECT tests.throws($$SELECT accounting.post_voucher(tests.ledger(), current_date, 'x', '[{"account":"6810","amount":10},{"account":"1920","amount":-10}]')$$,
   '55000', 'an ended ledger takes no new vouchers');
 SELECT tests.ok((SELECT count(*) FROM accounting.vouchers WHERE ledger_id = tests.ledger()) > 5, 'but its books stay readable');

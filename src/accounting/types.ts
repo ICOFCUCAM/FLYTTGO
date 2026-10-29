@@ -7,6 +7,7 @@ export interface Ledger {
   legal_name: string; org_number: string | null; vat_registered: boolean; mva_term: 'bimonthly' | 'yearly';
   zero_rate_code: '5' | '6'; start_date: string; auto_post: boolean; locked_until: string | null;
   monthly_fee: number | null; declared_turnover: number | null; decided_at: string | null; created_at: string;
+  cancel_at: string | null; cancel_reason: string | null;
 }
 export interface Account {
   ledger_id: string; code: string; name: string; default_mva_code: string | null;
