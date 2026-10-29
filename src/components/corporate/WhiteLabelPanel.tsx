@@ -10,11 +10,12 @@ import { useApp } from '../../lib/store';
 import type { Membership } from '../../lib/organizations';
 import { formatNok } from '../../lib/invoicing';
 import {
-  DPA_VERSION, SELLER_LABELS, STATUS_LABELS, acceptDpa, endPlan, loadOrgWhiteLabel, loadPlans, loadStats, loadTemplateList,
+  DPA_VERSION, SELLER_LABELS, STATUS_LABELS, acceptDpa, endPlan, loadLogoUrl, loadOrgWhiteLabel, loadPlans, loadStats, loadTemplateList,
   missingFor, requestPlan, saveBrand, setDomain, setSite, stripeConnect, verifyDomain,
   type OrgWhiteLabel, type SiteTemplateSummary, type WhiteLabelPlan,
 } from '../../lib/whiteLabel';
 import { sellerSplit } from '../../../supabase/functions/_shared/white-label';
+import { AA_CONTRAST, contrastRatio, readableShade } from '../../../supabase/functions/_shared/site-template';
 import { INDUSTRIES, setIndustry } from '../../lib/services';
 import TemplateCatalogue from '../whiteLabel/TemplateCatalogue';
 
@@ -41,6 +42,8 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
   const [industry, setIndustryValue] = useState<string>(org.industry ?? '');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
+  useEffect(() => { loadLogoUrl(org.id).then(setLogo).catch(() => setLogo(null)); }, [org.id]);
 
   const reload = useCallback(async () => {
     const [p, w, t] = await Promise.all([loadPlans(), loadOrgWhiteLabel(org.id), loadTemplateList()]);
@@ -170,6 +173,8 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
               <label>Tagline<input className={input} value={brand.tagline} disabled={!canEdit} onChange={e => setBrand({ ...brand, tagline: e.target.value })} /></label>
               <label>Main colour<div className="flex gap-2"><input type="color" value={brand.primary_color || '#0b2e59'} disabled={!canEdit} onChange={e => setBrand({ ...brand, primary_color: e.target.value })} /><input className={input} value={brand.primary_color} placeholder="#0b2e59" disabled={!canEdit} onChange={e => setBrand({ ...brand, primary_color: e.target.value })} /></div></label>
               <label>Accent colour<div className="flex gap-2"><input type="color" value={brand.accent_color || '#10b981'} disabled={!canEdit} onChange={e => setBrand({ ...brand, accent_color: e.target.value })} /><input className={input} value={brand.accent_color} placeholder="#10b981" disabled={!canEdit} onChange={e => setBrand({ ...brand, accent_color: e.target.value })} /></div></label>
+              <ContrastNote label="Main colour" colour={brand.primary_color} canEdit={canEdit} onUse={c => setBrand({ ...brand, primary_color: c })} />
+              <ContrastNote label="Accent colour" colour={brand.accent_color} canEdit={canEdit} onUse={c => setBrand({ ...brand, accent_color: c })} />
               {companySells && (<>
                 <label>Customer service email<input className={input} value={brand.support_email} disabled={!canEdit} onChange={e => setBrand({ ...brand, support_email: e.target.value })} /></label>
                 <label>Customer service phone<input className={input} value={brand.support_phone} placeholder="+47 22 33 44 55" disabled={!canEdit} onChange={e => setBrand({ ...brand, support_phone: e.target.value })} /></label>
@@ -183,7 +188,7 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
                 )}
               </>)}
             </div>
-            <p className="text-xs text-gray-500 mt-3">The logo is the one in Invoices → logo (PNG or JPEG).</p>
+            <p className="text-xs text-gray-500 mt-3">The logo is the one in Invoices → logo (PNG or JPEG); a website template shows it in its header, beside your name.</p>
             {canEdit && <button disabled={busy} onClick={() => run(() => saveBrand(org.id, brand), 'Saved.')} className={`${btn} bg-[#0B2E59] text-white mt-4`}>Save</button>}
           </div>
 
@@ -194,7 +199,7 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
             <TemplateCatalogue templates={templates} selected={template} onSelect={setTemplate} canEdit={canEdit}
               brand={{ name: brand.display_name || org.name, tagline: brand.tagline || null, phone: brand.support_phone || null,
                        email: brand.support_email || null, city: city || null,
-                       primaryColor: brand.primary_color || null, accentColor: brand.accent_color || null }}
+                       primaryColor: brand.primary_color || null, accentColor: brand.accent_color || null, logoUrl: logo }}
               sellerNotice="Here your site names who sells what is booked (you or FlyttGo, by your plan)." />
             <label className="block text-sm mt-3 max-w-xs">Town or region your site names<input className={input} value={city} disabled={!canEdit} onChange={e => setCity(e.target.value)} /></label>
             {canEdit && <button disabled={busy} onClick={() => run(() => setSite(org.id, template || null, city), 'Website saved.')} className={`${btn} bg-[#0B2E59] text-white mt-4`}>Save website</button>}
@@ -283,6 +288,31 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Whether text reads on the company's colour: most templates put white text
+ * on the main and accent colours (buttons, bands) and use them for text on
+ * white, which is the same contrast. Below WCAG AA (4.5 : 1) it says so and
+ * suggests the nearest shade that reads; the colour changes only if the
+ * company presses "Use" (and then Save).
+ */
+function ContrastNote({ label, colour, canEdit, onUse }: { label: string; colour: string; canEdit: boolean; onUse: (c: string) => void }) {
+  if (!/^#[0-9a-f]{6}$/i.test(colour)) return null;
+  const ratio = contrastRatio(colour, '#ffffff');
+  if (ratio >= AA_CONTRAST) return null;
+  const better = readableShade(colour);
+  return (
+    <div className="md:col-span-2 text-xs rounded-lg border border-amber-200 bg-amber-50 text-amber-900 p-2.5 flex flex-wrap items-center gap-2" role="status">
+      <span className="inline-block w-4 h-4 rounded border border-black/10" style={{ background: colour }} aria-hidden="true" />
+      <span>
+        {label} {colour}: white text on it, and the colour as text on white, has a contrast of {ratio.toFixed(1)} : 1. WCAG AA asks for {AA_CONTRAST} : 1, so some visitors will find buttons and links hard to read.
+        {' '}Suggested: <b>{better}</b> ({contrastRatio(better, '#ffffff').toFixed(1)} : 1), the same colour, darker.
+      </span>
+      <span className="inline-block w-4 h-4 rounded border border-black/10" style={{ background: better }} aria-hidden="true" />
+      {canEdit && <button type="button" onClick={() => onUse(better)} className="px-2 py-1 rounded bg-white border border-amber-300 font-semibold">Use {better}</button>}
     </div>
   );
 }

@@ -7,7 +7,7 @@
  * published site is. Without `height` it fills the box it is put in.
  */
 import { useEffect, useRef, useState } from 'react';
-import { renderTemplatePage, type Brand } from '../../../supabase/functions/_shared/site-template';
+import { hostsOf, renderTemplatePage, type Brand } from '../../../supabase/functions/_shared/site-template';
 import { loadTemplateHome, type SiteTemplateSummary } from '../../lib/whiteLabel';
 
 /** The width the page is drawn at before it is scaled down, and how much of it is drawn. */
@@ -21,8 +21,6 @@ const homeOf = (id: string) => {
   return homes.get(id)!;
 };
 
-const hostsOf = (assets: { url: string }[]) =>
-  assets.map(a => { try { return new URL(a.url).host; } catch { return ''; } }).filter(Boolean);
 
 export default function TemplateThumb({ template, brand, sellerNotice, height }: {
   template: SiteTemplateSummary; brand: Brand; sellerNotice: string; height?: number;
@@ -53,7 +51,7 @@ export default function TemplateThumb({ template, brand, sellerNotice, height }:
       if (!home) { setFailed(true); return; }
       setDoc(renderTemplatePage(home.html, {
         brand, assets: template.assets, pageUrl: () => '#', bookingUrl: '#', sellerNotice,
-        assetHosts: hostsOf(template.assets),
+        assetHosts: hostsOf(template.assets, brand.logoUrl),
       }));
     });
     return () => { live = false; };
