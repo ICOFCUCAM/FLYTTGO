@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  OTHER_CATEGORY, TEMPLATE_CATEGORIES, categoryLabel, contentFlags, htmlProblems, pageFor, prepareTemplate, renderTemplatePage,
-  replaceForms, sanitiseHtml, templateCategory, templateId,
+  OTHER_CATEGORY, TEMPLATE_CATEGORIES, bestFor, categoryLabel, contentFlags, featureLabel, htmlProblems, pageFor, prepareTemplate,
+  renderTemplatePage, replaceForms, sanitiseHtml, templateCategory, templateFeatures, templateId,
 } from '../../supabase/functions/_shared/site-template.ts';
 
 const ASSET_HOST = 'assets.flyttgo.test';
@@ -174,5 +174,29 @@ describe('keeping the template\'s look', () => {
       brand: { name: 'A' }, assets: [], pageUrl: () => '#', bookingUrl: '#', sellerNotice: 'n' });
     expect(h).toMatch(/\.reveal\{opacity:1!important;transform:none!important\}/);
     expect(h.indexOf('.reveal{opacity:1')).toBeGreaterThan(h.indexOf('.reveal{opacity:0}'));
+  });
+});
+
+describe('the catalogue cards', () => {
+  it('finds what a template\'s pages have from their paths, headings and sections', () => {
+    const f = templateFeatures([
+      { path: '/', html: '<section class="hero"><h1>Hair that turns heads</h1></section><section id="pricing"><h2>A look at our <em>pricing</em></h2></section>'
+        + '<h2>Talented hands, <em>friendly faces</em></h2><h3>What our clients say</h3>' },
+      { path: '/contact', html: '<h1>Request <em>service</em></h1><h2>Quick <em>answers</em></h2>' },
+      { path: '/gallery', html: '<p>Photos</p>' },
+    ]);
+    expect(f).toEqual(['pricing', 'gallery', 'testimonials', 'team', 'faq', 'contact']);
+    expect(templateFeatures([{ path: '/', html: '<h1>Fast moves</h1><p>We offer pricing on request</p>' }])).toEqual([]);  // body text is not a section
+    expect(featureLabel('faq')).toBe('FAQ');
+  });
+  it('says what a template is best for, in words, from its industries', () => {
+    expect(bestFor(['hair-salon', 'beauty', 'personal-care', 'spa'])).toBe('hair salon, beauty and personal care');
+    expect(bestFor(['plumbing', 'plumber'])).toBe('plumbing');
+    expect(bestFor(['moving'])).toBe('moving');
+    expect(bestFor([])).toBe('other businesses');
+  });
+  it('lists features at import', () => {
+    const t = prepareTemplate({ id: 'x', name: 'Swiftmove', pages: [{ path: '/', html: HOME }, { path: '/pricing', html: '<h1>Rates</h1>' }] });
+    expect(t.features).toEqual(['pricing']);
   });
 });

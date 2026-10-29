@@ -40,7 +40,13 @@ export interface SiteTemplate {
   pages: { path: string; html: string }[]; assets: { key: string; url: string }[];
   content_flags: { kind: string; page: string; sample: string }[];
   status: 'imported' | 'approved' | 'retired'; review_note: string | null; reviewed_at: string | null;
+  /** What the pages have (templateFeatures(), found at import) and how many pages (00021). */
+  features?: string[]; page_count?: number;
 }
+
+/** A template's catalogue thumbnail (asset 'thumbnail', drawn by the importer), if it has one. */
+export const thumbnailOf = (t: { assets: { key: string; url: string }[] }): string | null =>
+  t.assets.find(a => a.key === 'thumbnail')?.url ?? null;
 
 export interface PublicSite {
   organization_id: string; slug: string; display_name: string; tagline: string | null;
@@ -144,14 +150,14 @@ export async function loadTemplateHome(id: string): Promise<{ path: string; html
 /** The catalogue: approved templates (companies) or every template (FlyttGo administrators), without their pages. */
 export async function loadTemplateList(withFlags = false): Promise<SiteTemplateSummary[]> {
   const { data } = await supabase.from('site_templates')
-    .select(`id, name, industry, style, assets, status, review_note, reviewed_at${withFlags ? ', content_flags' : ''}`).order('name');
+    .select(`id, name, industry, style, assets, status, review_note, reviewed_at, features, page_count${withFlags ? ', content_flags' : ''}`).order('name');
   return (data ?? []) as unknown as SiteTemplateSummary[];
 }
 
 /** One template with its pages (for a preview or a review). */
 export async function loadTemplate(id: string): Promise<SiteTemplate | null> {
   const { data } = await supabase.from('site_templates')
-    .select('id, name, industry, style, pages, assets, content_flags, status, review_note, reviewed_at').eq('id', id).maybeSingle();
+    .select('id, name, industry, style, pages, assets, content_flags, status, review_note, reviewed_at, features, page_count').eq('id', id).maybeSingle();
   return (data ?? null) as SiteTemplate | null;
 }
 
