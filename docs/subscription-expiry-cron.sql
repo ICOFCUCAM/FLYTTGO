@@ -1,5 +1,7 @@
 -- ============================================================================
 -- FlyttGo — auto-downgrade expired driver subscriptions
+-- Superseded by supabase/ops/schedules.sql (docs/SCHEDULES.md), which schedules
+-- the same job under the same name together with the other jobs. Kept for reference.
 -- ============================================================================
 --
 -- Runs inside Supabase as a pg_cron job. Finds every `driver_subscriptions`

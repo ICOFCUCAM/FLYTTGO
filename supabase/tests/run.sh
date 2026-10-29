@@ -55,6 +55,11 @@ fresh
 migrate
 run_tests supabase/tests/p0_security.test.sql supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql
 
+# The scheduled jobs (supabase/ops/schedules.sql), with stand-ins for
+# pg_cron, pg_net and Vault.
+PGOPTIONS='-c client_min_messages=notice' "${PSQL[@]}" -d "$DB" -f supabase/tests/schedules.test.sql 2>&1 \
+  | grep -E '^(psql:.*)?(NOTICE:  ok|ERROR|FAIL)|passed' | sed 's/^psql:[^ ]* //'
+
 echo "── production ──"
 fresh
 "${PSQL[@]}" -d "$DB" -f "$REPLICA"

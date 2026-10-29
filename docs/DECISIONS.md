@@ -50,11 +50,12 @@ On 2026-10-29 the owner adopted the recommendations in [`PREDEPLOY_REVIEW.md`](P
 | 29 | **Invoices in each company's own name** through FlyttGo's invoice engine (own number series, KID, bank account); accounting stays with the company and its accountant | 00011 |
 | 30 | **Trade authorisations** (e.g. DSB registration for electrical work) are checked by FlyttGo; a service that needs one is offered only then | `organization_authorisations` (00010), `job_insert` (00012) |
 | 31 | **Health is left out** (patient data): no Appointments plan for health, no health templates | plan industries (00010), importer `EXCLUDED` |
+| 32 | **Scheduled jobs in the database:** `pg_cron` + `pg_net`, the service role key in Supabase Vault; subscription expiry hourly, invoice run daily, appointment reminders hourly ([`SCHEDULES.md`](SCHEDULES.md)) | `supabase/ops/schedules.sql` |
 
 ## Still to do before real money moves
 
 - **Legal review** of the cancellation terms and the MVA wording (angrerettloven, avtaleloven § 36, prisopplysningsforskriften). The Terms page dates (`LAST_UPDATED`, `EFFECTIVE_DATE`) must be set when the new text is published.
 - **Vipps reservation lifetime.** Moves can be booked weeks ahead. Confirm with Vipps how long a reservation stays capturable. If it is shorter than the booking horizon, capture closer to the move or re-authorise.
 - **Over-time charges on Vipps.** An approved extra charge above the reservation can't be captured from it. The release then stops with a clear message until the extra is paid separately. This needs a payment flow for the extra.
-- **`pg_cron`:** enable it and schedule `docs/subscription-expiry-cron.sql`.
+- **Scheduled jobs:** run `supabase/ops/schedules.sql` after the functions are deployed ([`SCHEDULES.md`](SCHEDULES.md)).
 - **Secrets** for the new functions: `RESEND_API_KEY`, `FLYTTGO_FROM`, `FLYTTGO_REPLY_TO`, `FRONTEND_URL` (as for the existing functions).

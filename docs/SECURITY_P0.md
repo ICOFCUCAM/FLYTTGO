@@ -96,11 +96,11 @@ Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.s
 **Production, in one maintenance window:**
 1. Apply `00002` → `00008` in one session (`00005`–`00008` hold the organisations, the launch decisions, company bookings and invoicing; each needs the one before).
 2. Set the secrets: `EMAIL_FUNCTION_SECRET` and `app.email_function_secret`, plus the Vipps and Stripe secrets if not set, and `RESEND_API_KEY`, `FLYTTGO_FROM`, `FLYTTGO_REPLY_TO`, `FRONTEND_URL`. Add `refund.created`, `refund.updated` and `refund.failed` to the Stripe webhook's events.
-3. Deploy the new functions the new frontend calls: `cancel-booking`, `verify-organization`, `send-organization-invitation`, `refund-payment`, `book-on-invoice`, `invoice-run`, `invoice-document`, `invoice-send`, `credit-check`. Nothing old calls them. Schedule `invoice-run` daily ([`INVOICING.md`](INVOICING.md)).
+3. Deploy the new functions the new frontend calls: `cancel-booking`, `verify-organization`, `send-organization-invitation`, `refund-payment`, `book-on-invoice`, `invoice-run`, `invoice-document`, `invoice-send`, `credit-check`. Nothing old calls them. Schedule `invoice-run` daily ([`SCHEDULES.md`](SCHEDULES.md)).
 4. Deploy the frontend.
 5. Deploy the changed edge functions: `create-checkout-session`, `create-vipps-session`, `stripe-webhook`, `vipps-webhook`, `process-payment`, `calculate-price`, `send-booking-email`. Changed functions before the frontend would refuse the old frontend's calls.
 6. Re-run the security advisor. Expect no `rls_disabled` or `security_definer_view` findings.
-7. Enable `pg_cron` and schedule `docs/subscription-expiry-cron.sql`.
+7. Enable `pg_cron` and `pg_net` and run `supabase/ops/schedules.sql` ([`SCHEDULES.md`](SCHEDULES.md)); it includes the subscription expiry job.
 
 **Rollback:**
 1. Redeploy the previous frontend and functions (Vercel and Supabase keep earlier versions).

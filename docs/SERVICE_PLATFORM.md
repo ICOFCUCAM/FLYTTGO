@@ -86,7 +86,7 @@ The import tool takes a group: `--group transport` (default), `field-service`, `
 1. Confirm or change the prices.
 2. **Legal:** the data processing agreement covers these plans too (it is a draft); terms between FlyttGo and the companies (FlyttGo as software provider, not seller); consumer information on the booking pages (seller, price, cancellation) is shown, but each company's terms must state its cancellation and no-show rules.
 3. **Accountant:** companies' own invoices (numbering per company, content, reminder fees under inkassoforskriften).
-4. Schedule `appointment-reminders` hourly (pg_cron + pg_net with the service role key).
+4. Schedule `appointment-reminders` hourly: `supabase/ops/schedules.sql` ([`SCHEDULES.md`](SCHEDULES.md)).
 5. Stripe Connect as for Model B ([`WHITE_LABEL.md`](WHITE_LABEL.md)), for companies that want card payments.
 6. Decide the brand for other industries ("Flytt" means moving): the platform shows "Powered by FlyttGo" today; a neutral umbrella brand (for example the FlyttgoTechGroup site) would replace that wording.
 

@@ -35,7 +35,7 @@ FlyttGo issues invoices itself, with its own invoice system (owner's decision, 2
 1. **Invoice settings:** FlyttGo's legal name, organisation number, address, bank account (and IBAN/BIC for foreign payers), invoice email, MVA registration.
 2. **Reminder fee and interest:** set them only after checking the current legal limits: the reminder fee under inkassoforskriften, the late-payment interest rate the Ministry of Finance sets (forsinkelsesrente), and compensation for business debtors under forsinkelsesrenteloven. Both are empty or 0 until set.
 3. **Accountant:** have them confirm the invoice content, the numbering series, the CSV export and how invoices move into the books. Issued invoices are accounting records and must be kept for 5 years (bokføringsloven). The rollback warns about this.
-4. **Schedule `invoice-run` daily:** for example with `pg_cron` and `pg_net` calling it with the service role key, or Supabase scheduled functions.
+4. **Schedule `invoice-run` daily:** `supabase/ops/schedules.sql` ([`SCHEDULES.md`](SCHEDULES.md)).
 5. **Secrets:** `RESEND_API_KEY`, `FLYTTGO_FROM` (an invoice sender address on a verified domain), `FLYTTGO_REPLY_TO`.
 
 ## White-label plans
