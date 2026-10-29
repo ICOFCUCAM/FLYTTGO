@@ -47,6 +47,10 @@ export default function PaymentPage() {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  /* Paying on the company's invoice (book-on-invoice, migration 00008). */
+  const [company, setCompany] = useState<{ name: string; invoicing_enabled?: boolean; payment_terms_type?: string;
+                                           payment_terms_days?: number; payment_terms_day?: number | null } | null>(null);
+  const [invoiceBooked, setInvoiceBooked] = useState(false);
   const [booking, setBooking] = useState<any>(null);
   const isCorporate = profile?.role === 'customer'; // extend when corporate role exists
 
@@ -105,6 +109,12 @@ export default function PaymentPage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (!booking?.organization_id) { setCompany(null); return; }
+    supabase.from('organizations').select('name, invoicing_enabled, payment_terms_type, payment_terms_days, payment_terms_day')
+      .eq('id', booking.organization_id).maybeSingle().then(({ data }) => setCompany(data ?? null));
+  }, [booking?.organization_id]);
+
   /* bookings.price_estimate is the total INCLUDING 25% MVA (it is
    * calculate-price's price_total). The payment functions charge that
    * total, re-computed on the server; here we only split out the MVA
@@ -131,10 +141,23 @@ export default function PaymentPage() {
       setError('No booking is waiting for payment.'); return;
     }
     if (method === 'invoice') {
-      /* Corporate invoicing needs a company account with approved
-       * invoice terms, which does not exist yet. Until it does, the
-       * booking stays unpaid rather than being treated as paid. */
-      setError('Corporate invoice is not available yet. Please pay by card or Vipps.'); return;
+      /* Only company bookings, and only where FlyttGo has switched on
+       * invoicing for the company; the server prices the booking and
+       * checks the terms, credit limit and (if required) credit check. */
+      if (!booking.organization_id) {
+        setError('Invoice payment is for company bookings: book again and choose your company under "Book for".'); return;
+      }
+      setProcessing(true);
+      try {
+        const res = await callFunction('book-on-invoice', { bookingId: booking.id });
+        const d = await res.json().catch(() => ({}));
+        if (res.ok) { setInvoiceBooked(true); setProcessing(false); return; }
+        setError(d.error ?? 'Invoice payment could not be arranged. Please try again.');
+      } catch {
+        setError('Invoice payment could not be arranged. Please try again.');
+      }
+      setProcessing(false);
+      return;
     }
     setProcessing(true);
     try {
@@ -154,6 +177,20 @@ export default function PaymentPage() {
     }
     setProcessing(false);
   }
+
+  if (invoiceBooked) return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="bg-white rounded-3xl shadow-xl p-10 max-w-md w-full text-center">
+        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5"><span className="text-4xl">🧾</span></div>
+        <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Booked on invoice</h2>
+        <p className="text-gray-500 mb-6 text-sm leading-relaxed">
+          Your move is confirmed and a driver is being assigned. {company?.name ?? 'Your company'} is invoiced
+          for <strong>{total.toLocaleString()} NOK</strong> after the move, on the company's payment terms.
+        </p>
+        <button onClick={() => setPage('my-bookings')} className="px-6 py-3 rounded-xl bg-[#0B2E59] text-white font-semibold">View my bookings</button>
+      </div>
+    </div>
+  );
 
   if (success) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -298,21 +335,21 @@ export default function PaymentPage() {
                       <div className="text-xs text-gray-500">Available for registered companies with a FlyttGo Corporate account</div>
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Company Name</label>
-                      <input placeholder="Acme Logistics AS" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#0B2E59] outline-none"/>
+                  {booking?.organization_id ? (
+                    <div className="text-sm text-gray-700 space-y-1">
+                      <div><span className="text-gray-500">Company:</span> <strong>{company?.name ?? '…'}</strong></div>
+                      {company?.payment_terms_type && (
+                        <div><span className="text-gray-500">Payment terms:</span> {company.payment_terms_type === 'day_of_month'
+                          ? `due on day ${company.payment_terms_day} of the following month` : `${company.payment_terms_days} days`}</div>
+                      )}
+                      {company && company.invoicing_enabled === false && (
+                        <div className="text-orange-700">Invoice payment has not been switched on for this company yet. Contact FlyttGo, or pay by card or Vipps.</div>
+                      )}
+                      <p className="text-xs text-gray-400 pt-2">The company is invoiced after the move, per booking or monthly as it chose, with the bank account and KID on the invoice.</p>
                     </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Organisation Number</label>
-                      <input placeholder="123 456 789" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#0B2E59] outline-none"/>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Billing Email</label>
-                      <input type="email" placeholder="accounts@company.no" className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#0B2E59] outline-none"/>
-                    </div>
-                  </div>
-                  <p className="text-xs text-gray-400">Invoices are generated on the 1st of each month. 30-day payment terms. Requires active Corporate plan.</p>
+                  ) : (
+                    <p className="text-sm text-gray-600">Invoice payment is for company bookings. Book again and choose your company under "Book for", or pay by card or Vipps.</p>
+                  )}
                 </div>
               )}
 

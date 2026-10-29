@@ -22,6 +22,15 @@ On 2026-10-29 the owner adopted the recommendations in [`PREDEPLOY_REVIEW.md`](P
 | 16 | **Driver identity:** the auth user id is the person and `driver_profiles.id` is the approved driver. `drivers` is legacy and stays until a mapped migration plan is approved. | No change; [`PREDEPLOY_REVIEW.md`](PREDEPLOY_REVIEW.md) §4.4 |
 | 17 | **Orphan records are kept** and investigated, not deleted. | No change |
 
+## Invoicing (owner, 2026-10-29)
+
+| # | Decision | Implemented in |
+|---|---|---|
+| 18 | **FlyttGo issues invoices itself**, with its own invoice system at least the equal of Fiken or Tripletex for what FlyttGo needs: legal invoices, numbering without gaps, credit notes, KID, payments and bank matching, reminders, PDF and EHF, export | 00008, [`INVOICING.md`](INVOICING.md) |
+| 19 | **Companies on the special price plan** get their registered name and logo on their invoices | 00008 (`billing_plan`, `logo_path`, `branding`), `invoice-pdf.ts` |
+| 20 | **Each company chooses its payment terms:** 14 or 30 days, its own number of days (up to 60), or a fixed day of the following month | `set_billing_preferences`, Invoices tab |
+| 21 | **Credit check built but off,** active only when the admin setting is ticked | `credit_check_enabled`, `credit-check`, `record_credit_check` |
+
 ## Still to do before real money moves
 
 - **Legal review** of the cancellation terms and the MVA wording (angrerettloven, avtaleloven § 36, prisopplysningsforskriften). The Terms page dates (`LAST_UPDATED`, `EFFECTIVE_DATE`) must be set when the new text is published.

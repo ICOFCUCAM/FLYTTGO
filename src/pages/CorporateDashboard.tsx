@@ -5,6 +5,7 @@ import { ORG_STATUS_LABELS, myMemberships, type Membership } from '../lib/organi
 import TeamPanel from '../components/corporate/TeamPanel';
 import RegisterCompany from '../components/corporate/RegisterCompany';
 import CompanyBookings from '../components/corporate/CompanyBookings';
+import CompanyInvoices from '../components/corporate/CompanyInvoices';
 
 /* Visitors see the dashboard preview with sample figures. A signed-in
  * member of a company sees their company, its status and its real team
@@ -74,7 +75,7 @@ export default function CorporateDashboard() {
   const current = memberships?.find(m => m.organization.id === orgId) ?? null;
   const live = !!current;                                    // a real company, not the preview
   const needsCompany = !!user && memberships !== null && memberships.length === 0;
-  const SAMPLE_TABS: DashTab[] = ['overview', 'recurring', 'invoices', 'api'];
+  const SAMPLE_TABS: DashTab[] = ['overview', 'recurring', 'api'];
 
   const filteredShipments = SHIPMENTS.filter(s => {
     const matchSearch = s.id.toLowerCase().includes(search.toLowerCase()) || s.from.toLowerCase().includes(search.toLowerCase()) || s.to.toLowerCase().includes(search.toLowerCase());
@@ -321,7 +322,8 @@ export default function CorporateDashboard() {
           )}
 
           {/* ── INVOICES ── */}
-          {tab === 'invoices' && (
+          {tab === 'invoices' && live && current && <CompanyInvoices key={current.organization.id} membership={current} />}
+          {tab === 'invoices' && !live && (
             <div className="space-y-4">
               <div className="grid sm:grid-cols-3 gap-4">
                 <StatCard icon="💰" label="Outstanding Balance" value="89,200 NOK" color="orange"/>

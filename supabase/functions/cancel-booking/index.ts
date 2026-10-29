@@ -96,6 +96,10 @@ serve(async (req: Request) => {
   if (!['paid', 'escrow'].includes(String(booking.payment_status))) {
     return json({ cancelled: true, refund: null });
   }
+  if (booking.payment_provider === 'invoice') {
+    return json({ cancelled: true, refund: null,
+                  note: 'paid on your company invoice: any cancellation fee under the terms is invoiced to the company' });
+  }
   if (!booking.payment_provider) {
     return json({ cancelled: true, refund: null, note: 'paid before provider references were recorded; support will refund it' });
   }

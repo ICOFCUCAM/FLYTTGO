@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { supabase, callFunction } from "../lib/supabase";
 import CompaniesPanel from "./admin/CompaniesPanel";
+import InvoicingPanel from "./admin/InvoicingPanel";
 import { activePlansByUser, ASSIGNABLE_PLANS } from "../lib/plans";
 import { useAuth } from "../lib/auth";
 
@@ -18,6 +19,7 @@ type AdminTab =
   | "revenue"
   | "disputes"
   | "companies"
+  | "invoicing"
   | "settings";
 
 /* ── CSV export helper ──────────────────────────────────────────
@@ -146,6 +148,7 @@ export default function AdminDashboard() {
     "revenue",
     "disputes",
     "companies",
+    "invoicing",
     "settings",
   ];
 
@@ -973,6 +976,8 @@ export default function AdminDashboard() {
         )}
 
         {tab === "companies" && <CompaniesPanel />}
+
+        {tab === "invoicing" && <InvoicingPanel />}
 
         {tab === "settings" && (
           <div>

@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { callFunction, supabase } from '../../lib/supabase';
 import { ORG_STATUS_LABELS, type Organization, type OrgStatus } from '../../lib/organizations';
+import { adminSetInvoicing, callJson, formatNok, recordManualCreditCheck } from '../../lib/invoicing';
 
 interface Verification { id: string; organization_id: string; source: string; passed: boolean; org_number: string | null; findings: any; checked_at: string }
 
@@ -89,6 +90,27 @@ export default function CompaniesPanel() {
     }, 'Owner restored.');
   };
 
+  const setInvoicing = (o: Organization & Record<string, any>) => {
+    const on = confirm(`Allow ${o.name} to pay on invoice? (Cancel = switch invoicing off)`);
+    const limit = on ? prompt('Credit limit in NOK (empty = no limit):', o.credit_limit != null ? String(o.credit_limit) : '') : '';
+    if (on && limit === null) return;
+    const plan = on ? (confirm('Special price plan (the company\'s name and logo on its invoices)? OK = special, Cancel = standard') ? 'special' : 'standard')
+                    : (o.billing_plan ?? 'standard');
+    run(o.id, () => adminSetInvoicing(o.id, on, limit && limit.trim() ? Number(limit.replace(',', '.')) : null, plan as 'standard' | 'special'),
+        on ? `Invoicing on for ${o.name}.` : `Invoicing off for ${o.name}.`);
+  };
+
+  const creditCheck = (o: Organization) => run(o.id, async () => {
+    const r = await callJson('credit-check', { organizationId: o.id });
+    if (r.ok) return r.data.check?.passed ? null : 'The credit check did not pass.';
+    if (!r.data.manual) return r.data.error ?? 'credit check failed';
+    const evidence = prompt(`${r.data.error}\n\nManual assessment of ${o.name}: what did you check (accounts, rating, payment history)?`);
+    if (!evidence?.trim()) return 'No credit check recorded.';
+    const passed = confirm('Did the company pass? OK = passed, Cancel = not passed');
+    const lim = prompt('Recommended credit limit in NOK (optional):') ?? '';
+    return recordManualCreditCheck(o.id, passed, '', lim.trim() ? Number(lim) : null, evidence.trim());
+  }, `Credit check recorded for ${o.name}.`);
+
   const shown = orgs.filter(o => filter === 'all' || o.status === filter);
   const btn = 'px-2.5 py-1 rounded text-xs font-medium disabled:opacity-50';
 
@@ -122,7 +144,14 @@ export default function CompaniesPanel() {
                   <td className="p-3"><div className="font-medium">{o.name}</div><div className="text-xs text-gray-400">{o.slug} · {o.billing_email ?? 'no billing email'}</div></td>
                   <td className="p-3 font-mono text-xs">{o.org_number ?? '—'}{o.vat_registered ? ' · MVA' : ''}</td>
                   <td className="p-3">{members[o.id] ?? 0}</td>
-                  <td className="p-3"><span className={`px-2 py-0.5 rounded text-xs ${STATUS_STYLE[o.status]}`}>{ORG_STATUS_LABELS[o.status]}</span></td>
+                  <td className="p-3">
+                    <span className={`px-2 py-0.5 rounded text-xs ${STATUS_STYLE[o.status]}`}>{ORG_STATUS_LABELS[o.status]}</span>
+                    {(o as any).invoicing_enabled && (
+                      <div className="text-xs text-indigo-700 mt-1">
+                        Invoice{(o as any).credit_limit != null ? `, limit ${formatNok((o as any).credit_limit)}` : ''}{(o as any).billing_plan === 'special' ? ', special plan' : ''}
+                      </div>
+                    )}
+                  </td>
                   <td className="p-3 text-xs">
                     {c ? (
                       <span className={c.passed ? 'text-emerald-700' : 'text-red-700'}>
@@ -145,6 +174,8 @@ export default function CompaniesPanel() {
                       {o.status === 'active' && <button disabled={busy === o.id} onClick={() => setStatus(o, 'suspended')} className={`${btn} bg-orange-500 text-white`}>Suspend</button>}
                       {o.status !== 'closed' && <button disabled={busy === o.id} onClick={() => setStatus(o, 'closed')} className={`${btn} bg-gray-200 text-gray-700`}>Close</button>}
                       <button disabled={busy === o.id} onClick={() => restoreOwner(o)} className={`${btn} bg-gray-100 text-gray-700`}>Restore owner</button>
+                      <button disabled={busy === o.id} onClick={() => setInvoicing(o as any)} className={`${btn} bg-indigo-600 text-white`}>Invoicing…</button>
+                      <button disabled={busy === o.id} onClick={() => creditCheck(o)} className={`${btn} bg-gray-100 text-gray-700`}>Credit check</button>
                     </div>
                   </td>
                 </tr>

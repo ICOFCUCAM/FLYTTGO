@@ -182,7 +182,7 @@ The orphan rows stay as they are (your decision): investigate them, don't delete
 
 **Production (one maintenance window, only after approval):**
 1. Take a backup (Supabase dashboard → Database → Backups, plus `pg_dump`).
-2. Apply `00002` → `00007` in one session. Keep the NOTICE output.
+2. Apply `00002` → `00008` in one session. Keep the NOTICE output.
 3. Set the secrets and the Stripe webhook events (`SECURITY_P0.md` §5).
 4. Deploy the new functions, then the frontend, then the changed functions (`SECURITY_P0.md` §5 lists them).
 5. Run the security advisor (expect no `rls_disabled` or `security_definer_view` errors).
@@ -191,7 +191,7 @@ The orphan rows stay as they are (your decision): investigate them, don't delete
 **Rollback:**
 1. Redeploy the previous frontend and functions.
 2. Export `payment_refunds`, `payment_events` and the four organisation tables if they hold data.
-3. Run `00007_down`, `00006_down`, `00005_down`, `00004_down`, `00003_down` and `00002_down`, in that order. Each returns exactly to the state before its migration (tested).
+3. Run `00008_down` (after exporting invoices), `00007_down`, `00006_down`, `00005_down`, `00004_down`, `00003_down` and `00002_down`, in that order. Each returns exactly to the state before its migration (tested).
 
 What the rollback does **not** reverse, tested in "rollback with data":
 - Rows written while the migrations were in force are kept. Their foreign keys and CHECK constraints come back **NOT VALID**: the eight constraints are listed by the test and printed as NOTICEs. Production's old code then works as badly as before.

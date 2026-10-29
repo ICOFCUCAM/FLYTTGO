@@ -24,6 +24,12 @@ export interface RefundAnswer { status: number; body: Record<string, unknown> }
 
 // deno-lint-ignore no-explicit-any
 export async function refundBooking(db: any, booking: any, requestedBy: string | null, reason: string | null): Promise<RefundAnswer> {
+  /* Paid on the company's invoice: no money was taken, so nothing is
+   * refunded. A cancellation fee is invoiced by the invoice run; an
+   * invoice already issued is corrected with a credit note. */
+  if (booking.payment_provider === 'invoice') {
+    return { status: 409, body: { error: 'this booking is paid on invoice: correct it with a credit note on the company\'s invoice', invoice: true } };
+  }
   const amountNok = refundAmountFor(booking);
   if (amountNok <= 0) {
     const why = booking.status === 'cancelled' && !booking.cancelled_by

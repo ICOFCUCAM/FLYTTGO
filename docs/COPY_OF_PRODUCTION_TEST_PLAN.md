@@ -11,7 +11,7 @@ Every item must pass before production is touched ([`PREDEPLOY_REVIEW.md`](PREDE
    - Restore it into a new project, for example "FlyttGo Norway – copy 2026-11".
    - Never use a Supabase branch of production that shares its Auth or Storage.
 2. **Fingerprint.** On the copy, before migrating: `supabase/schema/fingerprint-summary.sql` must equal `production-2026-10-29.fingerprint`.
-3. **Migrations.** Apply `00002` → `00007` in one session. Save the NOTICE output (policies dropped, keys left NOT VALID, wallets moved).
+3. **Migrations.** Apply `00002` → `00008` in one session. Save the NOTICE output (policies dropped, keys left NOT VALID, wallets moved).
 4. **Secrets on the copy only.**
    - Stripe test keys (`sk_test_…`, webhook signing secret for a test endpoint);
    - Vipps test credentials (`apitest.vipps.no`) and `VIPPS_WEBHOOK_SECRET`;
@@ -144,11 +144,19 @@ Every item must pass before production is touched ([`PREDEPLOY_REVIEW.md`](PREDE
 - [ ] **Book for a company.** As a booker of an active company, the booking flow offers "Book for". The booking appears in the company's Shipments tab for every member.
 - [ ] **Company booking refused (negative).** Through the API, `organization_id` for a pending company, by a viewer, or by an outsider. Expect each refused.
 - [ ] **Company of a booking fixed (negative).** PATCH `organization_id` on an existing booking. Expect refused.
+- [ ] **Invoicing.** Fill in the invoice settings. Switch invoicing on for a company with 30-day terms, and book on invoice from the payment page. Complete the move, then "Run invoicing now".
+  - Expect an invoice numbered 1, due in 30 days, with a valid KID, emailed with PDF and EHF.
+  - Validate the EHF in a Peppol validator (for example the Difi/DFØ EHF validator).
+  - Pay it from a bank file row and see it paid.
+  - Credit part of it.
+  - Run the reminder on an overdue invoice in a test company.
+- [ ] **Credit-check switch.** Tick "Require credit check": switching invoicing on and booking on invoice are refused until a check is recorded. Untick it: they work again.
+- [ ] **Invoices (negative).** A booker or viewer sees no invoices. An outsider cannot download another company's PDF (`invoice-document` returns 404). Nobody can change an issued invoice through the API.
 - [ ] **Admin → Companies.** Check Brønnøysund; activation is enabled only after a passed check; then suspend and close, each with a reason.
 
 ## 10. Rollback rehearsal (on the copy)
 
-- [ ] **Run the rollback.** After sections 2–9 have written data: export the refund, event and organisation tables, then run `00007_down` → `00002_down`.
+- [ ] **Run the rollback.** After sections 2–9 have written data: export the refund, event and organisation tables, then run `00008_down` → `00002_down`.
 - [ ] **Constraints.** Expect it to succeed. Note the NOTICEs: the NOT VALID constraints should match those listed in the review §5.
 - [ ] **Old frontend.** Redeploy the previous frontend and functions. Confirm the site loads and an existing booking is visible to its customer.
 - [ ] **Re-apply.** Apply 00002 → 00005 again and repeat the smoke items (2, 3, 4, 7: one each). Expect them to pass.

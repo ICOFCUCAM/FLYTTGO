@@ -34,7 +34,9 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.1.x
-      - run: deno check supabase/functions/*/index.ts
+      # --node-modules-dir=none: the repository's package.json would otherwise make
+      # Deno look for npm: packages (pdf-lib) in node_modules.
+      - run: deno check --node-modules-dir=none supabase/functions/*/index.ts
 
   database:
     name: Database security tests

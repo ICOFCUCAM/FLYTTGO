@@ -24,6 +24,7 @@ The emergency fix is in place (seen 2026-10-29): `admin_accounts` has RLS with a
 | `00003_p0_security_hardening.sql` | RLS on every table. Column guards on bookings, escrow, profiles, driver tables and payouts. The job pool without customer details, plus `claim_job()`. Dispatch and wallet functions restricted. One-time settlement of escrow to the wallet. `change_driver_subscription` checks the caller. Live tracking: `booking_driver_user()`, the location in the realtime publication, replica identity. Admin escrow release as one transaction. Fixes for production's recursive and RLS-blind escrow triggers. |
 | `00004_payments_and_refunds.sql` | Provider reference and amount paid on bookings, `payment_events` (each webhook event processed once), `payment_refunds`, `refund_request_begin()` / `refund_mark()`. |
 | `00006_launch_decisions.sql` | The decisions of 2026-10-29 ([`DECISIONS.md`](DECISIONS.md)): dispatch eligibility from the subscription with grace periods, plan job limits and weights; cancellations stamped with who and when; Vipps capture before release (`capture_pending`); company verification before activation; platform admins out of company roles. |
+| `00008_invoicing.sql` | Step 5: FlyttGo's own invoicing ([`INVOICING.md`](INVOICING.md)). Legal invoices numbered without gaps, final once issued, credit notes, KID, payments and bank matching, reminders; company payment terms and cycle; bookings on invoice; branding on the special plan; credit check behind an admin setting. |
 | `00007_company_bookings.sql` | Step 4 of the corporate plan: `bookings.organization_id`, set only by an owner, admin or booker of an active company when booking, never changed afterwards; members read their company's bookings. |
 | `00005_organizations.sql` | Not P0: company accounts (organisations, members, invitations) with RLS. Described in [`ORGANIZATIONS.md`](ORGANIZATIONS.md). Can be applied with the others or later. |
 
@@ -93,9 +94,9 @@ Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.s
 - a refund in Stripe test mode, and in Vipps test mode.
 
 **Production, in one maintenance window:**
-1. Apply `00002` → `00007` in one session (`00005`–`00007` hold the organisations, the launch decisions and company bookings; each needs the one before).
+1. Apply `00002` → `00008` in one session (`00005`–`00008` hold the organisations, the launch decisions, company bookings and invoicing; each needs the one before).
 2. Set the secrets: `EMAIL_FUNCTION_SECRET` and `app.email_function_secret`, plus the Vipps and Stripe secrets if not set, and `RESEND_API_KEY`, `FLYTTGO_FROM`, `FLYTTGO_REPLY_TO`, `FRONTEND_URL`. Add `refund.created`, `refund.updated` and `refund.failed` to the Stripe webhook's events.
-3. Deploy the new functions the new frontend calls: `cancel-booking`, `verify-organization`, `send-organization-invitation`, `refund-payment`. Nothing old calls them.
+3. Deploy the new functions the new frontend calls: `cancel-booking`, `verify-organization`, `send-organization-invitation`, `refund-payment`, `book-on-invoice`, `invoice-run`, `invoice-document`, `invoice-send`, `credit-check`. Nothing old calls them. Schedule `invoice-run` daily ([`INVOICING.md`](INVOICING.md)).
 4. Deploy the frontend.
 5. Deploy the changed edge functions: `create-checkout-session`, `create-vipps-session`, `stripe-webhook`, `vipps-webhook`, `process-payment`, `calculate-price`, `send-booking-email`. Changed functions before the frontend would refuse the old frontend's calls.
 6. Re-run the security advisor. Expect no `rls_disabled` or `security_definer_view` findings.
@@ -103,7 +104,7 @@ Rollback scripts (production only) are in `supabase/rollback/000{5,4,3,2}_down.s
 
 **Rollback:**
 1. Redeploy the previous frontend and functions (Vercel and Supabase keep earlier versions).
-2. Run `supabase/rollback/00007_down.sql`, `00006_down.sql`, `00005_down.sql`, `00004_down.sql`, `00003_down.sql`, `00002_down.sql` in that order. Each is tested to return exactly to the state before its migration.
+2. Run `supabase/rollback/00008_down.sql` (export the invoices first: accounting records), `00007_down.sql`, `00006_down.sql`, `00005_down.sql`, `00004_down.sql`, `00003_down.sql`, `00002_down.sql` in that order. Each is tested to return exactly to the state before its migration.
    - Each file states the columns and tables it drops. Export `payment_refunds` first if any refund was made.
    - Wallets moved by 00002 are not moved back.
 3. The rollback re-opens the holes in §1. Use it only to return to a known state.
@@ -117,8 +118,8 @@ The pre-deployment review and its fixes: [`PREDEPLOY_REVIEW.md`](PREDEPLOY_REVIE
 | `npm run typecheck` | 0 errors |
 | `npm run lint` | 0 errors; warnings identical to `main` |
 | `npm run build` | passes |
-| `npm test` (Vitest) | **60 / 60**: company role rules, cancellation policy (Oslo time, 24 h), Vipps confirm/capture/fee-then-cancel, Brønnøysund check, pricing and browser/server formula parity, refunds against fake Stripe/Vipps (success, pending, refusal, retry, idempotency key reuse, uncaptured cancel, no double call), tracking (beacon id, customer map follow/stop) |
-| `npm run test:db` | **repo schema 252 / 252; production replica 276 / 276** (P0, organisations, launch decisions, company bookings; PostgreSQL 16 and 17.6); **each rollback returns exactly to the state before its migration**, and all of them to production; **rollback with data** succeeds and keeps every core row |
+| `npm test` (Vitest) | **68 / 68**: invoices (KID, due dates, EHF, CSV, bank rows), company role rules, cancellation policy (Oslo time, 24 h), Vipps confirm/capture/fee-then-cancel, Brønnøysund check, pricing and browser/server formula parity, refunds against fake Stripe/Vipps (success, pending, refusal, retry, idempotency key reuse, uncaptured cancel, no double call), tracking (beacon id, customer map follow/stop) |
+| `npm run test:db` | **repo schema 309 / 309; production replica 333 / 333** (P0, organisations, launch decisions, company bookings, invoicing; PostgreSQL 16 and 17.6); **each rollback returns exactly to the state before its migration**, and all of them to production; **rollback with data** succeeds and keeps every core row |
 | Edge functions | `deno check` (Deno 2.9.6) of every function passes. Here deno.land and esm.sh are blocked, so the two remote imports were mapped to `npm:@supabase/supabase-js@2` and a `Deno.serve` stand-in for std's `serve`. CI checks the real URLs. |
 | PostgreSQL 17 | `npm run test:db` also passes on PostgreSQL 17.6, production's version: the same counts, fingerprint and rollbacks. |
 

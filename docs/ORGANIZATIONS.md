@@ -70,6 +70,10 @@ Production has these two tables (both empty, not defined in this repository, adm
 - **In the app.** The booking flow offers "Book for: Myself / ⟨company⟩" to those who may book. The dashboard's Shipments tab lists the company's real bookings.
 - **Tests:** `company_bookings.test.sql`, on both schemas.
 
+## Invoicing (migration 00008, step 5)
+
+FlyttGo's own invoicing, payment terms per company, branding on the special plan and the dormant credit check: see [`INVOICING.md`](INVOICING.md).
+
 ## Not yet built
 
 - Per-member spending limits and approval rules (step 4, company bookings). Bookings, invoices, credit and API keys will require `is_active_org_member()`.
