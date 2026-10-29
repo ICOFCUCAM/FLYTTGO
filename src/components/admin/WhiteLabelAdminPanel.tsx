@@ -10,15 +10,19 @@
  *             checks (template-quality.ts: overflow on phones, images, alt
  *             texts, booking links, sample content, unsafe HTML), correct
  *             its pages, approve or retire it. Approval despite a failing
- *             check needs a reason, which is kept. Previews are sandboxed,
+ *             check needs a reason, which is kept. Its images, slot by
+ *             slot (template-images.ts): where each comes from, its
+ *             licence, review, and replacing one. Previews are sandboxed,
  *             without scripts.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { formatNok } from '../../lib/invoicing';
 import {
   SELLER_LABELS, STATUS_LABELS, decide, loadAllWhiteLabels, loadPlans, loadTemplate, loadTemplateList, missingFor, reviewTemplate,
-  recordPageChecks, setStatus, updatePlan, updateTemplatePage, type SiteTemplate, type SiteTemplateSummary, type WhiteLabelPlan,
+  loadTemplateImages, recordPageChecks, replaceTemplateImage, reviewTemplateImage, setStatus, updatePlan, updateTemplatePage,
+  type SiteTemplate, type SiteTemplateSummary, type WhiteLabelPlan,
 } from '../../lib/whiteLabel';
+import { SOURCE_LABELS, type ImageSource, type TemplateImage } from '../../../supabase/functions/_shared/template-images';
 import {
   OTHER_CATEGORY, TEMPLATE_CATEGORIES, categoryLabel, contentFlags, renderTemplatePage, templateCategory, type ContentFlag,
 } from '../../../supabase/functions/_shared/site-template';
@@ -200,6 +204,7 @@ export default function WhiteLabelAdminPanel() {
                   {tpl.content_flags.filter(f => f.page === open?.path).length === 0 && <div className="text-gray-500">Nothing flagged at import. Still read the page.</div>}
                 </div>
                 <QualityChecks template={tpl} path={page.path} draft={draft === page.html ? null : draft} />
+                <TemplateImages template={tpl} onChanged={text => run(async () => null, text)} />
                 <textarea value={draft} onChange={e => setDraft(e.target.value)} className="w-full h-56 font-mono text-xs border rounded p-2" spellCheck={false} />
                 <p className="text-xs text-gray-500">Placeholders: {'{{brand.name}} {{brand.logo}} {{brand.phone}} {{brand.email}} {{brand.city}} {{brand.tagline}} {{BOOKING_URL}}'}; the logo slot is an element with class "fg-brand-slot" holding {'{{brand.logo}}<span class="fg-brand-name">{{brand.name}}</span>'}. Scripts, forms, frames and event handlers are refused.</p>
                 <div className="flex flex-wrap gap-2">
@@ -348,6 +353,92 @@ function QualityChecks({ template, path, draft }: { template: SiteTemplate; path
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+const REVIEW_STYLE: Record<TemplateImage['review_status'], string> = {
+  approved: 'text-emerald-700', rejected: 'text-red-700', unreviewed: 'text-amber-800',
+};
+
+/**
+ * The template's images slot by slot (site_template_images, 00021): the
+ * picture, its slot and what it is meant to show, where it comes from, its
+ * licence or how it was made, its size and review. An administrator
+ * approves or rejects each, or replaces it with an uploaded image (checked
+ * by its bytes) saying where it comes from.
+ */
+function TemplateImages({ template, onChanged }: { template: SiteTemplate; onChanged: (message: string) => void }) {
+  const [images, setImages] = useState<Awaited<ReturnType<typeof loadTemplateImages>>>([]);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [form, setForm] = useState<{ file: File | null; source: Exclude<ImageSource, 'architect-ai'>; licence: string; model: string; prompt: string; use: string }>(
+    { file: null, source: 'licensed', licence: '', model: '', prompt: '', use: '' });
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const reload = useCallback(() => { loadTemplateImages(template.id).then(setImages).catch(() => setImages([])); }, [template.id]);
+  useEffect(() => { reload(); }, [reload]);
+
+  const act = async (fn: () => Promise<string | null>, done: string) => {
+    setBusy(true); setMsg(null);
+    const e = await fn();
+    setBusy(false);
+    if (e) { setMsg(e); return; }
+    setEditing(null); reload(); onChanged(done);
+  };
+  const shared = images.filter(i => i.source === 'architect-ai').length;
+
+  return (
+    <div className="bg-white rounded-lg shadow p-3 text-xs space-y-2" aria-label="Images">
+      <div className="flex flex-wrap items-baseline gap-2">
+        <span className="font-semibold">Images</span>
+        <span className="text-gray-500">{images.length} slot(s){shared ? `, ${shared} as imported from Architect-AI (licence to be confirmed)` : ''}</span>
+      </div>
+      {images.length === 0 && <p className="text-gray-500">No image slots recorded: import the template again to record them.</p>}
+      {msg && <p className="text-red-700">{msg}</p>}
+      <div className="grid sm:grid-cols-2 gap-2">
+        {images.map(i => (
+          <div key={i.asset_key} className="border border-gray-100 rounded p-2 flex gap-2">
+            <img src={i.url} alt={i.intended_use ?? ''} loading="lazy" className="w-24 h-16 object-cover rounded bg-gray-100 shrink-0" />
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <div className="flex justify-between gap-2"><span className="font-medium truncate">{i.slot} · {i.asset_key}</span>
+                <span className={REVIEW_STYLE[i.review_status]}>{i.review_status}</span></div>
+              <div className="text-gray-600 truncate" title={i.intended_use ?? ''}>{i.intended_use ?? 'No description on the page'}</div>
+              <div className="text-gray-600">{SOURCE_LABELS[i.source]}{i.licence ? ` · ${i.licence}` : i.source === 'ai-generated' ? ` · ${i.generation?.model ?? ''}` : ' · licence unknown'}</div>
+              <div className="text-gray-500">{i.width && i.height ? `${i.width} × ${i.height} px` : 'size unknown'}{i.sha256 ? ` · ${i.sha256.slice(0, 10)}…` : ''}</div>
+              <div className="flex flex-wrap gap-1 pt-1">
+                <button disabled={busy} className={`${btn} bg-emerald-50 text-emerald-800`} onClick={() => {
+                  const licence = !i.licence && i.source !== 'ai-generated' && i.source !== 'own'
+                    ? prompt('Licence of this image (name and reference), as confirmed:')?.trim() : null;
+                  if (licence === '') return;
+                  act(() => reviewTemplateImage(template.id, i.asset_key, 'approved', licence), 'Image approved.');
+                }}>Approve</button>
+                <button disabled={busy} className={`${btn} bg-red-50 text-red-800`} onClick={() => act(() => reviewTemplateImage(template.id, i.asset_key, 'rejected'), 'Image rejected.')}>Reject</button>
+                <button disabled={busy} className={`${btn} bg-gray-100`} onClick={() => { setEditing(editing === i.asset_key ? null : i.asset_key); setForm({ ...form, file: null, use: i.intended_use ?? '' }); }}>Replace…</button>
+              </div>
+              {editing === i.asset_key && (
+                <div className="mt-1 space-y-1 border-t pt-1">
+                  <input type="file" accept="image/png,image/jpeg,image/webp" onChange={e => setForm({ ...form, file: e.target.files?.[0] ?? null })} />
+                  <select value={form.source} onChange={e => setForm({ ...form, source: e.target.value as typeof form.source })} className="w-full border rounded px-1 py-0.5">
+                    <option value="licensed">{SOURCE_LABELS.licensed}</option>
+                    <option value="ai-generated">{SOURCE_LABELS['ai-generated']}</option>
+                    <option value="own">{SOURCE_LABELS.own}</option>
+                  </select>
+                  {form.source === 'licensed' && <input value={form.licence} onChange={e => setForm({ ...form, licence: e.target.value })} placeholder="Licence (name and reference)" className="w-full border rounded px-1 py-0.5" />}
+                  {form.source === 'ai-generated' && <>
+                    <input value={form.model} onChange={e => setForm({ ...form, model: e.target.value })} placeholder="Model" className="w-full border rounded px-1 py-0.5" />
+                    <input value={form.prompt} onChange={e => setForm({ ...form, prompt: e.target.value })} placeholder="Prompt (optional)" className="w-full border rounded px-1 py-0.5" />
+                  </>}
+                  <input value={form.use} onChange={e => setForm({ ...form, use: e.target.value })} placeholder="What it shows" className="w-full border rounded px-1 py-0.5" />
+                  <button disabled={busy || !form.file} className={`${btn} bg-[#0B2E59] text-white`} onClick={() => form.file && act(() =>
+                    replaceTemplateImage(template.id, i.asset_key, form.file!, { source: form.source, licence: form.licence, model: form.model, prompt: form.prompt, intended_use: form.use }), 'Image replaced; the template needs approval again.')}>
+                    Upload and replace</button>
+                  <p className="text-gray-500">PNG, JPEG or WebP, at most 5 MB, checked by its bytes. The template goes back to review.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

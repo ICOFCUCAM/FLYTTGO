@@ -101,4 +101,81 @@ SELECT tests.throws($$SELECT public.admin_review_site_template('salon-verve01', 
   'stale checks stop approval too');
 ROLLBACK;
 
+-- ── Images as named slots ───────────────────────────────────────────────────
+BEGIN;
+CREATE TEMP TABLE st ON COMMIT DROP AS SELECT 'https://flyttgo.supabase.co/storage/v1/object/public/site-template-assets/'::text AS base;
+GRANT SELECT ON st TO authenticated, service_role;
+SET LOCAL ROLE service_role;
+SELECT tests.as_server();
+SELECT public.import_site_template(tests.tq_template(jsonb_build_object(
+    'assets', jsonb_build_array(jsonb_build_object('key', 'hero', 'url', (SELECT base FROM st) || 'salon-verve01/hero.jpg'),
+                                jsonb_build_object('key', 'services.1', 'url', (SELECT base FROM st) || 'salon-verve01/services-1.jpg'),
+                                jsonb_build_object('key', 'thumbnail', 'url', (SELECT base FROM st) || 'salon-verve01/thumbnail.jpg')),
+    'images', jsonb_build_array(
+      jsonb_build_object('asset_key', 'hero', 'slot', 'hero', 'url', (SELECT base FROM st) || 'salon-verve01/hero.jpg', 'source', 'architect-ai',
+                         'category', 'appointments', 'intended_use', 'A stylist at work', 'width', 1600, 'height', 900,
+                         'sha256', repeat('a', 64)),
+      jsonb_build_object('asset_key', 'services.1', 'slot', 'services', 'url', (SELECT base FROM st) || 'salon-verve01/services-1.jpg',
+                         'source', 'architect-ai', 'category', 'appointments', 'sha256', repeat('a', 64))))));
+SELECT tests.ok((SELECT count(*) = 2 FROM public.site_template_images WHERE template_id = 'salon-verve01'),
+  'the importer records each image slot (not the thumbnail) with what is known about it');
+SELECT tests.ok((SELECT slot = 'hero' AND source = 'architect-ai' AND licence IS NULL AND review_status = 'unreviewed'
+                        AND width = 1600 AND intended_use = 'A stylist at work'
+                   FROM public.site_template_images WHERE template_id = 'salon-verve01' AND asset_key = 'hero'),
+  'an imported image: its slot, source, size and use; licence unknown, not reviewed');
+SELECT tests.throws($$INSERT INTO public.site_template_images (template_id, asset_key, slot, url, source)
+                      VALUES ('salon-verve01', 'x', 'hero', 'https://a/x.jpg', 'licensed')$$, '23514', 'a licensed photo needs its licence');
+SELECT tests.throws($$INSERT INTO public.site_template_images (template_id, asset_key, slot, url, source, generation)
+                      VALUES ('salon-verve01', 'x', 'hero', 'https://a/x.jpg', 'ai-generated', '{}')$$, '23514',
+  'an AI-generated image says how it was made');
+SET LOCAL ROLE authenticated;
+SELECT tests.login(:cust1);
+SELECT tests.ok(NOT EXISTS (SELECT 1 FROM public.site_template_images), 'companies do not see image metadata');
+SELECT tests.throws($$SELECT public.admin_replace_site_template_image('salon-verve01', 'hero', 'salon-verve01/new.jpg', '{}')$$, '42501',
+  'nor replace images');
+SELECT tests.throws($$INSERT INTO storage.objects (bucket_id, name) VALUES ('site-template-assets', 'salon-verve01/new.jpg')$$, '42501',
+  'nor upload into the template bucket');
+SELECT tests.login(:admin);
+SELECT tests.ok((SELECT count(*) = 2 FROM public.site_template_images), 'FlyttGo administrators see it');
+SELECT tests.throws($$SELECT public.admin_replace_site_template_image('salon-verve01', 'hero', 'salon-verve01/new.jpg',
+                      '{"mime": "image/webp", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "width": 1600, "height": 900, "source": "own"}')$$,
+  '22023', 'the image must be uploaded first');
+INSERT INTO storage.objects (bucket_id, name) VALUES ('site-template-assets', 'salon-verve01/new.webp');
+SELECT tests.throws($$SELECT public.admin_replace_site_template_image('salon-verve01', 'hero', 'salon-verve01/new.webp',
+                      '{"mime": "image/gif", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "width": 1600, "height": 900, "source": "own"}')$$,
+  '22023', 'only PNG, JPEG or WebP');
+SELECT tests.throws($$SELECT public.admin_replace_site_template_image('salon-verve01', 'hero', 'salon-verve01/new.webp',
+                      '{"mime": "image/webp", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "width": 1600, "height": 900}')$$,
+  '22023', 'and the administrator says where it comes from');
+SELECT tests.throws($$SELECT public.admin_replace_site_template_image('salon-verve01', 'thumbnail', 'salon-verve01/new.webp',
+                      '{"mime": "image/webp", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "width": 1600, "height": 900, "source": "own"}')$$,
+  'P0002', 'the thumbnail is not an image slot');
+SELECT tests.ok((SELECT source = 'licensed' AND licence = 'Example Stock, licence 123' AND review_status = 'unreviewed'
+                        AND url = (SELECT base FROM st) || 'salon-verve01/new.webp' AND replaced_by = :admin
+                        AND history -> 0 ->> 'url' = (SELECT base FROM st) || 'salon-verve01/hero.jpg'
+                   FROM public.admin_replace_site_template_image('salon-verve01', 'hero', 'salon-verve01/new.webp',
+                     '{"mime": "image/webp", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "width": 1600, "height": 900,
+                       "source": "licensed", "licence": "Example Stock, licence 123"}')),
+  'an administrator replaces a slot''s image: source and licence recorded, the earlier image kept in history');
+SELECT tests.ok((SELECT assets @> jsonb_build_array(jsonb_build_object('key', 'hero', 'url', (SELECT base FROM st) || 'salon-verve01/new.webp'))
+                   FROM public.site_templates WHERE id = 'salon-verve01'),
+  'the template shows the new image');
+SELECT tests.throws($$SELECT public.admin_review_site_template_image('salon-verve01', 'services.1', 'approved', NULL)$$, '55000',
+  'an imported image is approved only once its licence is recorded');
+SELECT tests.ok((SELECT review_status = 'approved' AND licence = 'Confirmed by the owner, 2026-11-01' AND reviewed_by = :admin
+                   FROM public.admin_review_site_template_image('salon-verve01', 'services.1', 'approved', 'Confirmed by the owner, 2026-11-01')),
+  'with its licence recorded it is approved, by name');
+SET LOCAL ROLE service_role;
+SELECT tests.as_server();
+SELECT tests.ok((SELECT assets @> jsonb_build_array(jsonb_build_object('key', 'hero', 'url', (SELECT base FROM st) || 'salon-verve01/new.webp'))
+                   FROM public.import_site_template(tests.tq_template(jsonb_build_object(
+                     'assets', jsonb_build_array(jsonb_build_object('key', 'hero', 'url', (SELECT base FROM st) || 'salon-verve01/hero.jpg'),
+                                                 jsonb_build_object('key', 'services.1', 'url', (SELECT base FROM st) || 'salon-verve01/services-1.jpg')),
+                     'images', jsonb_build_array(jsonb_build_object('asset_key', 'hero', 'slot', 'hero',
+                                 'url', (SELECT base FROM st) || 'salon-verve01/hero.jpg', 'source', 'architect-ai')))))),
+  'a re-import keeps a replaced image');
+SELECT tests.ok((SELECT source = 'licensed' FROM public.site_template_images WHERE template_id = 'salon-verve01' AND asset_key = 'hero'),
+  'and its metadata');
+ROLLBACK;
+
 \echo 'template quality: all tests passed'

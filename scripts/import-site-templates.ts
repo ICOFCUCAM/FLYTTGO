@@ -61,9 +61,23 @@
 // unless the administrator gives a reason. After an administrator edits a
 // page, the browser's checks of it are out of date; run them again with
 //   FLYTTGO_SUPABASE_URL=… FLYTTGO_SERVICE_ROLE_KEY=… \
-//     node scripts/import-site-templates.ts --recheck [--ids a,b]
+//   node scripts/import-site-templates.ts --recheck [--ids a,b]
 // (reads the stored templates, writes only their checks and flags; needs
 // the owner's approval like --to-flyttgo).
+//
+// Images (supabase/functions/_shared/template-images.ts): each template's
+// images are recorded as named slots (hero, services, about, gallery,
+// team, map…) with their source ('architect-ai'), licence (unknown until
+// confirmed), category, intended use (the page's alt text), size and,
+// once copied, SHA-256 (site_template_images). report.md lists templates
+// that share the very same image set. A batch of generated, licensed or
+// own photos comes in with
+//   --images <manifest.json>
+// (format in docs/WHITE_LABEL.md → "Image manifest"): each file is
+// checked by its bytes (PNG, JPEG or WebP, at most 5 MB) and takes the
+// slots it names; --out copies it into <out>/images/, --to-flyttgo
+// uploads it beside the template's images and draws the thumbnail and
+// the browser checks again with it.
 //
 // An export file is the JSON array of site_masters rows (id, name,
 // industry, style, pages, preview_assets), for example from the SQL editor:
@@ -71,7 +85,7 @@
 //     preview_assets from site_masters) m;
 // ============================================================================
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import {
   categoryLabel, hostsOf, prepareTemplate, renderTemplatePage, replaceForms, templateCategory, TEMPLATE_CATEGORIES, OTHER_CATEGORY,
   contentFlags, type Brand, type ContentFlag, type MasterRow, type PreparedTemplate, type TemplateAsset, type TemplatePage,
@@ -79,10 +93,18 @@ import {
 import {
   CHECKS, OVERFLOW_WIDTHS, browserChecks, combine, failingChecks, staticChecks, type CheckResult, type TemplateChecks,
 } from '../supabase/functions/_shared/template-quality.ts';
+import {
+  EXTENSION, MAX_TEMPLATE_IMAGE, imageInfo, planManifest, readManifest, sha256Hex, sharedImageSets, templateImages,
+  type ImageManifest, type ManifestEntry, type TemplateImage,
+} from '../supabase/functions/_shared/template-images.ts';
 import { snapshotter, type Snapshotter } from './template-snapshot.ts';
 
-/** A prepared template with its checks and thumbnail (JPEG bytes; not part of the JSON). */
-type Imported = PreparedTemplate & { checks?: TemplateChecks; thumbnail?: string; thumbnailJpeg?: Uint8Array };
+/** A prepared template with its checks, image slots and thumbnail (JPEG bytes; not part of the JSON). */
+type Imported = PreparedTemplate & {
+  checks?: TemplateChecks; images: TemplateImage[]; thumbnail?: string; thumbnailJpeg?: Uint8Array;
+  /** Images from a manifest, by asset key: their bytes, until stored. */
+  replacements?: Map<string, { entry: ManifestEntry; bytes: Uint8Array; ext: string; mime: string }>;
+};
 
 /**
  * The neutral sample brand thumbnails are drawn with: the template's own
@@ -107,13 +129,15 @@ function samplePage(t: Pick<PreparedTemplate, 'assets'>, html: string, brand: Br
  * 320/375/390 px with a long name, images that fail to load) with one.
  */
 async function checkTemplate(t: Pick<PreparedTemplate, 'pages' | 'assets' | 'flags'> & { flag_names?: string[] },
-                             snap: Snapshotter | null): Promise<TemplateChecks> {
+                             snap: Snapshotter | null, sizes = new Map<string, { width: number; height: number }>()): Promise<TemplateChecks> {
   const base = staticChecks(t.pages, t.assets, t.flags);
   const browser: CheckResult[] = [];
   if (snap) {
     for (const p of t.pages) {
       const seen = await snap.inspect(samplePage(t, p.html, CHECK_BRAND), hostsOf(t.assets), OVERFLOW_WIDTHS);
       browser.push(...browserChecks(p.path, seen));
+      // Each image's size as the browser loaded it (for the image slots).
+      for (const i of seen.images) if (i.loaded) sizes.set(i.src.replace(/&amp;/g, '&'), { width: i.width, height: i.height });
     }
   }
   return { version: 1, ran_at: new Date().toISOString(), sample_names: t.flag_names, results: combine(base, browser) };
@@ -183,7 +207,7 @@ async function prepare(row: MasterRow, snap: Snapshotter | null): Promise<Import
   for (const p of pages) {
     settled.push(snap && /<script\b/i.test(p.html) ? { ...p, html: await snap.settle(p.html) } : p);
   }
-  const t: Imported = prepareTemplate({ ...row, pages: settled });
+  const t: Imported = { ...prepareTemplate({ ...row, pages: settled }), images: [] };
   if (snap) {
     for (const p of t.pages) {
       const before = settled.find(s => (s.path || '/') === p.path) ?? settled[0];
@@ -197,7 +221,9 @@ async function prepare(row: MasterRow, snap: Snapshotter | null): Promise<Import
     const home = t.pages.find(p => p.path === '/') ?? t.pages[0];
     if (home) t.thumbnailJpeg = await snap.thumbnail(samplePage(t, home.html), hostsOf(t.assets));
   }
-  t.checks = await checkTemplate(t, snap);
+  const sizes = new Map<string, { width: number; height: number }>();
+  t.checks = await checkTemplate(t, snap, sizes);
+  t.images = templateImages(t, templateCategory(t.industry), sizes);
   return t;
 }
 
@@ -223,11 +249,20 @@ function report(templates: Imported[]): string {
       + `${n('price')} | ${n('review')} | ${n('claim')} | ${n('sample_name') + n('phone') + n('email') + n('address') + n('statistic')} | ${n('hidden')} | `
       + `${t.removed.scripts}, ${t.removed.forms}, ${t.removed.handlers} |`);
   }
+  const shared = sharedImageSets(templates.flatMap(t => t.images));
+  lines.push('', '## Templates sharing the same images', '');
+  if (!shared.length) lines.push('None: every template has its own set of images.');
+  else {
+    lines.push(`${shared.reduce((n, g) => n + g.templates.length, 0)} of ${templates.length} templates share an image set with another `
+      + '(compared by SHA-256 where the images were copied, else by address).', '', '| Templates | Images in the set | Which |', '|---|---|---|');
+    for (const g of shared) lines.push(`| ${g.templates.length} | ${g.images} | ${g.templates.join(', ')} |`);
+  }
   for (const t of templates) {
     lines.push('', `## ${t.id}`, '');
     for (const r of failingChecks(t.checks)) {
       lines.push(`- **check ${r.id}** (${r.page}): ${r.detail}${r.items?.length ? ` ${r.items.slice(0, 5).join('; ').replace(/\|/g, '/')}` : ''}`);
     }
+    for (const [k, r] of t.replacements ?? []) lines.push(`- image ${k}: from the manifest, ${r.entry.file} (${r.entry.source})`);
     for (const f of t.flags.slice(0, 40)) lines.push(`- ${f.kind} (${f.page}): …${f.sample.replace(/\|/g, '/')}…`);
   }
   return lines.join('\n') + '\n';
@@ -245,7 +280,7 @@ async function storeAsset(templateId: string, assetKey: string, ext: string, typ
   return `${url}/storage/v1/object/public/site-template-assets/${path}`;
 }
 
-async function copyAsset(a: TemplateAsset, templateId: string, url: string, key: string): Promise<TemplateAsset | null> {
+async function copyAsset(a: TemplateAsset, templateId: string, url: string, key: string): Promise<(TemplateAsset & { sha256: string; width: number; height: number }) | null> {
   let res: Response;
   try { res = await fetch(a.url); } catch (e) { console.warn(`  image ${a.key}: ${(e as Error).message}`); return null; }
   const type = (res.headers.get('content-type') ?? '').split(';')[0].trim();
@@ -253,17 +288,42 @@ async function copyAsset(a: TemplateAsset, templateId: string, url: string, key:
   if (!res.ok || !ext) { console.warn(`  image ${a.key}: ${res.status} ${type}, skipped`); return null; }
   const body = new Uint8Array(await res.arrayBuffer());
   if (body.byteLength > MAX_IMAGE) { console.warn(`  image ${a.key}: larger than 5 MB, skipped`); return null; }
-  return { key: a.key, url: await storeAsset(templateId, a.key, ext, type, body, url, key) };
+  // What the bytes are, not what the server says they are.
+  const info = imageInfo(body);
+  if (!info || info.mime !== type) { console.warn(`  image ${a.key}: not a ${type} image by its bytes, skipped`); return null; }
+  return { key: a.key, url: await storeAsset(templateId, a.key, ext, type, body, url, key), sha256: await sha256Hex(body),
+           width: info.width, height: info.height };
 }
 
-async function toFlyttgo(templates: Imported[]) {
+async function toFlyttgo(templates: Imported[], snap: Snapshotter | null) {
   const url = env('FLYTTGO_SUPABASE_URL');
   const key = env('FLYTTGO_SERVICE_ROLE_KEY');
   for (const t of templates) {
     const assets: TemplateAsset[] = [];
+    const images: TemplateImage[] = [];
     for (const a of t.assets) {
+      const r = t.replacements?.get(a.key);
+      const image = t.images.find(i => i.asset_key === a.key);
+      if (r) {
+        // An image from the manifest: stored under its hash, with what the manifest says about it.
+        const sha = await sha256Hex(r.bytes);
+        const info = imageInfo(r.bytes)!;
+        const stored = await storeAsset(t.id, `${a.key}-${sha.slice(0, 12)}`, r.ext, r.mime, r.bytes, url, key);
+        assets.push({ key: a.key, url: stored });
+        if (image) images.push({ ...image, url: stored, source: r.entry.source, licence: r.entry.licence ?? null, generation: r.entry.generation ?? null,
+                                 intended_use: r.entry.intended_use ?? image.intended_use, width: info.width, height: info.height, sha256: sha });
+        continue;
+      }
       const copied = await copyAsset(a, t.id, url, key);
-      if (copied) assets.push(copied);
+      if (!copied) continue;
+      assets.push({ key: copied.key, url: copied.url });
+      if (image) images.push({ ...image, url: copied.url, sha256: copied.sha256, width: copied.width, height: copied.height });
+    }
+    // With images from a manifest, the thumbnail and the browser's checks are drawn again with them.
+    if (t.replacements?.size && snap) {
+      const home = t.pages.find(p => p.path === '/') ?? t.pages[0];
+      if (home) t.thumbnailJpeg = await snap.thumbnail(samplePage({ assets }, home.html), hostsOf(assets));
+      t.checks = await checkTemplate({ ...t, assets }, snap);
     }
     // The thumbnail, beside the template's images (asset key 'thumbnail').
     if (t.thumbnailJpeg) {
@@ -274,11 +334,53 @@ async function toFlyttgo(templates: Imported[]) {
       headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ p: { id: t.id, name: t.name, industry: t.industry, style: t.style, pages: t.pages,
                                   assets, source: 'architect-ai', source_id: t.source_id, flags: t.flags,
-                                  features: t.features, checks: t.checks } }),
+                                  features: t.features, checks: t.checks, images } }),
     });
     if (!res.ok) throw new Error(`${t.id}: ${res.status} ${await res.text()}`);
     console.log(`stored ${t.id}: ${t.pages.length} pages, ${assets.length}/${t.assets.length} images, ${t.flags.length} things to check`);
   }
+}
+
+/**
+ * --images <manifest.json>: the slots each image of a batch takes
+ * (planManifest()), each file checked by its bytes. The template's image
+ * slots carry the manifest's source, licence or generation; the bytes are
+ * stored by --to-flyttgo, or copied into <out>/images/ for review.
+ */
+async function applyManifest(path: string, templates: Imported[]) {
+  const manifest: ImageManifest = readManifest(JSON.parse(await readFile(path, 'utf8')));
+  const folder = dirname(resolve(path));
+  const plan = planManifest(manifest, templates.flatMap(t => t.images));
+  const files = new Map<string, { bytes: Uint8Array; ext: string; mime: string }>();
+  for (const e of manifest.images) {
+    if (files.has(e.file)) continue;
+    const bytes = new Uint8Array(await readFile(join(folder, e.file)));
+    const info = imageInfo(bytes);
+    if (!info) throw new Error(`image manifest: ${e.file} is not a PNG, JPEG or WebP image (checked by its bytes)`);
+    if (bytes.byteLength > MAX_TEMPLATE_IMAGE) throw new Error(`image manifest: ${e.file} is larger than 5 MB`);
+    files.set(e.file, { bytes, ext: EXTENSION[info.mime], mime: info.mime });
+  }
+  let n = 0;
+  for (const t of templates) {
+    const mine = plan.get(t.id);
+    if (!mine) continue;
+    t.replacements = new Map();
+    for (const [k, entry] of mine) {
+      const f = files.get(entry.file)!;
+      t.replacements.set(k, { entry, ...f });
+      const info = imageInfo(f.bytes)!;
+      t.images = t.images.map(i => i.asset_key !== k ? i : {
+        ...i, source: entry.source, licence: entry.licence ?? null, generation: entry.generation ?? null,
+        intended_use: entry.intended_use ?? i.intended_use, width: info.width, height: info.height, sha256: null, review_status: 'unreviewed',
+      });
+      n++;
+    }
+  }
+  for (const t of templates) for (const i of t.images) {
+    const r = t.replacements?.get(i.asset_key);
+    if (r) i.sha256 = await sha256Hex(r.bytes);
+  }
+  console.log(`image manifest: ${n} image slot(s) of ${plan.size} template(s) take an image from ${path}`);
 }
 
 /** --recheck: check the templates stored in FlyttGo again (after administrators edited pages) and store the results. */
@@ -337,26 +439,35 @@ async function main() {
       console.log(`prepared ${t.id} (${categoryLabel(templateCategory(t.industry) ?? 'other')}): ${t.pages.length} pages`
         + (hidden ? `, ${hidden} page(s) flagged hidden` : ''));
     }
+    const manifest = arg('images');
+    if (manifest) await applyManifest(manifest, templates);
+
+    const out = arg('out');
+    if (out) {
+      await mkdir(join(out, 'thumbnails'), { recursive: true });
+      for (const t of templates) {
+        const { thumbnailJpeg, replacements, ...json } = t;
+        if (thumbnailJpeg) {
+          json.thumbnail = `thumbnails/${t.id}.jpg`;
+          await writeFile(join(out, json.thumbnail), thumbnailJpeg);
+        }
+        // Images from a manifest, for review (the thumbnail still shows the earlier ones).
+        for (const [k, r] of replacements ?? []) {
+          await mkdir(join(out, 'images', t.id), { recursive: true });
+          const file = `images/${t.id}/${k}.${r.ext}`;
+          await writeFile(join(out, file), r.bytes);
+          json.images = json.images.map(i => i.asset_key === k ? { ...i, url: file } : i);
+        }
+        await writeFile(join(out, `${t.id}.json`), JSON.stringify(json, null, 2));
+      }
+      await writeFile(join(out, 'report.md'), report(templates));
+      console.log(`wrote ${templates.length} templates and report.md to ${out}`);
+    }
+    if (has('to-flyttgo')) await toFlyttgo(templates, snap);
+    else if (!out) console.log('nothing written: add --out <folder> to review, or --to-flyttgo to store');
   } finally {
     await snap?.close();
   }
-
-  const out = arg('out');
-  if (out) {
-    await mkdir(join(out, 'thumbnails'), { recursive: true });
-    for (const t of templates) {
-      const { thumbnailJpeg, ...json } = t;
-      if (thumbnailJpeg) {
-        json.thumbnail = `thumbnails/${t.id}.jpg`;
-        await writeFile(join(out, json.thumbnail), thumbnailJpeg);
-      }
-      await writeFile(join(out, `${t.id}.json`), JSON.stringify(json, null, 2));
-    }
-    await writeFile(join(out, 'report.md'), report(templates));
-    console.log(`wrote ${templates.length} templates and report.md to ${out}`);
-  }
-  if (has('to-flyttgo')) await toFlyttgo(templates);
-  else if (!out) console.log('nothing written: add --out <folder> to review, or --to-flyttgo to store');
 }
 
 main().catch((e) => { console.error(e.message ?? e); process.exit(1); });

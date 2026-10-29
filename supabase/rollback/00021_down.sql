@@ -5,12 +5,20 @@
 -- afterwards the schema and function bodies are exactly as before 00021.
 --
 -- DATA LOSS — READ FIRST. Drops each template's features and automated
--- check results (the importer finds them again on the next import) and the
+-- check results (the importer finds them again on the next import), the
 -- record of approvals given despite failing checks (export
--- site_templates.check_overrides first if it is needed). The templates,
--- their pages, assets (the thumbnails among them) and review status stay.
+-- site_templates.check_overrides first if it is needed) and the image
+-- metadata (site_template_images: sources, licences, generation, review;
+-- export it first). The templates, their pages, assets (the thumbnails
+-- and replaced images among them) and review status stay; uploaded images
+-- stay in storage.
 -- ============================================================================
 
+DROP FUNCTION IF EXISTS public.admin_review_site_template_image(text, text, text, text);
+DROP FUNCTION IF EXISTS public.admin_replace_site_template_image(text, text, text, jsonb);
+DROP FUNCTION IF EXISTS public.site_template_store_images(text, jsonb);
+DROP POLICY IF EXISTS site_template_assets_admin_insert ON storage.objects;
+DROP TABLE IF EXISTS public.site_template_images;
 DROP FUNCTION IF EXISTS public.admin_review_site_template(text, boolean, boolean, text, text);
 DROP FUNCTION IF EXISTS public.admin_record_site_template_page_checks(text, text, jsonb, jsonb);
 DROP FUNCTION IF EXISTS public.record_site_template_checks(text, jsonb, jsonb);
