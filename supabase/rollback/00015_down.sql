@@ -17,6 +17,8 @@ DROP FUNCTION IF EXISTS public.accounting_on_invoice();
 DROP FUNCTION IF EXISTS public.accounting_post_reminder(uuid);
 DROP FUNCTION IF EXISTS public.accounting_post_payment(uuid);
 DROP FUNCTION IF EXISTS public.accounting_post_invoice(uuid);
+DROP FUNCTION IF EXISTS public.create_accounting_invoice(uuid, date);
+DROP TABLE IF EXISTS public.accounting_charges;      -- the invoices themselves stay (00008)
 DROP FUNCTION IF EXISTS public.accounting_billable(date);
 DROP FUNCTION IF EXISTS public.accounting_tier(uuid, date);
 DROP FUNCTION IF EXISTS public.accounting_price();

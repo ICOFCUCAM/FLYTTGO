@@ -150,6 +150,69 @@ REVOKE ALL ON FUNCTION public.accounting_billable(date) FROM PUBLIC, anon, authe
 GRANT EXECUTE ON FUNCTION public.accounting_billable(date) TO service_role;
 
 
+-- Each month billed once (the draft's deletion takes its charges with it).
+CREATE TABLE IF NOT EXISTS public.accounting_charges (
+  id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid        NOT NULL REFERENCES public.organizations (id),
+  ledger_id       uuid        NOT NULL REFERENCES accounting.ledgers (id),
+  invoice_id      uuid        NOT NULL REFERENCES public.invoices (id) ON DELETE CASCADE,
+  period          date        NOT NULL CHECK (extract(day FROM period) = 1),
+  tier            text,
+  turnover        numeric,
+  total           numeric     NOT NULL,              -- incl. MVA
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (ledger_id, period)
+);
+ALTER TABLE public.accounting_charges ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS accounting_charges_select ON public.accounting_charges;
+CREATE POLICY accounting_charges_select ON public.accounting_charges FOR SELECT TO authenticated
+  USING (public.is_admin() OR public.is_org_member(organization_id, ARRAY['owner', 'admin', 'finance']));
+REVOKE ALL ON public.accounting_charges FROM anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.accounting_charges FROM authenticated;
+
+-- The add-on's invoice for a company, as a draft on FlyttGo's invoice (NULL
+-- when nothing is due): each month from approval to the current one not
+-- yet billed, at the month's band price; nothing after the month it ended;
+-- a month without a price (Enterprise, not yet agreed) waits.
+CREATE OR REPLACE FUNCTION public.create_accounting_invoice(p_org uuid, p_today date DEFAULT NULL)
+RETURNS public.invoices
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_month date := date_trunc('month', coalesce(p_today, (now() AT TIME ZONE 'Europe/Oslo')::date))::date;
+  l accounting.ledgers%ROWTYPE; v_inv public.invoices%ROWTYPE; v_m date; v_end date; t jsonb; v_amt numeric; n integer := 0;
+BEGIN
+  PERFORM public.require_billing_operator();
+  SELECT * INTO l FROM accounting.ledgers WHERE tenant_id = p_org AND status IN ('active', 'ended') AND decided_at IS NOT NULL;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  INSERT INTO public.invoices (organization_id, notes, created_by) VALUES (p_org, 'Regnskap (FlyttGo)', auth.uid()) RETURNING * INTO v_inv;
+  v_end := CASE WHEN l.status = 'ended' THEN least(v_month, date_trunc('month', l.ended_at AT TIME ZONE 'Europe/Oslo')::date) ELSE v_month END;
+  v_m := date_trunc('month', l.decided_at AT TIME ZONE 'Europe/Oslo')::date;
+  WHILE v_m <= v_end LOOP
+    IF NOT EXISTS (SELECT 1 FROM public.accounting_charges WHERE ledger_id = l.id AND period = v_m) THEN
+      t := public.accounting_tier(l.id, v_m);
+      IF coalesce((t ->> 'monthly_fee')::numeric, 0) > 0 THEN
+        v_amt := public.white_label_line(v_inv.id, 'Regnskap ' || coalesce(t ->> 'tier', '') || ', ' || to_char(v_m, 'MM.YYYY'),
+                                         (t ->> 'monthly_fee')::numeric);
+        INSERT INTO public.accounting_charges (organization_id, ledger_id, invoice_id, period, tier, turnover, total)
+        VALUES (p_org, l.id, v_inv.id, v_m, t ->> 'tier', (t ->> 'turnover')::numeric, v_amt);
+        n := n + 1;
+      END IF;
+    END IF;
+    v_m := (v_m + interval '1 month')::date;
+  END LOOP;
+  IF n = 0 THEN DELETE FROM public.invoices WHERE id = v_inv.id; RETURN NULL; END IF;
+  UPDATE public.invoices SET
+    net_total = (SELECT sum(net_amount) FROM public.invoice_lines WHERE invoice_id = v_inv.id),
+    vat_total = (SELECT sum(vat_amount) FROM public.invoice_lines WHERE invoice_id = v_inv.id),
+    total     = (SELECT sum(total)      FROM public.invoice_lines WHERE invoice_id = v_inv.id)
+   WHERE id = v_inv.id RETURNING * INTO v_inv;
+  RETURN v_inv;
+END $$;
+REVOKE ALL ON FUNCTION public.create_accounting_invoice(uuid, date) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_accounting_invoice(uuid, date) TO authenticated, service_role;
+
+
 -- ── 3. Posting the invoice engine ───────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.accounting_post_invoice(p_invoice uuid)
 RETURNS uuid

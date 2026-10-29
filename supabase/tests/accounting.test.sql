@@ -240,6 +240,15 @@ UPDATE accounting.ledgers SET monthly_fee = 9900 WHERE id = tests.ledger();
 SET LOCAL ROLE service_role;
 SELECT tests.ok((public.accounting_tier(tests.ledger()) ->> 'monthly_fee')::numeric = 9900, 'an agreed price wins over the list');
 SET LOCAL ROLE authenticated;
+SELECT tests.login(:admin);
+RESET ROLE;
+UPDATE accounting.ledgers SET monthly_fee = NULL WHERE id = tests.ledger();
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE ai ON COMMIT DROP AS SELECT * FROM public.create_accounting_invoice((SELECT id FROM o));
+GRANT SELECT ON ai TO service_role;
+SELECT tests.ok((SELECT total FROM ai) = 248.75 AND (SELECT count(*) FROM public.invoice_lines WHERE invoice_id = (SELECT id FROM ai)) = 1,
+  'FlyttGo invoices the add-on: this month, Start, 199 + 25 % MVA');
+SELECT tests.ok(public.create_accounting_invoice((SELECT id FROM o)) IS NULL, 'and never the same month twice');
 
 -- Ending
 SELECT tests.login(:cust1);

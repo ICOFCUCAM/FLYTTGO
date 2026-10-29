@@ -14,6 +14,8 @@
 //      plan's invoice: the set-up fee once, the monthly fee in advance, and
 //      under Model B what FlyttGo kept from last month's customer payments
 //      (recorded as paid at once: it was taken through Stripe).
+//   2c. The accounting add-on: each month at the company's turnover band
+//      price (00015), on FlyttGo's invoice.
 //   3. Remind. An unpaid invoice gets a reminder each time the configured
 //      number of days passes after its due date (invoice_reminder_after_days),
 //      at most two; the fee and interest come from the settings. After that
@@ -107,6 +109,26 @@ serve(async (req: Request) => {
     const li = await loadInvoice(db, inv.id);
     const mailErr = li ? await emailInvoice(db, li, 'invoice') : 'could not load the invoice';
     report.issued.push({ number: inv.number, organization: w.organization_id, whiteLabel: true, total: inv.total,
+                         emailed: !mailErr, emailError: mailErr ?? undefined });
+  }
+
+  /* 2c: the accounting add-on (docs/ACCOUNTING_CORE.md), by turnover band. */
+  const { data: ledgers } = await db.schema('accounting').from('ledgers').select('tenant_id')
+    .not('tenant_id', 'is', null).in('status', ['active', 'ended']).not('decided_at', 'is', null);
+  for (const l of ledgers ?? []) {
+    if (dry) { report.issued.push({ organization: l.tenant_id, accounting: true, dryRun: true }); continue; }
+    const { data: draft, error: aErr } = await db.rpc('create_accounting_invoice', { p_org: l.tenant_id });
+    if (aErr) { report.errors.push({ organization: l.tenant_id, accounting: true, error: aErr.message }); continue; }
+    if (!draft?.id) continue;                                   // nothing due
+    const { data: inv, error: iErr } = await db.rpc('issue_invoice', { p_invoice: draft.id });
+    if (iErr) {
+      await db.rpc('delete_invoice_draft', { p_invoice: draft.id });
+      report.errors.push({ organization: l.tenant_id, accounting: true, error: iErr.message });
+      continue;
+    }
+    const li = await loadInvoice(db, inv.id);
+    const mailErr = li ? await emailInvoice(db, li, 'invoice') : 'could not load the invoice';
+    report.issued.push({ number: inv.number, organization: l.tenant_id, accounting: true, total: inv.total,
                          emailed: !mailErr, emailError: mailErr ?? undefined });
   }
 
