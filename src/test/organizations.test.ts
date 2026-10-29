@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../lib/supabase', () => ({ supabase: {}, callFunction: vi.fn() }));
-const { assignableRoles, canEditCompany, canInvite, canManage, suggestSlug } = await import('../lib/organizations');
+const { assignableRoles, canBookFor, canEditCompany, canInvite, canManage, suggestSlug } = await import('../lib/organizations');
 
 describe('company roles in the browser match the database rules', () => {
   it('owners manage everyone; admins only bookers, finance and viewers', () => {
@@ -20,6 +20,16 @@ describe('company roles in the browser match the database rules', () => {
     expect(canInvite('owner', 'suspended')).toBe(false);
     expect(canInvite('booker', 'active')).toBe(false);
     expect(canEditCompany('finance')).toBe(false);
+  });
+
+  it('only owners, admins and bookers of an active company book for it', () => {
+    const m = (role: any, status: any) => ({ role, organization: { status } as any });
+    expect(canBookFor(m('booker', 'active'))).toBe(true);
+    expect(canBookFor(m('owner', 'active'))).toBe(true);
+    expect(canBookFor(m('finance', 'active'))).toBe(false);
+    expect(canBookFor(m('viewer', 'active'))).toBe(false);
+    expect(canBookFor(m('owner', 'pending'))).toBe(false);
+    expect(canBookFor(m('admin', 'suspended'))).toBe(false);
   });
 
   it('suggests slugs the database accepts', () => {

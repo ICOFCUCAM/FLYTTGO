@@ -38,6 +38,11 @@ export function assignableRoles(myRole: OrgRole | null): OrgRole[] {
   return [];
 }
 
+/** May this member book for the company? (00007: owner, admin or booker of an active company.) */
+export function canBookFor(m: Membership): boolean {
+  return m.organization.status === 'active' && ['owner', 'admin', 'booker'].includes(m.role);
+}
+
 /** May myRole change or remove a member who has targetRole? */
 export function canManage(myRole: OrgRole | null, targetRole: OrgRole): boolean {
   return assignableRoles(myRole).includes(targetRole);
@@ -76,6 +81,17 @@ export async function myMemberships(userId: string): Promise<Membership[]> {
     organization: o as Organization,
     role: rows.find(r => r.organization_id === o.id)!.role as OrgRole,
   })).sort((a, b) => a.organization.name.localeCompare(b.organization.name));
+}
+
+/** The company's bookings (RLS: members of the company). */
+export async function loadCompanyBookings(orgId: string) {
+  const { data } = await supabase
+    .from('bookings')
+    .select('id, status, payment_status, pickup_city, dropoff_city, move_date, move_time, price_estimate, customer_name, customer_email, created_at')
+    .eq('organization_id', orgId)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  return data ?? [];
 }
 
 export async function loadTeam(orgId: string): Promise<TeamMember[]> {

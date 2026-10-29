@@ -4,6 +4,7 @@ import { useAuth } from '../lib/auth';
 import { ORG_STATUS_LABELS, myMemberships, type Membership } from '../lib/organizations';
 import TeamPanel from '../components/corporate/TeamPanel';
 import RegisterCompany from '../components/corporate/RegisterCompany';
+import CompanyBookings from '../components/corporate/CompanyBookings';
 
 /* Visitors see the dashboard preview with sample figures. A signed-in
  * member of a company sees their company, its status and its real team
@@ -73,7 +74,7 @@ export default function CorporateDashboard() {
   const current = memberships?.find(m => m.organization.id === orgId) ?? null;
   const live = !!current;                                    // a real company, not the preview
   const needsCompany = !!user && memberships !== null && memberships.length === 0;
-  const SAMPLE_TABS: DashTab[] = ['overview', 'shipments', 'recurring', 'invoices', 'api'];
+  const SAMPLE_TABS: DashTab[] = ['overview', 'recurring', 'invoices', 'api'];
 
   const filteredShipments = SHIPMENTS.filter(s => {
     const matchSearch = s.id.toLowerCase().includes(search.toLowerCase()) || s.from.toLowerCase().includes(search.toLowerCase()) || s.to.toLowerCase().includes(search.toLowerCase());
@@ -240,7 +241,8 @@ export default function CorporateDashboard() {
           )}
 
           {/* ── SHIPMENTS ── */}
-          {tab === 'shipments' && (
+          {tab === 'shipments' && live && current && <CompanyBookings membership={current} />}
+          {tab === 'shipments' && !live && (
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3">
                 <input value={search} onChange={e => setSearch(e.target.value)}

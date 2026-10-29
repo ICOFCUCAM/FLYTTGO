@@ -60,6 +60,16 @@ Production has these two tables (both empty, not defined in this repository, adm
   - Modules not connected yet (overview figures, shipments, recurring, invoices, API) keep their preview, marked as sample data.
 - **Admin → Companies** (`components/admin/CompaniesPanel.tsx`): filter by status, check in Brønnøysund, record a manual check, activate (only with a current passed check), suspend, close, and restore an owner.
 
+## Company bookings (migration 00007, step 4)
+
+- **Same engine.** A company booking is an ordinary booking with `organization_id` set: the same booking flow, payment, dispatch and refunds.
+- **Who may book.** Only an owner, admin or booker of an **active** company, for a booking they make themselves. Pending, suspended and closed companies cannot book. The person booking is the booking's customer and pays as today; invoicing the company is step 5.
+- **Fixed.** The company of a booking can't be changed afterwards, except by the server or a platform admin.
+- **Who reads.** Every current member reads the company's bookings, finance and viewers included. Former members don't.
+- **Closing, not deleting.** A company with bookings is closed, never deleted; the foreign key refuses the delete.
+- **In the app.** The booking flow offers "Book for: Myself / ⟨company⟩" to those who may book. The dashboard's Shipments tab lists the company's real bookings.
+- **Tests:** `company_bookings.test.sql`, on both schemas.
+
 ## Not yet built
 
 - Per-member spending limits and approval rules (step 4, company bookings). Bookings, invoices, credit and API keys will require `is_active_org_member()`.

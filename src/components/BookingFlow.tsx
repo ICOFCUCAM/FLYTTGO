@@ -9,6 +9,7 @@ import { formatNorwegianAddress, validateNorwegianAddress } from '../utils/forma
 import { fetchServerPrice, ServerPriceResult } from '../lib/calculatePrice';
 import { getRouteDistance, RouteResult } from '../lib/routing';
 import { CustomerLegalAcceptance } from './LegalAcceptance';
+import { canBookFor, myMemberships, type Membership } from '../lib/organizations';
 
 /* ─────────────────────────────────────────────
    TYPES
@@ -56,6 +57,15 @@ export default function BookingFlow() {
 
   const [step, setStep] = useState(1);
   const TOTAL_STEPS = 6;
+
+  /* Book for a company (00007): offered to owners, admins and bookers of
+   * an active company; the database checks it again on insert. */
+  const [companies, setCompanies] = useState<Membership[]>([]);
+  const [bookFor, setBookFor] = useState<string>('');
+  useEffect(() => {
+    if (!user) { setCompanies([]); setBookFor(''); return; }
+    myMemberships(user.id).then(m => setCompanies(m.filter(canBookFor)));
+  }, [user]);
 
   /* ── Structured addresses (replaces old string fields) ──
    * Pre-fill from bookingData if the home page Booking Widget already
@@ -346,6 +356,7 @@ export default function BookingFlow() {
         .from('bookings')
         .insert({
           customer_id: user.id,
+          organization_id: bookFor || null,
           customer_email: email,
           customer_name: name,
           customer_phone: phone,
@@ -989,6 +1000,22 @@ export default function BookingFlow() {
               <p className="text-gray-500 text-sm mb-6">{t('booking.legalSubtitle')}</p>
               <CustomerLegalAcceptance onAccepted={setLegalAccepted} />
             </div>
+
+            {companies.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
+                <label className="block">
+                  <span className="font-bold text-gray-900">Book for</span>
+                  <select value={bookFor} onChange={e => setBookFor(e.target.value)}
+                    className="mt-2 w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white">
+                    <option value="">Myself (personal booking)</option>
+                    {companies.map(c => <option key={c.organization.id} value={c.organization.id}>{c.organization.name}</option>)}
+                  </select>
+                </label>
+                <p className="text-gray-500 text-xs mt-2">
+                  A company booking shows in the company's dashboard for its team. You pay as usual; invoicing the company comes later.
+                </p>
+              </div>
+            )}
 
             {/* Final confirm button */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
