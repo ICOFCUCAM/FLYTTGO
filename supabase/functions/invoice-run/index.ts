@@ -10,6 +10,10 @@
 //      previous month.
 //   2. Issue each invoice (number, due date from the company's terms, KID)
 //      and email it as PDF with the EHF file.
+//   2b. White label (docs/WHITE_LABEL.md): each company on a plan gets its
+//      plan's invoice: the set-up fee once, the monthly fee in advance, and
+//      under Model B what FlyttGo kept from last month's customer payments
+//      (recorded as paid at once: it was taken through Stripe).
 //   3. Remind. An unpaid invoice gets a reminder each time the configured
 //      number of days passes after its due date (invoice_reminder_after_days),
 //      at most two; the fee and interest come from the settings. After that
@@ -83,6 +87,27 @@ serve(async (req: Request) => {
     const li = await loadInvoice(db, inv.id);
     const mailErr = li ? await emailInvoice(db, li, 'invoice') : 'could not load the invoice';
     report.issued.push({ number: inv.number, organization: g.org, total: inv.total, emailed: !mailErr, emailError: mailErr ?? undefined });
+  }
+
+  /* 2b: white-label plans. */
+  const { data: plans } = await db.from('organization_white_label').select('organization_id').not('started_at', 'is', null);
+  for (const w of plans ?? []) {
+    if (dry) { report.issued.push({ organization: w.organization_id, whiteLabel: true, dryRun: true }); continue; }
+    const { data: draft, error: wErr } = await db.rpc('create_white_label_invoice', { p_org: w.organization_id });
+    if (wErr) { report.errors.push({ organization: w.organization_id, whiteLabel: true, error: wErr.message }); continue; }
+    if (!draft?.id) continue;                                   // nothing due
+    const { data: inv, error: iErr } = await db.rpc('issue_invoice', { p_invoice: draft.id });
+    if (iErr) {
+      await db.rpc('delete_invoice_draft', { p_invoice: draft.id });
+      report.errors.push({ organization: w.organization_id, whiteLabel: true, error: iErr.message });
+      continue;
+    }
+    const { error: sErr } = await db.rpc('settle_white_label_invoice', { p_invoice: inv.id });
+    if (sErr) report.errors.push({ number: inv.number, whiteLabel: true, error: `recording what was collected: ${sErr.message}` });
+    const li = await loadInvoice(db, inv.id);
+    const mailErr = li ? await emailInvoice(db, li, 'invoice') : 'could not load the invoice';
+    report.issued.push({ number: inv.number, organization: w.organization_id, whiteLabel: true, total: inv.total,
+                         emailed: !mailErr, emailError: mailErr ?? undefined });
   }
 
   /* 3: reminders for unpaid invoices past their due date. */

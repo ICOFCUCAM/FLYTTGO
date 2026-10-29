@@ -24,6 +24,13 @@
 // and refund.created / refund.updated / refund.failed for refunds made
 // by refund-payment (metadata.refund_id) → refund_mark.
 //
+// White label, Model B (docs/WHITE_LABEL.md): payments the company takes
+// on its own connected account arrive on a second endpoint, "Connect"
+// events (STRIPE_CONNECT_WEBHOOK_SECRET), with event.account set. A
+// booking is marked paid only when that account is the one the booking
+// was charged on. account.updated keeps the company's "can take
+// payments" flag current.
+//
 // The dual-confirmation escrow release (at delivery time) is still
 // handled by process-payment — this function is only the PAID gate,
 // not the RELEASED gate.
@@ -69,6 +76,8 @@ import { mapStripeRefundStatus } from '../_shared/refunds.ts';
 const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const STRIPE_WEBHOOK_SECRET     = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '';
+/* Connect endpoint (events on companies' accounts); optional until Model B is used. */
+const STRIPE_CONNECT_WEBHOOK_SECRET = Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET') ?? '';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
@@ -167,16 +176,23 @@ function constantTimeEquals(a: string, b: string): boolean {
  * row from 'held' → 'escrow'. Idempotent: if already processed,
  * returns { idempotent: true } without mutating.
  */
-async function markBookingPaid(bookingId: string, session: StripeCheckoutSession) {
+async function markBookingPaid(bookingId: string, session: StripeCheckoutSession, account: string | null) {
   const sessionId = session.id;
   const { data: booking, error: readErr } = await supabase
     .from('bookings')
-    .select('id, payment_status')
+    .select('id, payment_status, seller_model, connected_account_id')
     .eq('id', bookingId)
     .maybeSingle();
 
   if (readErr) throw new Error(`booking read failed: ${readErr.message}`);
   if (!booking) throw new Error(`booking ${bookingId} not found`);
+
+  /* The money must have gone where the booking says: FlyttGo's own account
+   * for FlyttGo's sales, the company's connected account for Model B. */
+  const expectedAccount = booking.seller_model === 'company' ? booking.connected_account_id : null;
+  if ((account ?? null) !== (expectedAccount ?? null)) {
+    return await flagPaymentReview(bookingId, `stripe ${sessionId}: paid on account ${account ?? 'FlyttGo'}, expected ${expectedAccount ?? 'FlyttGo'}`);
+  }
 
   const alreadyProcessed = ['paid', 'escrow', 'released', 'refunded'];
   if (alreadyProcessed.includes(String(booking.payment_status))) {
@@ -312,13 +328,36 @@ interface StripeRefund {
   metadata?: Record<string, string>;
 }
 
+interface StripeAccount {
+  id:              string;
+  object:          'account';
+  charges_enabled?: boolean;
+}
+
 interface StripeEvent {
   id:   string;
   type: string;
-  data: { object: StripeCheckoutSession | StripeRefund };
+  account?: string;                        // set on Connect events
+  data: { object: StripeCheckoutSession | StripeRefund | StripeAccount };
+}
+
+/* A company's connected account changed (Model B): record whether it can
+ * take payments. */
+async function updateConnectedAccount(acct: StripeAccount) {
+  const { data: wl } = await supabase.from('organization_white_label')
+    .select('organization_id').eq('stripe_account_id', acct.id).maybeSingle();
+  if (!wl) return { ok: true, ignored: true, reason: 'account not linked to a company' };
+  const { error } = await supabase.rpc('set_white_label_stripe_account', {
+    p_org: wl.organization_id, p_account: acct.id, p_charges_enabled: !!acct.charges_enabled,
+  });
+  if (error) throw new Error(`set_white_label_stripe_account failed: ${error.message}`);
+  return { ok: true, account: acct.id, charges_enabled: !!acct.charges_enabled };
 }
 
 async function handleEvent(event: StripeEvent) {
+  if (event.type === 'account.updated') {
+    return await updateConnectedAccount(event.data.object as StripeAccount);
+  }
   if (event.type === 'refund.updated' || event.type === 'refund.failed' || event.type === 'refund.created') {
     return await updateRefund(event.data.object as StripeRefund);
   }
@@ -359,10 +398,14 @@ async function handleEvent(event: StripeEvent) {
       const reason = `stripe ${sessionId}: paid ${session.amount_total} ${session.currency ?? '?'}, expected ${metadata.amount_ore ?? 'unknown'} øre`;
       return await flagPaymentReview(bookingId, reason);
     }
-    return await markBookingPaid(bookingId, session);
+    if (event.account && metadata.connected_account !== event.account) {
+      return await flagPaymentReview(bookingId, `stripe ${sessionId}: event from account ${event.account}, session made for ${metadata.connected_account ?? 'FlyttGo'}`);
+    }
+    return await markBookingPaid(bookingId, session, event.account ?? null);
   }
 
   if (kind === 'subscription') {
+    if (event.account) return { ok: true, ignored: true, reason: 'subscriptions are paid to FlyttGo, not a connected account' };
     /* driver_subscriptions.driver_id is the auth user id. Sessions
      * created before this change put driver_profiles.id in driverId
      * and the auth id in userId, so prefer the user id fields. */
@@ -392,7 +435,10 @@ serve(async (req: Request) => {
   const rawBody         = await req.text();
   const signatureHeader = req.headers.get('Stripe-Signature') ?? req.headers.get('stripe-signature');
 
-  const verify = await verifyStripeSignature(rawBody, signatureHeader, STRIPE_WEBHOOK_SECRET);
+  let verify = await verifyStripeSignature(rawBody, signatureHeader, STRIPE_WEBHOOK_SECRET);
+  if (!verify.valid && STRIPE_CONNECT_WEBHOOK_SECRET) {
+    verify = await verifyStripeSignature(rawBody, signatureHeader, STRIPE_CONNECT_WEBHOOK_SECRET);
+  }
   if (!verify.valid) {
     console.warn('stripe-webhook rejected:', verify.reason);
     return json({ error: 'Invalid webhook signature', reason: verify.reason }, 401);

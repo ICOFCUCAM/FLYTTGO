@@ -42,6 +42,12 @@
 // re-computed on the server from the booking (see
 // _shared/booking-charge.ts). An `amount` in the body is ignored.
 //
+// A booking the company sells on its own page (white label, Model B) is a
+// direct charge on the company's connected Stripe account, at the
+// company's price, with FlyttGo's price and platform fee taken as the
+// application fee (docs/WHITE_LABEL.md). The customer returns to the
+// company's domain when it has one.
+//
 // Subscription request shape from DriverPortal:
 //
 //   { "type": "subscription", "planId": "pro" }
@@ -128,6 +134,7 @@ serve(async (req: Request) => {
   let productName:   string;
   let description:   string | undefined;
   let customerEmail: string | null = null;
+  let connect:       { account: string; applicationFeeOre: number; siteBase: string | null } | null = null;
   const metadata:    Record<string, string> = {};
 
   if (isSubscription(body)) {
@@ -157,14 +164,21 @@ serve(async (req: Request) => {
     if (!body.bookingId || typeof body.bookingId !== 'string') {
       return json({ error: 'bookingId is required' }, 400);
     }
-    const charge = await chargeForBooking(db, body.bookingId, caller.id);
+    const charge = await chargeForBooking(db, body.bookingId, caller.id, { allowConnect: true });
     if (!charge.ok) return json({ error: charge.error }, charge.status);
 
     amountNok     = charge.amountNok;
     customerEmail = charge.customerEmail ?? caller.email;
     reference     = `booking-${body.bookingId}-${Date.now()}`;
-    productName   = `FlyttGo booking ${body.bookingId.slice(0, 8)}`;
+    productName   = charge.connect
+      ? `${charge.connect.sellerName}: moving booking ${body.bookingId.slice(0, 8)}`
+      : `FlyttGo booking ${body.bookingId.slice(0, 8)}`;
     description   = 'Incl. 25% MVA';
+    if (charge.connect) {
+      connect = charge.connect;
+      metadata.connected_account = charge.connect.account;
+      metadata.application_fee_ore = String(charge.connect.applicationFeeOre);
+    }
     metadata.type      = 'booking';
     metadata.bookingId = body.bookingId;
   }
@@ -179,10 +193,11 @@ serve(async (req: Request) => {
   /* Success / cancel URLs now point at real FlyttGo paths and include
    * the Stripe session id + reference so the frontend can display
    * the right confirmation UI on return. */
-  const successUrl = `${FRONTEND_URL}/my-bookings?payment=success&session_id={CHECKOUT_SESSION_ID}&ref=${encodeURIComponent(reference)}`;
+  const base = connect?.siteBase ?? FRONTEND_URL;
+  const successUrl = `${base}/my-bookings?payment=success&session_id={CHECKOUT_SESSION_ID}&ref=${encodeURIComponent(reference)}`;
   const cancelUrl  = isSubscription(body)
     ? `${FRONTEND_URL}/driver-subscriptions?payment=cancelled`
-    : `${FRONTEND_URL}/payment?payment=cancelled&ref=${encodeURIComponent(reference)}`;
+    : `${base}/payment?payment=cancelled&ref=${encodeURIComponent(reference)}`;
 
   /* Build Stripe's URL-encoded form body. Stripe's REST API is
    * x-www-form-urlencoded with bracketed field names rather than
@@ -223,6 +238,12 @@ serve(async (req: Request) => {
     params.set('customer_email', customerEmail);
   }
 
+  /* Model B: FlyttGo's share comes out of the company's payment. */
+  if (connect) {
+    params.set('payment_intent_data[application_fee_amount]', String(connect.applicationFeeOre));
+    for (const [k, v] of Object.entries(metadata)) params.set(`payment_intent_data[metadata][${k}]`, String(v));
+  }
+
   /* Call Stripe. */
   const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
     method: 'POST',
@@ -230,6 +251,7 @@ serve(async (req: Request) => {
       Authorization:  `Bearer ${STRIPE_SECRET_KEY}`,
       'Content-Type': 'application/x-www-form-urlencoded',
       'Stripe-Version': '2024-06-20',
+      ...(connect ? { 'Stripe-Account': connect.account } : {}),
     },
     body: params,
   });
@@ -264,5 +286,6 @@ serve(async (req: Request) => {
     reference,
     amount:    amountNok,
     provider:  'stripe',
+    seller:    connect ? 'company' : 'flyttgo',
   });
 });

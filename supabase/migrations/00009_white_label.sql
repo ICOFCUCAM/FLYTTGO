@@ -93,6 +93,7 @@ SELECT * FROM (VALUES
    ARRAY['Booking page at flyttgo.no/b/your-name and your-name.flyttgo.no',
          'Your name, logo and colours on the booking page',
          'FlyttGo''s prices and payment (card, Vipps)',
+         'A website from FlyttGo''s template library, in your name and colours',
          'Monthly booking numbers for your page'],
    ARRAY['Is the seller: the customer buys from FlyttGo AS',
          'Takes the payment and issues the receipt',
@@ -149,6 +150,154 @@ CREATE POLICY white_label_plans_select ON public.white_label_plans FOR SELECT TO
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.white_label_plans FROM anon, authenticated;
 
 
+-- ── 2b. Website templates (the template library) ───────────────────────────
+-- Complete websites a company can choose for its page, imported from
+-- Architect-AI's site masters by scripts/import-site-templates.ts (server
+-- only), sanitised and with the sample company turned into placeholders.
+-- A template is offered only after a FlyttGo administrator has checked
+-- its wording (no invented prices, reviews or claims) and approved it.
+CREATE TABLE IF NOT EXISTS public.site_templates (
+  id            text        PRIMARY KEY CHECK (id ~ '^[a-z0-9][a-z0-9-]{1,59}$'),
+  name          text        NOT NULL,
+  industry      text[]      NOT NULL DEFAULT '{}',
+  style         text,
+  pages         jsonb       NOT NULL CHECK (jsonb_typeof(pages) = 'array' AND jsonb_array_length(pages) BETWEEN 1 AND 12),
+  assets        jsonb       NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(assets) = 'array'),
+  source        text        NOT NULL DEFAULT 'architect-ai',
+  source_id     text,
+  content_flags jsonb       NOT NULL DEFAULT '[]'::jsonb,
+  status        text        NOT NULL DEFAULT 'imported' CHECK (status IN ('imported', 'approved', 'retired')),
+  reviewed_by   uuid,
+  reviewed_at   timestamptz,
+  review_note   text,
+  imported_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS site_templates_industry_idx ON public.site_templates USING gin (industry);
+ALTER TABLE public.site_templates ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS site_templates_select ON public.site_templates;
+CREATE POLICY site_templates_select ON public.site_templates FOR SELECT TO authenticated
+  USING (status = 'approved' OR public.is_admin());
+REVOKE ALL ON public.site_templates FROM anon;
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.site_templates FROM authenticated;
+
+-- Template images, copied into FlyttGo's own storage by the importer.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+SELECT 'site-template-assets', 'site-template-assets', true, 5242880, ARRAY['image/jpeg', 'image/png', 'image/webp']
+ WHERE NOT EXISTS (SELECT 1 FROM storage.buckets WHERE id = 'site-template-assets');
+
+-- What a stored page may never contain (the renderer removes it too).
+CREATE OR REPLACE FUNCTION public.site_template_html_problems(p_html text)
+RETURNS text[]
+LANGUAGE sql IMMUTABLE
+AS $$
+  SELECT array_remove(ARRAY[
+    CASE WHEN p_html ~* '<script' THEN 'script' END,
+    CASE WHEN p_html ~* '\son[a-z]+\s*=' THEN 'event handler' END,
+    CASE WHEN p_html ~* '(javascript|vbscript)\s*:' THEN 'javascript: link' END,
+    CASE WHEN p_html ~* '<(iframe|frame|object|embed|applet|portal)\M' THEN 'frame or embed' END,
+    CASE WHEN p_html ~* '<form\M' THEN 'form' END,
+    CASE WHEN p_html ~* '<(link|base)\M' THEN 'link or base tag' END,
+    CASE WHEN p_html ~* 'http-equiv\s*=\s*["'']?refresh' THEN 'refresh' END], NULL);
+$$;
+
+-- Prices in a page's visible text (a template must not carry any: the
+-- company's prices are FlyttGo's or its own, shown by the booking page).
+CREATE OR REPLACE FUNCTION public.site_template_price_hits(p_html text)
+RETURNS integer
+LANGUAGE sql IMMUTABLE
+AS $$
+  SELECT count(*)::int FROM regexp_matches(
+    regexp_replace(regexp_replace(coalesce(p_html, ''), '<style[^>]*>.*?</style>', ' ', 'gi'), '<[^>]+>', ' ', 'g'),
+    '([$€£]\s?[0-9]|[0-9][0-9 .,]*\s?(kr|NOK|USD|EUR|GBP)\M|[0-9]+\s?/\s?(hr|hour|time)\M|per (hour|mover|move)\M)', 'gi');
+$$;
+
+-- The importer stores a template (server only). A changed template needs
+-- a new review.
+CREATE OR REPLACE FUNCTION public.import_site_template(p jsonb)
+RETURNS public.site_templates
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE t public.site_templates%ROWTYPE; pg jsonb; v_problems text[];
+BEGIN
+  IF NOT public.is_server() THEN RAISE EXCEPTION 'templates: the importer (server) only' USING ERRCODE = '42501'; END IF;
+  FOR pg IN SELECT * FROM jsonb_array_elements(p -> 'pages') LOOP
+    v_problems := public.site_template_html_problems(pg ->> 'html');
+    IF cardinality(v_problems) > 0 OR coalesce(pg ->> 'path', '') !~ '^/' THEN
+      RAISE EXCEPTION 'templates: page % of % is not clean (%)', pg ->> 'path', p ->> 'id', array_to_string(v_problems, ', ')
+        USING ERRCODE = '22023';
+    END IF;
+  END LOOP;
+  INSERT INTO public.site_templates (id, name, industry, style, pages, assets, source, source_id, content_flags)
+  VALUES (p ->> 'id', p ->> 'name', ARRAY(SELECT jsonb_array_elements_text(coalesce(p -> 'industry', '[]'::jsonb))),
+          p ->> 'style', p -> 'pages', coalesce(p -> 'assets', '[]'::jsonb), coalesce(p ->> 'source', 'architect-ai'),
+          p ->> 'source_id', coalesce(p -> 'flags', '[]'::jsonb))
+  ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name, industry = EXCLUDED.industry, style = EXCLUDED.style, assets = EXCLUDED.assets,
+    pages = EXCLUDED.pages, content_flags = EXCLUDED.content_flags, source_id = EXCLUDED.source_id,
+    status = CASE WHEN site_templates.pages IS DISTINCT FROM EXCLUDED.pages THEN 'imported' ELSE site_templates.status END,
+    reviewed_by = CASE WHEN site_templates.pages IS DISTINCT FROM EXCLUDED.pages THEN NULL ELSE site_templates.reviewed_by END,
+    reviewed_at = CASE WHEN site_templates.pages IS DISTINCT FROM EXCLUDED.pages THEN NULL ELSE site_templates.reviewed_at END,
+    updated_at = now()
+  RETURNING * INTO t;
+  RETURN t;
+END $$;
+
+-- An administrator corrects a page's wording (replacing sample prices,
+-- reviews and claims). The page must stay clean; an approved template
+-- goes back to review.
+CREATE OR REPLACE FUNCTION public.admin_update_site_template_page(p_id text, p_path text, p_html text)
+RETURNS public.site_templates
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE t public.site_templates%ROWTYPE; v_problems text[] := public.site_template_html_problems(p_html); v_i int;
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'templates: platform administrators only' USING ERRCODE = '42501'; END IF;
+  IF cardinality(v_problems) > 0 THEN
+    RAISE EXCEPTION 'templates: the page may not contain: %', array_to_string(v_problems, ', ') USING ERRCODE = '22023';
+  END IF;
+  SELECT * INTO t FROM public.site_templates WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'templates: no such template' USING ERRCODE = 'P0002'; END IF;
+  SELECT i - 1 INTO v_i FROM jsonb_array_elements(t.pages) WITH ORDINALITY AS e(pg, i) WHERE pg ->> 'path' = p_path;
+  IF v_i IS NULL THEN RAISE EXCEPTION 'templates: the template has no page %', p_path USING ERRCODE = 'P0002'; END IF;
+  UPDATE public.site_templates SET pages = jsonb_set(pages, ARRAY[v_i::text, 'html'], to_jsonb(p_html)),
+         status = CASE WHEN status = 'approved' THEN 'imported' ELSE status END,
+         reviewed_by = NULL, reviewed_at = NULL, updated_at = now()
+   WHERE id = p_id RETURNING * INTO t;
+  RETURN t;
+END $$;
+
+-- An administrator approves a template after checking its wording, or
+-- retires it. Approval is refused while any page has a price or anything
+-- unclean, and needs the administrator to confirm the check.
+CREATE OR REPLACE FUNCTION public.admin_review_site_template(p_id text, p_approve boolean, p_content_checked boolean, p_note text)
+RETURNS public.site_templates
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE t public.site_templates%ROWTYPE; v_prices int; v_bad int;
+BEGIN
+  IF NOT public.is_admin() THEN RAISE EXCEPTION 'templates: platform administrators only' USING ERRCODE = '42501'; END IF;
+  SELECT * INTO t FROM public.site_templates WHERE id = p_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'templates: no such template' USING ERRCODE = 'P0002'; END IF;
+  IF p_approve THEN
+    SELECT coalesce(sum(public.site_template_price_hits(pg ->> 'html')), 0),
+           count(*) FILTER (WHERE cardinality(public.site_template_html_problems(pg ->> 'html')) > 0)
+      INTO v_prices, v_bad FROM jsonb_array_elements(t.pages) pg;
+    IF v_bad > 0 THEN RAISE EXCEPTION 'templates: a page is not clean' USING ERRCODE = '55000'; END IF;
+    IF v_prices > 0 THEN
+      RAISE EXCEPTION 'templates: remove the % sample price(s) first: prices come from the booking page', v_prices USING ERRCODE = '55000';
+    END IF;
+    IF p_content_checked IS NOT TRUE THEN
+      RAISE EXCEPTION 'templates: confirm that sample reviews, figures and claims were removed or made true' USING ERRCODE = '55000';
+    END IF;
+  END IF;
+  UPDATE public.site_templates SET status = CASE WHEN p_approve THEN 'approved' ELSE 'retired' END,
+         reviewed_by = auth.uid(), reviewed_at = now(), review_note = nullif(btrim(coalesce(p_note, '')), ''), updated_at = now()
+   WHERE id = p_id RETURNING * INTO t;
+  RETURN t;
+END $$;
+
+
 -- ── 3. A company's white-label set-up ───────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.organization_white_label (
   organization_id        uuid        PRIMARY KEY REFERENCES public.organizations (id) ON DELETE CASCADE,
@@ -172,6 +321,8 @@ CREATE TABLE IF NOT EXISTS public.organization_white_label (
   terms_url              text        CHECK (terms_url IS NULL OR terms_url ~ '^https://[^\s]+$'),
   privacy_url            text        CHECK (privacy_url IS NULL OR privacy_url ~ '^https://[^\s]+$'),
   price_markup_pct       numeric     NOT NULL DEFAULT 0 CHECK (price_markup_pct BETWEEN 0 AND 100),
+  template_id            text        REFERENCES public.site_templates (id),     -- the company's website, from the library
+  city                   text        CHECK (city IS NULL OR char_length(btrim(city)) BETWEEN 2 AND 80),
   custom_domain          text        UNIQUE,
   domain_token           text,
   domain_verified_at     timestamptz,
@@ -422,6 +573,26 @@ BEGIN
   RETURN w;
 END $$;
 
+-- The company's website: a template from the library (approved ones
+-- only) and the town it names. Owners and admins.
+CREATE OR REPLACE FUNCTION public.set_white_label_site(p_org uuid, p_template text, p_city text)
+RETURNS public.organization_white_label
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE w public.organization_white_label%ROWTYPE;
+BEGIN
+  PERFORM public.require_org_role(p_org, ARRAY['owner', 'admin']);
+  IF p_template IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.site_templates WHERE id = p_template AND status = 'approved') THEN
+    RAISE EXCEPTION 'white label: that template is not offered' USING ERRCODE = '22023';
+  END IF;
+  UPDATE public.organization_white_label SET template_id = p_template, city = nullif(btrim(coalesce(p_city, '')), ''),
+         updated_at = now()
+   WHERE organization_id = p_org RETURNING * INTO w;
+  IF NOT FOUND THEN RAISE EXCEPTION 'white label: choose a plan first' USING ERRCODE = 'P0002'; END IF;
+  PERFORM public.white_label_event(p_org, 'white_label.site', jsonb_build_object('template', p_template, 'city', w.city));
+  RETURN w;
+END $$;
+
 -- The server found the token in the domain's DNS.
 CREATE OR REPLACE FUNCTION public.mark_white_label_domain_verified(p_org uuid, p_domain text)
 RETURNS public.organization_white_label
@@ -623,7 +794,8 @@ BEGIN
   RETURN jsonb_build_object(
     'organization_id', o.id, 'slug', o.slug, 'display_name', w.display_name, 'tagline', w.tagline,
     'primary_color', w.primary_color, 'accent_color', w.accent_color, 'logo_path', o.logo_path,
-    'plan', p.code, 'seller_model', p.seller_model,
+    'plan', p.code, 'seller_model', p.seller_model, 'city', w.city,
+    'template_id', (SELECT t.id FROM public.site_templates t WHERE t.id = w.template_id AND t.status = 'approved'),
     'domain', CASE WHEN w.domain_verified_at IS NOT NULL THEN w.custom_domain END,
     'pricing', CASE WHEN p.seller_model = 'company' THEN jsonb_build_object(
                  'markup_pct', w.price_markup_pct, 'platform_fee_pct', p.platform_fee_pct, 'platform_fee_min', p.platform_fee_min) END,
@@ -857,6 +1029,10 @@ REVOKE ALL ON FUNCTION
   public.request_white_label(uuid, text),
   public.set_white_label_brand(uuid, text, text, text, text, text, text, text, text, numeric),
   public.set_white_label_domain(uuid, text),
+  public.set_white_label_site(uuid, text, text),
+  public.import_site_template(jsonb),
+  public.admin_update_site_template_page(text, text, text),
+  public.admin_review_site_template(text, boolean, boolean, text),
   public.mark_white_label_domain_verified(uuid, text),
   public.accept_white_label_dpa(uuid, text),
   public.set_white_label_stripe_account(uuid, text, boolean),
@@ -871,6 +1047,10 @@ REVOKE ALL ON FUNCTION
 FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.white_label_event(uuid, text, jsonb), public.white_label_public(text, text) FROM authenticated;
 GRANT EXECUTE ON FUNCTION
+  public.set_white_label_site(uuid, text, text),
+  public.import_site_template(jsonb),
+  public.admin_update_site_template_page(text, text, text),
+  public.admin_review_site_template(text, boolean, boolean, text),
   public.white_label_missing(uuid, text),
   public.request_white_label(uuid, text),
   public.set_white_label_brand(uuid, text, text, text, text, text, text, text, text, numeric),

@@ -65,11 +65,16 @@ export function mapStripeRefundStatus(status: string | null | undefined): 'succe
 export async function stripeRefund(
   fetchFn: Fetch,
   secretKey: string,
-  r: { paymentIntentId: string; amountOre: number; idempotencyKey: string; refundId: string; bookingId: string },
+  r: { paymentIntentId: string; amountOre: number; idempotencyKey: string; refundId: string; bookingId: string;
+       /** White label, Model B: the company's connected account the payment was made on. */
+       stripeAccount?: string | null },
 ): Promise<RefundOutcome> {
   const body = new URLSearchParams();
   body.set('payment_intent', r.paymentIntentId);
   body.set('amount', String(r.amountOre));
+  /* Model B: FlyttGo gives back its share of the refund (its price and
+   * platform fee, in proportion), so the company does not pay it alone. */
+  if (r.stripeAccount) body.set('refund_application_fee', 'true');
   body.set('metadata[refund_id]', r.refundId);
   body.set('metadata[booking_id]', r.bookingId);
 
@@ -82,6 +87,7 @@ export async function stripeRefund(
         'Content-Type':    'application/x-www-form-urlencoded',
         'Idempotency-Key': r.idempotencyKey,
         'Stripe-Version':  '2024-06-20',
+        ...(r.stripeAccount ? { 'Stripe-Account': r.stripeAccount } : {}),
       },
       body,
     });

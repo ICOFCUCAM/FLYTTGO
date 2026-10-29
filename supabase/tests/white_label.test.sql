@@ -331,4 +331,53 @@ SELECT tests.ok((SELECT count(*) FROM public.invoice_payments WHERE invoice_id =
 SELECT tests.ok(public.create_white_label_invoice((SELECT id FROM o), '2026-12-15') IS NULL, 'and nothing is charged twice');
 ROLLBACK;
 
+-- ── Website templates: imported clean, approved by FlyttGo, chosen by the company ──
+BEGIN;
+CREATE TEMP TABLE tpl ON COMMIT DROP AS SELECT jsonb_build_object(
+  'id', 'moving-swiftmv01', 'name', 'Swiftmove', 'industry', jsonb_build_array('moving', 'movers'), 'style', 'bold',
+  'source_id', 'moving-swiftmv01',
+  'pages', jsonb_build_array(
+    jsonb_build_object('path', '/', 'html', '<html><head><style>.p{color:red}</style></head><body><h1>{{brand.name}}</h1><p>Crews from $129/hr</p><a href="{{BOOKING_URL}}">Book</a></body></html>'),
+    jsonb_build_object('path', '/contact', 'html', '<p>Call {{brand.phone}}</p>'))) AS p;
+GRANT SELECT ON tpl TO authenticated, service_role;
+SET LOCAL ROLE authenticated;
+SELECT tests.login(:admin);
+SELECT tests.throws($$SELECT public.import_site_template((SELECT p FROM tpl))$$, '42501', 'only the importer (server) stores templates');
+SET LOCAL ROLE service_role;
+SELECT tests.as_server();
+SELECT tests.throws($$SELECT public.import_site_template(jsonb_set((SELECT p FROM tpl), '{pages,1,html}', '"<script>x</script>"'))$$, '22023',
+  'a page with a script is refused at import');
+SELECT tests.ok((SELECT status FROM public.import_site_template((SELECT p FROM tpl))) = 'imported', 'a clean template is imported, unreviewed');
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.wl_acme('branded') AS id;
+SELECT tests.login(:cust1);
+SELECT tests.ok(NOT EXISTS (SELECT 1 FROM public.site_templates), 'companies do not see unreviewed templates');
+SELECT tests.throws($$SELECT public.set_white_label_site((SELECT id FROM o), 'moving-swiftmv01', 'Oslo')$$, '22023',
+  'nor can they choose one');
+SELECT tests.login(:admin);
+SELECT tests.throws($$SELECT public.admin_review_site_template('moving-swiftmv01', true, true, NULL)$$, '55000',
+  'FlyttGo cannot approve a template that still shows a sample price');
+SELECT tests.throws($$SELECT public.admin_update_site_template_page('moving-swiftmv01', '/', '<p onmouseover="x()">hi</p>')$$, '22023',
+  'an edited page must stay clean');
+SELECT public.admin_update_site_template_page('moving-swiftmv01', '/',
+  '<html><body><h1>{{brand.name}}</h1><p>See your price when you book.</p><a href="{{BOOKING_URL}}">Book</a></body></html>');
+SELECT tests.throws($$SELECT public.admin_review_site_template('moving-swiftmv01', true, false, NULL)$$, '55000',
+  'and the reviewer must confirm sample reviews and claims were dealt with');
+SELECT tests.ok((SELECT status = 'approved' AND reviewed_by = :admin
+                   FROM public.admin_review_site_template('moving-swiftmv01', true, true, 'prices removed')),
+  'then FlyttGo approves it, by name');
+SELECT tests.login(:cust1);
+SELECT tests.ok((SELECT template_id = 'moving-swiftmv01' AND city = 'Oslo'
+                   FROM public.set_white_label_site((SELECT id FROM o), 'moving-swiftmv01', 'Oslo')),
+  'the company chooses the approved template for its site');
+SELECT tests.login(:drv1);
+SELECT tests.throws($$SELECT public.set_white_label_site((SELECT id FROM o), NULL, NULL)$$, '42501', 'a booker cannot change the site');
+SET LOCAL ROLE service_role;
+SELECT tests.as_server();
+SELECT tests.ok((public.white_label_public('acme') ->> 'template_id') = 'moving-swiftmv01', 'the public page uses it');
+SELECT tests.ok((SELECT status FROM public.import_site_template(jsonb_set((SELECT p FROM tpl), '{pages,1,html}', '"<p>new</p>"'))) = 'imported',
+  'a re-imported template that changed goes back to review');
+SELECT tests.ok((public.white_label_public('acme') ->> 'template_id') IS NULL, 'and is not shown meanwhile');
+ROLLBACK;
+
 \echo 'white label: all tests passed'

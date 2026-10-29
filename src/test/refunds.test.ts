@@ -47,6 +47,20 @@ describe('Stripe refunds', () => {
     expect(body.get('metadata[refund_id]')).toBe('r1');
   });
 
+  it('refunds a company\'s sale on its own account and gives back FlyttGo\'s share (white label, Model B)', async () => {
+    const f = fakeFetch({ '/v1/refunds': [[200, { id: 're_2', status: 'succeeded', amount: 287500 }]] });
+    await stripeRefund(f.fn, 'sk_test', { ...stripeArgs, stripeAccount: 'acct_1Acme' });
+    expect(f.calls[0].init.headers['Stripe-Account']).toBe('acct_1Acme');
+    expect(new URLSearchParams(f.calls[0].init.body).get('refund_application_fee')).toBe('true');
+  });
+
+  it('refunds FlyttGo\'s own sales without a connected account', async () => {
+    const f = fakeFetch({ '/v1/refunds': [[200, { id: 're_3', status: 'succeeded', amount: 287500 }]] });
+    await stripeRefund(f.fn, 'sk_test', stripeArgs);
+    expect(f.calls[0].init.headers['Stripe-Account']).toBeUndefined();
+    expect(new URLSearchParams(f.calls[0].init.body).get('refund_application_fee')).toBeNull();
+  });
+
   it('reports pending refunds as pending', async () => {
     const f = fakeFetch({ '/v1/refunds': [[200, { id: 're_1', status: 'pending', amount: 287500 }]] });
     expect((await stripeRefund(f.fn, 'sk', stripeArgs)).kind).toBe('pending');

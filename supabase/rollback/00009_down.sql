@@ -4,7 +4,8 @@
 -- Run first (before 00008_down.sql). Tested by run.sh: afterwards the
 -- schema is exactly as before 00009.
 --
--- DATA LOSS — READ FIRST. This drops the white-label plans and prices,
+-- DATA LOSS — READ FIRST. This drops the website template library (the
+-- importer can load it again), the white-label plans and prices,
 -- every company's set-up (brand, domain, Stripe account link, accepted
 -- data processing agreement) and the record of which plan fees and
 -- bookings were charged. Export them first. Invoices already issued for
@@ -43,6 +44,7 @@ DROP FUNCTION IF EXISTS public.end_white_label(uuid, text);
 DROP FUNCTION IF EXISTS public.set_white_label_stripe_account(uuid, text, boolean);
 DROP FUNCTION IF EXISTS public.accept_white_label_dpa(uuid, text);
 DROP FUNCTION IF EXISTS public.mark_white_label_domain_verified(uuid, text);
+DROP FUNCTION IF EXISTS public.set_white_label_site(uuid, text, text);
 DROP FUNCTION IF EXISTS public.set_white_label_domain(uuid, text);
 DROP FUNCTION IF EXISTS public.set_white_label_brand(uuid, text, text, text, text, text, text, text, text, numeric);
 DROP FUNCTION IF EXISTS public.request_white_label(uuid, text);
@@ -61,6 +63,16 @@ ALTER TABLE public.bookings
 
 DROP TABLE IF EXISTS public.organization_white_label;
 DROP TABLE IF EXISTS public.white_label_plans;
+
+DROP FUNCTION IF EXISTS public.admin_review_site_template(text, boolean, boolean, text);
+DROP FUNCTION IF EXISTS public.admin_update_site_template_page(text, text, text);
+DROP FUNCTION IF EXISTS public.import_site_template(jsonb);
+DROP FUNCTION IF EXISTS public.site_template_price_hits(text);
+DROP FUNCTION IF EXISTS public.site_template_html_problems(text);
+DROP TABLE IF EXISTS public.site_templates;
+-- Template images stay in storage; the bucket is removed only when empty.
+DELETE FROM storage.buckets b WHERE b.id = 'site-template-assets'
+   AND NOT EXISTS (SELECT 1 FROM storage.objects o WHERE o.bucket_id = b.id);
 
 DELETE FROM public.platform_config
  WHERE config_key IN ('white_label_dpa_version', 'white_label_support_email', 'white_label_support_phone');

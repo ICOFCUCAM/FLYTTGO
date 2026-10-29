@@ -18,7 +18,7 @@ const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
 
 export const REFUND_BOOKING_COLUMNS =
   'id, status, price_estimate, paid_amount, manual_refund_percent, payment_provider, payment_status, ' +
-  'cancelled_by, cancelled_at, move_date, move_time, customer_id';
+  'cancelled_by, cancelled_at, move_date, move_time, customer_id, seller_model, connected_account_id';
 
 export interface RefundAnswer { status: number; body: Record<string, unknown> }
 
@@ -63,6 +63,7 @@ export async function refundBooking(db: any, booking: any, requestedBy: string |
           return stripeRefund(fetch, STRIPE_SECRET_KEY, {
             paymentIntentId: row.provider_reference, amountOre,
             idempotencyKey: row.idempotency_key, refundId: row.id, bookingId: row.booking_id,
+            stripeAccount: booking.seller_model === 'company' ? booking.connected_account_id : null,
           });
         }
         const missing = vippsMissingConfig();
