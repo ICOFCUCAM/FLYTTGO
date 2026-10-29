@@ -28,10 +28,10 @@ The session could not reach the project's database directly (its network allows 
 | Migration 00003 onwards | First part of 00003 (it drops and recreates every RLS policy) made the connector ask the owner for confirmation; twice no answer came within 60 s, so it was not applied (checked afterwards: `is_privileged()` absent) | **Not run** |
 | Data, controls, rollback | Not reached | **Not run** |
 
-**Open:** migrations 00003–00015 and the accounting controls have run on PostgreSQL 16 and 17 locally (1,223 checks) but not yet on a real Supabase project. That remains a condition before any production decision. The quickest way to close it is the one command in `docs/TEST_COPY_PLAN.md` step 2, run from a computer with `psql` against a fresh test project.
+**Open:** migrations 00003–00015 and the accounting controls have run on PostgreSQL 16 and 17 locally (1,223 checks) but not yet on a real Supabase project. That remains a condition before any production decision. Next: the owner runs the one command in `docs/TEST_COPY_PLAN.md` step 2 from a computer with `psql`, against a fresh empty test project; its output is recorded here.
 
 ## Cleanup
 
-- 2026-10-29: the owner chose to stop at this point. The test project `hgfdkppjtydvkahdwxxw` was **paused** by Claude through the connector (the connector cannot delete projects). It holds only the schema and no data, no users and no secrets. **To finish the cleanup, delete it in the dashboard:** Supabase → `flyttgo-accounting-test` → Project settings → General → Delete project; then note the date here.
+- 2026-10-29: the connector route was stopped here; the owner will run the controls from their own computer instead (`docs/TEST_COPY_PLAN.md` step 2, against a fresh empty test project). The partly filled test project `hgfdkppjtydvkahdwxxw` was **paused** by Claude through the connector (the connector cannot delete projects). It holds only the schema and no data, no users and no secrets. **To finish the cleanup, delete it in the dashboard:** Supabase → `flyttgo-accounting-test` → Project settings → General → Delete project; then note the date here.
 - No Stripe endpoint, Resend key, Vault secret or webhook was ever set up for it, so nothing else needs revoking.
 - Production (`qzclatvpzicwhewzdiwf`) and Architect-AI were not touched.
