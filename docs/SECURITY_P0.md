@@ -1,140 +1,131 @@
-# P0 security remediation
+# P0 security and payments remediation
 
-Branch `claude/vibrant-johnson-awo68u`. **Nothing here is deployed or applied.** The migration has not been run against any Supabase project, and no edge function has been redeployed. Everything below was tested locally on PostgreSQL 16 (database) and Node (pricing).
+Branch `claude/vibrant-johnson-awo68u`. **Nothing here is deployed or applied.** No migration has been run against a Supabase project and no edge function has been redeployed. Production was only read (catalog queries, security advisor). It's described in [`PRODUCTION_SCHEMA.md`](PRODUCTION_SCHEMA.md).
 
-Production was inspected **read-only** on 2026-10-29: project "FlyttGo Norway" (`qzclatvpzicwhewzdiwf`, catalog queries and the Supabase security advisor only).
+## 1. Status of production today
 
----
+The emergency fix is in place (seen 2026-10-29): `admin_accounts` has RLS with a self-read policy, and `anon` can no longer run `change_driver_subscription`. Still open in production until the migrations are applied:
 
-## 1. Open in production right now (urgent)
+- 46 of 52 tables have no RLS: wallets, escrow, payments, payouts, platform_config, driver documents and locations, `corporate_accounts.api_key`, chat, audit logs.
+- A customer can set their own booking to paid, which dispatches a driver without payment.
+- Any signed-in user can call `change_driver_subscription` for any driver and any plan.
+- Any user (even anon) can run dispatch, or reclaim every assigned job.
+- A sign-up can claim the `admin` profile role (UI only).
+- Production defects in driver approval, subscriptions, tracking, documents and escrow ([`PRODUCTION_SCHEMA.md`](PRODUCTION_SCHEMA.md), "Defects").
 
-These hold on the live project today, independent of this branch:
+## 2. What the branch contains
 
-| # | Exposure | Why |
-|---|---|---|
-| 1 | **Anyone with the public anon key can make themselves an administrator.** | `admin_accounts` has RLS **off**; `is_admin()` trusts any row in it. Check that the 2 existing rows are the people you expect. |
-| 2 | **Anyone can put any driver on any plan** (e.g. Unlimited, 0% commission, top dispatch priority). | `change_driver_subscription` is SECURITY DEFINER and executable by `anon`. |
-| 3 | 47 of 52 public tables have RLS off: wallets, escrow, payments, payouts, platform_config, driver documents and locations, `corporate_accounts.api_key`, audit logs, chat, … | Readable and writable with the anon key. |
-| 4 | A customer can mark their own booking paid → a driver is dispatched without payment. | `bookings_customer_update` allows every column; `PaymentPage` did exactly this as a "fallback". |
-| 5 | Any signed-in user can run dispatch on any booking, or un-assign every stale job. | `dispatch_assign_best_driver` / `reclaim_stale_dispatches` are granted to `anon` and `authenticated`. |
-| 6 | A sign-up can choose `role: admin` in its profile. | `handle_new_user()` copies the role from user metadata (UI only; `is_admin()` is not fooled). |
-| 7 | Approving an over-time charge fails. | `capture_extra_escrow_after_approval` re-fires itself until "stack depth limit exceeded". |
-| 8 | A driver's wallet can be credited repeatedly, or set to NULL. | `settle_driver_wallet_after_release` credits on every update of a released escrow row (and `balance + NULL`). |
+### Migrations (apply in order)
 
-Items 1 and 2 can be closed **in minutes, without this branch**, by this SQL. I have **not** run it:
+| File | Purpose |
+|---|---|
+| `00002_reconcile_production_schema.sql` | Makes production and `00001` agree on what the app relies on: one driver-identity rule, foreign keys re-pointed (rows that predate a key are kept, and the key is left NOT VALID), `plan_id` as the subscription source with `plan_slug()`, `expired` and `identity_document` allowed, review columns added, production's broken `apply_pending_plan_changes()` and `create_driver_wallet()` fixed. |
+| `00003_p0_security_hardening.sql` | RLS on every table. Column guards on bookings, escrow, profiles, driver tables and payouts. The job pool without customer details, plus `claim_job()`. Dispatch and wallet functions restricted. One-time settlement of escrow to the wallet. `change_driver_subscription` checks the caller. Live tracking: `booking_driver_user()`, the location in the realtime publication, replica identity. Admin escrow release as one transaction. Fixes for production's recursive and RLS-blind escrow triggers. |
+| `00004_payments_and_refunds.sql` | Provider reference and amount paid on bookings, `payment_events` (each webhook event processed once), `payment_refunds`, `refund_request_begin()` / `refund_mark()`. |
 
-```sql
--- Emergency, ahead of the full migration. Reversible.
-ALTER TABLE public.admin_accounts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY admin_accounts_self_select ON public.admin_accounts
-  FOR SELECT TO authenticated USING (user_id = auth.uid());   -- auth.tsx reads its own row
-REVOKE EXECUTE ON FUNCTION public.change_driver_subscription(uuid, text) FROM PUBLIC, anon;
-```
-
-`is_admin()` is SECURITY DEFINER, so admins keep working. A signed-in user can still call `change_driver_subscription` for anyone until `00002` is applied.
-
----
-
-## 2. What changed on this branch
-
-### Database: `supabase/migrations/00002_p0_security_hardening.sql`
-
-- **RLS on every table in `public`** (the loop covers production-only tables too). Existing policies are dropped, with each name printed as a NOTICE, and recreated from the repository's own access list. Administrators keep full access. Tables the browser never touches stay admin-only.
-- **Column guards** (BEFORE triggers, by allow-list, so unknown production columns are protected by default):
-  - **bookings, customer:** may confirm a *completed* job, cancel a *pending* one, and edit notes. Inserts reset payment, assignment and outcome fields.
-  - **bookings, driver:** may claim an unassigned *paid* job, move their own job through its statuses with start/end times, and confirm once completed.
-  - **escrow:** the customer creates the `held` row (the amount is taken from the booking) and may approve an adjustment.
-  - **Other tables:** a driver may toggle `online` only. Applicants cannot set their review outcome. Documents start pending. Drivers may start only free/basic plans and expire a lapsed one. Payouts are capped at the wallet balance.
-  - **profiles:** the role cannot be changed by the user. Sign-up roles are limited to customer/driver/business.
-- "Privileged" means admin, service role, a direct DB session, or this migration's own trusted function. Writes made by other triggers (production's escrow lifecycle) are not treated as the client's.
-- **Dispatch:** production's bodies are kept unchanged and renamed `*_internal`. The public names refuse anyone but admins, the service role and the payment trigger.
-- **Money:**
-  - `settle_driver_wallet_after_release` is now the single place a wallet is credited: once, for the booking's driver, only when `driver_earning` is set.
-  - `admin_release_escrow` / `admin_refund_escrow` replace five separate browser writes with one transaction each, and refuse a second release or refund.
-  - The wallet RPCs are service-role only. Production's versions are kept.
-- **`change_driver_subscription`:** production's body is kept as `_internal`. The public name checks the caller: own subscription only, and free/basic only, unless admin or service.
-- **Production fixes in place:**
-  - `capture_extra_escrow_after_approval` no longer recurses.
-  - Production's escrow triggers run as owner, so RLS does not silently stop them.
-- **Columns the code already used but the schema lacked:** `bookings.manual_refund_percent`, `bookings.payment_review_reason`, the escrow adjustment/release columns, and `driver_subscriptions.plan`.
+Rollback scripts (production only) are in `supabase/rollback/000{4,3,2}_down.sql`, run newest first. They are tested to restore production's schema **and function bodies** exactly (§5).
 
 ### Edge functions
 
 | Function | Change |
 |---|---|
-| `_shared/pricing.ts` (new) | One copy of the price formula, routing fallback, commission and driver-plan prices. `calculate-price` and `process-payment` import it instead of carrying mirrors. |
-| `_shared/auth.ts`, `_shared/booking-charge.ts` (new) | Caller from the `Authorization` token; server-side pricing of a booking from its stored inputs and a server route. |
-| `create-checkout-session` | Requires a signed-in caller who owns the booking, with the booking still unpaid. **The amount is computed on the server**; the body's `amount` is ignored. Subscriptions: the driver is the caller, and the price (incl. Pro → Unlimited proration) comes from the server. |
-| `create-vipps-session` | Same caller and amount rules. Subscriptions are refused (the old code failed on them anyway). |
-| `stripe-webhook` | Marks paid only if `amount_total` and currency equal what the server asked for (`metadata.amount_ore`); otherwise `bookings.payment_review_reason` is set and nothing is paid or dispatched. Subscription activation uses the auth user id (it wrote `driver_profiles.id` before, which the portal never read). |
-| `vipps-webhook` | Paid amount must equal the server price stored on the booking. |
-| `process-payment` | Requires the booking's driver (recalculate) or customer/driver (release), or an admin. Release needs a captured payment, happens once (compare-and-set), and no longer credits the wallet itself (the trigger does). Commission now finds the driver's plan by user id (it was always `basic`). |
-| `send-booking-email` | Service-role key or `EMAIL_FUNCTION_SECRET` only (was an open mail relay). Fails closed. |
-| `calculate-price` | Uses the shared module; output unchanged. |
+| `_shared/pricing.ts` | One copy of the price formula, routing fallback, commission, plan prices and slugs, and the refund-amount rule |
+| `_shared/auth.ts`, `booking-charge.ts`, `plans.ts`, `vipps.ts`, `refunds.ts` | Caller identity; server-side booking price; current plan by `plan_id`; Vipps access; provider refunds with idempotency |
+| `create-checkout-session`, `create-vipps-session` | Signed-in owner only; amount computed on the server; the driver's plan read by `plan_id` |
+| `stripe-webhook` | Checks the paid amount. Records provider, PaymentIntent and amount paid. Activates plans through `change_driver_subscription`. Records every event in `payment_events` and skips repeats. Handles `refund.*` events. |
+| `vipps-webhook` | Checks the paid amount; records the Vipps reference and amount paid |
+| `process-payment` | Caller checked; release requires a captured payment and happens once; commission from the driver's real plan; the wallet is credited by the settlement trigger only |
+| `refund-payment` (new) | Admin-only refund through Stripe (`/v1/refunds`) or Vipps (ePayment refund, or cancelling an uncaptured reservation). Each refund has an idempotency key that every retry reuses. The database changes only once the provider confirms. Answers: `succeeded`, `pending` (finished by webhook), `failed` (with the provider's reason) or `202 requested` (provider unreachable; calling again repeats the same request). |
+| `send-booking-email` | Service-role key or `EMAIL_FUNCTION_SECRET` only |
+| `calculate-price` | Shared module; output unchanged |
 
 ### Frontend
 
-- `src/lib/supabase.ts`: `callFunction()` sends the user's access token. Every edge-function call from the app goes through it.
-- `PaymentPage`:
-  - The "mark escrow paid from the browser" fallback is removed. A failed provider call now shows an error.
-  - "Corporate invoice" says it is not available yet instead of treating the booking as paid.
-  - The total shown is the booking total (MVA included) instead of total × 1.25.
-- `DriverPortal`: sends only the plan id. `AdminDashboard`: release/refund call the new RPCs. `CustomerDashboard`, `MyBookings`: authenticated `process-payment` calls.
-- Two existing `tsc` errors fixed (`FleetMap` type predicate; `no.ts` typed as a partial locale, which is how i18next already used it).
-
-### Tests and CI
-
-- `npm test`: 13 Vitest tests for the shared pricing. They include a check that the browser preview formula and the server formula give the same totals.
-- `npm run test:db`: `supabase/tests/run.sh` applies stub + 00001 (+ the production fixture) + 00002 **twice** to a scratch PostgreSQL and runs **144 checks**. `supabase/tests/production-fixture.sql` is production's escrow/subscription functions copied from the live project, so the migration is tested against production behaviour, not only the repository's.
-- `.github/workflows/ci.yml`: typecheck, lint, unit tests, build, `deno check` of the functions, database tests.
-- Locally: typecheck ✔, lint 0 errors (25 warnings, unchanged), build ✔, Vitest 13/13, DB 144/144. `deno check` could not run here (deno.land is blocked by this session's network policy); a strict `tsc` with stand-in declarations passes. CI runs the real one.
-
----
+| Area | Change |
+|---|---|
+| Payment | No browser-side "mark paid". Corporate invoice is refused until it exists. MVA is charged once. Token-authenticated function calls. |
+| Driver portal | The pool comes from `driver_job_pool()` (area, not address; no customer details); jobs are taken with `claim_job()`. Plans are read by `plan_id`; expiry calls `change_driver_subscription`. The location beacon now starts: it matched jobs on the wrong id, so it never ran. |
+| Customer map | Follows the driver of the customer's own booking (`src/lib/driverTracking.ts`). Before, it passed the profile id, where locations are keyed by user id, so it never showed the driver. |
+| Admin dashboard | Plans are read without the broken embed. "Assign plan" offers the real plans; it previously assigned a non-existent "premium". Release goes through `admin_release_escrow`. Refund goes through `refund-payment`. Driver documents open via 2-minute signed URLs; the old public URLs on a private bucket never worked. Required documents match what onboarding collects. |
+| Fleet map | Plans are read by `plan_id` |
 
 ## 3. Behaviour changes to approve
 
-1. **Customers pay the booking total once.** Before, PaymentPage charged `price_estimate × 1.25`, but `price_estimate` already includes 25% MVA (it is `calculate-price`'s `price_total`), so MVA was charged twice. Now customers pay what the booking flow showed, which is 20% less than the payment page charged.
-2. **The amount charged is re-priced on the server** from the booking's van, hours, helpers, extras and a server-side route. If it differs from the stored price, the booking and escrow are corrected before checkout.
-3. **Drivers see and can claim only paid jobs.** Before, the pool showed every `pending` booking.
-4. **Corporate invoice is refused** until company accounts and invoice terms exist (P2 in the plan).
-5. **Admin "Release" requires a captured payment**, and can be done only once. The amount is unchanged (booking price, no commission).
-6. **Commission uses the driver's real plan.** Before, it always defaulted to `basic`.
-7. **Webhook amount mismatches are held, not paid.** Stripe sessions created before deploy carry no `metadata.amount_ore` and will be held for review. Deploy when no checkout is in flight, or review `payment_review_reason` afterwards.
+1. **Customers pay the booking total once.** The payment page used to add 25% MVA to a price that already included it.
+2. **Drivers see paid jobs only, and without customer details**, until they claim one.
+3. **Free-plan drivers (and drivers with no plan) can take jobs up to 500 NOK**, now enforced on the server as the portal already stated.
+4. **Corporate invoice is refused** until company accounts and invoice terms exist.
+5. **Admin release needs a captured payment** and works once; the amount is unchanged.
+6. **Commission uses the driver's real plan** (it was always Basic).
+7. **Refunds move money.** The amount follows the old dashboard rule: share by status, or the manual percentage, applied to what was actually paid. Note that the rule gives **0 for a cancelled booking**: a customer who cancels after paying is refunded only through the manual percentage. Please confirm that's intended.
+8. **Driver approval requires** driver's licence, insurance, vehicle registration and **ID document**, the four documents onboarding asks for. Before, it required a profile photo nobody uploads, so no driver could be approved. Confirm, or add a profile-photo step to onboarding.
+9. **Paid bookings from before deployment** have no provider reference, so they can't be refunded automatically. The function says so; refund them in the provider's dashboard.
+10. **Stripe sessions created before deployment** carry no server amount and are held for review (`payment_review_reason`), not marked paid.
 
----
+## 4. Decisions still open
 
-## 4. Production differs from the repository
+- **Production project.** Confirm "FlyttGo Norway" (`qzclatvpzicwhewzdiwf`) is the one Vercel production uses.
+- **Driver identity.** Confirm the rule in [`PRODUCTION_SCHEMA.md`](PRODUCTION_SCHEMA.md), and decide whether to retire the `drivers` table.
+- **Orphan test data** in production: profiles, driver profiles and documents for deleted users.
+- **Vipps capture.** Vipps payments are reserved and never captured, so the money isn't actually collected. Refunds handle that by cancelling the reservation. **Capture on delivery** (matching the escrow model) is needed before Vipps is used for real.
+- **Dispatch eligibility.** `dispatch_rank_candidates` requires `driver_profiles.subscription_active = true`, which nothing sets. Who sets it, and when?
+- Also open: refunds from a cancelled booking (§3.7), the profile photo (§3.8).
 
-- **Schema:**
-  - 52 tables vs 20 in `00001`. Production-only tables include `corporate_accounts`, `corporate_orders`, `payments`, `subscriptions`, `audit_logs`, `chat_*`, `vehicles`, `reviews`, `service_cities/zones`, `fraud_flags`, `referrals`.
-  - No migrations are recorded (`supabase_migrations` is empty).
-- **Data:** 5 auth users, 13 profiles (8 without a user), 17 bookings, 3 escrow rows, 4 drivers, 2 admins, 5 plans, 0 corporate accounts.
-- **Subscriptions** use `driver_subscriptions.plan_id` → `subscription_plans.name` (Free, Basic, Pro Mini, Pro, Unlimited). The app and `stripe-webhook` read and write a `plan` column that production does not have (`00002` adds it). Today's paid activation therefore fails in production, and `change_driver_subscription('pro_mini')` cannot find "Pro Mini". **Needs a decision: one model, `plan_id` or `plan`.**
-- **Escrow lifecycle** runs largely in production-only triggers on `bookings` and `escrow_payments`: price/commission recalculation, release on both confirmations, overtime detection, adjustment capture, wallet settlement.
-- **Edge functions deployed:** `route-distance`, `create-checkout-session`, `process-payment`, `release-escrow` (a commission calculator only, not in the repo), `calculate-price`, `stripe-webhook`. **Not deployed:** `create-vipps-session`, `vipps-webhook`, `send-booking-email`, so Vipps is not live there.
-- `pg_cron` is not installed, so `docs/subscription-expiry-cron.sql` is not running.
+## 5. Deploy order and rollback (when approved)
 
----
+**Before anything:**
+1. Confirm the production project (§4).
+2. Re-check that production still matches the replica. Run `supabase/schema/fingerprint-summary.sql` there and compare with `supabase/schema/production-2026-10-29.fingerprint`. Any difference means re-snapshot and re-test first.
+3. Back up the database (Supabase backup, or `pg_dump`).
 
-## 5. Deploy order (when approved)
+**On a copy first.** Restore the backup into a Supabase branch or a separate project. Apply 00002 → 00004 and read the NOTICE output (dropped policies, keys left NOT VALID, wallets moved). Run the smoke test in `docs/DEPLOYMENT.md` §7, plus:
+- a driver applies with an ID document, an admin approves them;
+- a free-plan switch;
+- a paid booking, then dispatch, live tracking on the customer's map, both confirmations and release;
+- a refund in Stripe test mode, and in Vipps test mode.
 
-1. Back up the production database.
-2. Run the emergency SQL in §1 now if you want items 1–2 closed before review finishes.
-3. Apply `00002` to a **Supabase branch or a restored copy** of production first, and run the smoke test from `docs/DEPLOYMENT.md` §7 there. Read the NOTICE list of dropped policies.
-4. Set `EMAIL_FUNCTION_SECRET` (and the matching `app.email_function_secret`) before deploying `send-booking-email`.
-5. Deploy, together and in this order: the migration, then the edge functions (`create-checkout-session`, `create-vipps-session`, `stripe-webhook`, `vipps-webhook`, `process-payment`, `calculate-price`, `send-booking-email`), then the frontend.
-   - The new frontend sends tokens the old functions ignore, so it is safe early.
-   - The new functions refuse the old frontend's unauthenticated calls, so don't ship the functions before the frontend.
-6. Re-run the Supabase security advisor; it should report no `rls_disabled`.
+**Production, in one maintenance window:**
+1. Apply `00002`, `00003`, `00004` in one session.
+2. Set the secrets: `EMAIL_FUNCTION_SECRET` and `app.email_function_secret`, plus the Vipps and Stripe secrets if not set. Add `refund.created`, `refund.updated` and `refund.failed` to the Stripe webhook's events.
+3. Deploy the frontend. It works with both old and new functions.
+4. Deploy the edge functions: `create-checkout-session`, `create-vipps-session`, `stripe-webhook`, `vipps-webhook`, `process-payment`, `calculate-price`, `send-booking-email`, `refund-payment`. Functions before the frontend would refuse the old frontend's calls.
+5. Re-run the security advisor. Expect no `rls_disabled` findings.
 
----
+**Rollback:**
+1. Redeploy the previous frontend and functions (Vercel and Supabase keep earlier versions).
+2. Run `supabase/rollback/00004_down.sql`, `00003_down.sql`, `00002_down.sql` in that order.
+   - Each file states the columns and tables it drops. Export `payment_refunds` first if any refund was made.
+   - Wallets moved by 00002 are not moved back.
+3. The rollback re-opens the holes in §1. Use it only to return to a known state.
 
-## 6. Not fixed here (follow-ups)
+## 6. Tests (local run, 2026-10-29)
 
-- Drivers in the job pool can read the customer's name, phone and email for every paid unassigned job (unchanged behaviour). A pool view with limited columns is the fix.
-- The live tracking map passes `driver_profiles.id` where locations are keyed by the auth user id, so customers never see the driver's dot. The RLS policy is correct; the component needs the user id.
-- AdminDashboard opens driver documents with `getPublicUrl` on a private bucket; it needs signed URLs.
-- Refunds are recorded only; nothing is refunded in Stripe or Vipps.
-- PaymentPage still shows its own card-number fields before redirecting to Stripe Checkout. Nothing is sent, but they should go (PCI scope).
+| Check | Result |
+|---|---|
+| `npm run typecheck` | 0 errors |
+| `npm run lint` | 0 errors; warnings identical to `main` |
+| `npm run build` | passes |
+| `npm test` (Vitest) | **38 / 38**: pricing and browser/server formula parity, refunds against fake Stripe/Vipps (success, pending, refusal, retry, idempotency key reuse, uncaptured cancel, no double call), tracking (beacon id, customer map follow/stop) |
+| `npm run test:db` | **repo schema 109 / 109; production replica 127 / 127; rollback restores production exactly** |
+| Edge functions | Strict TypeScript with stand-in Deno/URL types passes. Real `deno check` runs in CI (deno.land is blocked here). |
+
+`npm run test:db` checks, on each schema:
+- Customers can't mark bookings paid, change prices, confirm for the driver, see others' bookings, run dispatch, credit wallets or become admin.
+- Anon reads nothing.
+- The pool carries no customer name, phone, email, notes or street address; claims are single and plan-limited.
+- Plans are by `plan_id`, and slugs resolve.
+- Tracking: the beacon upsert works, only the customer of the in-flight booking sees the location, the table is in the publication, and access stops after completion.
+- Driver documents in storage: owner and admins only.
+- Release and settlement credit the wallet exactly once.
+- Refunds: browser callers refused, no provider reference refused, over-refund refused, retries reuse the key, effects apply once and only on success, a failed refund allows a new key.
+- On the production replica additionally: driver approval, expiry to free, production's confirmation and adjustment triggers.
+
+What these tests don't prove: Realtime delivery and Storage signed URLs on a real Supabase stack, the browser's geolocation permission prompt, and real provider responses. Those need the copy-of-production smoke test above, with Stripe and Vipps in test mode.
+
+## 7. Follow-ups not in this branch
+
+- Vipps capture on delivery (§4).
+- PaymentPage still shows its own card-number fields before redirecting to Stripe. Nothing is sent, but they should go (PCI scope).
 - CORS is `*` on all functions; restrict it to `FRONTEND_URL`.
-- The Norwegian translations for the corporate pages are missing (English is shown).
+- The location beacon runs only while the driver portal is open in a browser.
+- Norwegian translations for the corporate pages are missing.

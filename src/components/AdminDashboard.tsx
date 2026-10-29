@@ -1,6 +1,7 @@
 // FULL FINAL VERSION — PRODUCTION CONTROL CENTER BUILD
 import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
-import { supabase } from "../lib/supabase";
+import { supabase, callFunction } from "../lib/supabase";
+import { activePlansByUser, ASSIGNABLE_PLANS } from "../lib/plans";
 import { useAuth } from "../lib/auth";
 
 /* Lazy-loaded Leaflet map — ~150 KB bundle is only paid when the
@@ -127,10 +128,13 @@ export default function AdminDashboard() {
 
   const DOCUMENT_TYPE_LABELS: Record<string, string> = {
     driver_license: "Driver License", insurance: "Insurance Document",
-    vehicle_registration: "Vehicle Registration", profile_photo: "Profile Photo",
+    vehicle_registration: "Vehicle Registration", identity_document: "ID / Passport", profile_photo: "Profile Photo",
     background_check: "Background Check",
   };
-  const REQUIRED_DOCS = ["driver_license", "insurance", "vehicle_registration", "profile_photo"];
+  /* The four documents DriverOnboarding asks for. This listed
+   * profile_photo, which onboarding never uploads, so no driver could be
+   * activated. */
+  const REQUIRED_DOCS = ["driver_license", "insurance", "vehicle_registration", "identity_document"];
   const tabs: AdminTab[] = [
     "overview",
     "fleet-map",
@@ -190,8 +194,17 @@ export default function AdminDashboard() {
       await enforceSubscriptionExpiry();
       let confirmedCount = 0;
 
-      const { data: drv } = await supabase.from("driver_profiles").select("*, driver_subscriptions(plan)");
-      if (drv) {
+      /* driver_subscriptions is keyed by the driver's auth user id and
+       * names its plan by plan_id; there is no relationship from
+       * driver_profiles to embed, so plans are read separately and
+       * attached in the shape the table below already renders. */
+      const { data: drvRows } = await supabase.from("driver_profiles").select("*");
+      const plansByUser = await activePlansByUser((drvRows ?? []).map((d: any) => d.user_id));
+      const drv = (drvRows ?? []).map((d: any) => ({
+        ...d,
+        driver_subscriptions: plansByUser[d.user_id] ? [{ plan: plansByUser[d.user_id] }] : [],
+      }));
+      if (drvRows) {
         setDrivers(drv);
         let online = 0, busy = 0, pending = 0, suspended = 0;
         drv.forEach((d: any) => {
@@ -337,31 +350,46 @@ export default function AdminDashboard() {
     loadData();
   }
 
-  async function assignPlan(driverId: string, plan: string) {
-    await supabase.from("driver_subscriptions").insert({ driver_id: driverId, plan });
+  /* Through change_driver_subscription (admins may set any plan): it
+   * resolves the plan slug to plan_id, sets the end date from the plan's
+   * billing period and keeps driver_profiles.subscription_plan in step. */
+  async function assignPlan(driverUserId: string, plan: string) {
+    if (!plan) return;
+    const { error } = await supabase.rpc("change_driver_subscription", { p_driver_id: driverUserId, p_new_plan: plan });
+    if (error) { alert("Plan change failed: " + error.message); return; }
     loadData();
   }
 
-  /* Escrow release and refund run as one database transaction each
-   * (admin_release_escrow / admin_refund_escrow, admin-only): the
-   * wallet change, the ledger row, the escrow status and the booking
-   * status move together or not at all, and a second click on an
-   * already released or refunded booking is refused instead of
-   * crediting the wallet twice. Amounts are unchanged from before:
-   * release credits the booking's price, refund uses
-   * calculateRefundAmount(). */
+  /* Escrow release runs as one database transaction
+   * (admin_release_escrow, admin-only): the escrow status, the driver's
+   * earning and the booking status move together or not at all, the
+   * settlement trigger credits the wallet once, and a second click on
+   * an already released booking is refused. Amount unchanged from
+   * before: the booking's price. */
   async function releasePayment(booking: any) {
     const { error } = await supabase.rpc("admin_release_escrow", { p_booking_id: booking.id });
     if (error) { alert("Release failed: " + error.message); return; }
     alert("Driver wallet credited"); loadData();
   }
 
+  /* Refunds go back through the provider that took the money
+   * (refund-payment): Stripe or Vipps is asked with an idempotency key,
+   * and the escrow, wallet and booking change only once the provider
+   * confirms. The amount is calculateRefundAmount()'s rule, applied on
+   * the server to what was actually paid; the preview here is the same
+   * rule. Clicking again after "not confirmed" repeats the same request. */
   async function refundPayment(booking: any) {
-    const refundAmount = calculateRefundAmount(booking);
-    if (refundAmount === 0) { alert("Refund not allowed"); return; }
-    const { error } = await supabase.rpc("admin_refund_escrow", { p_booking_id: booking.id, p_amount: refundAmount });
-    if (error) { alert("Refund failed: " + error.message); return; }
-    alert("Refund processed safely"); loadData();
+    const preview = calculateRefundAmount(booking);
+    if (preview === 0) { alert("Refund not allowed"); return; }
+    if (!confirm(`Refund about ${Math.round(preview).toLocaleString()} NOK to the customer through ${booking.payment_provider ?? "the payment provider"}?`)) return;
+    const res = await callFunction("refund-payment", { bookingId: booking.id });
+    const d = await res.json().catch(() => ({}));
+    if (res.status === 202) { alert("The provider has not confirmed the refund yet (" + (d.error ?? "no answer") + "). Click Refund again to retry; it will not refund twice."); loadData(); return; }
+    if (!res.ok) { alert("Refund failed: " + (d.error ?? res.status)); return; }
+    if (d.status === "succeeded") alert(`Refunded ${Number(d.refund?.amount ?? preview).toLocaleString()} NOK.`);
+    else if (d.status === "pending") alert("The provider accepted the refund and is processing it. It will show as refunded when confirmed.");
+    else alert("The provider refused the refund: " + (d.error ?? "unknown reason"));
+    loadData();
   }
 
   async function applyManualRefund() {
@@ -574,8 +602,22 @@ export default function AdminDashboard() {
     setAppDocuments(error || !data ? [] : data);
   }
 
-  function getDocumentUrl(storagePath: string): string {
-    return supabase.storage.from("driver-documents").getPublicUrl(storagePath).data.publicUrl;
+  /* driver-documents is a private bucket: a public URL never works.
+   * Admins (storage policy driver-documents-admin-all, is_admin()) get a
+   * short-lived signed URL when they click View. The tab is opened first,
+   * inside the click, so pop-up blockers allow it. */
+  async function openDocument(storagePath: string) {
+    /* "noopener" would make window.open return null; cut the link by hand. */
+    const tab = window.open("", "_blank");
+    if (tab) tab.opener = null;
+    const { data, error } = await supabase.storage.from("driver-documents").createSignedUrl(storagePath, 120);
+    if (error || !data?.signedUrl) {
+      tab?.close();
+      alert("Could not open the document: " + (error?.message ?? "no file at " + storagePath));
+      return;
+    }
+    if (tab) tab.location.href = data.signedUrl;
+    else window.location.assign(data.signedUrl);
   }
 
   if (loading || !profile || profile.role !== "admin") {
@@ -755,7 +797,10 @@ export default function AdminDashboard() {
                       <td className="p-3 flex gap-2 flex-wrap">
                         <button onClick={() => updateDriverStatus(d.id, "approved")} className="bg-emerald-600 text-white px-2 py-1 text-xs rounded">Approve</button>
                         <button onClick={() => updateDriverStatus(d.id, "suspended")} className="bg-red-600 text-white px-2 py-1 text-xs rounded">Suspend</button>
-                        <button onClick={() => assignPlan(d.id, "premium")} className="bg-blue-600 text-white px-2 py-1 text-xs rounded">Assign Premium</button>
+                        <select defaultValue="" onChange={e => { assignPlan(d.user_id, e.target.value); e.target.value = ""; }} className="border border-blue-600 text-blue-700 px-2 py-1 text-xs rounded" aria-label="Assign plan">
+                          <option value="" disabled>Assign plan…</option>
+                          {ASSIGNABLE_PLANS.map(p => <option key={p} value={p}>{p.replace(/_/g, " ")}</option>)}
+                        </select>
                       </td>
                     </tr>
                   );
@@ -952,7 +997,7 @@ export default function AdminDashboard() {
                     <span className={`px-2 py-1 text-xs rounded font-medium ${doc.verification_status === "approved" ? "bg-green-100 text-green-700" : doc.verification_status === "rejected" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"}`}>{doc.verification_status ?? "pending"}</span>
                   </div>
                   <div className="flex gap-2">
-                    <a href={getDocumentUrl(doc.file_url)} target="_blank" rel="noopener noreferrer" className="bg-emerald-600 text-white px-3 py-1 text-xs rounded hover:bg-emerald-700 transition">View</a>
+                    <button type="button" onClick={() => openDocument(doc.file_url)} className="bg-emerald-600 text-white px-3 py-1 text-xs rounded hover:bg-emerald-700 transition">View</button>
                     <button onClick={async () => { await supabase.from("driver_documents").update({ verification_status: "approved" }).eq("id", doc.id); loadApplicationDocuments(selectedApplication.id); }} className="bg-green-600 text-white px-2 py-1 text-xs rounded">Approve</button>
                     <button onClick={async () => { await supabase.from("driver_documents").update({ verification_status: "rejected" }).eq("id", doc.id); loadApplicationDocuments(selectedApplication.id); }} className="bg-red-600 text-white px-2 py-1 text-xs rounded">Reject</button>
                   </div>

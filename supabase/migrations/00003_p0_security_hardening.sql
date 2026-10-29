@@ -23,7 +23,8 @@
 --      settlement trigger + process-payment) or nulling the balance.
 -- and adds what the code already calls but the schema lacked
 -- (wallet RPCs, escrow columns, manual_refund_percent), plus admin
--- escrow release/refund as single transactions.
+-- escrow release as a single transaction. Refunds go through the payment
+-- provider (00004).
 --
 -- Shape of the protection: Row Level Security decides WHICH rows a
 -- user reaches; BEFORE triggers ("guards") decide WHICH COLUMNS a
@@ -56,9 +57,6 @@ ALTER TABLE public.escrow_payments
   ADD COLUMN IF NOT EXISTS released_at       timestamptz,      -- process-payment release_escrow
   ADD COLUMN IF NOT EXISTS commission_amount numeric,
   ADD COLUMN IF NOT EXISTS final_price       numeric;
-
-ALTER TABLE public.driver_subscriptions
-  ADD COLUMN IF NOT EXISTS plan text;                          -- DriverPortal, stripe-webhook, dispatch
 
 -- useDriverLocationBeacon upserts ON CONFLICT (driver_id), which needs a
 -- unique index. Created only when absent and when no duplicates exist.
@@ -440,7 +438,8 @@ CREATE TRIGGER guard_driver_document_write
 
 -- driver_subscriptions: a driver may start a free plan (free/basic) and
 -- mark their own lapsed subscription expired (DriverPortal's expiry
--- check). Paid plans are activated only by stripe-webhook.
+-- check). Paid plans are activated only by stripe-webhook. The plan is
+-- plan_id → subscription_plans (00002), named by public.plan_slug().
 CREATE OR REPLACE FUNCTION public.guard_driver_subscription_write()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
@@ -448,12 +447,12 @@ AS $$
 BEGIN
   IF public.is_privileged() THEN RETURN NEW; END IF;
   IF TG_OP = 'INSERT' THEN
-    IF coalesce(NEW.plan, '') NOT IN ('free', 'basic') THEN
+    IF NOT EXISTS (SELECT 1 FROM public.subscription_plans
+                    WHERE id = NEW.plan_id AND public.plan_slug(name) IN ('free', 'basic')) THEN
       RAISE EXCEPTION 'driver_subscriptions: paid plans are activated by payment' USING ERRCODE = '42501';
     END IF;
     NEW.subscription_status    := 'active';
     NEW.end_date               := NULL;
-    NEW.plan_id                := NULL;
     NEW.stripe_subscription_id := NULL;
     NEW.pending_plan           := NULL;
     NEW.proration_credit       := NULL;
@@ -548,21 +547,86 @@ CREATE POLICY bookings_customer_select ON public.bookings
   FOR SELECT TO authenticated USING (customer_id = auth.uid());
 CREATE POLICY bookings_customer_update ON public.bookings
   FOR UPDATE TO authenticated USING (customer_id = auth.uid()) WITH CHECK (customer_id = auth.uid());
--- Drivers see their own jobs and the pool of PAID unassigned jobs.
+-- Drivers read their own (assigned) jobs in full. The pool of paid,
+-- unassigned jobs is NOT readable from the table — it holds the
+-- customer's name, phone, email, notes and exact addresses — but only
+-- through driver_job_pool() below, which leaves those out. A job is
+-- taken with claim_job().
 CREATE POLICY bookings_driver_select ON public.bookings
-  FOR SELECT TO authenticated USING (
-    driver_id = public.my_driver_id()
-    OR (driver_id IS NULL AND status IN ('pending', 'confirmed')
-        AND payment_status IN ('paid', 'escrow') AND public.is_approved_driver())
-  );
+  FOR SELECT TO authenticated USING (driver_id = public.my_driver_id());
 CREATE POLICY bookings_driver_update ON public.bookings
   FOR UPDATE TO authenticated
-  USING (
-    driver_id = public.my_driver_id()
-    OR (driver_id IS NULL AND status IN ('pending', 'confirmed')
-        AND payment_status IN ('paid', 'escrow') AND public.is_approved_driver())
-  )
+  USING (driver_id = public.my_driver_id())
   WITH CHECK (driver_id = public.my_driver_id());
+
+-- The job pool as approved drivers see it: area (postcode + city)
+-- instead of street addresses, coordinates rounded to ~1 km for the
+-- map, no customer details. Column names match bookings so the driver
+-- portal renders pool and own jobs alike.
+CREATE OR REPLACE FUNCTION public.driver_job_pool()
+RETURNS TABLE (
+  id uuid, status text, pickup_address text, dropoff_address text,
+  pickup_city text, dropoff_city text, pickup_postcode text, dropoff_postcode text,
+  pickup_lat numeric, pickup_lng numeric, dropoff_lat numeric, dropoff_lng numeric,
+  move_date timestamptz, move_time time, move_type text, van_type text, helpers integer,
+  items jsonb, additional_services jsonb, distance_km numeric, estimated_hours numeric,
+  price_estimate numeric, created_at timestamptz
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT b.id, b.status,
+         nullif(concat_ws(' ', b.pickup_postcode, b.pickup_city), ''),
+         nullif(concat_ws(' ', b.dropoff_postcode, b.dropoff_city), ''),
+         b.pickup_city, b.dropoff_city, b.pickup_postcode, b.dropoff_postcode,
+         round(b.pickup_lat, 2), round(b.pickup_lng, 2), round(b.dropoff_lat, 2), round(b.dropoff_lng, 2),
+         b.move_date, b.move_time, b.move_type, b.van_type, b.helpers,
+         b.items, b.additional_services, b.distance_km, b.estimated_hours,
+         b.price_estimate, b.created_at
+    FROM public.bookings b
+   WHERE public.is_approved_driver()
+     AND b.driver_id IS NULL
+     AND b.status IN ('pending', 'confirmed')
+     AND b.payment_status IN ('paid', 'escrow')
+     AND b.customer_id IS DISTINCT FROM auth.uid()
+   ORDER BY b.move_date NULLS LAST, b.created_at;
+$$;
+
+-- Take a job from the pool. Compare-and-set, so two drivers cannot both
+-- win; the booking guard checks the rest (approved driver, paid job).
+-- Free-plan drivers take jobs up to 500 NOK, as the portal states.
+-- Returns false when the job is gone.
+CREATE OR REPLACE FUNCTION public.claim_job(p_booking_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  v_driver uuid := public.my_driver_id();
+  v_plan   text;
+  v_price  numeric;
+BEGIN
+  IF v_driver IS NULL OR NOT public.is_approved_driver() THEN
+    RAISE EXCEPTION 'claim_job: approved drivers only' USING ERRCODE = '42501';
+  END IF;
+  SELECT price_estimate INTO v_price FROM public.bookings WHERE id = p_booking_id;
+  SELECT public.plan_slug(sp.name) INTO v_plan
+    FROM public.driver_subscriptions ds JOIN public.subscription_plans sp ON sp.id = ds.plan_id
+   WHERE ds.driver_id = auth.uid() AND ds.subscription_status = 'active'
+   ORDER BY ds.created_at DESC LIMIT 1;
+  IF coalesce(v_plan, 'free') = 'free' AND coalesce(v_price, 0) > 500 THEN
+    RAISE EXCEPTION 'claim_job: the free plan takes jobs up to 500 NOK' USING ERRCODE = '42501';
+  END IF;
+  UPDATE public.bookings
+     SET driver_id = v_driver, status = 'driver_assigned'
+   WHERE id = p_booking_id AND driver_id IS NULL
+     AND status IN ('pending', 'confirmed') AND payment_status IN ('paid', 'escrow');
+  RETURN FOUND;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.driver_job_pool()  FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.claim_job(uuid)    FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.driver_job_pool() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.claim_job(uuid)   TO authenticated;
 
 -- ── escrow_payments ──
 CREATE POLICY escrow_customer_select ON public.escrow_payments
@@ -619,6 +683,46 @@ GRANT EXECUTE ON FUNCTION public.is_my_active_driver(uuid) TO authenticated;
 
 CREATE POLICY driver_locations_customer_select ON public.driver_locations
   FOR SELECT TO authenticated USING (public.is_my_active_driver(driver_id));
+
+-- The customer's map needs the driver's user id (the location key) for
+-- its own in-flight booking, and nothing else about the driver.
+CREATE OR REPLACE FUNCTION public.booking_driver_user(p_booking_id uuid)
+RETURNS uuid
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT dp.user_id
+    FROM public.bookings b
+    JOIN public.driver_profiles dp ON dp.id = b.driver_id
+   WHERE b.id = p_booking_id
+     AND b.customer_id = auth.uid()
+     AND b.status IN ('driver_assigned', 'pickup_arrived', 'loading', 'in_transit');
+$$;
+REVOKE ALL ON FUNCTION public.booking_driver_user(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.booking_driver_user(uuid) TO authenticated;
+
+-- Realtime delivers location updates to the customer's map (Realtime
+-- applies the SELECT policies above to each subscriber). Production's
+-- publication only carried notifications.
+DO $$
+BEGIN
+  -- A published table needs a replica identity for its UPDATEs (the
+  -- beacon upserts). Production has a primary key; a schema built from
+  -- 00001 only has the unique index from section 1.
+  IF NOT EXISTS (SELECT 1 FROM pg_index WHERE indrelid = 'public.driver_locations'::regclass AND indisprimary)
+     AND (SELECT relreplident FROM pg_class WHERE oid = 'public.driver_locations'::regclass) = 'd' THEN
+    IF to_regclass('public.driver_locations_driver_id_key') IS NOT NULL THEN
+      ALTER TABLE public.driver_locations ALTER COLUMN driver_id SET NOT NULL;
+      ALTER TABLE public.driver_locations REPLICA IDENTITY USING INDEX driver_locations_driver_id_key;
+    ELSE
+      ALTER TABLE public.driver_locations REPLICA IDENTITY FULL;
+    END IF;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime')
+     AND NOT EXISTS (SELECT 1 FROM pg_publication_tables
+                      WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'driver_locations') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.driver_locations;
+  END IF;
+END $$;
 
 -- ── driver money: read your own; written only by functions ──
 CREATE POLICY driver_wallets_self_select ON public.driver_wallets
@@ -887,50 +991,19 @@ BEGIN
 END;
 $$;
 
--- AdminDashboard "Refund": the amount comes from calculateRefundAmount()
--- and must lie between 0 and the booking price. Once per booking.
--- Records the refund only; the money is returned in Stripe/Vipps.
-CREATE OR REPLACE FUNCTION public.admin_refund_escrow(p_booking_id uuid, p_amount numeric)
-RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-  v_booking public.bookings%ROWTYPE;
-BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'admin_refund_escrow: administrators only' USING ERRCODE = '42501';
-  END IF;
-  SELECT * INTO v_booking FROM public.bookings WHERE id = p_booking_id FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'booking not found'; END IF;
-  IF p_amount IS NULL OR p_amount <= 0 OR p_amount > coalesce(v_booking.price_estimate, 0) THEN
-    RAISE EXCEPTION 'refund must be between 0 and the booking price';
-  END IF;
-  IF EXISTS (SELECT 1 FROM public.escrow_payments WHERE booking_id = p_booking_id AND status = 'refunded') THEN
-    RAISE EXCEPTION 'escrow already refunded';
-  END IF;
-
-  IF v_booking.driver_id IS NOT NULL THEN
-    PERFORM public.decrement_driver_wallet(v_booking.driver_id, p_amount);
-    INSERT INTO public.driver_wallet_transactions (driver_id, booking_id, type, amount)
-    VALUES (v_booking.driver_id, p_booking_id, 'refund_reversal', p_amount);
-  END IF;
-  UPDATE public.escrow_payments SET status = 'refunded', refund_amount = p_amount WHERE booking_id = p_booking_id;
-  RETURN jsonb_build_object('refunded', p_amount);
-END;
-$$;
-
 REVOKE ALL ON FUNCTION public.admin_release_escrow(uuid)          FROM PUBLIC, anon;
-REVOKE ALL ON FUNCTION public.admin_refund_escrow(uuid, numeric)  FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.admin_release_escrow(uuid)         TO authenticated;
-GRANT EXECUTE ON FUNCTION public.admin_refund_escrow(uuid, numeric) TO authenticated;
 
--- change_driver_subscription: production's version (plan looked up by
--- name in subscription_plans, end date from its billing period, audit
--- log) is kept as change_driver_subscription_internal; the public name
--- checks the caller first. It was SECURITY DEFINER and executable by
--- anon, so anyone could put any driver on any plan. Now a driver may
--- move only themselves, and only to free or basic; paid plans come from
--- stripe-webhook; admins may set any plan.
+-- change_driver_subscription(driver user id, plan slug or name):
+-- production's version (plan looked up by name in subscription_plans,
+-- end date from its billing period, driver_profiles.subscription_plan,
+-- audit log) is kept as change_driver_subscription_internal; the public
+-- name checks the caller first and resolves the slug to the plan's name
+-- ('pro_mini' → 'Pro Mini', which production's lookup by lower(name)
+-- could not find). It was SECURITY DEFINER and executable by anon, so
+-- anyone could put any driver on any plan. Now a driver may move only
+-- themselves, and only to free or basic; paid plans come from
+-- stripe-webhook (service role); admins may set any plan.
 DO $$
 BEGIN
   -- Rename production's function once; never this migration's own
@@ -947,26 +1020,45 @@ CREATE OR REPLACE FUNCTION public.change_driver_subscription(p_driver_id uuid, p
 RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
 AS $$
+DECLARE
+  v_plan public.subscription_plans%ROWTYPE;
+  v_slug text;
 BEGIN
+  SELECT * INTO v_plan FROM public.subscription_plans
+   WHERE public.plan_slug(name) = public.plan_slug(p_new_plan);
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'change_driver_subscription: no plan "%" in subscription_plans', p_new_plan;
+  END IF;
+  v_slug := public.plan_slug(v_plan.name);
+
   IF NOT public.is_privileged() THEN
     IF p_driver_id IS DISTINCT FROM auth.uid() THEN
       RAISE EXCEPTION 'change_driver_subscription: only your own subscription' USING ERRCODE = '42501';
     END IF;
-    IF lower(coalesce(p_new_plan, '')) NOT IN ('free', 'basic') THEN
+    IF v_slug NOT IN ('free', 'basic') THEN
       RAISE EXCEPTION 'change_driver_subscription: paid plans are activated by payment' USING ERRCODE = '42501';
     END IF;
   END IF;
+
   -- Checked above; the writes below are this function's, not the caller's.
   PERFORM set_config('flyttgo.trusted', 'on', true);
   IF to_regprocedure('public.change_driver_subscription_internal(uuid, text)') IS NOT NULL THEN
-    EXECUTE 'SELECT public.change_driver_subscription_internal($1, $2)' USING p_driver_id, p_new_plan;
+    EXECUTE 'SELECT public.change_driver_subscription_internal($1, $2)' USING p_driver_id, v_plan.name;
   ELSE
-    -- Schema without the production function (00001 only).
+    -- Schema without the production function (00001 only): the same
+    -- behaviour as production's.
     UPDATE public.driver_subscriptions
-       SET subscription_status = 'expired'
+       SET plan_id = v_plan.id, subscription_status = 'active', start_date = now(), pending_plan = NULL,
+           end_date = CASE v_plan.billing_period WHEN 'monthly' THEN now() + interval '1 month'
+                                                 WHEN 'daily'   THEN now() + interval '1 day' END
      WHERE driver_id = p_driver_id AND subscription_status = 'active';
-    INSERT INTO public.driver_subscriptions (driver_id, plan, subscription_status, start_date, end_date)
-    VALUES (p_driver_id, p_new_plan, 'active', now(), NULL);
+    IF NOT FOUND THEN
+      INSERT INTO public.driver_subscriptions (driver_id, plan_id, subscription_status, start_date, end_date)
+      VALUES (p_driver_id, v_plan.id, 'active', now(),
+              CASE v_plan.billing_period WHEN 'monthly' THEN now() + interval '1 month'
+                                         WHEN 'daily'   THEN now() + interval '1 day' END);
+    END IF;
+    UPDATE public.driver_profiles SET subscription_plan = v_plan.name WHERE user_id = p_driver_id;
   END IF;
   PERFORM set_config('flyttgo.trusted', 'off', true);
 END;

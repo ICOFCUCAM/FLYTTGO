@@ -64,6 +64,7 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { serviceClient, getCaller, driverProfileIdOf } from '../_shared/auth.ts';
 import { chargeForBooking } from '../_shared/booking-charge.ts';
 import { subscriptionCharge, DRIVER_PLAN_LABELS } from '../_shared/pricing.ts';
+import { currentSubscription } from '../_shared/plans.ts';
 
 /* ─── Env ──────────────────────────────────────────────────────── */
 const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
@@ -138,14 +139,8 @@ serve(async (req: Request) => {
     }
     /* driver_subscriptions.driver_id is the auth user id (DriverPortal,
      * the dispatch engine and stripe-webhook all key on it). */
-    const { data: current } = await db
-      .from('driver_subscriptions')
-      .select('plan, subscription_status, start_date')
-      .eq('driver_id', caller.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const charge = subscriptionCharge(body.planId, current ?? null);
+    const current = await currentSubscription(db, caller.id);
+    const charge = subscriptionCharge(body.planId, current);
     if (!charge) return json({ error: `plan ${body.planId} has nothing to pay` }, 400);
     if (charge.total <= 0) return json({ error: 'nothing to pay for this plan change' }, 409);
 

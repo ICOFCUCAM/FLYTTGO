@@ -173,7 +173,7 @@ export default function MyBookings() {
                     <DriverTrackingMap
                       pickup={{ lat: Number(booking.pickup_lat), lng: Number(booking.pickup_lng) }}
                       dropoff={{ lat: Number(booking.dropoff_lat), lng: Number(booking.dropoff_lng) }}
-                      driverId={booking.driver_id}
+                      bookingId={booking.id}
                       className="mb-3"
                     />
                   </Suspense>

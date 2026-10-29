@@ -10,14 +10,19 @@
 // the session):
 //
 //   metadata.type = 'booking'      → updates a bookings row
-//                                      payment_status: 'pending' → 'paid'
+//                                      payment_status: 'pending' → 'paid',
+//                                      with provider, PaymentIntent id and
+//                                      amount paid (needed for refunds)
 //                                    + the related escrow_payments row
 //                                      status: 'held' → 'escrow'
 //
-//   metadata.type = 'subscription' → updates the driver's active
-//                                     driver_subscriptions row
-//                                     (subscription_status: 'active',
-//                                      end_date bumped forward).
+//   metadata.type = 'subscription' → activates the plan through
+//                                     change_driver_subscription
+//                                     (plan_id, end date from the plan's
+//                                      billing period).
+//
+// and refund.created / refund.updated / refund.failed for refunds made
+// by refund-payment (metadata.refund_id) → refund_mark.
 //
 // The dual-confirmation escrow release (at delivery time) is still
 // handled by process-payment — this function is only the PAID gate,
@@ -40,24 +45,25 @@
 // To get STRIPE_WEBHOOK_SECRET: in the Stripe dashboard, go to
 // Developers → Webhooks → Add endpoint. Set the URL to
 //   https://<your-project-ref>.supabase.co/functions/v1/stripe-webhook
-// select the events `checkout.session.completed` and
-// `checkout.session.async_payment_succeeded`, save, then click
+// select the events `checkout.session.completed`,
+// `checkout.session.async_payment_succeeded`, `refund.created`,
+// `refund.updated` and `refund.failed`, save, then click
 // "Reveal" next to "Signing secret" and copy the whsec_... string.
 //
 // IDEMPOTENCY
 // -----------
 // Stripe uses at-least-once delivery, so the same event can arrive
-// twice on retries. We check the current state before writing:
-//   - bookings: if payment_status is already 'paid' / 'escrow' /
-//     'released' / 'refunded', short-circuit with { idempotent: true }
-//   - subscriptions: same idea keyed on the session id stored in the
-//     subscription row (stripe_session_id)
+// twice on retries. Every processed event is recorded in
+// payment_events (provider, event id) and skipped when seen again;
+// the booking path also checks the current payment_status, and
+// refund_mark applies a refund's effects once.
 //
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { paidAmountMatches } from '../_shared/pricing.ts';
+import { mapStripeRefundStatus } from '../_shared/refunds.ts';
 
 /* ─── Env ──────────────────────────────────────────────────────── */
 const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!;
@@ -161,7 +167,8 @@ function constantTimeEquals(a: string, b: string): boolean {
  * row from 'held' → 'escrow'. Idempotent: if already processed,
  * returns { idempotent: true } without mutating.
  */
-async function markBookingPaid(bookingId: string, sessionId: string) {
+async function markBookingPaid(bookingId: string, session: StripeCheckoutSession) {
+  const sessionId = session.id;
   const { data: booking, error: readErr } = await supabase
     .from('bookings')
     .select('id, payment_status')
@@ -176,9 +183,18 @@ async function markBookingPaid(bookingId: string, sessionId: string) {
     return { ok: true, idempotent: true, previousStatus: booking.payment_status };
   }
 
+  /* The provider reference and the amount actually paid are what a
+   * refund is later sent back against (refund-payment). */
   const { error: bookingErr } = await supabase
     .from('bookings')
-    .update({ payment_status: 'paid' })
+    .update({
+      payment_status:    'paid',
+      payment_provider:  'stripe',
+      payment_intent_id: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+      stripe_session_id: sessionId,
+      paid_amount:       typeof session.amount_total === 'number' ? session.amount_total / 100 : null,
+      paid_at:           new Date().toISOString(),
+    })
     .eq('id', bookingId);
   if (bookingErr) throw new Error(`booking update failed: ${bookingErr.message}`);
 
@@ -213,96 +229,61 @@ async function flagPaymentReview(bookingId: string, reason: string) {
 /* ─── Subscription paid path ───────────────────────────────────── */
 
 /**
- * For driver subscription payments, we assume the driver already has
- * a driver_subscriptions row (created when they initiated the
- * upgrade) with a matching stripe_session_id or a pending plan to
- * activate. The minimal viable thing here is to UPDATE the active
- * subscription row to status='active' and leave the plan transition
- * details to ops / a separate activation function.
- *
- * The `end_date` is computed from each plan's billing cadence —
- * without this, paid subscriptions land with no expiration and the
- * pg_cron auto-downgrade job (docs/subscription-expiry-cron.sql)
- * has nothing to act on. The free plan has no expiration because
- * there's nothing to downgrade to.
- *
- * If FlyttGo wants more sophisticated subscription handling
- * (renewals, proration, dunning) it belongs in a dedicated
- * activate-subscription Edge Function.
+ * A paid driver subscription: activate the plan through
+ * change_driver_subscription (service role), which resolves the plan
+ * slug to plan_id, sets the end date from the plan's billing period and
+ * keeps driver_profiles.subscription_plan in step — the same path as
+ * every other plan change. Retries are filtered out by payment_events.
  */
+async function markSubscriptionPaid(
+  driverUserId: string,
+  planId:       string,
+  session:      StripeCheckoutSession,
+) {
+  const { error } = await supabase.rpc('change_driver_subscription', {
+    p_driver_id: driverUserId,
+    p_new_plan:  planId,
+  });
+  if (error) throw new Error(`plan activation failed: ${error.message}`);
 
-/* How long each paid plan stays active after a successful payment.
- * Free and Basic are free-tier and never expire — there's nothing
- * lower to downgrade them to. Pro Mini bills daily, Pro and
- * Unlimited bill monthly (30 days). */
-const PLAN_DURATION_DAYS: Record<string, number> = {
-  free:      0,    // no expiry
-  basic:     0,    // no expiry (free tier with commission)
-  pro_mini:  1,
-  pro:       30,
-  unlimited: 30,
-};
-
-function computeEndDate(planId: string): string | null {
-  const days = PLAN_DURATION_DAYS[planId] ?? 0;
-  if (days <= 0) return null;
-  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  /* Record what was paid on the now-active row. */
+  const paid = typeof session.amount_total === 'number' ? session.amount_total / 100 : null;
+  if (paid !== null) {
+    const { data: active } = await supabase
+      .from('driver_subscriptions')
+      .select('id')
+      .eq('driver_id', driverUserId)
+      .eq('subscription_status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (active) {
+      await supabase.from('driver_subscriptions')
+        .update({ amount_paid_nok: paid, vat_nok: Math.round(paid - paid / 1.25), payment_method: 'stripe' })
+        .eq('id', active.id);
+    }
+  }
+  return { ok: true, plan: planId, sessionId: session.id };
 }
 
-async function markSubscriptionPaid(
-  driverId: string,
-  planId:   string,
-  sessionId: string,
-) {
-  /* Flip the existing active subscription to the new plan. If the
-   * driver didn't have one, insert. This is intentionally simple —
-   * real billing cycle management belongs elsewhere. */
-  const { data: existing, error: readErr } = await supabase
-    .from('driver_subscriptions')
-    .select('id, plan, subscription_status')
-    .eq('driver_id', driverId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+/* ─── Refund updates ───────────────────────────────────────────── */
 
-  if (readErr) throw new Error(`subscription read failed: ${readErr.message}`);
-
-  if (existing?.plan === planId && existing?.subscription_status === 'active') {
-    return { ok: true, idempotent: true, plan: planId };
-  }
-
-  /* Fresh activation window: start_date = now, end_date = now + plan
-   * duration. Writing both on every activation means the pg_cron
-   * auto-downgrade job can treat end_date as the only source of
-   * truth for "is this subscription live?". */
-  const nowIso  = new Date().toISOString();
-  const endDate = computeEndDate(planId);
-
-  if (existing) {
-    const { error: updErr } = await supabase
-      .from('driver_subscriptions')
-      .update({
-        plan:                planId,
-        subscription_status: 'active',
-        start_date:          nowIso,
-        end_date:            endDate,
-      })
-      .eq('id', existing.id);
-    if (updErr) throw new Error(`subscription update failed: ${updErr.message}`);
-  } else {
-    const { error: insErr } = await supabase
-      .from('driver_subscriptions')
-      .insert({
-        driver_id:           driverId,
-        plan:                planId,
-        subscription_status: 'active',
-        start_date:          nowIso,
-        end_date:            endDate,
-      });
-    if (insErr) throw new Error(`subscription insert failed: ${insErr.message}`);
-  }
-
-  return { ok: true, idempotent: false, plan: planId, sessionId, endDate };
+/**
+ * refund.updated / refund.failed for refunds created by refund-payment
+ * (metadata.refund_id). refund_mark applies the database effects on the
+ * first 'succeeded', once, and never moves a refund back.
+ */
+async function updateRefund(refund: StripeRefund) {
+  const refundId = refund.metadata?.refund_id;
+  if (!refundId) return { ok: true, ignored: true, reason: 'refund not created by FlyttGo' };
+  const { error } = await supabase.rpc('refund_mark', {
+    p_refund_id:          refundId,
+    p_status:             mapStripeRefundStatus(refund.status),
+    p_provider_refund_id: refund.id,
+    p_error:              refund.failure_reason ?? null,
+  });
+  if (error) throw new Error(`refund_mark failed: ${error.message}`);
+  return { ok: true, refundId, status: refund.status };
 }
 
 /* ─── Event router ─────────────────────────────────────────────── */
@@ -315,15 +296,28 @@ interface StripeCheckoutSession {
   amount_total?: number;
   currency?: string;
   payment_status?: string;
+  payment_intent?: string | null;
+}
+
+interface StripeRefund {
+  id:      string;
+  object:  'refund';
+  status?: string;
+  amount?: number;
+  failure_reason?: string | null;
+  metadata?: Record<string, string>;
 }
 
 interface StripeEvent {
   id:   string;
   type: string;
-  data: { object: StripeCheckoutSession };
+  data: { object: StripeCheckoutSession | StripeRefund };
 }
 
 async function handleEvent(event: StripeEvent) {
+  if (event.type === 'refund.updated' || event.type === 'refund.failed' || event.type === 'refund.created') {
+    return await updateRefund(event.data.object as StripeRefund);
+  }
   if (
     event.type !== 'checkout.session.completed' &&
     event.type !== 'checkout.session.async_payment_succeeded'
@@ -331,7 +325,7 @@ async function handleEvent(event: StripeEvent) {
     return { ok: true, ignored: true, reason: `event type ${event.type}` };
   }
 
-  const session   = event.data.object;
+  const session   = event.data.object as StripeCheckoutSession;
   const metadata  = session.metadata ?? {};
   const kind      = String(metadata.type ?? 'booking');
   const sessionId = session.id;
@@ -361,7 +355,7 @@ async function handleEvent(event: StripeEvent) {
       const reason = `stripe ${sessionId}: paid ${session.amount_total} ${session.currency ?? '?'}, expected ${metadata.amount_ore ?? 'unknown'} øre`;
       return await flagPaymentReview(bookingId, reason);
     }
-    return await markBookingPaid(bookingId, sessionId);
+    return await markBookingPaid(bookingId, session);
   }
 
   if (kind === 'subscription') {
@@ -377,7 +371,7 @@ async function handleEvent(event: StripeEvent) {
       console.error(`stripe-webhook: subscription ${sessionId} for ${driverId} paid ${session.amount_total} ${session.currency}, expected ${metadata.amount_ore ?? 'unknown'} øre — not activated`);
       return { ok: true, ignored: true, reason: 'amount mismatch; held for review' };
     }
-    return await markSubscriptionPaid(driverId, planId, sessionId);
+    return await markSubscriptionPaid(driverId, planId, session);
   }
 
   return { ok: true, ignored: true, reason: `unknown metadata.type=${kind}` };
@@ -408,7 +402,22 @@ serve(async (req: Request) => {
   }
 
   try {
+    /* Each event is applied once: Stripe retries and may deliver twice. */
+    const { data: seen } = await supabase
+      .from('payment_events')
+      .select('event_id')
+      .eq('provider', 'stripe')
+      .eq('event_id', event.id)
+      .maybeSingle();
+    if (seen) return json({ received: true, duplicate: true, eventId: event.id, eventType: event.type });
+
     const result = await handleEvent(event);
+    const meta = (event.data.object as { metadata?: Record<string, string> }).metadata ?? {};
+    const { error: logErr } = await supabase.from('payment_events').insert({
+      provider: 'stripe', event_id: event.id, kind: event.type,
+      booking_id: meta.bookingId ?? meta.booking_id ?? null, result,
+    });
+    if (logErr && logErr.code !== '23505') console.warn(`payment_events insert failed: ${logErr.message}`);
     return json({ received: true, ...result, eventId: event.id, eventType: event.type });
   } catch (err) {
     console.error('stripe-webhook handler error:', err);

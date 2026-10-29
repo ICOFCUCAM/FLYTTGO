@@ -1,4 +1,11 @@
 -- ============================================================================
+-- SUPERSEDED — do not run. Live tracking's publication, RLS and the
+-- customer's driver lookup are in supabase/migrations/00003_p0_security_hardening.sql
+-- (driver_locations is keyed by the driver's auth user id; bookings by
+-- driver_profiles.id, so the customer policy below never matched).
+-- Kept for history.
+-- ============================================================================
+-- ============================================================================
 -- FlyttGo — enable realtime + RLS for live driver tracking
 -- ============================================================================
 --

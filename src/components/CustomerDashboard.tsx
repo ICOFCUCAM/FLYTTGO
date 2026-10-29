@@ -215,7 +215,7 @@ export default function CustomerDashboard() {
                     <DriverTrackingMap
                       pickup={{ lat: Number(activeBooking.pickup_lat), lng: Number(activeBooking.pickup_lng) }}
                       dropoff={{ lat: Number(activeBooking.dropoff_lat), lng: Number(activeBooking.dropoff_lng) }}
-                      driverId={activeBooking.driver_id}
+                      bookingId={activeBooking.id}
                     />
                   </Suspense>
                 </div>

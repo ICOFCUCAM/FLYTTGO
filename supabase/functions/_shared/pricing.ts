@@ -288,3 +288,44 @@ export function paidAmountMatches(
   if ((currency ?? '').toLowerCase() !== 'nok') return false;
   return Math.round(Number(paidOre)) === Math.round(Number(expectedNok) * 100);
 }
+
+/* ─── Plan slugs ───────────────────────────────────────────────── */
+
+/**
+ * A plan's slug from its subscription_plans.name: lower case, spaces as
+ * underscores ('Pro Mini' → 'pro_mini'). Same rule as SQL
+ * public.plan_slug() and src/lib/plans.ts.
+ */
+export function planSlug(name: string | null | undefined): string | null {
+  if (!name) return null;
+  return name.trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+/* ─── Refund amount ───────────────────────────────────────────── */
+
+/**
+ * How much of a booking is refunded, by its status, or by the admin's
+ * manual percentage when one is set. The same rule the admin dashboard
+ * used (calculateRefundAmount), now applied on the server to what was
+ * actually paid (paid_amount, else price_estimate). Whole kroner.
+ */
+export function refundAmountFor(b: {
+  status?: string | null;
+  price_estimate?: number | string | null;
+  paid_amount?: number | string | null;
+  manual_refund_percent?: number | string | null;
+}): number {
+  const paid = Number(b.paid_amount ?? b.price_estimate ?? 0);
+  const base = Number.isFinite(paid) && paid > 0 ? paid : 0;
+  const manual = b.manual_refund_percent;
+  if (manual !== null && manual !== undefined && manual !== '') {
+    const pct = Math.min(100, Math.max(0, Number(manual)));
+    return Math.round(base * (pct / 100));
+  }
+  const share: Record<string, number> = {
+    pending: 1, confirmed: 0.9, driver_assigned: 0.8,
+    pickup_arrived: 0.7, loading: 0.7, in_transit: 0.5,
+    completed: 0, cancelled: 0,
+  };
+  return Math.round(base * (share[String(b.status)] ?? 0));
+}

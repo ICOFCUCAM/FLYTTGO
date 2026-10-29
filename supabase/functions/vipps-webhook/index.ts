@@ -112,7 +112,7 @@ function extractBookingId(reference: string | undefined | null): string | null {
  * until the delivery is confirmed). If the booking is already paid
  * or beyond, return { idempotent: true } and do nothing.
  */
-async function markBookingPaid(bookingId: string, amountOre: number, currency: string) {
+async function markBookingPaid(bookingId: string, amountOre: number, currency: string, reference: string) {
   /* Check current state first so we can bail out idempotently. */
   const { data: booking, error: readErr } = await supabase
     .from('bookings')
@@ -145,10 +145,17 @@ async function markBookingPaid(bookingId: string, amountOre: number, currency: s
     return { ok: true, held: true, reason: 'amount mismatch; held for review' };
   }
 
-  /* 1) bookings.payment_status = 'paid' */
+  /* 1) bookings.payment_status = 'paid', with the Vipps reference and the
+   *    amount paid: refund-payment refunds or cancels against them. */
   const { error: bookingErr } = await supabase
     .from('bookings')
-    .update({ payment_status: 'paid' })
+    .update({
+      payment_status:    'paid',
+      payment_provider:  'vipps',
+      payment_intent_id: reference,
+      paid_amount:       amountOre / 100,
+      paid_at:           new Date().toISOString(),
+    })
     .eq('id', bookingId);
   if (bookingErr) throw new Error(`booking update failed: ${bookingErr.message}`);
 
@@ -212,7 +219,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const result = await markBookingPaid(bookingId, amount, currency);
+    const result = await markBookingPaid(bookingId, amount, currency, reference!);
     return json({ ...result, bookingId, reference });
   } catch (err) {
     console.error('vipps-webhook markBookingPaid error:', err);

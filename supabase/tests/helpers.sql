@@ -62,14 +62,38 @@ INSERT INTO auth.users (id, email, raw_user_meta_data) VALUES
   ('d0000000-0000-0000-0000-000000000002', 'drv2@test',    '{"role":"driver"}'),
   ('e0000000-0000-0000-0000-000000000001', 'apply@test',   '{"role":"driver"}');
 
-INSERT INTO public.admin_accounts (user_id) VALUES ('a0000000-0000-0000-0000-000000000001');
+-- Production's admin_accounts.id has no default.
+INSERT INTO public.admin_accounts (id, user_id) VALUES (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000001');
 
 INSERT INTO public.driver_profiles (id, user_id, full_name, status, online, city) VALUES
   ('d1000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001', 'Driver One', 'approved', true, 'Oslo'),
   ('d1000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000002', 'Driver Two', 'approved', true, 'Oslo');
 
-INSERT INTO public.driver_wallets (driver_id, balance, total_earned) VALUES
-  ('d1000000-0000-0000-0000-000000000001', 1000, 1000);
+-- Production's create_driver_wallet trigger may already have made it.
+UPDATE public.driver_wallets SET balance = 1000, total_earned = 1000
+ WHERE driver_id = 'd1000000-0000-0000-0000-000000000001';
+INSERT INTO public.driver_wallets (driver_id, balance, total_earned)
+SELECT 'd1000000-0000-0000-0000-000000000001', 1000, 1000
+ WHERE NOT EXISTS (SELECT 1 FROM public.driver_wallets WHERE driver_id = 'd1000000-0000-0000-0000-000000000001');
+UPDATE public.driver_profiles SET subscription_active = true;
+
+-- The plans as in production (00001 ships none). Driver 1 is on Pro,
+-- driver 2 has no subscription (treated as free: jobs up to 500 NOK).
+INSERT INTO public.subscription_plans (name, price, billing_period)
+SELECT v.name, v.price, v.billing
+  FROM (VALUES ('Free', 0, 'none'), ('Basic', 0, 'daily'), ('Pro Mini', 149, 'daily'),
+               ('Pro', 1500, 'monthly'), ('Unlimited', 2449, 'monthly')) AS v(name, price, billing)
+ WHERE NOT EXISTS (SELECT 1 FROM public.subscription_plans sp WHERE public.plan_slug(sp.name) = public.plan_slug(v.name));
+DO $$ BEGIN PERFORM public.change_driver_subscription('d0000000-0000-0000-0000-000000000001', 'pro'); END $$;
+
+CREATE OR REPLACE FUNCTION tests.plan_id(p_slug text) RETURNS uuid LANGUAGE sql STABLE AS $$
+  SELECT id FROM public.subscription_plans WHERE public.plan_slug(name) = p_slug;
+$$;
+GRANT EXECUTE ON FUNCTION tests.plan_id(text) TO anon, authenticated, service_role;
+
+-- A driver document in storage (driver 1's own folder).
+INSERT INTO storage.objects (bucket_id, name) VALUES
+  ('driver-documents', 'd0000000-0000-0000-0000-000000000001/driver_license.pdf');
 
 INSERT INTO public.driver_applications (id, user_id, first_name, status) VALUES
   ('e1000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000001', 'App', 'pending');

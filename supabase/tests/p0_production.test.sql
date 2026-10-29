@@ -1,6 +1,7 @@
 -- ============================================================================
--- 00002 against production's own triggers and functions
--- (supabase/tests/production-fixture.sql). Run with supabase/tests/run.sh.
+-- The migrations against production's own schema, triggers and functions
+-- (the verified replica supabase/schema/production-2026-10-29.sql).
+-- Run with supabase/tests/run.sh (variant "production").
 -- ============================================================================
 
 \set ON_ERROR_STOP 1
@@ -40,6 +41,7 @@ ROLLBACK;
 
 -- Production's change_driver_subscription keeps working behind the guard.
 BEGIN;
+INSERT INTO public.corporate_accounts (company_name, api_key) VALUES ('Test AS', 'secret-key');
 SET LOCAL ROLE authenticated;
 SELECT tests.login(:drv1);
 SELECT public.change_driver_subscription(:drv1, 'free');
@@ -55,6 +57,10 @@ SELECT tests.throws($$SELECT public.change_driver_subscription_internal('d000000
   '42501', 'anon cannot reach the internal function');
 SELECT tests.ok((SELECT count(*) FROM public.corporate_accounts) = 0,
   'production-only tables (corporate_accounts.api_key) are closed to anon');
+SET LOCAL ROLE authenticated;
+SELECT tests.login(:drv1);
+SELECT tests.ok((SELECT count(*) FROM public.corporate_accounts) = 0,
+  'and to signed-in users');
 ROLLBACK;
 
 -- The customer approving an over-time adjustment still updates escrow.
@@ -68,6 +74,41 @@ SELECT tests.ok(tests.rows($$UPDATE public.escrow_payments SET adjustment_approv
 RESET ROLE;
 SELECT tests.ok((SELECT amount FROM public.escrow_payments WHERE booking_id = :paid) = 3500,
   'production capture trigger applied the adjusted amount');
+ROLLBACK;
+
+-- Approving a driver works (production's driver_profiles triggers wrote
+-- the user id into tables keyed to drivers(id); 00002 re-points them).
+BEGIN;
+INSERT INTO auth.users (id, email) VALUES ('d0000000-0000-0000-0000-000000000009', 'new-driver@test');
+SET LOCAL ROLE authenticated;
+SELECT tests.login('a0000000-0000-0000-0000-000000000001');
+SELECT tests.ok(tests.rows($$INSERT INTO public.driver_profiles (user_id, full_name, status, online)
+                              VALUES ('d0000000-0000-0000-0000-000000000009', 'New Driver', 'approved', false)$$) = 1,
+  'an administrator approves a driver (driver_profiles insert)');
+RESET ROLE;
+SELECT tests.ok((SELECT count(*) FROM public.driver_metrics WHERE driver_id = 'd0000000-0000-0000-0000-000000000009') = 1
+            AND (SELECT count(*) FROM public.driver_verification WHERE driver_id = 'd0000000-0000-0000-0000-000000000009') = 1
+            AND (SELECT count(*) FROM public.vehicles WHERE driver_id = 'd0000000-0000-0000-0000-000000000009') = 1,
+  'production''s metrics, verification and vehicle rows are created');
+-- (production's create_driver_wallet() is not attached to any trigger;
+-- the wallet is created by the first settlement, keyed by profile id.)
+SELECT tests.ok((SELECT count(*) FROM public.driver_wallets WHERE driver_id = 'd0000000-0000-0000-0000-000000000009') = 0,
+  'no wallet is created under the user id');
+ROLLBACK;
+
+-- Expiry and documents as the app writes them.
+BEGIN;
+UPDATE public.driver_subscriptions SET end_date = now() - interval '1 day'
+ WHERE driver_id = 'd0000000-0000-0000-0000-000000000001' AND subscription_status = 'active';
+SET LOCAL ROLE authenticated;
+SELECT tests.login(:drv1);
+SELECT tests.ok(tests.rows($$UPDATE public.driver_subscriptions SET subscription_status = 'expired'
+                              WHERE driver_id = 'd0000000-0000-0000-0000-000000000001' AND subscription_status = 'active'$$) = 1,
+  'a lapsed subscription can be marked expired (production CHECK allows it now)');
+SELECT public.change_driver_subscription(:drv1, 'free');
+SELECT tests.ok((SELECT public.plan_slug(sp.name) FROM public.driver_subscriptions ds JOIN public.subscription_plans sp ON sp.id = ds.plan_id
+                  WHERE ds.driver_id = :drv1 AND ds.subscription_status = 'active') = 'free',
+  'the driver drops to the free plan');
 ROLLBACK;
 
 \echo 'p0_production: all tests passed'

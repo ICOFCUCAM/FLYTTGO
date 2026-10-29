@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
 import { supabase, callFunction } from '../lib/supabase';
+import { withPlanSlug } from '../lib/plans';
 import { useDriverLocationBeacon } from '../hooks/useDriverLocationBeacon';
 
 /* Lazy-load the Leaflet-backed jobs map so drivers who never
@@ -20,8 +21,8 @@ function formatDuration(start?: string | null, end?: string | null) {
   return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
 }
 
-/* Commission brackets — keyed on the lowercase plan IDs stored in
- * driver_subscriptions.plan. Previously this function compared
+/* Commission brackets — keyed on the plan slug derived from
+ * driver_subscriptions.plan_id (src/lib/plans.ts). Previously this function compared
  * against display names ('Basic', 'Pro Mini', ...) which meant it
  * silently returned 0 commission whenever the plan came from the
  * DB (which uses lowercase snake_case IDs). Now aligned with the
@@ -66,7 +67,7 @@ function Card({ title, value }: any) {
 function EarningsCalculator({ plan }: { plan: string }) {
   const [jobPrice, setJobPrice] = React.useState(1000);
   const [hours, setHours] = React.useState(2);
-  /* Keyed on lowercase plan IDs to match driver_subscriptions.plan. */
+  /* Keyed on plan slugs (see src/lib/plans.ts). */
   const rates: Record<string, number> = { free: 0, basic: 0.2, pro_mini: 0.1, pro: 0.1, unlimited: 0 };
   const rate = rates[plan] ?? 0.2;
   const commission = jobPrice * rate;
@@ -196,7 +197,7 @@ export default function DriverPortal() {
    * MyBookings → DriverTrackingMap subscribes to that table over
    * Realtime and renders the moving marker. Battery-friendly: the
    * watch is torn down the moment no jobs are in flight. */
-  useDriverLocationBeacon({ driverId: user?.id ?? null, jobs });
+  useDriverLocationBeacon({ userId: user?.id ?? null, driverProfileId: driver?.id ?? null, jobs });
 
   /* Client-side opportunistic expiry check. The real enforcement lives
    * in the pg_cron job defined in docs/subscription-expiry-cron.sql,
@@ -206,7 +207,7 @@ export default function DriverPortal() {
    * for the cron to catch up.
    *
    * Behaviour matches the cron: mark expired active subs as 'expired',
-   * then insert a fresh 'free'/'active' row. The driver is NOT suspended
+   * then start the free plan (change_driver_subscription). The driver is NOT suspended
    * — they just lose paid-tier perks until they re-subscribe. */
   async function enforceSubscriptionExpiry() {
     if (!user) return;
@@ -224,15 +225,8 @@ export default function DriverPortal() {
       .from('driver_subscriptions')
       .update({ subscription_status: 'expired' })
       .eq('id', sub.id);
-    await supabase
-      .from('driver_subscriptions')
-      .insert({
-        driver_id:           user.id,
-        plan:                'free',
-        subscription_status: 'active',
-        start_date:          new Date().toISOString(),
-        end_date:            null,
-      });
+    /* The free plan is a plan_id row; the RPC resolves it. */
+    await supabase.rpc('change_driver_subscription', { p_driver_id: user.id, p_new_plan: 'free' });
   }
 
   async function loadDriver() {
@@ -259,9 +253,16 @@ export default function DriverPortal() {
   }
 
   async function loadJobs() {
-    // 'pending' is the valid CHECK-constraint value for unassigned bookings.
-    const { data } = await supabase.from('bookings').select('*').or(`status.eq.pending,driver_id.eq.${driver.id}`);
-    if (!data) return;
+    /* Own jobs in full; the pool of paid, unassigned jobs through
+     * driver_job_pool(), which shows the area (postcode + city), not the
+     * customer's name, contact details, notes or street address. Those
+     * appear once the job is claimed. */
+    const [{ data: own }, { data: pool }] = await Promise.all([
+      supabase.from('bookings').select('*').eq('driver_id', driver.id),
+      supabase.rpc('driver_job_pool'),
+    ]);
+    if (!own && !pool) return;
+    const data = [...(own ?? []), ...((pool as any[]) ?? [])];
     /* Free-tier drivers can only see jobs ≤ 500 NOK. We now read
      * the plan from driver_subscriptions (single source of truth)
      * rather than the stale 'Free' capitalized value that used to
@@ -285,12 +286,13 @@ export default function DriverPortal() {
      * tab. */
     const { data } = await supabase
       .from('driver_subscriptions')
-      .select('*')
+      .select('*, subscription_plans(name)')
       .eq('driver_id', user.id)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    setSubscription(data ?? null);
+    /* `plan` is the plan's slug ('pro_mini'), derived from plan_id. */
+    setSubscription(withPlanSlug(data));
   }
 
   function daysLeft(endDate: string | null): number | null {
@@ -352,31 +354,17 @@ export default function DriverPortal() {
   }
 
   async function acceptJob(job: any) {
-    /* Race-safe accept: use a compare-and-swap UPDATE that only
-     * succeeds if the booking is STILL unassigned at the moment
-     * the UPDATE hits the DB. Two drivers clicking Accept on the
-     * same pool job will race — only the one whose UPDATE matches
-     * an unassigned row wins; the other gets 0 rows back and sees
-     * a friendly "job was taken" alert.
-     *
-     * Without the `.is('driver_id', null)` guard + `.select()`,
-     * Postgres would happily let both drivers UPDATE the row
-     * sequentially and the second write would silently overwrite
-     * the first driver's assignment, leaving them with a ghost
-     * job they don't actually own. */
-    const { data: won, error } = await supabase
-      .from('bookings')
-      .update({ driver_id: driver.id, status: 'driver_assigned' })
-      .eq('id', job.id)
-      .is('driver_id', null)
-      .select('id');
+    /* claim_job() is a compare-and-swap on the server: it assigns the
+     * job only if it is still unassigned and paid, so two drivers
+     * clicking Accept on the same job cannot both win. false = taken. */
+    const { data: won, error } = await supabase.rpc('claim_job', { p_booking_id: job.id });
 
     if (error) {
       alert('Accept failed: ' + error.message);
       return;
     }
 
-    if (!won || won.length === 0) {
+    if (!won) {
       /* Another driver beat us to it. Refresh the job list so the
        * now-taken job disappears from our pool view. */
       alert(t('driverPortal.jobTaken'));

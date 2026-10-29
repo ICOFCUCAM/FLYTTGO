@@ -9,6 +9,8 @@ import {
   paidAmountMatches,
   routeDistance,
   subscriptionCharge,
+  refundAmountFor,
+  planSlug,
 } from '../../supabase/functions/_shared/pricing.ts';
 import { VAN_TYPES, calculatePrice as browserPrice } from '../lib/constants';
 
@@ -116,5 +118,29 @@ describe('commission', () => {
     expect(computeCommission(3000, 'pro')).toEqual({ commission: 150, earning: 2850, ratePct: 5 });
     expect(computeCommission(9000, 'unlimited').commission).toBe(0);
     expect(computeCommission(1000, 'unknown').ratePct).toBe(20);
+  });
+});
+
+describe('refund amount (dashboard rule, on what was paid)', () => {
+  it('shares by status', () => {
+    expect(refundAmountFor({ status: 'pending', price_estimate: 2875 })).toBe(2875);
+    expect(refundAmountFor({ status: 'driver_assigned', price_estimate: 2875 })).toBe(2300);
+    expect(refundAmountFor({ status: 'in_transit', price_estimate: 2875 })).toBe(1438);
+    expect(refundAmountFor({ status: 'completed', price_estimate: 2875 })).toBe(0);
+    expect(refundAmountFor({ status: 'cancelled', price_estimate: 2875 })).toBe(0);
+  });
+
+  it('uses the amount actually paid and the manual percentage', () => {
+    expect(refundAmountFor({ status: 'pending', price_estimate: 9999, paid_amount: 2875 })).toBe(2875);
+    expect(refundAmountFor({ status: 'completed', paid_amount: 2000, manual_refund_percent: 50 })).toBe(1000);
+    expect(refundAmountFor({ status: 'pending', paid_amount: 2000, manual_refund_percent: 150 })).toBe(2000);
+  });
+});
+
+describe('plan slugs', () => {
+  it('match SQL plan_slug()', () => {
+    expect(planSlug('Pro Mini')).toBe('pro_mini');
+    expect(planSlug(' Unlimited ')).toBe('unlimited');
+    expect(planSlug(null)).toBeNull();
   });
 });

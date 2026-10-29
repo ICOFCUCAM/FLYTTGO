@@ -143,7 +143,7 @@ The `callbackAuthorizationToken` is the value of `VIPPS_WEBHOOK_SECRET` — both
 - `profiles`
 
 ### RPCs (must be deployed as stored procedures)
-- `increment_driver_wallet(p_driver_id uuid, p_amount numeric)` — service role only. Since `00002_p0_security_hardening.sql` the wallet is credited by the `settle_driver_wallet_after_release` trigger when escrow is released with a `driver_earning`; `process-payment` no longer calls this
+- `increment_driver_wallet(p_driver_id uuid, p_amount numeric)` — service role only. Since `00003_p0_security_hardening.sql` the wallet is credited by the `settle_driver_wallet_after_release` trigger when escrow is released with a `driver_earning`; `process-payment` no longer calls this
 - `decrement_driver_wallet(p_driver_id uuid, p_amount numeric)` — called by `AdminDashboard` for refunds
 - `change_driver_subscription(p_driver_id uuid, p_new_plan text)` — called by `DriverPortal.subscribeToPlan` to swap plans
 

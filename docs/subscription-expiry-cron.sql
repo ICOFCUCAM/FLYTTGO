@@ -48,32 +48,29 @@ CREATE OR REPLACE FUNCTION public.auto_downgrade_expired_subscriptions()
 RETURNS TABLE (downgraded_count int) AS $$
 DECLARE
   affected int;
+  expired_driver record;
 BEGIN
-  /* Mark expired active subscriptions as expired, grab the driver ids
-   * that were affected, and insert a fresh 'free'/'active' row for
-   * each one. All three statements run in a single transaction so a
-   * driver is never left without a subscription record. */
-  WITH expired AS (
+  /* Mark expired active subscriptions as expired, then start the free
+   * plan for each of those drivers through change_driver_subscription
+   * (plan_id → subscription_plans; supabase/migrations/00002 and 00003).
+   * One transaction, so a driver is never left without a subscription. */
+  affected := 0;
+  FOR expired_driver IN
     UPDATE public.driver_subscriptions
        SET subscription_status = 'expired'
      WHERE subscription_status = 'active'
        AND end_date IS NOT NULL
        AND end_date < now()
     RETURNING driver_id
-  ),
-  inserted AS (
-    INSERT INTO public.driver_subscriptions
-      (driver_id, plan, subscription_status, start_date, end_date, created_at)
-    SELECT driver_id, 'free', 'active', now(), NULL, now()
-      FROM expired
-    RETURNING driver_id
-  )
-  SELECT count(*) INTO affected FROM inserted;
+  LOOP
+    PERFORM public.change_driver_subscription(expired_driver.driver_id, 'free');
+    affected := affected + 1;
+  END LOOP;
 
   downgraded_count := COALESCE(affected, 0);
   RETURN NEXT;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Allow the authenticated role to call the function directly (optional —
 -- Supabase admin can always call it manually for debugging).

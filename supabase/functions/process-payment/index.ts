@@ -34,7 +34,7 @@
 // and the booking preconditions still hold (both confirmations set for
 // release, start/end times for recalculation). The confirmation flags
 // themselves can only be set by their own party (database guard in
-// supabase/migrations/00002_p0_security_hardening.sql).
+// supabase/migrations/00003_p0_security_hardening.sql).
 //
 // ============================================================================
 
@@ -49,6 +49,7 @@ import {
   computeCommission,
 } from '../_shared/pricing.ts';
 import { getCaller, driverProfileIdOf } from '../_shared/auth.ts';
+import { activePlanSlug } from '../_shared/plans.ts';
 
 /* ─── Env (Supabase injects these automatically) ─────────────── */
 const SUPABASE_URL             = Deno.env.get('SUPABASE_URL')!;
@@ -273,29 +274,21 @@ async function releaseEscrow(bookingId: string) {
   let plan = 'basic';
   if (booking.driver_id) {
     /* bookings.driver_id is driver_profiles.id; driver_subscriptions
-     * is keyed by the driver's auth user id. */
+     * is keyed by the driver's auth user id, its plan by plan_id. */
     const { data: dp } = await supabase
       .from('driver_profiles')
       .select('user_id')
       .eq('id', booking.driver_id)
       .maybeSingle();
     if (dp?.user_id) {
-      const { data: sub } = await supabase
-        .from('driver_subscriptions')
-        .select('plan')
-        .eq('driver_id', dp.user_id)
-        .eq('subscription_status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (sub?.plan) plan = sub.plan;
+      plan = (await activePlanSlug(supabase, dp.user_id)) ?? plan;
     }
   }
   const { commission, earning, ratePct } = computeCommission(amount, plan);
 
   /* Update escrow_payments → released with the driver's earning. The
    * wallet is credited by the settle_driver_wallet_after_release
-   * trigger (supabase/migrations/00002), once, when driver_earning is
+   * trigger (supabase/migrations/00003), once, when driver_earning is
    * first set on a released row. Compare-and-set on driver_earning so
    * two simultaneous calls settle once. */
   const { data: released, error: releaseErr } = await supabase
