@@ -10,6 +10,7 @@ import { loadPlans, type WhiteLabelPlan } from '../lib/whiteLabel';
 import { formatNok } from '../lib/invoicing';
 import { supabase } from '../lib/supabase';
 import type { PriceTier } from '../accounting/types';
+import { bandRange } from '../accounting/i18n';
 
 function Check({ children }: { children: React.ReactNode }) {
   return <li className="flex gap-2"><span className="text-emerald-600 font-bold">✓</span><span>{children}</span></li>;
@@ -128,11 +129,11 @@ export default function WhiteLabelPlansPage() {
             </p>
             <table className="text-sm"><tbody>{(() => { let lower = 0; return accounting.tiers.map(t => {
               const row = <tr key={t.name}><td className="pe-6 py-0.5 font-medium">{t.name}</td>
-                <td className="pe-6 text-gray-500">{t.up_to === null ? `turnover from ${formatNok(lower)}` : `turnover ${formatNok(lower)} – ${formatNok(t.up_to)}`}</td>
+                <td className="pe-6 text-gray-500">yearly turnover NOK {bandRange(lower, t.up_to, 'en')}</td>
                 <td>{t.monthly_fee === null ? 'price by agreement' : `${formatNok(t.monthly_fee)} / month`}</td></tr>;
               lower = t.up_to ?? lower; return row; }); })()}</tbody></table>
             <p className="text-xs text-gray-500 mt-3">Excl. MVA. The band follows last year's turnover in your books (or what you state when you start) and is reassessed each 1 January.
-              {accounting.price_status !== 'confirmed' && ' Proposed prices: FlyttGo has not confirmed them yet.'}</p>
+              {accounting.price_status !== 'confirmed' && ' Provisional prices for the pilot period; the price that applies is the one in your agreement.'}</p>
           </div>
         )}
 

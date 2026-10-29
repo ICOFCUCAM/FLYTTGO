@@ -419,11 +419,17 @@ async function handleEvent(event: StripeEvent) {
       return { ok: true, ignored: true, reason: 'account mismatch; held for review' };
     }
     if (!amountOk) return { ok: true, ignored: true, reason: 'amount mismatch; held for review' };
+    const reference = typeof session.payment_intent === 'string' ? session.payment_intent : sessionId;
+    /* Another event or delivery for the same payment recorded it already. */
+    const { data: already } = await supabase.from('invoice_payments').select('id')
+      .eq('invoice_id', invoiceId).eq('method', 'card').eq('reference', reference).maybeSingle();
+    if (already) return { ok: true, idempotent: true, invoiceId };
     const { error } = await supabase.rpc('record_invoice_payment', {
       p_invoice: invoiceId, p_amount: (session.amount_total ?? 0) / 100,
       p_paid_on: new Date().toISOString().slice(0, 10), p_method: 'card',
-      p_reference: typeof session.payment_intent === 'string' ? session.payment_intent : sessionId,
+      p_reference: reference,
     });
+    if (error?.code === '23505') return { ok: true, idempotent: true, invoiceId };   // a concurrent delivery won
     if (error) throw new Error(`record_invoice_payment failed: ${error.message}`);
     return { ok: true, invoiceId, paid: (session.amount_total ?? 0) / 100 };
   }

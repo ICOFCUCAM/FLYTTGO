@@ -921,7 +921,9 @@ DECLARE
   l accounting.ledgers%ROWTYPE; v accounting.vouchers%ROWTYPE; x jsonb; n integer := 0;
   v_year integer := extract(year FROM p_date)::int; v_number integer;
 BEGIN
-  SELECT * INTO l FROM accounting.ledgers WHERE id = p_ledger;
+  -- FOR SHARE: a period being closed (or the ledger ended) at the same moment
+  -- waits for this voucher, or this voucher sees the new lock date.
+  SELECT * INTO l FROM accounting.ledgers WHERE id = p_ledger FOR SHARE;
   IF NOT FOUND OR l.status <> 'active' THEN RAISE EXCEPTION 'accounting: the ledger is not active' USING ERRCODE = '55000'; END IF;
   IF p_date IS NULL OR p_date < l.start_date THEN
     RAISE EXCEPTION 'accounting: % is before the books start (%)', p_date, l.start_date USING ERRCODE = '22023';

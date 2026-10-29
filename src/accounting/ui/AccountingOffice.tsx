@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AccountingApi } from '../api';
-import { money } from '../i18n';
+import { bandRange, money } from '../i18n';
 import type { CheckRow, Ledger, PriceTier, Role, TierInfo, Unposted } from '../types';
 import DocumentsTab, { type DocumentsHost } from './DocumentsTab';
 import { btn, input, Office, roleLabel, translator, useLang, useOffice, useRunner, yearStart, today } from './office';
@@ -149,7 +149,7 @@ function Offer({ api, tenantId, ledger, t, lang, onDone }: {
           <p className="text-sm font-medium mb-1">{t('offerPrice')}</p>
           <table className="text-sm"><tbody>{list.tiers.map(tier => {
             const row = <tr key={tier.name}><td className="pe-4">{tier.name}</td>
-              <td className="pe-4 text-gray-500">{tier.up_to === null ? `≥ ${money(lower, lang)}` : `${money(lower, lang)} – ${money(tier.up_to, lang)}`}</td>
+              <td className="pe-4 text-gray-500">NOK {bandRange(lower, tier.up_to, lang)}</td>
               <td className="font-medium">{tier.monthly_fee === null ? t('offerAgreed') : `${money(tier.monthly_fee, lang)} ${t('perMonth')} ${t('exclVat')}`}</td></tr>;
             lower = tier.up_to ?? lower;
             return row;

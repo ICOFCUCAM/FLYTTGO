@@ -2,7 +2,7 @@
 
 Owner's decisions (2026-10-29): FlyttGo has its own accounting system and offers it to companies as an add-on at its own price; the price follows the company's size (turnover); no accounting firm is involved: the software keeps the books from the company's transactions and produces the files its own accountant reviews; it is built so it can be copied into Ledgera (`ICOFCUCAM/FlyttgoTechGroup`). Assessment and the rules it follows: [`ACCOUNTING.md`](ACCOUNTING.md). Decisions #33–36 in [`DECISIONS.md`](DECISIONS.md).
 
-**Not applied anywhere yet.** Migrations `00014` and `00015` follow the same procedure as the others ([`SECURITY_P0.md`](SECURITY_P0.md) §5).
+**Not applied anywhere yet.** Owner's decision (2026-10-29): production migrations are **not approved** until the accounting controls are independently verified: an authorised accountant's review ([`ACCOUNTING_REVIEW.md`](ACCOUNTING_REVIEW.md)) and the test stage on a copy of production ([Test stage](#test-stage-on-a-copy-of-production)). The invitation function is tested and reviewed separately before it is deployed.
 
 ## The parts
 
@@ -53,19 +53,31 @@ In the browser the host passes `createAccountingApi(supabaseClient, host)` its o
 5. Ledgera's existing manual journals can be moved in as manual vouchers (one import script), after which its own exports can point at the core's (`src/accounting/saft.ts`, documents).
 6. Run Ledgera's tests plus this repository's `supabase/tests/accounting.test.sql` adapted to Ledgera's fixtures.
 
-## Prices (add-on; proposed until FlyttGo confirms)
+## Prices (add-on; provisional for the pilot)
 
-By the company's yearly turnover (income, accounts 3xxx): last calendar year's from the books once they hold it, before that the turnover the company declared. Reassessed each 1 January. Excl. MVA, per month:
+Owner's decision (2026-10-29): the five bands are accepted **provisionally** for the pilot (`accounting_price_status = 'provisional'`); they are starting prices, not yet checked against operating costs or competing products.
 
-| Band | Turnover (NOK) | Price |
+By the company's yearly turnover (income, accounts 3xxx): last calendar year's from the books once they hold it, before that the turnover the company declared. Reassessed each 1 January. **Bands are half-open:** a limit belongs to the band above it (tested at exactly 1, 5 and 100 million). Excl. MVA, per month:
+
+| Band | Yearly turnover (NOK) | Price |
 |---|---|---|
-| Start | under 1 million | 199 |
-| Small | 1–5 million | 499 |
-| Medium | 5–20 million | 1 290 |
-| Large | 20–100 million | 2 990 |
-| Enterprise | 100 million and above | agreed |
+| Start | under 1 000 000 | 199 |
+| Small | 1 000 000 to under 5 000 000 | 499 |
+| Medium | 5 000 000 to under 20 000 000 | 1 290 |
+| Large | 20 000 000 to under 100 000 000 | 2 990 |
+| Enterprise | 100 000 000 and above | agreed |
 
-An agreed price on the ledger always wins. Billed monthly on FlyttGo's invoice by `invoice-run` (each month once). Changed in `platform_config.accounting_price_tiers` (and `accounting_price_status` to `confirmed`).
+An agreed price on the ledger always wins (exceptional cases, and Enterprise, where approval requires one). Billed monthly on FlyttGo's invoice by `invoice-run` (each month once). Changed in `platform_config.accounting_price_tiers` (and `accounting_price_status` to `confirmed`).
+
+### Commercial terms to settle before publishing (proposals; the owner decides)
+
+| Term | Proposal |
+|---|---|
+| Commitment and cancellation | Monthly, no minimum term; ended by the company's owner to the end of the month; books stay readable afterwards (end_ledger). Alternative: 12 months' minimum for Medium and above. |
+| What is included | Unlimited vouchers, receipts, users in the back office, documents and SAF-T; no transaction-volume limit in the pilot. Revisit if a company's volume makes it costly. |
+| Turnover for a new company | Declared at the start; if the first full year in the books falls in another band, the new band applies from the next 1 January; no back-billing either way. |
+| Enterprise quotation | The company states its turnover when it asks; FlyttGo sends a written offer; the agreed monthly price is entered when approving (required for this band) with the reference in the decision note. |
+| Price changes | Announced at least 30 days ahead; never back-dated. |
 
 ## FlyttGo specifics (00015)
 
@@ -80,6 +92,20 @@ An agreed price on the ledger always wins. Billed monthly on FlyttGo's invoice b
 3. **System documentation** (bokføringsforskriften § 2-1): this document, the migrations and the tests are its basis; a written version for companies and their accountants is needed.
 4. Have an authorised accountant review the chart, the grouping codes, the MVA treatment (in particular 0 % sales: code 5 or 6) and the documents before companies rely on them.
 5. Storage: the books must be kept 5 years after the year end; the database and the receipts bucket are backed up (Supabase PITR) and nothing in the system deletes them.
+
+## Test stage on a copy of production
+
+`supabase/tests/accounting_controls/run.sh` (run by `supabase/tests/run.sh` on PostgreSQL 16 and 17.6). Before it, the replica was checked against live production (2026-10-29, read-only): all 13 fingerprint hashes match.
+
+1. The replica, every migration 00002–00015, representative data: two companies (sales at 25/15/12/0 %, payments, credit notes, purchases with receipts), FlyttGo's own invoices, an invited accountant.
+2. **Concurrency:** 10 sessions at once post 120 vouchers and issue 20 invoices: all posted, numbers unique and without gaps.
+3. **Closing against posting:** a close waits for a voucher being posted; a voucher dated in a period being closed waits and is refused (the test fails without the row lock in `insert_voucher`).
+4. **Duplicate deliveries:** the same card payment delivered twice at once is recorded and posted once; a repeated part payment is refused by its provider reference; posting a payment again returns its existing voucher.
+5. **Isolation:** owners, accountants, bookers, FlyttGo's administrators and anonymous callers each see exactly their part, in every table, report, function and the receipts bucket; every issued invoice is in the seller's books once; receivables equal the open invoices.
+6. **Invitations:** expiry, withdrawal, a replaced invitation, the wrong person, a guessed token, single use, anonymous callers, an ended ledger; the token is never stored or readable.
+7. **Rollback with books:** rolling back 00015 and 00014 keeps every voucher, line, number, receipt and log entry (compared by hash), set aside and closed to clients; invoicing keeps working; re-applying starts fresh and leaves the set-aside books untouched.
+
+Still to do on a real disposable copy (a Supabase branch or a restored backup) before production, after the accountant's review: the same steps with the copy's real data volume, and the edge functions (`accounting-invite`, `invoice-run` step 2c, `stripe-webhook`) against it.
 
 ## Next
 

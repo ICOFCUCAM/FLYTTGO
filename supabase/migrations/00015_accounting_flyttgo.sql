@@ -83,13 +83,15 @@ END $$;
 -- once the books hold that whole year, before that the turnover the
 -- company declared when it asked. Reassessed each 1 January, never in the
 -- middle of a year. Above the last band the price is agreed (the ledger's
--- monthly_fee); an agreed price always wins. Proposed until FlyttGo
--- confirms it.
+-- monthly_fee); an agreed price always wins. Bands are half-open: a band
+-- covers turnover from its lower limit up to, not including, its up_to.
+-- Status 'provisional' (owner, 2026-10-29: accepted for the pilot) until
+-- set to 'confirmed'.
 INSERT INTO public.platform_config (config_key, config_value)
 SELECT 'accounting_price_tiers', '[{"name":"Start","up_to":1000000,"monthly_fee":199},{"name":"Small","up_to":5000000,"monthly_fee":499},{"name":"Medium","up_to":20000000,"monthly_fee":1290},{"name":"Large","up_to":100000000,"monthly_fee":2990},{"name":"Enterprise","up_to":null,"monthly_fee":null}]'
  WHERE NOT EXISTS (SELECT 1 FROM public.platform_config WHERE config_key = 'accounting_price_tiers');
 INSERT INTO public.platform_config (config_key, config_value)
-SELECT 'accounting_price_status', 'proposed'
+SELECT 'accounting_price_status', 'provisional'
  WHERE NOT EXISTS (SELECT 1 FROM public.platform_config WHERE config_key = 'accounting_price_status');
 
 -- The price list as the public page shows it.
@@ -98,7 +100,7 @@ RETURNS jsonb
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
 AS $$
   SELECT jsonb_build_object('tiers', coalesce(public.config_text('accounting_price_tiers'), '[]')::jsonb,
-                            'price_status', coalesce(public.config_text('accounting_price_status'), 'proposed'));
+                            'price_status', coalesce(public.config_text('accounting_price_status'), 'provisional'));
 $$;
 GRANT EXECUTE ON FUNCTION public.accounting_price() TO anon, authenticated;
 

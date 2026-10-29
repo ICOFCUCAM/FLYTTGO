@@ -262,6 +262,7 @@ DROP FUNCTION IF EXISTS public.set_invoice_settings(uuid, jsonb);
 DROP TABLE IF EXISTS public.organization_invoice_settings;
 DELETE FROM public.invoice_counters WHERE series LIKE 'org:%';
 
+DROP INDEX IF EXISTS public.invoice_payments_provider_ref_key;
 DROP INDEX IF EXISTS public.invoices_customer_idx;
 DROP INDEX IF EXISTS public.invoices_issuer_idx;
 DROP INDEX IF EXISTS public.invoices_series_kid_key;

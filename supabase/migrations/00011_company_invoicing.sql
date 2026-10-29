@@ -52,6 +52,11 @@ DROP INDEX IF EXISTS public.invoices_kid_key;
 CREATE UNIQUE INDEX IF NOT EXISTS invoices_series_kid_key ON public.invoices (series, kid) WHERE kid IS NOT NULL;
 CREATE INDEX IF NOT EXISTS invoices_issuer_idx ON public.invoices (issuer_org, issue_date DESC) WHERE issuer_org IS NOT NULL;
 CREATE INDEX IF NOT EXISTS invoices_customer_idx ON public.invoices (customer_user_id) WHERE customer_user_id IS NOT NULL;
+-- A card or Vipps payment is recorded once: the provider's reference (the
+-- payment intent) is unique, so a second webhook delivery for the same
+-- payment is refused (23505) and treated as already recorded.
+CREATE UNIQUE INDEX IF NOT EXISTS invoice_payments_provider_ref_key ON public.invoice_payments (method, reference)
+  WHERE method IN ('card', 'vipps') AND reference IS NOT NULL;
 
 
 -- ── 2. A company's invoice settings (the seller on its invoices) ────────────

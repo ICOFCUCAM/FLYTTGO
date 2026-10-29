@@ -55,6 +55,7 @@ On 2026-10-29 the owner adopted the recommendations in [`PREDEPLOY_REVIEW.md`](P
 | 34 | **The add-on's price follows the company's turnover** (bands from last year's income in the books, or the declared turnover at the start; reassessed each 1 January; Enterprise by agreement); proposed until confirmed | `accounting_price_tiers`, `accounting_tier()` (00015) |
 | 35 | **Each company's accounting back office:** its owners and admins invite an accountant, bookkeeper, external auditor (with an end date) or viewer; FlyttGo's administrators never read a company's books | `accounting.invite()` (00014), `accounting-invite` |
 | 36 | **Portable:** the core and the office are copied unchanged into Ledgera; each product supplies a small adapter | schema `accounting`, `accounting.host_*` |
+| 37 | **Accounting gates (owner, 2026-10-29):** the price bands accepted provisionally for the pilot, half-open; an authorised accountant's review before commercial use; production migrations 00014/00015 not approved until the controls are independently verified on a copy of production; the invitation function tested and reviewed separately; no time-saving claims until pilots substantiate them; the regulatory position confirmed by a Norwegian professional | [`ACCOUNTING_REVIEW.md`](ACCOUNTING_REVIEW.md), `supabase/tests/accounting_controls/` |
 
 ## Still to do before real money moves
 

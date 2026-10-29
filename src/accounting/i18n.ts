@@ -16,7 +16,8 @@ const en = {
   offerTitle: 'Accounting, built in',
   offerBody: 'Every invoice, credit note and payment you handle on the platform is posted for you. Add your purchases and other costs with the receipt, and the books, the MVA return and the year-end documents are ready when they are due, in PDF, Word and SAF-T, for your accountant to review.',
   offerPrice: 'Priced by your company\'s yearly turnover:',
-  offerProposed: 'Proposed prices: the platform has not confirmed this price list yet.',
+  offerProposed: 'Provisional prices for the pilot period; the price that applies is the one in your agreement.',
+  under: 'under', toUnder: 'to under', andAbove: 'and above',
   offerAgreed: 'Above the last band the price is agreed.',
   startDate: 'Books start on', declaredTurnover: 'Turnover last year or expected this year (NOK)', ask: 'Ask for accounting',
   requested: 'Asked for: waiting for approval.', declined: 'Declined', ended: 'Ended: the books stay readable.',
@@ -85,7 +86,8 @@ const no: Strings = {
   offerTitle: 'Regnskap, innebygd',
   offerBody: 'Alle fakturaer, kreditnotaer og innbetalinger du håndterer på plattformen, bokføres for deg. Legg inn innkjøp og andre kostnader med kvittering, så er regnskapet, mva-meldingen og årsoppgjørsdokumentene klare når de skal leveres – i PDF, Word og SAF-T, til gjennomgang hos regnskapsføreren din.',
   offerPrice: 'Prisen følger selskapets årlige omsetning:',
-  offerProposed: 'Foreslåtte priser: plattformen har ikke bekreftet prislisten ennå.',
+  offerProposed: 'Foreløpige priser i pilotperioden; prisen som gjelder, er den i avtalen din.',
+  under: 'under', toUnder: 'til under', andAbove: 'og over',
   offerAgreed: 'Over øverste trinn avtales prisen.',
   startDate: 'Regnskapet starter', declaredTurnover: 'Omsetning i fjor eller forventet i år (NOK)', ask: 'Bestill regnskap',
   requested: 'Bestilt: venter på godkjenning.', declined: 'Avslått', ended: 'Avsluttet: regnskapet kan fortsatt leses.',
@@ -157,4 +159,12 @@ export function day(d: string | Date | null | undefined, lang: Lang): string {
   if (!d) return '';
   const date = typeof d === 'string' ? new Date(d.length === 10 ? `${d}T12:00:00` : d) : d;
   return new Intl.DateTimeFormat(lang === 'no' ? 'nb-NO' : 'en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Oslo' }).format(date);
+}
+
+/** A band's turnover range, half-open: "under 1 000 000", "1 000 000 to under 5 000 000", "100 000 000 and above". */
+export function bandRange(lower: number, upTo: number | null, lang: Lang): string {
+  const n = (v: number) => new Intl.NumberFormat(lang === 'no' ? 'nb-NO' : 'en-GB', { maximumFractionDigits: 0 }).format(v);
+  if (upTo === null) return `${n(lower)} ${t(lang, 'andAbove')}`;
+  if (lower === 0) return `${t(lang, 'under')} ${n(upTo)}`;
+  return `${n(lower)} ${t(lang, 'toUnder')} ${n(upTo)}`;
 }

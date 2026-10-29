@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildDoc, DOC_KINDS, openItems, taxLines, type BooksData } from '../accounting/documents/build';
-import { STRINGS } from '../accounting/i18n';
+import { bandRange, STRINGS } from '../accounting/i18n';
 import { renderDocx } from '../accounting/render/docx';
 import { renderPdf } from '../accounting/render/pdf';
 import { crc32, zip } from '../accounting/render/zip';
@@ -102,6 +102,15 @@ describe('accounting: files', () => {
       expect(renderPdf(d).length).toBeGreaterThan(500);
       expect(renderDocx(d).length).toBeGreaterThan(500);
     }
+  });
+});
+
+describe('accounting: price bands', () => {
+  it('ranges read as half-open bands', () => {
+    expect(bandRange(0, 1_000_000, 'en')).toBe('under 1,000,000');
+    expect(bandRange(1_000_000, 5_000_000, 'en')).toBe('1,000,000 to under 5,000,000');
+    expect(bandRange(100_000_000, null, 'en')).toBe('100,000,000 and above');
+    expect(bandRange(5_000_000, 20_000_000, 'no').replace(/\s/g, ' ')).toBe('5 000 000 til under 20 000 000');
   });
 });
 

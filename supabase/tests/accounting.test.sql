@@ -239,6 +239,26 @@ RESET ROLE;
 UPDATE accounting.ledgers SET monthly_fee = 9900 WHERE id = tests.ledger();
 SET LOCAL ROLE service_role;
 SELECT tests.ok((public.accounting_tier(tests.ledger()) ->> 'monthly_fee')::numeric = 9900, 'an agreed price wins over the list');
+-- Bands are half-open: a limit belongs to the band above it.
+RESET ROLE;
+UPDATE accounting.ledgers SET declared_turnover = 999999.99 WHERE id = tests.ledger();
+SET LOCAL ROLE service_role;
+SELECT tests.ok((public.accounting_tier(tests.ledger(), make_date((SELECT last FROM y), 6, 1)) ->> 'tier') = 'Start', 'NOK 999 999.99 is Start');
+RESET ROLE;
+UPDATE accounting.ledgers SET declared_turnover = 1000000 WHERE id = tests.ledger();
+SET LOCAL ROLE service_role;
+SELECT tests.ok((public.accounting_tier(tests.ledger(), make_date((SELECT last FROM y), 6, 1)) ->> 'tier') = 'Small', 'exactly NOK 1 000 000 is Small');
+RESET ROLE;
+UPDATE accounting.ledgers SET declared_turnover = 5000000 WHERE id = tests.ledger();
+SET LOCAL ROLE service_role;
+SELECT tests.ok((public.accounting_tier(tests.ledger(), make_date((SELECT last FROM y), 6, 1)) ->> 'tier') = 'Medium', 'exactly NOK 5 000 000 is Medium');
+RESET ROLE;
+UPDATE accounting.ledgers SET declared_turnover = 100000000 WHERE id = tests.ledger();
+SET LOCAL ROLE service_role;
+SELECT tests.ok((public.accounting_tier(tests.ledger(), make_date((SELECT last FROM y), 6, 1)) ->> 'tier') = 'Enterprise'
+                AND (public.accounting_tier(tests.ledger(), make_date((SELECT last FROM y), 6, 1)) ->> 'list_fee') IS NULL,
+  'exactly NOK 100 000 000 is Enterprise, priced by agreement');
+SELECT tests.ok((public.accounting_price() ->> 'price_status') = 'provisional', 'the price list is marked provisional for the pilot');
 SET LOCAL ROLE authenticated;
 SELECT tests.login(:admin);
 RESET ROLE;

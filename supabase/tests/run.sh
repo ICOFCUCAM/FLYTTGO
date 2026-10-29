@@ -121,3 +121,6 @@ PGOPTIONS='-c client_min_messages=notice' "${PSQL[@]}" -d "$DB" -f supabase/test
   | grep -vE '^\s*$|^-+$|^\([0-9]+ rows?\)$' | sed 's/^psql:[^ ]* //'
 
 "${PSQL[@]}" -d postgres -c "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)"
+
+echo "── accounting controls (copy of production, concurrency, isolation, rollback with books) ──"
+bash supabase/tests/accounting_controls/run.sh
