@@ -5,8 +5,9 @@
  * each topic from docs/flyttgo-premium-platform-homepage-stage-20.html, in the
  * twelve-section order, corrects wording the code does not support, and writes
  * design.v2(.no).html and design.v2.css here. This page renders it with the
- * design's own scripts, wires its cards and buttons to real pages, and adds the
- * real booking widget under the moving services. FlyttGo's menu bar and footer
+ * design's own scripts, wires its cards and buttons to real pages, plays the
+ * former homepage's slideshow in the hero picture and adds the real booking
+ * widget between the hero and the first section. FlyttGo's menu bar and footer
  * come from AppLayout. It replaces nothing until the owner approves it.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -16,6 +17,7 @@ import { useApp, type Page } from '../../lib/store';
 import { useAuth } from '../../lib/auth';
 import { transportUrl } from '../../lib/hosts';
 import BookingCard from '../platformHome/BookingCard';
+import HeroSlides from '../platformHome/HeroSlides';
 import designEn from './design.v2.html?raw';
 import designNo from './design.v2.no.html?raw';
 import { initDesign as initEn } from '../platformHome/design-scripts';
@@ -56,6 +58,7 @@ export default function HomeV2Page() {
   const version = VERSIONS[language === 'no' ? 'no' : 'en'];
   const root = useRef<HTMLDivElement>(null);
   const [booking, setBooking] = useState<HTMLElement | null>(null);
+  const [hero, setHero] = useState<{ el: HTMLElement; alt: string } | null>(null);
   const live = useRef({ user, profile });
   live.current = { user, profile };
 
@@ -78,6 +81,13 @@ export default function HomeV2Page() {
     const el = root.current;
     if (!el) return;
     setBooking(el.querySelector<HTMLElement>('[data-slot="booking"]'));
+    /* The hero picture becomes the former homepage's slideshow, as on the platform page. */
+    const picture = el.querySelector<HTMLImageElement>('.hero-visual > img');
+    if (picture) {
+      const holder = document.createElement('div');
+      picture.replaceWith(holder);
+      setHero({ el: holder, alt: picture.alt });
+    }
     version.init();
     wireCards(el);
 
@@ -113,6 +123,7 @@ export default function HomeV2Page() {
   return (
     <>
       <div key={language} ref={root} className="fgv2" lang={language === 'no' ? 'nb' : 'en'} dangerouslySetInnerHTML={{ __html: version.html }} />
+      {hero && createPortal(<HeroSlides alt={hero.alt} />, hero.el)}
       {booking && createPortal(<BookingCard />, booking)}
     </>
   );

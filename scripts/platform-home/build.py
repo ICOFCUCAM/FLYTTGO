@@ -287,6 +287,8 @@ V2_CLAIMS = [
      '<p class="hero-lede">Find moving, transport and local services. Or run your service company on FlyttGo: manage customers and bookings, collect payments, issue invoices and take part in the FlyttGo Marketplace, without a marketplace of your own.</p>'),
     ('<span>For independent professionals, growing companies and marketplace operators.</span>',
      '<span>For customers, independent professionals and growing companies.</span>'),
+    # The driver panel's button opens the driver sign-up (WIRES), so it says so.
+    ('<a class="btn btn-light" href="#main-content">Explore FlyttGo</a>', '<a class="btn btn-light" href="#main-content">Become a driver ↗</a>'),
     # The central FlyttGo Marketplace, never confused with a marketplace of one's own.
     ('<div class="eyebrow">Explore the marketplace</div>', '<div class="eyebrow">The FlyttGo Marketplace</div>'),
     ('<p>Discover the FlyttGo marketplace: moving and transport, local services, business solutions and opportunities for providers.</p>',
@@ -310,7 +312,7 @@ V2_CLAIMS = [
 ]
 # In-page links to sections the restructured page leaves out go to the section that carries the topic now.
 V2_ANCHORS = {'#platform': '#unified-platform', '#business-platform': '#business-workspace', '#white-label': '#white-label-builder',
-              '#top': '#main-content', '#booking': '#moving-services'}
+              '#top': '#main-content'}
 V2_LIFECYCLE = ('<ol class="v2-lifecycle" aria-label="From booking to financial record">'
                 + ''.join(f'<li><b>0{i + 1}</b>{t}</li>' for i, t in enumerate(
                     ['Booking', 'Quote', 'Job completed', 'Invoice', 'Payment', 'Financial record'])) + '</ol>')
@@ -341,11 +343,12 @@ def build_v2(base: str) -> str:
             raise SystemExit(f'v2: expected once: {old[:60]}')
         page = page.replace(old, new)
     # The lifecycle strip at the head of the finance section; the booking
-    # widget (BookingCard) under the moving services.
+    # widget (BookingCard) between the hero and the first section, as on the
+    # platform page (owner, 30 October 2026).
     page = re.sub(r'(<section\b[^>]*id="financial-administration"[^>]*>\s*<div class="wrap">)', r'\1' + V2_LIFECYCLE, page, count=1)
-    m = re.search(r'<section\b[^>]*id="moving-services"', page)
+    m = re.search(r'<section\b[^>]*class="hero wrap"', page)
     end = element_span(page, m.start(), 'section')
-    page = page[:end] + '<div class="wrap v2-booking" data-slot="booking"></div>' + page[end:]
+    page = page[:end] + '<div class="wrap v2-booking" id="booking" data-slot="booking"></div>' + page[end:]
     return page
 
 
@@ -375,6 +378,56 @@ def recolour(r: int, g: int, b: int) -> tuple[int, int, int]:
     else:                                                # green-tinted greys -> slate
         nh, ns = 215 / 360, min(sat, 0.20)
     return tuple(round(x * 255) for x in colorsys.hls_to_rgb(nh, nl, ns))
+
+
+# Readability on the restructured page (owner, 30 October 2026: "letters cannot
+# be readable"). The design sets much of its small print in pale grey-greens and
+# golds at 8-10px. Text colours that fall short of 4.5:1 on the page's light
+# grounds are darkened in their own hue until they reach it; light colours made
+# for dark grounds are left alone. Text below 11px is raised to 11px.
+READABLE_GROUND = (233, 237, 229)                    # the darkest light ground on the page
+
+
+def _lum(c: tuple) -> float:
+    f = lambda x: x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4
+    r, g, b = (f(v / 255) for v in c)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(a: tuple, b: tuple) -> float:
+    x, y = sorted((_lum(a), _lum(b)), reverse=True)
+    return (x + 0.05) / (y + 0.05)
+
+
+def _readable(c: tuple) -> tuple:
+    h, l, sat = colorsys.rgb_to_hls(*(v / 255 for v in c))
+    if l > 0.8 or _contrast(c, READABLE_GROUND) >= 4.6:
+        return c
+    while l > 0 and _contrast(c, READABLE_GROUND) < 4.6:
+        l -= 0.01
+        c = tuple(round(v * 255) for v in colorsys.hls_to_rgb(h, l, sat))
+    return c
+
+
+def readable_css(css: str) -> str:
+    def colour(m: re.Match) -> str:
+        v = m.group(2)
+        hx = re.fullmatch(r'#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})', v)
+        rg = re.fullmatch(r'rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,[^)]*)?\)', v)
+        if hx:
+            h6 = hx.group(1) if len(hx.group(1)) == 6 else ''.join(ch * 2 for ch in hx.group(1))
+            c = tuple(int(h6[i:i + 2], 16) for i in (0, 2, 4))
+            return m.group(1) + '#%02x%02x%02x' % _readable(c)
+        if rg and not rg.group(4):
+            return m.group(1) + 'rgb(%d,%d,%d)' % _readable(tuple(int(x) for x in rg.group(1, 2, 3)))
+        return m.group(0)
+
+    def size(m: re.Match) -> str:
+        return f'{m.group(1)}{max(float(m.group(2)), 11):g}px'
+
+    css = re.sub(r'((?<![-\w])color:\s*)(#[0-9a-fA-F]{3,6}\b|rgba?\([^)]*\))', colour, css)
+    css = re.sub(r'(font-size:\s*)(\d+(?:\.\d+)?)px', size, css)
+    return re.sub(r'(font:\s*(?:\d{3}\s+|italic\s+|normal\s+)*)(\d+(?:\.\d+)?)px', size, css)
 
 
 def recolour_css(css: str) -> str:
@@ -547,7 +600,7 @@ def main() -> int:
     (V2_OUT / 'design.v2.css').write_text(
         '/* Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html.\n'
         ' * The design\'s styles, scoped under .fgv2, in its own palette (the restructured homepage). Do not edit. */\n'
-        + scope_css(css, '.fgv2') + '\n', encoding='utf-8')
+        + readable_css(scope_css(css, '.fgv2')) + '\n', encoding='utf-8')
     print(f'design.html {len(body)} chars, design.css, design-scripts.ts ({len(scripts)} scripts); links wired:')
     for u in used:
         print('  ' + u)

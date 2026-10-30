@@ -23,7 +23,8 @@ import { useTranslation } from 'react-i18next';
 import { useApp, type Page } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { transportUrl } from '../lib/hosts';
-import { HERO_SLIDES, SUBSCRIPTION_PLANS, VAN_TYPES } from '../lib/constants';
+import { SUBSCRIPTION_PLANS, VAN_TYPES } from '../lib/constants';
+import HeroSlides from './platformHome/HeroSlides';
 import BookingCard from './platformHome/BookingCard';
 import designEn from './platformHome/design.html?raw';
 import designNo from './platformHome/design.no.html?raw';
@@ -80,30 +81,6 @@ function liveData(el: HTMLElement, currency: string, locale: string) {
     const plan = SUBSCRIPTION_PLANS[i];
     if (plan) setLead(card.querySelector('.plan-price'), `${nf.format(plan.price)} `);
   });
-}
-
-/* The hero picture is the old site's slideshow; the design's caption and card stay over it. */
-function HeroSlides({ alt }: { alt: string }) {
-  const [images] = useState(() => [...new Set(HERO_SLIDES.map(s => s.image))]);
-  const [i, setI] = useState(0);
-  useEffect(() => {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    const t = window.setInterval(() => setI(n => (n + 1) % images.length), 5000);
-    return () => window.clearInterval(t);
-  }, [images.length]);
-  return (
-    <>
-      <div className="fgp-slides">
-        {images.map((src, n) => <img key={src} src={src} alt={n === 0 ? alt : ''} className={n === i ? 'on' : ''} loading={n === 0 ? 'eager' : 'lazy'} />)}
-      </div>
-      <div className="fgp-dots" role="group" aria-label="Slides">
-        {images.map((src, n) => (
-          <button key={src} type="button" aria-label={`${n + 1} / ${images.length}`} aria-pressed={n === i}
-            className={n === i ? 'on' : ''} onClick={() => setI(n)} />
-        ))}
-      </div>
-    </>
-  );
 }
 
 const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap';

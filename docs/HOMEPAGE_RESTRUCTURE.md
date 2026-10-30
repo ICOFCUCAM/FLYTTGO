@@ -152,6 +152,19 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
   - No item of the earlier menu bar is lost. The logo leads home. On every other page the menu bar is unchanged.
 - **The headline is the owner's own words:** "Assisting Companies to Fly High. Run your company." It sits in the hero's left column and is sized to it: "Assisting Companies" runs the full width of the column, with the picture beside it for the full height.
 
+### Upgrades kept from the platform page, and the readability audit (owner, 2026-10-30)
+
+- **Hero slideshow:** the hero picture plays the former homepage's slides (`HERO_SLIDES`), crossfading with dots, as on the platform page. It is one shared component, `platformHome/HeroSlides.tsx`, used by both pages. It stays still under reduced motion.
+- **Booking widget:** it sits between the hero and the first section, at full width, and the design's `#booking` links lead to it.
+- **Readability:** every text on the page was measured against its ground, needing 4.5:1, or 3:1 for large text. The first pass found 167 failures; there are none now.
+  - Words on photographs cannot be measured that way. The hero caption and the marketplace cards were checked by eye and given a deeper veil.
+  - `build.py` (`readable_css`) darkens pale text on light grounds in its own hue and raises text under 11px to 11px.
+  - `homeV2.css` corrects what that pass cannot see:
+    - gold labels on dark green panels stay light;
+    - the driver panel's button, previously dark on dark, now reads "Become a driver";
+    - the "What every booking includes" cards are white, where they had no ground of their own and showed the grid's grey;
+    - the hero's floating card no longer covers the caption.
+
 ## Stage D: content checked against the source
 
 | Content | Where it is |
@@ -179,6 +192,8 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
 | Interactions | Hero scroll, workspace and finance tabs, studio preview and industry selector all work |
 | Links | Ten checked; each opens its real page |
 | Menu | Every item of Explore, My Company and For Organisations opens its page or section |
+| Contrast | Every text at 4.5:1 (3:1 large) on its ground; smallest text 11 px; words on photographs on a veil |
+| Slideshow and booking widget | Six slides advance; the widget sits under the hero at 1440, 820 and 390 px |
 
 ## Not done yet
 
