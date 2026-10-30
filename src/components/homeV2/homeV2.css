@@ -61,3 +61,27 @@
 @media (max-width: 900px) {
   .fgv2 .network-canvas { grid-template-columns: 1fr; }
 }
+
+/* 1. The owner's longer headline: an editorial hero. The headline runs across
+ * the full width; the introduction, the three entry points and the picture
+ * sit below it, so everything fits the first screen at the design's type size. */
+@media (min-width: 901px) {
+  .fgv2 .hero { padding-top: 64px; }
+  .fgv2 .hero-grid { grid-template-columns: .9fr 1.1fr; grid-template-areas: "eyebrow eyebrow" "title title" "lede visual" "actions visual" "note visual" "rest visual"; grid-template-rows: auto auto auto auto auto 1fr; column-gap: 64px; row-gap: 0; align-items: start; min-height: 0; }
+  .fgv2 .hero-actions { margin-top: 8px; }
+  .fgv2 .hero-copy { display: contents; }
+  .fgv2 .hero-copy .eyebrow { grid-area: eyebrow; margin-bottom: 22px; }
+  .fgv2 .hero h1 { grid-area: title; max-width: none; margin-bottom: 40px; }
+  .fgv2 .hero-lede { grid-area: lede; }
+  .fgv2 .hero-actions { grid-area: actions; }
+  .fgv2 .hero-note { grid-area: note; }
+  .fgv2 .hero-visual { grid-area: visual; height: 460px; }
+  /* The card sits at the top of the picture, so the caption at its foot stays clear. */
+  .fgv2 .hero-visual .floating-card { top: 64px; bottom: auto; }
+}
+
+/* 2. The entry cards: who each is for, and a status where something is in development. */
+.fgv2 .entry-card p { margin: 0; }
+.fgv2 .entry-card .entry-for { font-size: 13px; font-weight: 600; margin-top: 14px; opacity: .9; }
+.fgv2 .entry-card .entry-status { font-size: 12px; margin-top: 6px; color: #6d5a2f; }
+.fgv2 .entry-card a { margin-top: 22px; }

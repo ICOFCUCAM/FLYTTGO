@@ -260,8 +260,19 @@ V2_SECTIONS = [                                   # (attribute in the section's 
 ]
 # Wording the code does not support, corrected (the audit's status table).
 V2_CLAIMS = [
-    ('Create a branded marketplace with your identity, domain, services and provider network.',
-     'Create a branded booking site with your identity, domain, services and customers.'),
+    # The owner's headline for the restructured page (brief, 30 October 2026).
+    ('<h1 class="display">Build your business.<br/>', '<h1 class="display">Assisting Companies to Fly High.<br/>'),
+    # The three entry points in the owner's words (30 October 2026): customer,
+    # business and specialist, each with who it is for and where it leads.
+    ('<h3>I need a service</h3><p>Explore moving, transport, trades and other services from participating providers.</p><a href="#marketplace">Explore services ↗</a>',
+     '<h3>Find a Service</h3><p>Find moving, transport, home services and professionals.</p><p class="entry-for">For customers who need something done.</p><a href="#marketplace">Explore services →</a>'),
+    ('<h3>I run a business</h3><p>Manage services, appointments, customers, quotes, invoices, receipts and payments.</p><a href="#business-workspace">Explore business tools ↗</a>',
+     '<h3>My Company</h3><p>Manage your business, customers, services, bookings, employees, invoices and payments.</p><p class="entry-for">For independent professionals, small businesses and established companies.</p><a href="#business-workspace">Manage my business →</a>'),
+    ('<h3>I want my own marketplace</h3><p>Create a branded marketplace with your identity, domain, services and provider network.</p><a href="#white-label-builder">Explore white-label ↗</a>',
+     '<h3>Create a Marketplace</h3><p>Launch your own branded marketplace, manage providers and build your own customer network.</p><p class="entry-for">For entrepreneurs, organisations and marketplace operators.</p><p class="entry-status">Managing your own providers is in development.</p><a href="#white-label-builder">Explore marketplace solutions →</a>'),
+    # The brief's three entry points in the hero (the design had two buttons).
+    ('<div class="hero-actions"><a class="btn btn-primary" href="#entry-points">Explore your options<span class="arrow">↗</span></a><a class="btn btn-light" href="#unified-platform">See the platform<span class="arrow">↗</span></a></div>',
+     '<div class="hero-actions"><a class="btn btn-primary" href="#marketplace">Find a service<span class="arrow">↗</span></a><a class="btn btn-light" href="#business-workspace">Run a business<span class="arrow">↗</span></a><a class="btn btn-light" href="#white-label-builder">Build a marketplace<span class="arrow">↗</span></a></div>'),
     ('<p>Own brand, domain, customer proposition, provider network and commercial rules.</p>',
      '<p>Own brand, domain, customer proposition and commercial rules. Own provider networks: in development.</p>'),
     ('<h2 class="display">Connected by design.<br/><span class="serif">Separate by ownership.</span></h2>',

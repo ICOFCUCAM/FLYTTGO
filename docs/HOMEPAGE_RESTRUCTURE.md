@@ -113,8 +113,8 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
 
 | # | Topic | The design's section kept | Left out as a duplicate |
 |---|---|---|---|
-| 1 | Hero | Hero (the site's own photograph) | — |
-| 2 | Journeys | Entry cards | Visitor journey, next step |
+| 1 | Hero | Hero (the site's own photograph): the owner's headline, "Assisting Companies to Fly High. / Own your marketplace.", across the full width, with the brief's three entry points (Find a service, Run a business, Build a marketplace) | — |
+| 2 | Journeys | Entry cards in the owner's words: Find a Service (customers), My Company (businesses) and Create a Marketplace (operators), each saying who it is for. Managing your own providers is marked in development. | Visitor journey, next step |
 | 3 | Four capabilities | "Not four separate products" (pillars and ecosystem) | Platform overview, manifesto |
 | 4 | Business platform | Business workspace | Business platform, business workflow |
 | 5 | Finance | Financial administration, with a booking → … → financial record strip added | Finance blueprint |
