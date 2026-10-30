@@ -1,7 +1,7 @@
 {
   "name": "FlyttGo — Norwegian Moving & Logistics Marketplace",
   "short_name": "FlyttGo",
-  "description": "Book professional movers and cargo transport in Norway. Verified drivers, real-time tracking, secure escrow payment.",
+  "description": "Book professional movers and cargo transport in Norway. Approved drivers, tracking during the job, secure card payment through Stripe.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

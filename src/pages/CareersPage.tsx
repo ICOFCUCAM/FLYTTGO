@@ -6,24 +6,22 @@ const PERKS = [
   { icon: 'M13 10V3L4 14h7v7l9-11h-7z',
     title: 'Fast-moving team', desc: 'We ship weekly. Decisions happen in meetings that end in 30 minutes.' },
   { icon: 'M3 10h18M3 14h18m-9-8l6 10-6-10z',
-    title: 'Meaningful work', desc: 'What you build is used by thousands of Norwegians every week.' },
+    title: 'Meaningful work', desc: 'You build the service people in Norway use to book a move.' },
   { icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
     title: 'Great people',    desc: 'Small team, high trust, and we actively hire for nice humans.' },
   { icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    title: 'Real equity',     desc: 'All employees get options. When we win, you win.' },
+    title: 'Clear terms',     desc: 'Salary, pension and any other benefits are set out in writing in each offer.' },
   { icon: 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z',
-    title: 'Learning budget', desc: '15,000 NOK/year for books, courses, conferences and certifications.' },
+    title: 'Room to learn',   desc: 'Moving, logistics, payments and Norwegian rules: there is a lot to learn, and time to learn it.' },
   { icon: 'M5 13l4 4L19 7',
-    title: '5 weeks vacation',desc: 'Plus Norwegian public holidays and a paid week over Christmas.' },
+    title: 'Norwegian working life', desc: 'Employment under Norwegian law, with holiday under the Holidays Act (ferieloven).' },
 ];
 
+/* Only roles FlyttGo is actually hiring for belong here. None is
+ * advertised now (platform audit 2026-10-30), so the list offers an open
+ * application through the contact form. */
 const OPENINGS = [
-  { title: 'Senior Full-Stack Engineer', team: 'Engineering', location: 'Oslo · Hybrid', type: 'Full-time' },
-  { title: 'Product Designer',            team: 'Design',      location: 'Oslo · Hybrid', type: 'Full-time' },
-  { title: 'Operations Lead',             team: 'Operations',  location: 'Oslo · On-site', type: 'Full-time' },
-  { title: 'Customer Support Specialist', team: 'Support',     location: 'Remote (NO)',    type: 'Full-time' },
-  { title: 'Growth Marketer',             team: 'Marketing',   location: 'Oslo · Hybrid', type: 'Full-time' },
-  { title: 'Finance & Operations Intern', team: 'Finance',     location: 'Oslo · On-site', type: 'Internship' },
+  { title: 'Open application', team: 'Any team', location: 'Norway', type: 'Open' },
 ];
 
 export default function CareersPage() {

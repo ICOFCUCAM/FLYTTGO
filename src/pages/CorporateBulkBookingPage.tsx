@@ -12,7 +12,7 @@ export default function CorporateBulkBookingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-white/10 text-white/80 text-xs font-medium px-4 py-2 rounded-full mb-6">📦 Enterprise · Bulk Logistics</div>
           <h1 className="text-5xl font-extrabold mb-4 leading-tight">Bulk Booking Management</h1>
-          <p className="text-white/70 text-lg max-w-2xl mx-auto mb-8">Manage thousands of deliveries across multiple locations from a single dashboard. Built for logistics managers and operations directors.</p>
+          <p className="text-white/70 text-lg max-w-2xl mx-auto mb-8">Book and follow many deliveries across several locations from one company account. Built for logistics managers and operations teams.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button onClick={() => { setShowAuthModal(true); setAuthMode('signup'); }}
               className="px-10 py-4 bg-[#F2B705] text-[#0B2E59] rounded-xl font-bold text-base hover:bg-[#F2B705]/90 transition shadow-lg">
@@ -39,7 +39,7 @@ export default function CorporateBulkBookingPage() {
           <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:shadow-md transition">
             <div className="text-3xl mb-3">⚡</div>
             <h3 className="font-bold text-gray-900 mb-2">Instant Fleet Allocation</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">AI-powered driver matching fills your orders in minutes, not hours.</p>
+            <p className="text-gray-500 text-sm leading-relaxed">Each job is offered to approved drivers, who accept it in the driver app.</p>
           </div>
           <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:shadow-md transition">
             <div className="text-3xl mb-3">📊</div>
@@ -49,17 +49,17 @@ export default function CorporateBulkBookingPage() {
           <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:shadow-md transition">
             <div className="text-3xl mb-3">🔄</div>
             <h3 className="font-bold text-gray-900 mb-2">Batch Import</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">Upload thousands of delivery orders via CSV, API, or direct ERP integration.</p>
+            <p className="text-gray-500 text-sm leading-relaxed">Book jobs one by one in the company dashboard, or through FlyttGo’s API once your company has API access.</p>
           </div>
           <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:shadow-md transition">
             <div className="text-3xl mb-3">💰</div>
             <h3 className="font-bold text-gray-900 mb-2">Volume Pricing</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">Automated volume discounts applied instantly based on your monthly throughput.</p>
+            <p className="text-gray-500 text-sm leading-relaxed">Prices are worked out per job from distance, van and time; ask us about larger volumes.</p>
           </div>
           <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:shadow-md transition">
             <div className="text-3xl mb-3">🛡️</div>
             <h3 className="font-bold text-gray-900 mb-2">Compliance Built In</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">Every carrier is verified, insured, and compliant with Norwegian transport law.</p>
+            <p className="text-gray-500 text-sm leading-relaxed">Every driver uploads ID, licence, vehicle registration and insurance documents and is approved by FlyttGo before taking jobs.</p>
           </div>
         </div>
       </section>
@@ -72,7 +72,7 @@ export default function CorporateBulkBookingPage() {
             <div className="text-center">
               <div className="w-10 h-10 bg-[#0B2E59] text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-3">1</div>
               <h3 className="font-bold text-gray-900 text-sm mb-1">Upload Orders</h3>
-              <p className="text-gray-500 text-xs">Import delivery orders via CSV, API, or manual entry. Batch processing handles thousands at once.</p>
+              <p className="text-gray-500 text-xs">Enter delivery jobs in the company dashboard, or send them through the API.</p>
             </div>
             <div className="text-center">
               <div className="w-10 h-10 bg-[#0B2E59] text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-3">2</div>
@@ -96,7 +96,7 @@ export default function CorporateBulkBookingPage() {
       {/* USE CASES */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <h2 className="text-2xl font-extrabold text-[#0B2E59] mb-3">Industries & Use Cases</h2>
-        <p className="text-gray-500 mb-8">Trusted by operations teams across Norway.</p>
+        <p className="text-gray-500 mb-8">Examples of what companies can use FlyttGo for.</p>
         <div className="flex flex-wrap justify-center gap-3">
           <span className="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">Furniture retail chains</span>
           <span className="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">E-commerce fulfilment</span>
@@ -111,7 +111,7 @@ export default function CorporateBulkBookingPage() {
       <section className="bg-gradient-to-r from-[#0B2E59] to-[#1a4a8a] py-16">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-extrabold text-white mb-4">Ready to Scale Your Logistics?</h2>
-          <p className="text-white/70 mb-8">Join 500+ companies using FlyttGo Corporate across Norway.</p>
+          <p className="text-white/70 mb-8">Create a company account for free and book your first job when you need it.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button onClick={() => { setShowAuthModal(true); setAuthMode('signup'); }}
               className="px-10 py-4 bg-[#F2B705] text-[#0B2E59] rounded-xl font-bold text-base hover:bg-[#F2B705]/90 transition shadow-lg">

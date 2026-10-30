@@ -48,7 +48,6 @@ export default function PaymentPage() {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
   const [method, setMethod] = useState<PayMethod>('card');
-  const [card, setCard] = useState({ number: '', expiry: '', cvc: '', name: '' });
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -153,20 +152,9 @@ export default function PaymentPage() {
   const vat = Math.round(total - total / 1.25);
   const price = total - vat;
 
-  function formatCard(v: string) {
-    return v.replace(/\D/g,'').slice(0,16).replace(/(\d{4})/g,'$1 ').trim();
-  }
-  function formatExpiry(v: string) {
-    const d = v.replace(/\D/g,'').slice(0,4);
-    return d.length >= 3 ? d.slice(0,2) + '/' + d.slice(2) : d;
-  }
-
   async function handlePay() {
     setError('');
     if (!user) { setPage('home'); return; }
-    if (method === 'card' && (!card.number || !card.expiry || !card.cvc || !card.name)) {
-      setError('Please complete all card fields.'); return;
-    }
     if (!booking?.id) {
       setError('No booking is waiting for payment.'); return;
     }
@@ -263,14 +251,14 @@ export default function PaymentPage() {
         </div>
         <h2 className="text-2xl font-extrabold text-gray-900 mb-2">{t('payment.successTitle')}</h2>
         <p className="text-gray-500 mb-6 text-sm leading-relaxed">
-          Your payment of <strong>{total.toLocaleString()} NOK</strong> is held safely in escrow and will be released to your driver on confirmed delivery.
+          Your payment of <strong>{total.toLocaleString()} NOK</strong> has been received. FlyttGo pays your driver after the job is confirmed as done.
         </p>
         <div className="bg-emerald-50 rounded-2xl p-4 mb-6 text-left space-y-2">
           {[
-            ['Status', '🔒 In Escrow'],
+            ['Status', t('payment.successStatus')],
             ['Amount', `${total.toLocaleString()} NOK`],
-            ['Booking', booking?.id?.slice(0,8).toUpperCase() || 'BK-7842'],
-            ['Driver payout', `${Math.round(price * 0.8).toLocaleString()} NOK on delivery`],
+            ['Booking', booking?.id?.slice(0,8).toUpperCase() || '—'],
+            ['Driver payout', t('payment.successPayout')],
           ].map(([k, v]) => (
             <div key={k} className="flex justify-between text-sm">
               <span className="text-gray-500">{k}</span>
@@ -328,42 +316,18 @@ export default function PaymentPage() {
                 </p>
               )}
 
-              {/* CARD FORM */}
+              {/* CARD: FlyttGo never shows card fields. The card number,
+                * expiry and CVC are typed only on Stripe's own Checkout page
+                * (create-checkout-session sends Stripe the booking, never card
+                * data), so nothing here can collect them. */}
               {method === 'card' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t('payment.cardholderName')}</label>
-                    <input value={card.name} onChange={e => setCard(c => ({ ...c, name: e.target.value }))}
-                      placeholder="Ola Nordmann"
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#0B2E59] outline-none"/>
+                <div className="bg-slate-50 rounded-2xl p-6 text-center border border-slate-200" data-testid="card-checkout-info">
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <StripeIcon/>
+                    <span className="font-bold text-gray-900">{t('payment.cardTitle')}</span>
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t('payment.cardNumber')}</label>
-                    <div className="relative">
-                      <input value={card.number} onChange={e => setCard(c => ({ ...c, number: formatCard(e.target.value) }))}
-                        placeholder="1234 5678 9012 3456" maxLength={19}
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#0B2E59] outline-none pr-16 font-mono"/>
-                      <div className="absolute right-3 top-3 flex gap-1">
-                        <div className="w-6 h-4 bg-blue-700 rounded-sm text-white flex items-center justify-center text-xs font-black">V</div>
-                        <div className="w-6 h-4 bg-red-500 rounded-sm text-white flex items-center justify-center text-xs font-black">M</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t('payment.expiryDate')}</label>
-                      <input value={card.expiry} onChange={e => setCard(c => ({ ...c, expiry: formatExpiry(e.target.value) }))}
-                        placeholder="MM/YY" maxLength={5}
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#0B2E59] outline-none font-mono"/>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">{t('payment.cvc')}</label>
-                      <input value={card.cvc} onChange={e => setCard(c => ({ ...c, cvc: e.target.value.replace(/\D/,'').slice(0,4) }))}
-                        placeholder="•••" maxLength={4} type="password"
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#0B2E59] outline-none font-mono"/>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 bg-blue-50 rounded-xl px-4 py-3">
+                  <p className="text-gray-600 text-sm mb-4">{t('payment.cardDesc')}</p>
+                  <div className="flex items-center justify-center gap-2 bg-blue-50 rounded-xl px-4 py-3">
                     <span className="text-blue-500">🔒</span>
                     <span className="text-xs text-blue-700">{t('payment.cardEncrypted')}</span>
                   </div>
@@ -375,11 +339,11 @@ export default function PaymentPage() {
                 <div className="bg-orange-50 rounded-2xl p-6 text-center border border-orange-100">
                   <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white font-black text-2xl">V</div>
                   <h3 className="font-bold text-gray-900 mb-2">Pay with Vipps</h3>
-                  <p className="text-gray-500 text-sm mb-4">You&apos;ll be redirected to Vipps to complete payment securely on your phone.</p>
+                  <p className="text-gray-500 text-sm mb-4">You&apos;ll be redirected to Vipps to approve the payment on your phone. Vipps reserves the amount when you book and FlyttGo takes it when the job is confirmed as done.</p>
                   <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
                     <span>🇳🇴 Norwegian mobile payment</span>
                     <span>·</span>
-                    <span>Bank-level security</span>
+                    <span>Approved in the Vipps app</span>
                   </div>
                 </div>
               )}
@@ -391,7 +355,7 @@ export default function PaymentPage() {
                     <GooglePayIcon/>
                     <span className="font-bold text-gray-900">Google Pay</span>
                   </div>
-                  <p className="text-gray-500 text-sm mb-4">Pay instantly using your saved Google Pay card. Processed securely via Stripe.</p>
+                  <p className="text-gray-500 text-sm mb-4">You&apos;ll go to Stripe&apos;s secure checkout page, where you can pay with Google Pay if your device supports it.</p>
                   <div className="text-xs text-gray-400">Your card details are never shared with FlyttGo.</div>
                 </div>
               )}
@@ -403,7 +367,7 @@ export default function PaymentPage() {
                     <StripeIcon/>
                     <div>
                       <div className="font-bold text-gray-900">Corporate Invoice</div>
-                      <div className="text-xs text-gray-500">Available for registered companies with a FlyttGo Corporate account</div>
+                      <div className="text-xs text-gray-500">For company bookings, once FlyttGo has switched on invoicing for the company</div>
                     </div>
                   </div>
                   {booking?.organization_id ? (
@@ -513,7 +477,7 @@ export default function PaymentPage() {
                 ) : method === 'vipps' ? t('payment.payWithVipps')
                   : method === 'google_pay' ? t('payment.payWithGoogle')
                   : method === 'invoice' ? t('payment.requestInvoice')
-                  : t('payment.payAmount', { amount: total.toLocaleString() })}
+                  : t('payment.payWithCard', { amount: total.toLocaleString() })}
               </button>
 
               <div className="flex items-center justify-center gap-4 mt-4">

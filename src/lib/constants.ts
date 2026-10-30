@@ -25,11 +25,11 @@ export const IMAGES = {
 export const HERO_SLIDES = [
   { key: 'Smart',    image: IMAGES.hero.truck,     title: 'Smart Moving & Transport Services',        subtitle: 'Book professional movers and cargo transport in seconds. Real-time tracking, transparent pricing, and verified drivers across Norway.', cta: 'Book a Van' },
   { key: 'Student',  image: IMAGES.hero.students,  title: 'Student Moving Made Simple',               subtitle: 'Affordable moving solutions for students and small apartments. Fast, reliable, and budget-friendly.', cta: 'Get Price Estimate' },
-  { key: 'Business', image: IMAGES.hero.office,    title: 'Business Logistics & Office Moving',       subtitle: 'Professional moving services for offices and commercial logistics. Trusted by businesses across Norway.', cta: 'Schedule Delivery' },
+  { key: 'Business', image: IMAGES.hero.office,    title: 'Business Logistics & Office Moving',       subtitle: 'Moving help for offices and commercial transport, booked and invoiced to your company.', cta: 'Schedule Delivery' },
   { key: 'Smart',    image: IMAGES.hero.truck1,    title: 'Smart Moving & Transport Services',        subtitle: 'Book professional movers and cargo transport in seconds. Real-time tracking, transparent pricing, and verified drivers across Norway.', cta: 'Book a Van' },
   { key: 'Student',  image: IMAGES.hero.students1, title: 'Student Moving Made Simple',               subtitle: 'Affordable moving solutions for students and small apartments. Fast, reliable, and budget-friendly.', cta: 'Get Price Estimate' },
   { key: 'Smart',    image: IMAGES.hero.truck2,    title: 'Smart Moving & Transport Services',        subtitle: 'Book professional movers and cargo transport in seconds. Real-time tracking, transparent pricing, and verified drivers across Norway.', cta: 'Book a Van' },
-  { key: 'Business', image: IMAGES.hero.office,    title: 'Business Logistics & Office Moving',       subtitle: 'Professional moving services for offices and commercial logistics. Trusted by businesses across Norway.', cta: 'Schedule Delivery' },
+  { key: 'Business', image: IMAGES.hero.office,    title: 'Business Logistics & Office Moving',       subtitle: 'Moving help for offices and commercial transport, booked and invoiced to your company.', cta: 'Schedule Delivery' },
 ];
 
 export const VAN_TYPES = [
@@ -47,11 +47,13 @@ export const SUBSCRIPTION_PLANS = [
   { id: 'unlimited', name: 'Unlimited', price: 2449, period: '/month', jobVisibility: 'All jobs',           commission: { all: 0 },                                          dispatchPriority: 'Highest',   priorityLevel: 5, features: ['Access to all jobs','Highest dispatch priority','0% commission on ALL jobs','VIP support','Priority job matching','Earnings maximized'],                                                          popular: false, color: 'amber' },
 ];
 
+/* No driver or booking counts per city: FlyttGo shows no figures it
+ * cannot back (platform audit 2026-10-30). */
 export const CITIES = [
-  { name: 'Oslo',      slug: 'oslo',      image: IMAGES.cities.oslo,      drivers: 300, bookings: '12,000+' },
-  { name: 'Bergen',    slug: 'bergen',    image: IMAGES.cities.bergen,    drivers: 120, bookings: '5,200+' },
-  { name: 'Trondheim', slug: 'trondheim', image: IMAGES.cities.trondheim, drivers: 80,  bookings: '3,800+' },
-  { name: 'Stavanger', slug: 'stavanger', image: IMAGES.cities.oslo,      drivers: 60,  bookings: '2,400+' },
+  { name: 'Oslo',      slug: 'oslo',      image: IMAGES.cities.oslo },
+  { name: 'Bergen',    slug: 'bergen',    image: IMAGES.cities.bergen },
+  { name: 'Trondheim', slug: 'trondheim', image: IMAGES.cities.trondheim },
+  { name: 'Stavanger', slug: 'stavanger', image: IMAGES.cities.oslo },
 ];
 
 export const SERVICES = [
@@ -59,21 +61,14 @@ export const SERVICES = [
   { name: 'Furniture Transport', icon: 'sofa',       description: 'Safe transport of individual furniture items across Norway.' },
   { name: 'Office Relocation',   icon: 'building',   description: 'Professional office moving with minimal business disruption.' },
   { name: 'Student Moving',      icon: 'graduation', description: 'Affordable moving solutions designed for students.' },
-  { name: 'Same-Day Delivery',   icon: 'clock',      description: 'Urgent deliveries completed within the same day.' },
+  { name: 'Same-Day Delivery',   icon: 'clock',      description: 'Urgent deliveries the same day, when a driver is available.' },
   { name: 'Storage Transport',   icon: 'box',        description: 'Moving items to and from storage units efficiently.' },
-];
-
-export const TESTIMONIALS = [
-  { name: 'Erik Hansen',   city: 'Oslo',      rating: 5, text: 'FlyttGo made our apartment move incredibly smooth. The driver was professional and on time. Highly recommend!' },
-  { name: 'Ingrid Larsen', city: 'Bergen',    rating: 5, text: 'Used FlyttGo for office relocation. Excellent service, transparent pricing, and careful handling of equipment.' },
-  { name: 'Magnus Olsen',  city: 'Trondheim', rating: 5, text: 'As a student, FlyttGo was perfect. Affordable, fast, and the driver helped carry boxes up 3 flights of stairs.' },
-  { name: 'Sofie Berg',    city: 'Stavanger', rating: 4, text: 'Great platform for furniture delivery. Real-time tracking was very helpful. Will use again!' },
 ];
 
 export const HOW_IT_WORKS = [
   { step: 1, title: 'Enter Your Details',      description: 'Tell us where you are moving from and to, what items you need transported, and when.' },
   { step: 2, title: 'Get Instant Price',       description: 'Our smart pricing engine calculates a fair price based on distance, items, and services needed.' },
-  { step: 3, title: 'Book & Pay Securely',     description: 'Confirm your booking and pay securely. Funds are held in escrow until delivery is complete.' },
+  { step: 3, title: 'Book & Pay Securely',     description: 'Confirm your booking and pay by card through Stripe. FlyttGo pays the driver after the job is confirmed as done.' },
   { step: 4, title: 'Track Your Delivery',     description: 'Follow your driver in real-time from pickup to delivery with live GPS tracking.' },
 ];
 

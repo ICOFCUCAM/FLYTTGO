@@ -2,26 +2,17 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 
-const COVERAGE = [
-  { outlet: 'E24',            title: 'FlyttGo hits 25,000 completed jobs across Norway',             date: 'Mar 2026', url: '#' },
-  { outlet: 'Dagens Næringsliv', title: 'How a three-person startup reinvented Norwegian moving',    date: 'Jan 2026', url: '#' },
-  { outlet: 'Shifter',         title: 'FlyttGo raises seed round to scale verified driver network',  date: 'Nov 2025', url: '#' },
-  { outlet: 'Tek.no',          title: 'Real-time GPS tracking comes to Norwegian moving industry',   date: 'Sep 2025', url: '#' },
-  { outlet: 'NRK',             title: 'Gig-economy drivers earn more with transparent pricing',      date: 'Jun 2025', url: '#' },
-];
+/* Real coverage only, each with its link. None is listed yet (the
+ * articles shown here before could not be backed; platform audit
+ * 2026-10-30). */
+const COVERAGE: { outlet: string; title: string; date: string; url: string }[] = [];
 
 export default function PressPage() {
   const { setPage } = useApp();
   const { t } = useTranslation();
 
-  const facts = [
-    { label: t('press.factFounded'),   value: '2024' },
-    { label: t('press.factHq'),        value: 'Oslo, Norway' },
-    { label: t('press.factEmployees'), value: '42' },
-    { label: t('press.factCarriers'),  value: '500+' },
-    { label: t('press.factCities'),    value: '40+' },
-    { label: t('press.factJobs'),      value: '25,000+' },
-  ];
+  /* What FlyttGo is and how it works; no figures it cannot back. */
+  const facts = [1, 2, 3, 4, 5, 6].map(n => ({ label: t(`press.fact${n}Label`), value: t(`press.fact${n}Value`) }));
 
   return (
     <div className="min-h-screen bg-white">
@@ -59,6 +50,9 @@ export default function PressPage() {
         <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">{t('press.coverageTitle')}</h2>
         <p className="text-gray-500 text-center mb-12">{t('press.coverageBody')}</p>
         <div className="space-y-3">
+          {COVERAGE.length === 0 && (
+            <p className="text-center text-sm text-gray-500 bg-gray-50 rounded-2xl p-5">{t('press.coverageNone')}</p>
+          )}
           {COVERAGE.map(c => (
             <a key={c.title} href={c.url}
               className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-xl hover:border-emerald-200 transition group">
@@ -80,13 +74,10 @@ export default function PressPage() {
           <h2 className="text-3xl font-extrabold text-[#0B2E59] text-center mb-3">{t('press.assetsTitle')}</h2>
           <p className="text-gray-500 text-center mb-10">{t('press.assetsBody')}</p>
           <div className="grid sm:grid-cols-3 gap-4">
-            {[
-              { title: 'Logo (SVG + PNG)',   size: '1.2 MB' },
-              { title: 'Brand guidelines',    size: '3.4 MB' },
-              { title: 'Product screenshots', size: '12 MB' },
-            ].map(a => (
-              <a key={a.title} href="#"
-                className="bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-xl hover:border-emerald-200 transition flex items-start gap-4">
+            {/* Sent on request (there are no files to download yet). */}
+            {['Logo (SVG + PNG)', 'Brand guidelines', 'Product screenshots'].map(title => ({ title })).map(a => (
+              <button key={a.title} type="button" onClick={() => setPage('contact')}
+                className="text-left bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-xl hover:border-emerald-200 transition flex items-start gap-4">
                 <div className="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0">
                   <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
@@ -94,9 +85,9 @@ export default function PressPage() {
                 </div>
                 <div>
                   <div className="font-semibold text-[#0B2E59] text-sm">{a.title}</div>
-                  <div className="text-xs text-gray-500 mt-1">Download · {a.size}</div>
+                  <div className="text-xs text-gray-500 mt-1">{t('press.assetsOnRequest')}</div>
                 </div>
-              </a>
+              </button>
             ))}
           </div>
         </div>

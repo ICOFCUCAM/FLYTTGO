@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../lib/store';
+import { displayPhone, formatOrgNumber, useCompanyIdentity } from '../lib/companyIdentity';
 
 const LAST_UPDATED = 'March 31, 2026';
 const EFFECTIVE_DATE = 'March 31, 2026';
@@ -7,6 +8,9 @@ const EFFECTIVE_DATE = 'March 31, 2026';
 export default function TermsPage() {
   const { setPage } = useApp();
   const [activeSection, setActiveSection] = useState('');
+  /* Contact details from the invoice seller settings (docs/COMPANY_DETAILS.md). */
+  const identity = useCompanyIdentity();
+  const phone = displayPhone(identity);
 
   const sections = [
     { id: 'overview', title: '1. Platform Overview & Legal Status' },
@@ -260,11 +264,12 @@ export default function TermsPage() {
           <section id="contact" className="mb-10">
             <h2 className="text-xl font-bold text-[#0B2E59] mb-4">13. Contact Information</h2>
             <div className="bg-gray-50 rounded-xl p-5">
-              <p className="font-bold text-gray-800 mb-2">FlyttGo AS</p>
+              <p className="font-bold text-gray-800 mb-2">{identity.name ?? 'FlyttGo'}</p>
+              {identity.org_number && <p className="text-gray-600 text-sm">Org. nr. {formatOrgNumber(identity.org_number)}</p>}
               <p className="text-gray-600 text-sm">Oslo, Norway</p>
               <p className="text-gray-600 text-sm">Legal & Compliance: legal@flyttgo.com</p>
               <p className="text-gray-600 text-sm">Customer Support: support@flyttgo.com</p>
-              <p className="text-gray-600 text-sm">Phone: +44 7432 112438</p>
+              <p className="text-gray-600 text-sm">Phone: {phone.text}</p>
             </div>
           </section>
         </main>

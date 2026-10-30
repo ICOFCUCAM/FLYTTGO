@@ -184,7 +184,7 @@ export default function CorporateDashboard() {
               </span>
             ) : (
               <>
-                <span className="hidden sm:block text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full font-medium">⚡ Live Mode</span>
+                <span className="hidden sm:block text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full font-medium">Sample data</span>
                 {!user && (
                   <button onClick={() => { setShowAuthModal(true); setAuthMode('signup'); }}
                     className="px-4 py-2 bg-[#0B2E59] text-white rounded-xl text-sm font-semibold hover:bg-[#1a4a8a] transition">
@@ -207,6 +207,14 @@ export default function CorporateDashboard() {
               {current.organization.status === 'pending'
                 ? 'Your company is awaiting verification. FlyttGo checks it in Brønnøysundregistrene before bookings and invoicing are switched on; meanwhile you can set up your team.'
                 : `This company is ${ORG_STATUS_LABELS[current.organization.status].toLowerCase()}${current.organization.status_reason ? `: ${current.organization.status_reason}` : ''}. Contact FlyttGo support.`}
+            </div>
+          )}
+
+          {/* Visitors see a preview: every figure in it is an example
+            * (platform audit 2026-10-30). */}
+          {!live && (
+            <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-xs text-gray-500" data-testid="sample-notice">
+              Sample data: this is a preview of the company dashboard. Every figure, shipment and invoice below is an example, not real activity.
             </div>
           )}
 

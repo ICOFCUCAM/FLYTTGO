@@ -167,7 +167,7 @@ export default function MyBookings() {
             <div key={booking.id} className="bg-white p-6 rounded-xl border mb-4">
               <div className="flex gap-3 mb-3 flex-wrap">
                 <span className={`px-3 py-1 rounded text-xs font-medium ${statusColors[booking.status || ""] || "bg-gray-100 text-gray-600"}`}>{booking.status?.replace(/_/g, " ")}</span>
-                <span className={`px-3 py-1 rounded text-xs font-medium ${paymentColors[booking.payment_status || ""] || "bg-gray-100 text-gray-600"}`}>{booking.payment_status}</span>
+                <span className={`px-3 py-1 rounded text-xs font-medium ${paymentColors[booking.payment_status || ""] || "bg-gray-100 text-gray-600"}`}>{booking.payment_status === "escrow" ? "paid" : booking.payment_status}</span>
               </div>
               <div className="mb-3">
                 <p className="text-sm text-gray-500">Pickup</p><p className="font-medium">{booking.pickup_address}</p>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 import { useAuth } from '../lib/auth';
-import { HERO_SLIDES, VAN_TYPES, CITIES, TESTIMONIALS, HOW_IT_WORKS, SUBSCRIPTION_PLANS, calculateCommission } from '../lib/constants';
+import { HERO_SLIDES, VAN_TYPES, CITIES, HOW_IT_WORKS, SUBSCRIPTION_PLANS, calculateCommission } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { getRouteDistance } from '../lib/routing';
 
@@ -273,14 +273,16 @@ function TrustBar() {
   );
 }
 
-/* ── STATS ── */
+/* ── STATS ──
+ * How the service works, not figures: FlyttGo publishes no counts or
+ * ratings it cannot back (platform audit 2026-10-30, owner's decision). */
 function StatsSection() {
   const { t } = useTranslation();
   return (
     <section className="py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-          {[{ value: '25,000+', label: t('home.statDeliveries') }, { value: '560+', label: t('home.statDrivers') }, { value: '4.8/5', label: t('home.statRating') }, { value: '15+', label: t('home.statCities') }].map(s => (
+          {[1, 2, 3, 4].map(n => ({ value: t(`home.stat${n}Value`), label: t(`home.stat${n}Label`) })).map(s => (
             <div key={s.label} className="text-center">
               <p className="text-3xl sm:text-4xl font-bold text-emerald-600 mb-1">{s.value}</p>
               <p className="text-sm text-gray-600">{s.label}</p>
@@ -466,8 +468,7 @@ function CitiesSection() {
               <div className="absolute bottom-0 left-0 right-0 p-5">
                 <h3 className="text-xl font-bold text-white mb-1">{t('home.cityMovingHelp')} {city.name}</h3>
                 <div className="flex items-center gap-3 text-sm text-gray-200">
-                  <span>{city.drivers} {t('home.cityDrivers')}</span>
-                  <span>{city.bookings} {t('home.cityBookings')}</span>
+                  <span>{t('home.cityBookCta')}</span>
                 </div>
               </div>
             </button>
@@ -478,7 +479,10 @@ function CitiesSection() {
   );
 }
 
-/* ── TESTIMONIALS ── */
+/* ── WHAT'S INCLUDED ──
+ * This section showed customer reviews; FlyttGo has none to show yet, so
+ * it says what every booking includes instead (platform audit 2026-10-30).
+ * Real reviews belong here once customers have left them. */
 function TestimonialsSection() {
   const { t } = useTranslation();
   return (
@@ -489,20 +493,11 @@ function TestimonialsSection() {
           <p className="text-lg text-gray-600">{t('home.testimonialsSub')}</p>
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {TESTIMONIALS.map((item, i) => (
+          {[0, 1, 2, 3].map(i => (
             <div key={i} className="bg-white rounded-xl p-6 border border-gray-100">
-              <div className="flex gap-1 mb-3">
-                {[...Array(5)].map((_, j) => (
-                  <svg key={j} className={`w-5 h-5 ${j < item.rating ? 'text-amber-400' : 'text-gray-200'}`} fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                  </svg>
-                ))}
-              </div>
-              <p className="text-sm text-gray-600 mb-4">"{t(`home.testimonial${i}`, item.text)}"</p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-semibold text-sm">{item.name[0]}</div>
-                <div><p className="text-sm font-semibold text-gray-900">{item.name}</p><p className="text-xs text-gray-500">{item.city}</p></div>
-              </div>
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-semibold text-sm mb-4">{i + 1}</div>
+              <p className="text-sm font-semibold text-gray-900 mb-2">{t(`home.included${i}Title`)}</p>
+              <p className="text-sm text-gray-600">{t(`home.included${i}Desc`)}</p>
             </div>
           ))}
         </div>
@@ -601,7 +596,7 @@ function CorporateCTA() {
           <div className="bg-gradient-to-br from-[#1A365D] to-[#2D4A7A] rounded-3xl p-8 text-white">
             <h3 className="text-xl font-bold mb-6">{t('home.corpWhyTitle')}</h3>
             <div className="grid grid-cols-2 gap-6 mb-8">
-              {[{ value: '40%', labelKey: 'corpStat1' }, { value: '560+', labelKey: 'corpStat2' }, { value: '< 30s', labelKey: 'corpStat3' }, { value: '99.2%', labelKey: 'corpStat4' }].map(s => (
+              {['corpStat1', 'corpStat2', 'corpStat3', 'corpStat4'].map(labelKey => ({ value: t(`home.${labelKey}Value`), labelKey })).map(s => (
                 <div key={s.labelKey} className="bg-white/10 rounded-2xl p-4">
                   <div className="text-2xl font-bold text-emerald-400 mb-1">{s.value}</div>
                   <div className="text-xs text-white/70 leading-snug">{t(`home.${s.labelKey}`)}</div>
