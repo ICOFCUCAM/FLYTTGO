@@ -20,6 +20,8 @@ const PAGE_TO_PATH: Record<Page, string> = {
   'home':                    '/',
   /* The moving and transport front page; its own address is transport.flyttgo.no (docs/HOMEPAGES.md). */
   'transport-home':          '/transport',
+  /* The restructured homepage under review (docs/HOMEPAGE_RESTRUCTURE.md); noindex, in no menu. */
+  'home-preview':            '/preview/home',
   'booking':                 '/book',
   'payment':                 '/payment',
   'tracking':                '/track',
@@ -103,6 +105,7 @@ export interface PageMeta {
 const PAGE_TITLES: Record<Page, string> = {
   'home':                    'FlyttGo — Business and Marketplace Platform',
   'transport-home':          'FlyttGo — Moving & Transport Marketplace in Norway',
+  'home-preview':            'FlyttGo — Homepage preview',
   'booking':                 'Book a Move · FlyttGo',
   'payment':                 'Secure Payment · FlyttGo',
   'tracking':                'Track Your Delivery · FlyttGo',
@@ -156,6 +159,8 @@ const PAGE_TITLES: Record<Page, string> = {
 const PAGE_DESCRIPTIONS: Record<Page, string> = {
   'home':
     'Run a service company, take bookings and payments, send invoices, or launch a marketplace under your own brand. Moving and transport across Norway included.',
+  'home-preview':
+    'Preview of the restructured FlyttGo homepage, for review. Not indexed.',
   'transport-home':
     "Book approved movers and cargo drivers across Norway. Upfront prices incl. MVA, tracking during the job and secure card payment through Stripe.",
   'booking':

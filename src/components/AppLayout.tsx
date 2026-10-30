@@ -10,6 +10,7 @@ import { isTransportHost } from '../lib/hosts';
 
 const HomePage           = lazy(() => import('./HomePage'));
 const PlatformHomePage   = lazy(() => import('./PlatformHomePage'));
+const HomeV2Page         = lazy(() => import('./homeV2/HomeV2Page'));
 const BookingFlow        = lazy(() => import('./BookingFlow'));
 const DriverPortal       = lazy(() => import('./DriverPortal'));
 const DriverOnboarding   = lazy(() => import('./DriverOnboarding'));
@@ -105,6 +106,8 @@ export default function AppLayout() {
        * /transport: the moving and transport front page (docs/HOMEPAGES.md). */
       case 'home':             return platformHome ? <PlatformHomePage /> : <HomePage />;
       case 'transport-home':   return <HomePage />;
+      /* The restructured homepage under review (docs/HOMEPAGE_RESTRUCTURE.md). */
+      case 'home-preview':     return <HomeV2Page />;
       case 'booking':          return ownBooking ? <ServiceBookingPage /> : shopOnly ? <ShopPage /> : <BookingFlow />;
       case 'driver-portal':    return <DriverPortal />;
       case 'driver-onboarding':return <DriverOnboarding />;

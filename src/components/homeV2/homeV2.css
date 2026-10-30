@@ -1,0 +1,60 @@
+/* The restructured homepage (HomeV2Page, docs/HOMEPAGE_RESTRUCTURE.md):
+ * the owner's palette and type, scoped under .hv2 so no other page changes. */
+.hv2 {
+  --blue: #203F68;
+  --forest: #24513B;
+  --gold: #C3A66C;
+  --gold-text: #8A6F3A;   /* the gold, darkened to read on ivory and white (4.5:1) */
+  --ivory: #F5F3EB;
+  --white: #FFFEFA;
+  --ever: #20352B;
+  --ink: #1d2a24;
+  --muted: #56615a;
+  --line: #e2e0d6;
+  background: var(--white);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.hv2 .serif { font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
+.hv2 .kicker { font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--forest); }
+.hv2 .kicker::before { content: ""; display: inline-block; width: 28px; height: 1px; background: var(--gold); vertical-align: middle; margin-right: 12px; }
+.hv2 .on-dark .kicker { color: var(--gold); }
+.hv2 .display { font-size: clamp(2.5rem, 5.4vw, 4.75rem); line-height: 1.02; letter-spacing: -.035em; font-weight: 700; }
+.hv2 .h2 { font-size: clamp(2rem, 3.6vw, 3.1rem); line-height: 1.08; letter-spacing: -.03em; font-weight: 700; }
+.hv2 .lead { font-size: 1.125rem; line-height: 1.75; color: var(--muted); }
+.hv2 .on-dark .lead { color: #d7ddd8; }
+.hv2 section { scroll-margin-top: 110px; }
+.hv2 .wrap { width: min(1200px, calc(100% - 40px)); margin-inline: auto; }
+.hv2 .wrap > * { min-width: 0; }
+.hv2 .btn { display: inline-flex; align-items: center; gap: .55rem; padding: .95rem 1.4rem; font-weight: 600; font-size: .95rem; border: 1px solid transparent; transition: background .2s, color .2s, border-color .2s; }
+.hv2 .btn-primary { background: var(--blue); color: #fff; }
+.hv2 .btn-primary:hover { background: #18324f; }
+.hv2 .btn-ghost { border-color: #c9c6b8; color: var(--ink); background: transparent; }
+.hv2 .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+.hv2 .btn-gold { background: var(--gold); color: var(--ever); }
+.hv2 .btn-gold:hover { background: #d3b97f; }
+.hv2 .btn-light { border-color: rgba(255, 255, 255, .5); color: #fff; }
+.hv2 .btn-light:hover { border-color: #fff; background: rgba(255, 255, 255, .08); }
+.hv2 .link { color: var(--blue); font-weight: 600; border-bottom: 1px solid var(--gold); padding-bottom: 2px; }
+.hv2 .link:hover { color: var(--forest); }
+.hv2 .on-dark .link { color: #fff; }
+.hv2 .rule { border-top: 1px solid var(--line); }
+.hv2 .status { display: inline-flex; align-items: center; gap: .4rem; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.hv2 .status::before { content: ""; width: 7px; height: 7px; border-radius: 9999px; background: currentColor; }
+.hv2 .status-live { color: var(--forest); }
+.hv2 .status-addon { color: var(--blue); }
+.hv2 .status-dev { color: var(--gold-text); }
+.hv2 .on-dark .status-live { color: #9fd3b2; }
+.hv2 .on-dark .status-dev { color: var(--gold); }
+/* Product demonstrations: one per topic, always labelled as illustrations. */
+.hv2 .mock { min-width: 0; background: var(--white); border: 1px solid var(--line); box-shadow: 0 30px 80px -40px rgba(32, 53, 43, .35); }
+.hv2 .mock-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.hv2 .mock-tag { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.hv2 .tabs { display: flex; gap: 0; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.hv2 .tabs button { padding: 12px 16px; font-size: 13px; white-space: nowrap; color: var(--muted); border-bottom: 2px solid transparent; }
+.hv2 .tabs button[aria-selected="true"] { color: var(--blue); border-bottom-color: var(--gold); font-weight: 600; }
+.hv2 .row { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 12px; padding: 12px 18px; border-bottom: 1px solid #efede5; font-size: 13px; align-items: center; }
+.hv2 .row:last-child { border-bottom: 0; }
+.hv2 .pill { font-size: 11px; padding: 3px 9px; background: var(--ivory); color: var(--ever); white-space: nowrap; }
+.hv2 .photo { object-fit: cover; width: 100%; height: 100%; display: block; }
+@media (prefers-reduced-motion: reduce) { .hv2 * { transition: none !important; scroll-behavior: auto !important; } }

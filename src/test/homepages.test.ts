@@ -25,6 +25,11 @@ describe('the two front pages', () => {
     expect(pageTitle('home')).not.toMatch(/Moving/);
   });
 
+  it('the restructured homepage is under review on its own path', () => {
+    expect(pathToPage('/preview/home')).toBe('home-preview');
+    expect(pageToPath('home-preview')).toBe('/preview/home');
+  });
+
   it('links to it stay on the same site until its own address is set', () => {
     vi.stubEnv('VITE_TRANSPORT_URL', '');
     expect(transportUrl()).toBe('/transport');
