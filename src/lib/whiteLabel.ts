@@ -409,6 +409,22 @@ export async function loadLibraryCategories(): Promise<string[]> {
   return (data ?? []) as string[];
 }
 
+/**
+ * The offered templates whose thumbnail is stale (drawn with other photos
+ * than they show now; 00024), by id. Null when it cannot be read (00024 not
+ * applied): the gallery then goes by the categories with library photos.
+ */
+export async function loadStaleThumbnails(): Promise<string[] | null> {
+  const { data, error } = await supabase.rpc('stale_site_template_thumbnails');
+  return error ? null : ((data ?? []) as string[]);
+}
+
+/** Thumbnails per category (FlyttGo's administrators, 00024): how many are fresh, stale or missing. Null when it cannot be read. */
+export async function loadThumbnailCounts(): Promise<{ category: string; templates: number; fresh: number; stale: number; missing: number }[] | null> {
+  const { data, error } = await supabase.rpc('admin_thumbnail_stale_counts');
+  return error ? null : (data ?? []) as { category: string; templates: number; fresh: number; stale: number; missing: number }[];
+}
+
 /** Library images, newest first (RLS: companies see approved ones only). */
 export async function loadLibrary(f: { category?: string; shape?: string; status?: string; shapes?: string[] } = {}): Promise<LibraryImage[]> {
   let q = supabase.from('image_library').select('*').order('created_at', { ascending: false }).limit(500);

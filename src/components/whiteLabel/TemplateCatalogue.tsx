@@ -13,19 +13,22 @@
  * Images (docs/WHITE_LABEL.md → Image library): previews show what the site
  * would show, resolved by the database for the company (its own images, the
  * template's approved ones, the library of the template's category, else a
- * plain colour block). In a category that has library photos the importer's
- * thumbnail (drawn with the imported photos) is not shown: the current choice
- * is drawn live, and gallery cards show the plain card.
+ * plain colour block). A thumbnail drawn with other photos than the
+ * template shows now is stale (00024; before 00024, any thumbnail in a
+ * category that has library photos): it is not shown until it is drawn again
+ * (scripts/redraw-thumbnails.ts). The current choice is then drawn live in
+ * the company's name, colours and images, and gallery cards live as the
+ * template's own demo with the library's photos (gallery.ts, cardPicture()).
  */
 import { useEffect, useMemo, useState } from 'react';
-import { bestFor, templateCategory, type Brand, type RenderImages } from '../../../supabase/functions/_shared/site-template';
+import { bestFor, type Brand, type RenderImages } from '../../../supabase/functions/_shared/site-template';
 import {
-  loadLibraryCategories, loadRenderImages, loadTemplate, thumbnailOf, type SiteTemplate, type SiteTemplateSummary,
+  loadLibraryCategories, loadRenderImages, loadStaleThumbnails, loadTemplate, thumbnailOf, type SiteTemplate, type SiteTemplateSummary,
 } from '../../lib/whiteLabel';
 import TemplateGallery from './TemplateGallery';
 import TemplatePreview from './TemplatePreview';
 import TemplateThumb from './TemplateThumb';
-import { NO_FILTER, cardFacts, type GalleryFilter } from './gallery';
+import { NO_FILTER, cardFacts, cardPicture, type GalleryFilter } from './gallery';
 
 const btn = 'px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50';
 
@@ -49,6 +52,17 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
   const [libraryCats, setLibraryCats] = useState<string[]>([]);
   const [currentImages, setCurrentImages] = useState<RenderImages | null>(null);
   useEffect(() => { loadLibraryCategories().then(setLibraryCats).catch(() => setLibraryCats([])); }, []);
+  /* The templates whose thumbnail is stale (00024); null: not known (the categories above decide). */
+  const [staleThumbs, setStaleThumbs] = useState<string[] | null>(null);
+  useEffect(() => { loadStaleThumbnails().then(setStaleThumbs).catch(() => setStaleThumbs(null)); }, []);
+  /* A stale card's images, as the template's own demo (no company): each loaded once. */
+  const cardImages = useMemo(() => {
+    const seen = new Map<string, Promise<RenderImages | null>>();
+    return (id: string) => {
+      if (!seen.has(id)) seen.set(id, loadRenderImages(id).catch(() => null));
+      return seen.get(id)!;
+    };
+  }, []);
   useEffect(() => {
     setCurrentImages(null);
     if (!selected) return;
@@ -71,7 +85,6 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
 
   /* The company's current choice; a template no longer offered still shows, marked. */
   const current = selected ? templates.find(t => t.id === selected) ?? null : null;
-  const inLibrary = (t: { industry: string[] }) => libraryCats.includes(templateCategory(t.industry) ?? '');
   const at = preview?.results ? preview.results.indexOf(preview.t.id) : -1;
   const step = preview?.results && at >= 0 ? {
     at, of: preview.results.length, loading: loading !== null,
@@ -84,7 +97,7 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
         <div className="relative sm:w-64 shrink-0 aspect-[16/10] rounded-lg overflow-hidden border border-gray-100 bg-gray-100">
           {!current ? (
             <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-sm text-gray-600">Simple branded front page</div>
-          ) : thumbnailOf(current) && !inLibrary(current) ? (
+          ) : thumbnailOf(current) && cardPicture(current, staleThumbs, libraryCats) === 'thumbnail' ? (
             <img src={thumbnailOf(current)!} alt="" loading="lazy" decoding="async" width={720} height={450} className="absolute inset-0 w-full h-full object-cover object-top" />
           ) : (
             <TemplateThumb template={current} brand={brand} sellerNotice={sellerNotice} images={currentImages} />
@@ -111,6 +124,7 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
 
       {browsing && (
         <TemplateGallery templates={offered} selected={selected} canEdit={canEdit} filter={filter} onFilter={setFilter} libraryCategories={libraryCats}
+          staleThumbnails={staleThumbs} loadCardImages={cardImages}
           opening={loading} onPreview={(id, results) => open(id, results)} onChoose={choose} onClose={() => setBrowsing(false)} />
       )}
       {preview && (

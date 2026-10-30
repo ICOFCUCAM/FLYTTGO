@@ -12,6 +12,11 @@
  *   Coverage  per category and shape: approved and pending photos against
  *             what the category's templates need (the most slots of a shape
  *             in one template, so a page need not repeat a photo).
+ *   Thumbnails per category, how many gallery thumbnails are stale (drawn
+ *             with other photos than their template shows now, 00024) or
+ *             missing, and the command that draws them again
+ *             (scripts/redraw-thumbnails.ts: it needs a browser, which the
+ *             server does not have).
  */
 import { useCallback, useEffect, useState } from 'react';
 import { categoryLabel } from '../../../supabase/functions/_shared/site-template';
@@ -20,8 +25,9 @@ import {
   LIBRARY_CATEGORIES, LIBRARY_SHAPES, LIBRARY_STATUSES, MAX_LIBRARY_IMAGE, SHAPE_LABELS, shapeOf, type LibraryShape, type LibraryStatus,
 } from '../../../supabase/functions/_shared/image-library';
 import {
-  addLibraryImage, libraryImageUrl, loadLibrary, loadLibraryCoverage, reviewLibraryImage, updateLibraryImage, type LibraryImage,
+  addLibraryImage, libraryImageUrl, loadLibrary, loadLibraryCoverage, loadThumbnailCounts, reviewLibraryImage, updateLibraryImage, type LibraryImage,
 } from '../../lib/whiteLabel';
+import { redrawCommand } from './redraw';
 
 const btn = 'px-2.5 py-1 rounded text-xs font-medium disabled:opacity-50';
 const field = 'w-full border rounded px-2 py-1 text-xs';
@@ -31,20 +37,21 @@ const STATUS_STYLE: Record<LibraryStatus, string> = {
 const EMPTY = { file: null as File | null, category: 'transport', shape: 'wide' as LibraryShape, tags: '', alt: '', origin: '', licence: '', evidence: '', size: '' };
 
 export default function ImageLibraryAdmin() {
-  const [view, setView] = useState<'images' | 'coverage'>('images');
+  const [view, setView] = useState<'images' | 'coverage' | 'thumbnails'>('images');
   const [filter, setFilter] = useState({ category: '', shape: '', status: 'pending' });
   const [rows, setRows] = useState<LibraryImage[]>([]);
   const [coverage, setCoverage] = useState<Awaited<ReturnType<typeof loadLibraryCoverage>>>([]);
+  const [thumbs, setThumbs] = useState<Awaited<ReturnType<typeof loadThumbnailCounts>>>([]);
   const [form, setForm] = useState(EMPTY);
   const [editing, setEditing] = useState<{ id: string; shape: LibraryShape; tags: string; alt: string; origin: string; licence: string; evidence: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const reload = useCallback(async () => {
-    const [r, c] = await Promise.all([
+    const [r, c, th] = await Promise.all([
       loadLibrary({ category: filter.category || undefined, shape: filter.shape || undefined, status: filter.status || undefined }),
-      loadLibraryCoverage()]);
-    setRows(r); setCoverage(c);
+      loadLibraryCoverage(), loadThumbnailCounts()]);
+    setRows(r); setCoverage(c); setThumbs(th);
   }, [filter]);
   useEffect(() => { reload(); }, [reload]);
 
@@ -64,14 +71,15 @@ export default function ImageLibraryAdmin() {
     setForm({ ...form, file, shape: shapeOf(info.width, info.height) ?? form.shape, size: `${info.width} × ${info.height} px` });
   };
   const words = (s: string) => s.split(',').map(x => x.trim()).filter(Boolean);
+  const staleTotal = (thumbs ?? []).reduce((n, x) => n + x.stale, 0);
 
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
-        {(['images', 'coverage'] as const).map(v => (
+        {(['images', 'coverage', 'thumbnails'] as const).map(v => (
           <button key={v} onClick={() => setView(v)} aria-pressed={view === v}
             className={`px-3 py-1 rounded-full text-xs font-medium ${view === v ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>
-            {v === 'images' ? 'Images' : 'Coverage by category'}
+            {v === 'images' ? 'Images' : v === 'coverage' ? 'Coverage by category' : `Thumbnails${staleTotal ? ` (${staleTotal} stale)` : ''}`}
           </button>
         ))}
       </div>
@@ -107,6 +115,8 @@ export default function ImageLibraryAdmin() {
           </table>
         </div>
       )}
+
+      {view === 'thumbnails' && <ThumbnailsView counts={thumbs} />}
 
       {view === 'images' && <>
         <div className="bg-white rounded-lg shadow p-3 text-xs space-y-2" aria-label="Add an image">
@@ -200,6 +210,53 @@ export default function ImageLibraryAdmin() {
           ))}
         </div>
       </>}
+    </div>
+  );
+}
+
+/**
+ * Thumbnails (00024): per category, the gallery thumbnails that are stale
+ * (drawn with other photos than the template shows now: a library photo of
+ * the category approved, rejected, retired or edited, or the template's own
+ * image changed since) or missing, and the command that draws them again.
+ * Until then the gallery shows a stale card live with the right photos.
+ */
+export function ThumbnailsView({ counts }: { counts: { category: string; templates: number; fresh: number; stale: number; missing: number }[] | null }) {
+  if (!counts) {
+    return <p className="text-sm text-gray-600 bg-white rounded-lg shadow p-3">The thumbnails' state cannot be read: migration 00024 is not applied yet.</p>;
+  }
+  const stale = counts.reduce((n, x) => n + x.stale, 0);
+  const staleCats = counts.filter(x => x.stale > 0);
+  const only = staleCats.length === 1 ? staleCats[0].category : null;
+  return (
+    <div className="space-y-3">
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
+        <table className="w-full text-xs">
+          <caption className="text-left p-3 text-gray-600">Gallery thumbnails per category. A thumbnail is stale when it was drawn with other photos than its template shows now (computed each time; nothing is flagged by hand). Until it is drawn again, the gallery shows a stale card&apos;s home page live with the right photos.</caption>
+          <thead><tr className="text-left text-gray-500 border-b"><th className="p-2">Category</th><th className="p-2">Templates</th><th className="p-2">Up to date</th><th className="p-2">Stale</th><th className="p-2">No thumbnail</th><th className="p-2">Draw again</th></tr></thead>
+          <tbody>
+            {counts.map(x => (
+              <tr key={x.category} className="border-b last:border-0">
+                <td className="p-2 font-medium">{categoryLabel(x.category)}</td>
+                <td className="p-2">{x.templates}</td>
+                <td className="p-2">{x.fresh}</td>
+                <td className={`p-2 ${x.stale ? 'text-amber-800 font-semibold' : ''}`}>{x.stale}</td>
+                <td className="p-2">{x.missing}</td>
+                <td className="p-2">{x.stale ? <code className="text-[11px]">--category {x.category}</code> : '–'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="bg-white rounded-lg shadow p-3 text-xs space-y-2">
+        <div className="font-semibold">{stale ? `Draw the ${stale} stale thumbnail${stale === 1 ? '' : 's'} again` : 'Every thumbnail is up to date'}</div>
+        <p className="text-gray-700">Thumbnails are pictures of a page taken in a browser. The server cannot run a browser, so they are drawn by a script on a computer with Playwright and Chromium
+          (<code>npm i -D playwright</code>, <code>npx playwright install chromium</code>), with the service key. By default it is a dry run: the pictures go to a local folder for review and nothing is written.
+          With <code>--upload</code> it stores them in FlyttGo under a new name and records the photos they were drawn with; that writes to FlyttGo&apos;s storage and database and needs the owner&apos;s approval.
+          Add <code>--missing</code> to also draw templates without a thumbnail.</p>
+        <pre className="bg-gray-50 border rounded p-2 overflow-x-auto whitespace-pre text-[11px]">{redrawCommand(only)}</pre>
+        <pre className="bg-gray-50 border rounded p-2 overflow-x-auto whitespace-pre text-[11px]">{redrawCommand(only, true)}</pre>
+      </div>
     </div>
   );
 }

@@ -182,6 +182,20 @@ export interface Brand {
   logoUrl?: string | null;
 }
 
+/**
+ * The neutral sample brand the importer draws pages with: the template's own
+ * colours, a plain name, no real contact details.
+ */
+export const SAMPLE_BRAND: Brand = { name: 'Your Company', tagline: 'Your tagline here', phone: '+47 00 00 00 00',
+  email: 'post@example.com', city: 'Your town' };
+
+/**
+ * A template's own demo identity, as its gallery thumbnail shows it: its
+ * name and colours, sample contact details. The importer, the thumbnail
+ * redraw (scripts/redraw-thumbnails.ts) and the gallery's live card use it.
+ */
+export const demoBrand = (t: { name: string }): Brand => ({ ...SAMPLE_BRAND, name: t.name, tagline: null });
+
 export interface RenderContext {
   brand: Brand;
   assets: TemplateAsset[];

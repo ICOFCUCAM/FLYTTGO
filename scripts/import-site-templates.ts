@@ -40,7 +40,10 @@
 // come in the preview), a desktop window 1440 × 900, saved as a
 // 720 × 450 JPEG (images only from the template's asset store). It is
 // written to <out>/thumbnails/<id>.jpg and, with --to-flyttgo, stored
-// beside the template's images as the asset 'thumbnail'. The importer also
+// beside the template's images as the asset 'thumbnail', with the images it
+// was drawn with (migration 00024): once the image library gives the
+// template other photos it is stale, and scripts/redraw-thumbnails.ts draws
+// it again (docs/WHITE_LABEL.md → Image library, "Thumbnails"). The importer also
 // lists each template's features (pricing, gallery, team, FAQ…:
 // templateFeatures()) for the cards.
 //
@@ -92,7 +95,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import {
   categoryLabel, hostsOf, prepareTemplate, renderTemplatePage, replaceForms, templateCategory, TEMPLATE_CATEGORIES, OTHER_CATEGORY,
-  contentFlags, type Brand, type ContentFlag, type MasterRow, type PreparedTemplate, type TemplateAsset, type TemplatePage,
+  contentFlags, demoBrand, SAMPLE_BRAND, type Brand, type ContentFlag, type MasterRow, type PreparedTemplate, type TemplateAsset, type TemplatePage,
 } from '../supabase/functions/_shared/site-template.ts';
 import {
   CHECKS, OVERFLOW_WIDTHS, browserChecks, combine, failingChecks, staticChecks, type CheckResult, type TemplateChecks,
@@ -101,6 +104,7 @@ import {
   EXTENSION, MAX_TEMPLATE_IMAGE, imageInfo, planManifest, readManifest, sha256Hex, sharedImageSets, templateImages,
   type ImageManifest, type ManifestEntry, type TemplateImage,
 } from '../supabase/functions/_shared/template-images.ts';
+import { assetsImageMap, thumbnailImagesHash } from '../supabase/functions/_shared/image-library.ts';
 import { snapshotter, type Snapshotter } from './template-snapshot.ts';
 
 /** A prepared template with its checks, image slots and thumbnail (JPEG bytes; not part of the JSON). */
@@ -110,19 +114,8 @@ type Imported = PreparedTemplate & {
   replacements?: Map<string, { entry: ManifestEntry; bytes: Uint8Array; ext: string; mime: string }>;
 };
 
-/**
- * The neutral sample brand thumbnails are drawn with: the template's own
- * colours, a plain name, no real contact details.
- */
-const SAMPLE_BRAND: Brand = { name: 'Your Company', tagline: 'Your tagline here', phone: '+47 00 00 00 00',
-  email: 'post@example.com', city: 'Your town' };
-
-
 /** The brand the overflow check draws pages with: a long name, as some companies have. */
 const CHECK_BRAND: Brand = { ...SAMPLE_BRAND, name: 'Nordvik Flytting og Transport Aksjeselskap' };
-
-/** A template's own demo identity, for its thumbnail: its name and colours, sample contact details. */
-const demoBrand = (t: { name: string }): Brand => ({ ...SAMPLE_BRAND, name: t.name, tagline: null });
 
 /** A page of a template, as a company with this brand would see it. */
 function samplePage(t: Pick<PreparedTemplate, 'assets'>, html: string, brand: Brand = SAMPLE_BRAND): string {
@@ -332,9 +325,14 @@ async function toFlyttgo(templates: Imported[], snap: Snapshotter | null) {
       if (home) t.thumbnailJpeg = await snap.thumbnail(samplePage({ assets }, home.html, demoBrand(t)), hostsOf(assets));
       t.checks = await checkTemplate({ ...t, assets }, snap);
     }
-    // The thumbnail, beside the template's images (asset key 'thumbnail').
+    // The thumbnail, beside the template's images (asset key 'thumbnail'),
+    // with the images it was drawn with (its own assets; 00024): once its
+    // category has library photos it is stale and scripts/redraw-thumbnails.ts
+    // draws it again.
     if (t.thumbnailJpeg) {
-      assets.push({ key: 'thumbnail', url: await storeAsset(t.id, 'thumbnail', 'jpg', 'image/jpeg', t.thumbnailJpeg, url, key) });
+      const drawnWith = await thumbnailImagesHash(assetsImageMap(t.pages, assets));
+      assets.push({ key: 'thumbnail', url: await storeAsset(t.id, 'thumbnail', 'jpg', 'image/jpeg', t.thumbnailJpeg, url, key),
+                    images: drawnWith } as TemplateAsset);
     }
     const res = await fetch(`${url}/rest/v1/rpc/import_site_template`, {
       method: 'POST',

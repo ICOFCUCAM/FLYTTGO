@@ -17,6 +17,7 @@
 // ============================================================================
 
 import { TEMPLATE_CATEGORIES, OTHER_CATEGORY, neutralImage, type RenderImage, type RenderImages } from './site-template.ts';
+import { sha256Hex } from './template-images.ts';
 
 export const LIBRARY_BUCKET = 'site-image-library';
 export const COMPANY_IMAGE_BUCKET = 'organization-site-images';
@@ -184,3 +185,53 @@ export function readCatalogue(data: unknown): Catalogue {
 export function libraryPath(category: string, sha256: string, mime: 'image/png' | 'image/jpeg' | 'image/webp'): string {
   return `${category}/${sha256}.${mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg'}`;
 }
+
+/* ── Thumbnails drawn with the resolved images (00024) ───────────────── */
+
+/** A map's slots as site_template_images_key() reads them (the template and mode are not needed). */
+export type ThumbnailMap = { images: Record<string, Partial<MapEntry>> };
+
+/**
+ * What a thumbnail shows, as text (site_template_images_key() in 00024 writes
+ * the same): one line per slot in key order, `<key>=<picture>|<focal x ×
+ * 1000>|<focal y × 1000>`, the picture being the address, the stored file as
+ * `<bucket>/<path>`, or `-` for the neutral block. Alt texts and sources are
+ * left out: they do not change the picture.
+ */
+export function thumbnailImagesKey(map: ThumbnailMap): string {
+  const focal = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? String(Math.round(v * 1000)) : '');
+  // Keys are [A-Za-z0-9._-]: the default sort is the database's byte order.
+  return Object.keys(map.images ?? {}).sort().map(k => {
+    const e = map.images[k] ?? {};
+    const picture = e.url ? e.url : e.path ? `${e.bucket ?? ''}/${e.path}` : '-';
+    return `${k}=${picture}|${focal(e.focal_x)}|${focal(e.focal_y)}`;
+  }).join('\n');
+}
+
+/** Its SHA-256 (hex): what a thumbnail records as the images it was drawn with. */
+export async function thumbnailImagesHash(map: ThumbnailMap): Promise<string> {
+  return sha256Hex(new TextEncoder().encode(thumbnailImagesKey(map)));
+}
+
+/**
+ * The map a template's own assets give, as the importer draws its thumbnail
+ * (site_template_assets_map() in 00024): every {{ASSET:key}} its pages use
+ * but the thumbnail, each with its asset (the key, the key without its
+ * number, or the key with .1), else none.
+ */
+export function assetsImageMap(pages: readonly { html: string }[], assets: readonly { key: string; url: string }[]): ThumbnailMap {
+  const byKey = new Map(assets.map(a => [a.key, a.url]));
+  const images: ThumbnailMap['images'] = {};
+  for (const p of pages) {
+    for (const m of (p.html ?? '').matchAll(/\{\{ASSET:([A-Za-z0-9._-]{1,60})\}\}/g)) {
+      const k = m[1];
+      if (k === 'thumbnail' || k in images) continue;
+      const url = byKey.get(k) ?? byKey.get(k.replace(/\.\d+$/, '')) ?? byKey.get(`${k}.1`);
+      images[k] = url ? { url } : {};
+    }
+  }
+  return { images };
+}
+
+/** Where a redrawn thumbnail is stored: a new name per set of images, so a browser never shows the old picture. */
+export const thumbnailPath = (templateId: string, imagesHash: string) => `${templateId}/thumbnail-${imagesHash.slice(0, 12)}.jpg`;

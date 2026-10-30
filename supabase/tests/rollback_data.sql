@@ -112,6 +112,14 @@ VALUES ('transport/' || repeat('d', 64) || '.jpg', 'transport', 'hero', 1920, 10
 INSERT INTO public.organization_site_images (organization_id, slot_key, library_image_id)
 SELECT o.id, 'hero', l.id FROM public.organizations o, public.image_library l WHERE o.slug = 'rollback-as';
 
+-- 00024: a template whose thumbnail was drawn again, the images it was drawn with recorded.
+SELECT set_config('request.jwt.claims', '', false);
+SELECT public.import_site_template(jsonb_build_object('id', 'rollback-tpl', 'name', 'Rollback Movers', 'industry', '["moving"]'::jsonb,
+  'source_id', 'rollback-tpl', 'pages', '[{"path": "/", "html": "<img src=\"{{ASSET:hero}}\" alt=\"Hero\">"}]'::jsonb,
+  'assets', '[{"key": "hero", "url": "https://flyttgo.supabase.co/storage/v1/object/public/site-template-assets/rollback-tpl/hero.jpg"}]'::jsonb));
+INSERT INTO storage.objects (bucket_id, name) VALUES ('site-template-assets', 'rollback-tpl/thumbnail-' || repeat('e', 12) || '.jpg');
+SELECT public.record_site_template_thumbnail('rollback-tpl', 'rollback-tpl/thumbnail-' || repeat('e', 12) || '.jpg', repeat('e', 64));
+
 -- What exists before the rollback, for the comparison afterwards.
 CREATE TABLE public.zz_rollback_before AS
 SELECT 'bookings' t, count(*) n FROM public.bookings

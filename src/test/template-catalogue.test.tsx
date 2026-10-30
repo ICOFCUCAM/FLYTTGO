@@ -8,12 +8,14 @@ vi.mock('../lib/whiteLabel', () => ({
   loadTemplateHome: async () => null,
   loadLibraryCategories: async () => [],
   loadRenderImages: async () => null,
+  loadStaleThumbnails: async () => null,
   thumbnailOf: (t: { assets: { key: string; url: string }[] }) => t.assets.find(a => a.key === 'thumbnail')?.url ?? null,
 }));
 const { default: TemplateCatalogue } = await import('../components/whiteLabel/TemplateCatalogue');
 const { default: TemplateGallery } = await import('../components/whiteLabel/TemplateGallery');
 const { default: TemplatePreview } = await import('../components/whiteLabel/TemplatePreview');
-const { BATCH, NO_FILTER, categoryOf, facets, filterTemplates } = await import('../components/whiteLabel/gallery');
+const { BATCH, NO_FILTER, cardPicture, categoryOf, facets, filterTemplates } = await import('../components/whiteLabel/gallery');
+const { thumbFace, thumbSource } = await import('../components/whiteLabel/thumb');
 type Filter = typeof NO_FILTER;
 
 const base = { industry: ['hair-salon', 'beauty'], status: 'approved' as const, review_note: null, reviewed_at: null };
@@ -197,10 +199,10 @@ describe('the gallery filters', () => {
 });
 
 describe('the image library in the catalogue (00023)', () => {
-  it('a category with library photos shows the plain card, not the thumbnail drawn with the imported photos', () => {
+  it('a category with library photos never shows the thumbnail drawn with the imported photos', () => {
     const html = gallery({ libraryCategories: ['appointments'] });
     expect(html).not.toContain('salon-verve01/thumbnail.jpg');
-    expect(html).toContain('data-placeholder');
+    expect(html).toContain('data-placeholder');                       // no way to load its images: the plain card
     expect(gallery({ libraryCategories: ['transport'] })).toContain('salon-verve01/thumbnail.jpg');
   });
   it('the preview shows the resolved images instead of the template\'s assets', () => {
@@ -234,5 +236,60 @@ describe('the preview', () => {
     expect(html).toContain('aria-label="Previous website"');
     expect(html).toContain('aria-label="Next website"');
     expect(html).toContain('3 of 10');
+  });
+});
+
+describe('stale thumbnails in the gallery (00024)', () => {
+  const card = (html: string, id: string) => {
+    const at = html.slice(html.indexOf(`aria-labelledby="tpl-${id}"`));
+    return at.slice(0, at.indexOf('</article>'));
+  };
+  it('a stale card shows the live miniature, drawn with the resolved images, instead of the out-of-date thumbnail', () => {
+    const load = vi.fn(async () => null);
+    const html = gallery({ staleThumbnails: ['salon-verve01'], loadCardImages: load });
+    const verve = card(html, 'salon-verve01');
+    expect(verve).not.toContain('salon-verve01/thumbnail.jpg');
+    expect(verve).toContain('data-live-thumb');
+    expect(verve).toContain('animate-pulse');                        // TemplateThumb, waiting until the card is in view
+    expect(verve).not.toContain('data-placeholder');
+    expect(load).not.toHaveBeenCalled();                               // nothing is loaded for a card that is not in view
+  });
+  it('only stale cards are drawn live: a fresh thumbnail stays a picture, a template without one a plain card', () => {
+    const html = gallery({ staleThumbnails: [], libraryCategories: ['appointments'], loadCardImages: async () => null });
+    expect(card(html, 'salon-verve01')).toContain('salon-verve01/thumbnail.jpg');      // drawn again with the library: fresh
+    expect(card(html, 'salon-other01')).toContain('data-placeholder');
+    expect(html).not.toContain('data-live-thumb');
+  });
+  it('before the database can say (00024 not applied), a category with library photos counts as stale', () => {
+    const html = gallery({ staleThumbnails: null, libraryCategories: ['appointments'], loadCardImages: async () => null });
+    expect(card(html, 'salon-verve01')).toContain('data-live-thumb');
+  });
+  it('choose the picture of a card from the thumbnail, the stale list and the library categories', () => {
+    const [verve, other] = templates;
+    expect(cardPicture(verve, null)).toBe('thumbnail');
+    expect(cardPicture(verve, ['salon-verve01'])).toBe('live');
+    expect(cardPicture(verve, [], ['appointments'])).toBe('thumbnail');
+    expect(cardPicture(verve, null, ['appointments'])).toBe('live');
+    expect(cardPicture(other, ['salon-other01'], ['appointments'])).toBe('plain');      // no thumbnail: never a live card
+  });
+  it('keeps the plain card when the home page or the images cannot be loaded, never the template\'s own photos', async () => {
+    const page = Promise.resolve({ html: '<h1>Home</h1>' });
+    const images = Promise.resolve({ mode: 'library' as const, byKey: {} });
+    expect(await thumbSource(Promise.resolve(null), images, true)).toBeNull();
+    expect(await thumbSource(Promise.reject(new Error('offline')), images, true)).toBeNull();
+    expect(await thumbSource(page, Promise.resolve(null), true)).toBeNull();
+    expect(await thumbSource(page, Promise.reject(new Error('no map')), true)).toBeNull();
+    expect(await thumbSource(page, images, true)).toEqual({ html: '<h1>Home</h1>', images: { mode: 'library', byKey: {} } });
+    expect(await thumbSource(page, Promise.resolve(null), false)).toEqual({ html: '<h1>Home</h1>', images: null });   // the Website card: assets as before
+    expect(thumbFace({ drawn: false, failed: true, fallback: true, cover: true, lazy: true })).toBe('fallback');
+    expect(thumbFace({ drawn: false, failed: true, fallback: false, cover: true, lazy: true })).toBe('loading');
+    expect(thumbFace({ drawn: false, failed: true, fallback: false, cover: true, lazy: false })).toBe('cover');
+    expect(thumbFace({ drawn: true, failed: false, fallback: true, cover: true, lazy: true })).toBe('page');
+    expect(thumbFace({ drawn: false, failed: false, fallback: true, cover: true, lazy: true })).toBe('loading');
+  });
+  it('the Website card keeps a thumbnail nothing says is stale (the stale list arrives after the first render)', () => {
+    const html = renderToStaticMarkup(
+      <TemplateCatalogue templates={templates} selected="salon-verve01" onSelect={noop} canEdit brand={{ name: 'Acme' }} sellerNotice="n" />);
+    expect(html).toContain('salon-verve01/thumbnail.jpg');
   });
 });
