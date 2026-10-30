@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f5f3eb">
+<title>FlyttGo — Business and Marketplace Infrastructure</title>
+<style>
+:root{--blue:#203f68;--green:#24513b;--forest:#20352b;--gold:#c3a66c;--ivory:#f5f3eb;--paper:#fbfaf6;--white:#fffefa;--ink:#26352d;--muted:#6c766f;--line:#e4e5dc}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.65 Arial,Helvetica,sans-serif}a{color:inherit;text-decoration:none}.wrap{width:min(1160px,calc(100% - 44px));margin:auto}
+.top{background:var(--forest);color:#e9eee8;text-align:center;padding:8px 16px;font-size:10px;letter-spacing:.13em;text-transform:uppercase}
+header{height:78px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);gap:20px}
+.logo{font-size:25px;font-weight:800;letter-spacing:-1.7px;color:var(--blue)}.logo i{color:var(--gold);font-style:normal}
+nav{display:flex;gap:25px;font-size:12px;font-weight:700;color:#58645c}nav a:hover{color:var(--green)}
+.btn{display:inline-block;border-radius:30px;padding:12px 19px;font-size:12px;font-weight:700;background:var(--green);color:white}.btn.outline{background:white;color:var(--green);border:1px solid var(--line)}
+.hero{padding:76px 0 70px;display:grid;grid-template-columns:1fr 1fr;gap:55px;align-items:center}
+.kicker{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;color:var(--green)}
+h1{font-size:clamp(43px,5.2vw,68px);line-height:1.04;letter-spacing:-.06em;color:var(--forest);margin:17px 0 20px}
+h1 em{font-family:Georgia,serif;font-weight:400;color:var(--blue)}
+.lead{font-size:17px;color:var(--muted);line-height:1.8;max-width:540px}.actions{display:flex;gap:11px;flex-wrap:wrap;margin:26px 0 17px}.note{font-size:11px;color:var(--muted)}
+.visual{height:460px;border-radius:25px;position:relative;overflow:hidden;background:linear-gradient(135deg,#d9e2d9,#e9e2d2);box-shadow:0 22px 55px #20352b18}
+.visual:before{content:"";position:absolute;inset:0;background:linear-gradient(125deg,transparent 15%,#203f6818 15% 35%,transparent 35%),linear-gradient(25deg,#24513b20 0 22%,transparent 22% 70%,#c3a66c40 70%)}
+.visual:after{content:"";position:absolute;inset:45% 0 0;background:linear-gradient(transparent,#20352b55)}
+.visual-label{position:absolute;z-index:1;top:22px;left:24px;color:var(--blue);font-size:10px;letter-spacing:.15em;font-weight:bold}
+.visual-copy{position:absolute;z-index:2;bottom:25px;left:26px;color:white;max-width:330px}.visual-copy b{display:block;font:28px/1.2 Georgia,serif;margin-top:7px}
+.float{position:absolute;z-index:2;right:18px;bottom:65px;background:var(--white);border-radius:15px;padding:17px 19px;box-shadow:0 12px 35px #20352b20;font-size:11px}.float b{display:block;color:var(--green);font-size:14px}
+section{padding:76px 0}.ivory{background:var(--ivory)}.blue{background:var(--blue);color:white}.dark{background:var(--forest);color:white}
+.head{text-align:center;max-width:720px;margin:0 auto 36px}.head h2{margin:10px 0 12px}.head p{color:var(--muted)}.blue .head p,.dark .head p{color:#dce4df}
+h2{font-size:clamp(30px,3.5vw,45px);line-height:1.13;letter-spacing:-.045em;color:var(--forest);margin:0 0 15px} .blue h2,.dark h2{color:white}
+h3{font-size:19px;line-height:1.25;margin:0 0 9px;color:var(--forest)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:17px}
+.card{background:var(--white);border:1px solid var(--line);border-radius:19px;padding:24px;min-height:190px}
+.card p{font-size:13px;color:var(--muted);margin:0 0 14px}.card .num{font-size:10px;letter-spacing:.13em;color:var(--gold);font-weight:800}
+.card.darkcard{background:var(--forest);border-color:var(--forest)}.darkcard h3,.darkcard p{color:white}
+.card.goldcard{background:#eee6d6}
+.pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.pillar{padding:22px;border:1px solid var(--line);border-radius:17px;background:white}.pillar small{color:var(--gold);font-weight:bold}.pillar p{font-size:12px;color:var(--muted)}
+.split{display:grid;grid-template-columns:.8fr 1.2fr;gap:55px;align-items:start}.list{display:grid;grid-template-columns:1fr 1fr;gap:12px}.item{background:white;border:1px solid var(--line);padding:19px;border-radius:14px}.item b{display:block;color:var(--green);font-size:13px}.item span{font-size:12px;color:var(--muted)}
+.workflow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.step{background:#fffefa;color:var(--ink);border-radius:14px;padding:17px}.step small{color:var(--gold);font-weight:bold}.step b{display:block;margin:8px 0 5px}.step span{font-size:11px;color:var(--muted)}
+.brand-preview{background:white;border-radius:22px;padding:28px;display:grid;grid-template-columns:1fr 1fr;gap:25px;align-items:center;color:var(--ink)}.brand-swatch{height:210px;border-radius:15px;background:linear-gradient(135deg,#e9eee8,#d5e0e9);position:relative;overflow:hidden}.brand-swatch:after{content:"YOUR BRAND";position:absolute;left:20px;bottom:20px;font-size:24px;font-weight:bold;color:var(--blue)}
+.industry{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:24px 0}.industry span{padding:9px 15px;border-radius:30px;background:white;border:1px solid var(--line);font-size:12px;font-weight:bold;color:var(--green)}
+.callout{padding:34px;border-radius:20px;background:var(--forest);color:white;text-align:center}.callout h2{color:white}.callout p{color:#dce4df;max-width:650px;margin:0 auto 20px}
+footer{background:#172b23;color:#e9eee8;padding:48px 0}.foot{display:flex;justify-content:space-between;gap:25px;flex-wrap:wrap}.foot p,.foot a{font-size:12px;color:#d0d9d2}
+@media(max-width:850px){nav{display:none}.hero{grid-template-columns:1fr;padding:52px 0}.visual{height:340px}.pillars{grid-template-columns:repeat(2,1fr)}.split{grid-template-columns:1fr;gap:25px}.workflow{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.wrap{width:calc(100% - 30px)}header{height:66px}.hero{gap:28px}.visual{height:290px}.grid,.pillars,.list,.brand-preview{grid-template-columns:1fr}.workflow{grid-template-columns:1fr 1fr}section{padding:55px 0}.card{min-height:0}}
+</style>
+</head>
+<body>
+<div class="top">One connected platform <span style="color:#c3a66c">✦</span> Business tools · Services · Marketplaces</div>
+<header class="wrap">
+<a class="logo" href="#">flyttgo<i>.</i></a>
+<nav><a href="#platform">Platform</a><a href="#business">For business</a><a href="#marketplace">Marketplace</a><a href="#white-label">White-label</a><a href="#industries">Industries</a></nav>
+<a class="btn" href="#start">Get started ↗</a>
+</header>
+<main>
+<div class="wrap hero">
+<div><div class="kicker">The business and marketplace platform</div>
+<h1>Build your business.<br><em>Own your marketplace.</em></h1>
+<p class="lead">Run a service company, manage customers and bookings, collect payments, issue invoices — or launch a marketplace under your own brand. FlyttGo brings business operations and marketplace infrastructure together.</p>
+<div class="actions"><a class="btn" href="#start">Explore your options ↗</a><a class="btn outline" href="#platform">Discover the platform</a></div>
+<div class="note">For independent professionals, growing companies and marketplace operators.</div></div>
+<div class="visual"><div class="visual-label">01 / BUSINESS IN MOTION</div><div class="visual-copy">BUSINESS · SERVICES · COMMERCE<b>Everything your business needs to move forward.</b></div><div class="float">ONE OPERATING PLATFORM<b>Your business. Your brand.</b>Bookings · Payments · Growth ↗</div></div>
+</div>
+<section class="ivory" id="start"><div class="wrap"><div class="head"><div class="kicker">Choose your way into FlyttGo</div><h2>One platform. Three ways to get started.</h2><p>Whether you need a service, run a company or want to build a marketplace, start with what matters to you.</p></div>
+<div class="grid">
+<article class="card darkcard"><div class="num">01 / FIND & BOOK</div><h3>I need a service</h3><p>Explore moving, transport, trades and other services from participating providers.</p><a href="#marketplace">Explore services ↗</a></article>
+<article class="card"><div class="num">02 / RUN & GROW</div><h3>I run a business</h3><p>Manage services, appointments, customers, quotes, invoices, receipts and payments.</p><a href="#business">Explore business tools ↗</a></article>
+<article class="card goldcard"><div class="num">03 / BUILD & OWN</div><h3>I want my own marketplace</h3><p>Create a branded marketplace with your identity, domain, services and provider network.</p><a href="#white-label">Explore white-label ↗</a></article>
+</div></div></section>
+<section id="platform"><div class="wrap"><div class="head"><div class="kicker">One connected platform</div><h2>More than a marketplace.<br> Your business infrastructure.</h2><p>FlyttGo connects the customer marketplace with the tools businesses need to operate — on one shared platform foundation.</p></div>
+<div class="pillars">
+<div class="pillar"><small>01</small><h3>FlyttGo Marketplace</h3><p>Customers discover, compare and book services from participating providers.</p></div>
+<div class="pillar"><small>02</small><h3>Business Operating Platform</h3><p>Companies manage customers, services, jobs, teams and commercial workflows.</p></div>
+<div class="pillar"><small>03</small><h3>White-label Infrastructure</h3><p>Operators launch and manage independent marketplaces under their own brand.</p></div>
+<div class="pillar"><small>04</small><h3>Financial Administration</h3><p>Connected quotes, invoices, receipts, payments, expenses and tax preparation.</p></div>
+</div></div></section>
+<section class="ivory" id="business"><div class="wrap split"><div><div class="kicker">For every kind of company</div><h2>The tools to run the business behind the service.</h2><p style="color:var(--muted)">From a solo electrician to a multi-team service company, FlyttGo is designed around real business workflows — not just the booking.</p></div>
+<div class="list">
+<div class="item"><b>Bookings & appointments</b><span>Visits, scheduled appointments, transport jobs, projects and recurring work.</span></div>
+<div class="item"><b>Customers & service catalogue</b><span>Customer records, service descriptions, pricing, estimates and job details.</span></div>
+<div class="item"><b>Quotes & estimates</b><span>Define scope, labour, materials, pricing, revisions and customer approval.</span></div>
+<div class="item"><b>Invoices & receipts</b><span>Create and send invoices, issue receipts and keep transaction records.</span></div>
+<div class="item"><b>Payments & collections</b><span>Collect payments and review payment status, balances and transactions.</span></div>
+<div class="item"><b>Expenses & financial records</b><span>Organise costs, attach supporting documents and prepare reports.</span></div>
+<div class="item"><b>Tax preparation</b><span>Prepare tax-related summaries and documentation subject to local rules.</span></div>
+<div class="item"><b>Teams & access control</b><span>Give employees and administrators appropriate operational access.</span></div>
+</div></div></section>
+<section class="blue" id="finance"><div class="wrap"><div class="head"><div class="kicker" style="color:#e5d3a8">A connected commercial lifecycle</div><h2>Every job accounted for.<br>Every transaction connected.</h2><p>Bring the commercial side of daily work into one coherent flow, from customer request to completed work and payment records.</p></div>
+<div class="workflow"><div class="step"><small>01</small><b>Booking</b><span>Customer request and service details</span></div><div class="step"><small>02</small><b>Quote</b><span>Scope, estimate and agreed price</span></div><div class="step"><small>03</small><b>Job</b><span>Work record and completion</span></div><div class="step"><small>04</small><b>Invoice</b><span>Itemised invoice and due date</span></div><div class="step"><small>05</small><b>Payment</b><span>Collection, receipt and records</span></div></div>
+<p style="font-size:11px;color:#dce4df;margin-top:22px;text-align:center">Tax calculations, accounting connections and filing workflows must be configured and validated for each market before being represented as live services.</p>
+</div></section>
+<section id="industries"><div class="wrap"><div class="head"><div class="kicker">One platform. Different ways of working.</div><h2>Designed around the way each industry operates.</h2><p>Different businesses need different booking journeys. FlyttGo can support configurable service types and workflows on a shared foundation.</p></div>
+<div class="industry"><span>Plumbing</span><span>Electrical</span><span>Cleaning</span><span>Moving & relocation</span><span>Transport</span><span>Consulting</span><span>Maintenance</span><span>Professional services</span></div>
+<div class="grid">
+<div class="card"><div class="num">01 / ON-SITE SERVICE</div><h3>Plumber</h3><p>Describe an issue, add photos, choose a visit, and request repair, installation or maintenance.</p></div>
+<div class="card"><div class="num">02 / VISIT OR PROJECT</div><h3>Electrician</h3><p>Book fault finding, installation, inspection, upgrades or a larger project engagement.</p></div>
+<div class="card"><div class="num">03 / SCHEDULED OR RECURRING</div><h3>Cleaning company</h3><p>Choose home, deep or office cleaning, property size, frequency and preferred time.</p></div>
+<div class="card"><div class="num">04 / QUOTE-BASED</div><h3>Moving company</h3><p>Capture pickup, destination, inventory, access conditions, vehicle and crew requirements.</p></div>
+<div class="card"><div class="num">05 / APPOINTMENT</div><h3>Consultant</h3><p>Offer consultations, advisory sessions, assessments and project engagements.</p></div>
+<div class="card"><div class="num">06 / CONFIGURABLE</div><h3>Other service businesses</h3><p>Configure service catalogues, booking details, pricing and workflow to fit the business.</p></div>
+</div></div></section>
+<section class="ivory" id="marketplace"><div class="wrap"><div class="head"><div class="kicker">FlyttGo Marketplace</div><h2>One place to find the right service.</h2><p>Customers discover service providers, understand what is offered and start a booking through a clear marketplace experience.</p></div>
+<div class="grid"><div class="card"><div class="num">DISCOVER</div><h3>Find providers</h3><p>Explore services by category, location and business profile.</p></div><div class="card"><div class="num">UNDERSTAND</div><h3>Compare the offer</h3><p>Review service details, booking requirements and pricing information.</p></div><div class="card"><div class="num">BOOK</div><h3>Start the job</h3><p>Submit a request or book an available service, based on provider workflow.</p></div></div></div></section>
+<section class="dark" id="white-label"><div class="wrap"><div class="head"><div class="kicker" style="color:#e5d3a8">Your marketplace. Your identity.</div><h2>Launch a platform under your own brand.</h2><p>Give your organisation its own branded marketplace experience, service categories, provider network and customer relationships.</p></div>
+<div class="brand-preview"><div><div class="kicker">Marketplace operator</div><h2 style="color:var(--forest)">A platform that feels like yours.</h2><p style="color:var(--muted)">Independent brand identity, custom domain, curated services and a marketplace experience designed around your market.</p><a class="btn" href="#start">Explore marketplace ownership ↗</a></div><div class="brand-swatch"></div></div></div></section>
+<section class="ivory"><div class="wrap"><div class="head"><div class="kicker">Shared foundation</div><h2>One infrastructure. Distinct business identities.</h2><p>Marketplace operators and service companies can have separate brands, catalogues, customer relationships and operating rules while using a common technology foundation.</p></div>
+<div class="grid"><div class="card"><div class="num">PLATFORM</div><h3>Shared technology</h3><p>Core marketplace, workflow, payment and administration capabilities.</p></div><div class="card"><div class="num">OPERATOR</div><h3>Independent marketplace</h3><p>Its own identity, domain, categories, providers and commercial model.</p></div><div class="card"><div class="num">PROVIDER</div><h3>Business workspace</h3><p>Its own services, customers, bookings, team and financial records.</p></div></div></div></section>
+<section id="moving"><div class="wrap split"><div><div class="kicker">A specialist marketplace vertical</div><h2>Moving remains part of our foundation.</h2><p style="color:var(--muted)">FlyttGo continues to support moving, relocation and transport services while extending the platform to serve many more industries and business models.</p><a class="btn" href="#marketplace">Explore the marketplace ↗</a></div><div class="list"><div class="item"><b>Home moving</b><span>Households and individuals.</span></div><div class="item"><b>Office relocation</b><span>Business and workplace moves.</span></div><div class="item"><b>Furniture transport</b><span>Single items and larger loads.</span></div><div class="item"><b>Delivery & logistics</b><span>Transport and delivery requests.</span></div></div></div></section>
+<section class="ivory"><div class="wrap"><div class="callout"><div class="kicker" style="color:#e5d3a8">The next step starts here</div><h2>One platform for services, businesses and marketplaces.</h2><p>Discover the marketplace, bring your business operations together or build a marketplace of your own.</p><a class="btn" style="background:#c3a66c;color:#20352b" href="mailto:hello@flyttgo.com">Contact FlyttGo ↗</a></div></div></section>
+</main>
+<footer><div class="wrap foot"><div><div class="logo" style="color:white">flyttgo<i>.</i></div><p>Business · Services · Commerce infrastructure</p></div><div><p><a href="#platform">Platform</a>　 <a href="#business">Business</a>　 <a href="#marketplace">Marketplace</a>　 <a href="#white-label">White-label</a></p><p>© FlyttGo</p></div></div></footer>
+</body></html>
