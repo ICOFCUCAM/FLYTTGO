@@ -6,6 +6,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 vi.mock('../lib/whiteLabel', () => ({
   loadTemplate: async () => null,
   loadTemplateHome: async () => null,
+  loadLibraryCategories: async () => [],
+  loadRenderImages: async () => null,
   thumbnailOf: (t: { assets: { key: string; url: string }[] }) => t.assets.find(a => a.key === 'thumbnail')?.url ?? null,
 }));
 const { default: TemplateCatalogue } = await import('../components/whiteLabel/TemplateCatalogue');
@@ -191,6 +193,25 @@ describe('the gallery filters', () => {
     const everyone = all.map(t => ({ ...t, features: [...new Set([...(t.features ?? []), 'contact'])] }));
     expect(facets(everyone, f({})).features.some(x => x.id === 'contact')).toBe(false);
     expect(facets(everyone, f({ features: ['contact'] })).features.some(x => x.id === 'contact')).toBe(true);
+  });
+});
+
+describe('the image library in the catalogue (00023)', () => {
+  it('a category with library photos shows the plain card, not the thumbnail drawn with the imported photos', () => {
+    const html = gallery({ libraryCategories: ['appointments'] });
+    expect(html).not.toContain('salon-verve01/thumbnail.jpg');
+    expect(html).toContain('data-placeholder');
+    expect(gallery({ libraryCategories: ['transport'] })).toContain('salon-verve01/thumbnail.jpg');
+  });
+  it('the preview shows the resolved images instead of the template\'s assets', () => {
+    const t = { ...templates[0], pages: [{ path: '/', html: '<img src="{{ASSET:hero}}" alt="Containers"><img src="{{ASSET:team.1}}" alt="Team">' }], content_flags: [] };
+    const html = renderToStaticMarkup(
+      <TemplatePreview template={t} path="/" onPath={noop} selected="" canEdit onChoose={noop} onClose={noop} brand={{ name: 'Acme', primaryColor: '#336699' }}
+        sellerNotice="n" images={{ mode: 'library', byKey: { hero: { url: 'https://lib.test/site-image-library/salon.jpg', alt: 'A salon', source: 'library' } } }} />);
+    expect(html).toContain('https://lib.test/site-image-library/salon.jpg');
+    expect(html).not.toContain('https://a.test/hero.jpg');
+    expect(html).toContain('alt=&quot;A salon&quot;');
+    expect(html).toContain('data:image/svg+xml');                     // team.1: the plain block
   });
 });
 

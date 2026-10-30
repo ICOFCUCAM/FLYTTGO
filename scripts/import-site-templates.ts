@@ -79,6 +79,9 @@
 // slots it names; --out copies it into <out>/images/, --to-flyttgo
 // uploads it beside the template's images and draws the thumbnail and
 // the browser checks again with it.
+// Photos shared by every template of a category go into the image library
+// instead (migration 00023): scripts/import-image-library.ts --library
+// <catalogue.json> --library-dir <dir> (docs/WHITE_LABEL.md → Image library).
 //
 // An export file is the JSON array of site_masters rows (id, name,
 // industry, style, pages, preview_assets), for example from the SQL editor:

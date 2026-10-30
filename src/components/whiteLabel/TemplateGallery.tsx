@@ -8,7 +8,7 @@
  * over the picture on hover and keyboard focus, and always on touch screens.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { bestFor, featureLabel } from '../../../supabase/functions/_shared/site-template';
+import { bestFor, featureLabel, templateCategory } from '../../../supabase/functions/_shared/site-template';
 import { thumbnailOf, type SiteTemplateSummary } from '../../lib/whiteLabel';
 import { BATCH, NO_FILTER, SORTS, cardFacts, facets, filterTemplates, narrowed, styleLabel, type GalleryFilter, type GallerySort } from './gallery';
 import { useDialog } from './useDialog';
@@ -34,23 +34,28 @@ export function Placeholder({ name, style }: { name: string; style: string | nul
   );
 }
 
-/** The picture of a template: its thumbnail, lazily, or the plain card. */
-export function CardPicture({ t }: { t: SiteTemplateSummary }) {
-  const thumb = thumbnailOf(t);
+/**
+ * The picture of a template: its thumbnail, lazily, or the plain card. In a
+ * category with library photos (00023) the importer's thumbnail still shows
+ * the imported photos, so the plain card is shown instead until it is drawn
+ * again (`stale`).
+ */
+export function CardPicture({ t, stale = false }: { t: SiteTemplateSummary; stale?: boolean }) {
+  const thumb = stale ? null : thumbnailOf(t);
   return thumb ? (
     <img src={thumb} alt="" loading="lazy" decoding="async" width={720} height={450}
       className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 ease-out group-hover:scale-[1.04] group-focus-within:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100 motion-reduce:group-focus-within:scale-100" />
   ) : <Placeholder name={t.name} style={t.style} />;
 }
 
-function Card({ t, chosen, canEdit, opening, onPreview, onChoose }: {
-  t: SiteTemplateSummary; chosen: boolean; canEdit: boolean; opening: boolean; onPreview: () => void; onChoose: () => void;
+function Card({ t, chosen, canEdit, opening, onPreview, onChoose, stale }: {
+  t: SiteTemplateSummary; chosen: boolean; canEdit: boolean; opening: boolean; onPreview: () => void; onChoose: () => void; stale: boolean;
 }) {
   const id = `tpl-${t.id}`;
   return (
     <article aria-labelledby={id} className={`group relative flex flex-col rounded-xl border bg-white overflow-hidden ${chosen ? 'border-[#0B2E59] ring-2 ring-[#0B2E59]' : 'border-gray-200 hover:shadow-lg focus-within:shadow-lg'} transition-shadow motion-reduce:transition-none`}>
       <div className="relative aspect-[16/10] bg-gray-100 overflow-hidden border-b border-gray-100">
-        <CardPicture t={t} />
+        <CardPicture t={t} stale={stale} />
         {chosen && <span className="absolute top-2 left-2 z-10 rounded-full bg-[#0B2E59] text-white text-[11px] font-semibold px-2.5 py-0.5 shadow">✓ Chosen</span>}
         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-[#0B2E59]/60 opacity-0 transition-opacity duration-200 motion-reduce:transition-none group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 [@media(hover:none)]:bg-transparent [@media(hover:none)]:items-end [@media(hover:none)]:justify-end [@media(hover:none)]:p-2">
           <button onClick={onPreview} aria-label={`Preview ${t.name}`} className={`${btn} bg-white text-gray-900 shadow`}>{opening ? 'Opening…' : 'Preview'}</button>
@@ -97,7 +102,7 @@ function Filters({ id, filter, set, f }: { id: string; filter: GalleryFilter; se
   );
 }
 
-export default function TemplateGallery({ templates, selected, canEdit, filter, onFilter, opening, onPreview, onChoose, onClose }: {
+export default function TemplateGallery({ templates, selected, canEdit, filter, onFilter, opening, onPreview, onChoose, onClose, libraryCategories = [] }: {
   /** The offered templates, in the catalogue's order. */
   templates: SiteTemplateSummary[];
   selected: string;
@@ -110,6 +115,8 @@ export default function TemplateGallery({ templates, selected, canEdit, filter, 
   onPreview: (id: string, results: string[]) => void;
   onChoose: (id: string) => void;
   onClose: () => void;
+  /** Categories with approved library photos: their cards leave out the importer's thumbnail (CardPicture). */
+  libraryCategories?: string[];
 }) {
   const box = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
@@ -252,6 +259,7 @@ export default function TemplateGallery({ templates, selected, canEdit, filter, 
               {shown.map(t => (
                 <li key={t.id}>
                   <Card t={t} chosen={selected === t.id} canEdit={canEdit} opening={opening === t.id}
+                    stale={libraryCategories.includes(templateCategory(t.industry) ?? '')}
                     onPreview={() => onPreview(t.id, ids)} onChoose={() => onChoose(t.id)} />
                 </li>
               ))}

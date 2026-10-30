@@ -9,7 +9,11 @@
  * Every change goes through a database function or an Edge Function that
  * checks who may make it; this file only calls them.
  */
-import { supabase } from './supabase';
+import { SUPABASE_URL, supabase } from './supabase';
+import {
+  COMPANY_IMAGE_BUCKET, LIBRARY_BUCKET, MAX_LIBRARY_IMAGE, libraryPath, pathsToSign, renderImages,
+  type ImageMap, type LibraryShape, type LibraryStatus, type RenderImages,
+} from '../../supabase/functions/_shared/image-library';
 import { callJson, logoUrl } from './invoicing';
 import { isFlyttgoHost } from './hosts';
 import type { PageBooking } from '../../supabase/functions/_shared/white-label';
@@ -355,6 +359,132 @@ export async function reviewTemplateImage(templateId: string, key: string, statu
   return err((await supabase.rpc('admin_review_site_template_image', {
     p_template: templateId, p_key: key, p_status: status, p_licence: licence ?? null,
   })).error);
+}
+
+/* ── The image library (00023) ─────────────────────────────────────── */
+
+/** One library image (approved ones for companies; every one for FlyttGo's administrators). */
+export interface LibraryImage {
+  id: string; storage_path: string; category: string; shape: LibraryShape; width: number; height: number; mime: string;
+  bytes: number | null; focal_x: number | null; focal_y: number | null; tags: string[]; alt_text: string | null; origin: string;
+  licence: string | null; licence_evidence: string | null; sources: unknown[]; sha256: string; review_status: LibraryStatus;
+  reviewed_by: string | null; reviewed_at: string | null; review_reason: string | null;
+  history: { at: string; by: string | null; action: string; from?: string; to?: string; reason?: string | null }[];
+  created_at: string;
+}
+
+/** The public address of a library image. */
+export const libraryImageUrl = (path: string) => supabase.storage.from(LIBRARY_BUCKET).getPublicUrl(path).data.publicUrl;
+
+/** What each image slot of a template shows (for a company, with its own images), resolved by the database. */
+export async function loadImageMap(templateId: string, orgId?: string | null): Promise<ImageMap | null> {
+  const { data, error } = await supabase.rpc('site_template_image_map', { p_template: templateId, p_org: orgId ?? null });
+  return error ? null : (data as ImageMap);
+}
+
+/**
+ * The resolved images as the preview renders them: library images by their
+ * public address, the company's own (private) by a signed one. Null when the
+ * map cannot be read: the preview then shows the template's assets as before.
+ */
+export async function loadRenderImages(templateId: string, orgId?: string | null): Promise<RenderImages | null> {
+  const map = await loadImageMap(templateId, orgId);
+  return map ? renderableImages(map) : null;
+}
+
+/** A resolved map with addresses: public ones for library images, signed ones (an hour) for the company's own uploads. */
+export async function renderableImages(map: ImageMap): Promise<RenderImages> {
+  const paths = pathsToSign(map);
+  const signed: Record<string, string> = {};
+  if (paths.length) {
+    const { data } = await supabase.storage.from(COMPANY_IMAGE_BUCKET).createSignedUrls(paths, 3600);
+    for (const u of data ?? []) if (u.path && u.signedUrl) signed[u.path] = u.signedUrl;
+  }
+  return renderImages(map, SUPABASE_URL, signed);
+}
+
+/** The categories that have approved library images (their templates show the library's photos). */
+export async function loadLibraryCategories(): Promise<string[]> {
+  const { data } = await supabase.rpc('image_library_categories');
+  return (data ?? []) as string[];
+}
+
+/** Library images, newest first (RLS: companies see approved ones only). */
+export async function loadLibrary(f: { category?: string; shape?: string; status?: string; shapes?: string[] } = {}): Promise<LibraryImage[]> {
+  let q = supabase.from('image_library').select('*').order('created_at', { ascending: false }).limit(500);
+  if (f.category) q = q.eq('category', f.category);
+  if (f.shape) q = q.eq('shape', f.shape);
+  if (f.shapes) q = q.in('shape', f.shapes);
+  if (f.status) q = q.eq('review_status', f.status);
+  const { data } = await q;
+  return (data ?? []) as LibraryImage[];
+}
+
+/** Per category and shape: approved and pending images against what the category's templates need (administrators). */
+export async function loadLibraryCoverage(): Promise<{ category: string; shape: LibraryShape; approved: number; pending: number;
+                                                        templates: number; most_in_a_template: number; slots: number }[]> {
+  const { data } = await supabase.rpc('admin_image_library_coverage');
+  return (data ?? []) as Awaited<ReturnType<typeof loadLibraryCoverage>>;
+}
+
+/** Check an image file by its bytes (PNG, JPEG or WebP; never its name or claimed type) and size (at most 8 MB). */
+async function checkedImage(file: File) {
+  if (file.size > MAX_LIBRARY_IMAGE) return { error: 'the image must be at most 8 MB' } as const;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const info = imageInfo(bytes);
+  if (!info) return { error: 'the file is not a PNG, JPEG or WebP image' } as const;
+  return { bytes, info, sha: await sha256Hex(bytes) } as const;
+}
+
+/**
+ * Add an image to the library (FlyttGo administrators): checked by its
+ * bytes, stored at <category>/<sha256>.<ext>, recorded as pending.
+ */
+export async function addLibraryImage(file: File, meta: {
+  category: string; shape: LibraryShape; tags: string[]; alt: string; origin: string; licence: string; licence_evidence: string;
+}): Promise<string | null> {
+  const c = await checkedImage(file);
+  if ('error' in c) return c.error ?? null;
+  const path = libraryPath(meta.category, c.sha, c.info.mime);
+  const { error: upErr } = await supabase.storage.from(LIBRARY_BUCKET).upload(path, c.bytes, { contentType: c.info.mime, upsert: false });
+  if (upErr && !/exists|duplicate/i.test(upErr.message)) return upErr.message;
+  return err((await supabase.rpc('admin_add_library_image', { p: {
+    path, sha256: c.sha, mime: c.info.mime, width: c.info.width, height: c.info.height, bytes: c.bytes.byteLength,
+    category: meta.category, shape: meta.shape, tags: meta.tags, alt: meta.alt, origin: meta.origin, licence: meta.licence,
+    licence_evidence: meta.licence_evidence, sources: [],
+  } })).error);
+}
+
+/** Correct what is recorded about a library image (a changed shape, origin or licence sends it back to review). */
+export async function updateLibraryImage(id: string, patch: Record<string, unknown>): Promise<string | null> {
+  return err((await supabase.rpc('admin_update_library_image', { p_id: id, p: patch })).error);
+}
+
+/** Approve, reject or retire a library image (a reason for the last two), or put it back to pending. */
+export async function reviewLibraryImage(id: string, status: LibraryStatus, reason?: string | null): Promise<string | null> {
+  return err((await supabase.rpc('admin_review_library_image', { p_id: id, p_status: status, p_reason: reason ?? null })).error);
+}
+
+/** A company's own image for one slot: its upload, checked by its bytes, in its own folder. */
+export async function setCompanyImageUpload(orgId: string, key: string, file: File, alt: string): Promise<string | null> {
+  const c = await checkedImage(file);
+  if ('error' in c) return c.error ?? null;
+  const path = `${orgId}/${key.replace(/[^A-Za-z0-9.-]+/g, '-')}-${c.sha.slice(0, 12)}.${EXTENSION[c.info.mime]}`;
+  const { error: upErr } = await supabase.storage.from(COMPANY_IMAGE_BUCKET).upload(path, c.bytes, { contentType: c.info.mime, upsert: false });
+  if (upErr && !/exists|duplicate/i.test(upErr.message)) return upErr.message;
+  return err((await supabase.rpc('set_organization_site_image', { p_org: orgId, p_key: key, p: {
+    path, mime: c.info.mime, sha256: c.sha, width: c.info.width, height: c.info.height, alt: alt.trim() || null,
+  } })).error);
+}
+
+/** A company's pick from the approved library of its template's category for one slot. */
+export async function setCompanyImageFromLibrary(orgId: string, key: string, libraryImageId: string): Promise<string | null> {
+  return err((await supabase.rpc('set_organization_site_image', { p_org: orgId, p_key: key, p: { library_image_id: libraryImageId } })).error);
+}
+
+/** Back to the default image for one slot. */
+export async function resetCompanyImage(orgId: string, key: string): Promise<string | null> {
+  return err((await supabase.rpc('reset_organization_site_image', { p_org: orgId, p_key: key })).error);
 }
 
 /* ── The public page ───────────────────────────────────────────────── */

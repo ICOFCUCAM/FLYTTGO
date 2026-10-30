@@ -7,7 +7,8 @@
  * published site is. Without `height` it fills the box it is put in.
  */
 import { useEffect, useRef, useState } from 'react';
-import { hostsOf, renderTemplatePage, type Brand } from '../../../supabase/functions/_shared/site-template';
+import { hostsOf, renderTemplatePage, type Brand, type RenderImages } from '../../../supabase/functions/_shared/site-template';
+import { imageUrls } from '../../../supabase/functions/_shared/image-library';
 import { loadTemplateHome, type SiteTemplateSummary } from '../../lib/whiteLabel';
 
 /** The width the page is drawn at before it is scaled down, and how much of it is drawn. */
@@ -22,8 +23,10 @@ const homeOf = (id: string) => {
 };
 
 
-export default function TemplateThumb({ template, brand, sellerNotice, height }: {
+export default function TemplateThumb({ template, brand, sellerNotice, height, images }: {
   template: SiteTemplateSummary; brand: Brand; sellerNotice: string; height?: number;
+  /** The resolved images (00023); none: the template's assets. */
+  images?: RenderImages | null;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -50,15 +53,17 @@ export default function TemplateThumb({ template, brand, sellerNotice, height }:
       if (!live) return;
       if (!home) { setFailed(true); return; }
       setDoc(renderTemplatePage(home.html, {
-        brand, assets: template.assets, pageUrl: () => '#', bookingUrl: '#', sellerNotice,
-        assetHosts: hostsOf(template.assets, brand.logoUrl),
+        brand, assets: template.assets, pageUrl: () => '#', bookingUrl: '#', sellerNotice, images,
+        assetHosts: hostsOf([...template.assets, ...imageUrls(images)], brand.logoUrl),
       }));
     });
     return () => { live = false; };
-  }, [visible, template.id, template.assets, brandKey, sellerNotice]);
+  }, [visible, template.id, template.assets, brandKey, sellerNotice, images]);
 
   const scale = width ? width / PAGE_WIDTH : 0;
-  const cover = template.assets.find(a => a.key === 'hero')?.url ?? template.assets.find(a => a.key !== 'thumbnail')?.url;
+  /* Without the page: its hero as resolved, else (before the library) its first asset. */
+  const cover = images ? (images.byKey.hero?.url ?? undefined)
+    : template.assets.find(a => a.key === 'hero')?.url ?? template.assets.find(a => a.key !== 'thumbnail')?.url;
 
   return (
     <div ref={box} className={`relative w-full overflow-hidden bg-gray-100 ${height ? '' : 'h-full'}`} style={height ? { height } : undefined}>

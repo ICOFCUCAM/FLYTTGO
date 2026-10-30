@@ -5,6 +5,8 @@
  * before FlyttGo approves it. Owners and admins make changes; an owner
  * accepts the data processing agreement and connects Stripe (Model B).
  * Add-on modules on the plan (00022) are listed here; FlyttGo enables them.
+ * Under Website, the saved template's pictures slot by slot (SiteImages,
+ * 00023): the company's own upload or a library photo, or the default.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../lib/store';
@@ -19,6 +21,7 @@ import { sellerSplit } from '../../../supabase/functions/_shared/white-label';
 import { AA_CONTRAST, contrastRatio, readableShade } from '../../../supabase/functions/_shared/site-template';
 import { INDUSTRIES, setIndustry } from '../../lib/services';
 import TemplateCatalogue from '../whiteLabel/TemplateCatalogue';
+import SiteImages from '../whiteLabel/SiteImages';
 
 const input = 'w-full border border-gray-200 rounded-xl px-3 py-2 text-sm';
 const btn = 'px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50';
@@ -205,9 +208,14 @@ export default function WhiteLabelPanel({ membership }: { membership: Membership
               brand={{ name: brand.display_name || org.name, tagline: brand.tagline || null, phone: brand.support_phone || null,
                        email: brand.support_email || null, city: city || null,
                        primaryColor: brand.primary_color || null, accentColor: brand.accent_color || null, logoUrl: logo }}
-              sellerNotice="Here your site names who sells what is booked (you or FlyttGo, by your plan)." />
+              sellerNotice="Here your site names who sells what is booked (you or FlyttGo, by your plan)." orgId={org.id} />
             <label className="block text-sm mt-3 max-w-xs">Town or region your site names<input className={input} value={city} disabled={!canEdit} onChange={e => setCity(e.target.value)} /></label>
             {canEdit && <button disabled={busy} onClick={() => run(() => setSite(org.id, template || null, city), 'Website saved.')} className={`${btn} bg-[#0B2E59] text-white mt-4`}>Save website</button>}
+            {/* The saved template's pictures, slot by slot (00023). */}
+            {wl?.template_id && templates.find(t => t.id === wl.template_id) && (
+              <SiteImages key={wl.template_id} orgId={org.id} template={templates.find(t => t.id === wl.template_id)!} canEdit={canEdit}
+                colour={brand.primary_color || null} />
+            )}
           </div>
 
           {/* Domain */}

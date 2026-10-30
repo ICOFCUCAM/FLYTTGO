@@ -104,6 +104,14 @@ INSERT INTO public.shop_order_lines (order_id, line_no, product_id, variant_id, 
 VALUES ('5c000000-0000-0000-0000-000000000001', 1, '5a000000-0000-0000-0000-000000000001', '5b000000-0000-0000-0000-000000000001',
         'Mug (L)', 1, 199, 25, 199, true);
 
+-- 00023: an approved library image and the company's own image for a slot.
+INSERT INTO storage.objects (bucket_id, name) VALUES ('site-image-library', 'transport/' || repeat('d', 64) || '.jpg');
+INSERT INTO public.image_library (storage_path, category, shape, width, height, mime, origin, licence, licence_evidence, alt_text, sha256, review_status)
+VALUES ('transport/' || repeat('d', 64) || '.jpg', 'transport', 'hero', 1920, 1080, 'image/jpeg', 'rollback', 'Rollback licence',
+        'https://rollback.example/licence', 'A van', repeat('d', 64), 'approved');
+INSERT INTO public.organization_site_images (organization_id, slot_key, library_image_id)
+SELECT o.id, 'hero', l.id FROM public.organizations o, public.image_library l WHERE o.slug = 'rollback-as';
+
 -- What exists before the rollback, for the comparison afterwards.
 CREATE TABLE public.zz_rollback_before AS
 SELECT 'bookings' t, count(*) n FROM public.bookings

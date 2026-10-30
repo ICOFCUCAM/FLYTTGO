@@ -9,10 +9,19 @@
  * phone, page by page); opened from the gallery, the preview steps through
  * the gallery's results and the gallery keeps its filters. Previews are
  * sandboxed without scripts, as the published site is.
+ *
+ * Images (docs/WHITE_LABEL.md → Image library): previews show what the site
+ * would show, resolved by the database for the company (its own images, the
+ * template's approved ones, the library of the template's category, else a
+ * plain colour block). In a category that has library photos the importer's
+ * thumbnail (drawn with the imported photos) is not shown: the current choice
+ * is drawn live, and gallery cards show the plain card.
  */
-import { useMemo, useState } from 'react';
-import { bestFor, type Brand } from '../../../supabase/functions/_shared/site-template';
-import { loadTemplate, thumbnailOf, type SiteTemplate, type SiteTemplateSummary } from '../../lib/whiteLabel';
+import { useEffect, useMemo, useState } from 'react';
+import { bestFor, templateCategory, type Brand, type RenderImages } from '../../../supabase/functions/_shared/site-template';
+import {
+  loadLibraryCategories, loadRenderImages, loadTemplate, thumbnailOf, type SiteTemplate, type SiteTemplateSummary,
+} from '../../lib/whiteLabel';
 import TemplateGallery from './TemplateGallery';
 import TemplatePreview from './TemplatePreview';
 import TemplateThumb from './TemplateThumb';
@@ -20,7 +29,7 @@ import { NO_FILTER, cardFacts, type GalleryFilter } from './gallery';
 
 const btn = 'px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50';
 
-export default function TemplateCatalogue({ templates, selected, onSelect, canEdit, brand, sellerNotice }: {
+export default function TemplateCatalogue({ templates, selected, onSelect, canEdit, brand, sellerNotice, orgId }: {
   templates: SiteTemplateSummary[];
   selected: string;
   onSelect: (id: string) => void;
@@ -28,18 +37,31 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
   /** The company's name, colours and contact details, as the preview shows them. */
   brand: Brand;
   sellerNotice: string;
+  /** The company, for its own images in previews. */
+  orgId?: string | null;
 }) {
   const offered = useMemo(() => templates.filter(t => t.status === 'approved'), [templates]);
   const [browsing, setBrowsing] = useState(false);
   const [filter, setFilter] = useState<GalleryFilter>(NO_FILTER);
-  const [preview, setPreview] = useState<{ t: SiteTemplate; path: string; results?: string[] } | null>(null);
+  const [preview, setPreview] = useState<{ t: SiteTemplate; path: string; results?: string[]; images: RenderImages | null } | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
+  /* Categories with approved library photos, and the current choice's images. */
+  const [libraryCats, setLibraryCats] = useState<string[]>([]);
+  const [currentImages, setCurrentImages] = useState<RenderImages | null>(null);
+  useEffect(() => { loadLibraryCategories().then(setLibraryCats).catch(() => setLibraryCats([])); }, []);
+  useEffect(() => {
+    setCurrentImages(null);
+    if (!selected) return;
+    let live = true;
+    loadRenderImages(selected, orgId).then(i => { if (live) setCurrentImages(i); }).catch(() => {});
+    return () => { live = false; };
+  }, [selected, orgId]);
 
   const open = async (id: string, results?: string[]) => {
     setLoading(id);
-    const t = await loadTemplate(id);
+    const [t, images] = await Promise.all([loadTemplate(id), loadRenderImages(id, orgId).catch(() => null)]);
     setLoading(null);
-    if (t) setPreview({ t, path: t.pages[0]?.path ?? '/', results });
+    if (t) setPreview({ t, path: t.pages[0]?.path ?? '/', results, images });
   };
   const choose = (id: string) => { onSelect(id); setPreview(null); setBrowsing(false); };
 
@@ -49,6 +71,7 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
 
   /* The company's current choice; a template no longer offered still shows, marked. */
   const current = selected ? templates.find(t => t.id === selected) ?? null : null;
+  const inLibrary = (t: { industry: string[] }) => libraryCats.includes(templateCategory(t.industry) ?? '');
   const at = preview?.results ? preview.results.indexOf(preview.t.id) : -1;
   const step = preview?.results && at >= 0 ? {
     at, of: preview.results.length, loading: loading !== null,
@@ -61,10 +84,10 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
         <div className="relative sm:w-64 shrink-0 aspect-[16/10] rounded-lg overflow-hidden border border-gray-100 bg-gray-100">
           {!current ? (
             <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-sm text-gray-600">Simple branded front page</div>
-          ) : thumbnailOf(current) ? (
+          ) : thumbnailOf(current) && !inLibrary(current) ? (
             <img src={thumbnailOf(current)!} alt="" loading="lazy" decoding="async" width={720} height={450} className="absolute inset-0 w-full h-full object-cover object-top" />
           ) : (
-            <TemplateThumb template={current} brand={brand} sellerNotice={sellerNotice} />
+            <TemplateThumb template={current} brand={brand} sellerNotice={sellerNotice} images={currentImages} />
           )}
         </div>
         <div className="min-w-0 flex-1 flex flex-col">
@@ -87,13 +110,13 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
       </button>
 
       {browsing && (
-        <TemplateGallery templates={offered} selected={selected} canEdit={canEdit} filter={filter} onFilter={setFilter}
+        <TemplateGallery templates={offered} selected={selected} canEdit={canEdit} filter={filter} onFilter={setFilter} libraryCategories={libraryCats}
           opening={loading} onPreview={(id, results) => open(id, results)} onChoose={choose} onClose={() => setBrowsing(false)} />
       )}
       {preview && (
         <TemplatePreview template={preview.t} path={preview.path} onPath={path => setPreview({ ...preview, path })}
           selected={selected} canEdit={canEdit} onChoose={() => choose(preview.t.id)} onClose={() => setPreview(null)}
-          brand={brand} sellerNotice={sellerNotice} step={step} />
+          brand={brand} sellerNotice={sellerNotice} step={step} images={preview.images} />
       )}
     </div>
   );

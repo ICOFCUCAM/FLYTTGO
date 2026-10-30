@@ -28,6 +28,9 @@ SELECT tests.ok(to_regclass('public.shop_orders') IS NULL AND to_regclass('publi
 SELECT tests.ok(to_regclass('public.organization_addons') IS NULL,
   'add-on modules are dropped (00022), with a company''s API add-on and a pilot price in place');
 
+SELECT tests.ok(to_regclass('public.image_library') IS NULL AND to_regclass('public.organization_site_images') IS NULL,
+  'the image library and companies'' own images are dropped (00023; export them first; the files stay in storage)');
+
 \echo '── left NOT VALID by the rollback (rows written while the migrations were in force):'
 SELECT c.relname || '.' || con.conname AS constraint_not_valid
   FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid JOIN pg_namespace n ON n.oid = c.relnamespace

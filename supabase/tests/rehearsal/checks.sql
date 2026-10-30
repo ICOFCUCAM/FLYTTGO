@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Release rehearsal, part 3: checks on the copy of production with the
--- representative data in place and 00016–00022 applied (run.sh). Each block
+-- representative data in place and 00016–00023 applied (run.sh). Each block
 -- rolls back, except the webhook deliveries, which stay for the rollback.
 -- ============================================================================
 \set ON_ERROR_STOP 1

@@ -17,8 +17,11 @@
  *             slot (template-images.ts): where each comes from, its
  *             licence, review, and replacing one. Previews are sandboxed,
  *             without scripts.
+ *   Image library  the shared photos every template slot draws from (00023,
+ *             ImageLibraryAdmin): upload, review, coverage per category.
  */
 import { useCallback, useEffect, useState } from 'react';
+import ImageLibraryAdmin from './ImageLibraryAdmin';
 import { formatNok } from '../../lib/invoicing';
 import { supabase } from '../../lib/supabase';
 import {
@@ -39,7 +42,7 @@ type Row = Awaited<ReturnType<typeof loadAllWhiteLabels>>[number];
 const btn = 'px-2.5 py-1 rounded text-xs font-medium disabled:opacity-50';
 
 export default function WhiteLabelAdminPanel() {
-  const [view, setView] = useState<'requests' | 'plans' | 'addons' | 'templates'>('requests');
+  const [view, setView] = useState<'requests' | 'plans' | 'addons' | 'templates' | 'library'>('requests');
   const [addons, setAddons] = useState<OrgAddon[]>([]);
   const [orgs, setOrgs] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
@@ -89,16 +92,19 @@ export default function WhiteLabelAdminPanel() {
       <p className="text-sm text-gray-500 mb-4">
         Companies' own booking pages. Model A: FlyttGo sells under the company's brand (the default). Model B: the company sells, paid into its own Stripe account.
       </p>
-      <div className="flex gap-2 mb-4">
-        {(['requests', 'plans', 'addons', 'templates'] as const).map(v => (
+      <div className="flex flex-wrap gap-2 mb-4">
+        {(['requests', 'plans', 'addons', 'templates', 'library'] as const).map(v => (
           <button key={v} onClick={() => setView(v)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium ${view === v ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>
             {v === 'requests' ? `Companies (${rows.length})` : v === 'plans' ? 'Plans and prices'
-              : v === 'addons' ? `Add-ons (${addons.filter(a => a.status === 'active').length})` : `Templates (${templates.length})`}
+              : v === 'addons' ? `Add-ons (${addons.filter(a => a.status === 'active').length})`
+              : v === 'templates' ? `Templates (${templates.length})` : 'Image library'}
           </button>
         ))}
       </div>
       {msg && <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{msg.text}</div>}
+
+      {view === 'library' && <ImageLibraryAdmin />}
 
       {view === 'requests' && (
         <div className="bg-white rounded-lg shadow overflow-x-auto">

@@ -11,7 +11,8 @@
 // Model B), the seller notice, which booking and whether a shop the page
 // offers, a short-lived link to the logo and, when the
 // company chose a website template, the requested page rendered with its
-// brand (_shared/site-template.ts: sanitised again here; the browser shows
+// brand and its images (_shared/site-template.ts: sanitised again here; the
+// images resolved by site_template_image_map(), 00023; the browser shows
 // it in a sandboxed iframe without scripts).
 //
 //   POST /functions/v1/white-label-site
@@ -28,6 +29,7 @@ import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { serviceClient } from '../_shared/auth.ts';
 import { pageFor, renderTemplatePage, type TemplateAsset, type TemplatePage } from '../_shared/site-template.ts';
 import { bookingFor, pageHasShop, sellerNotice } from '../_shared/white-label.ts';
+import { COMPANY_IMAGE_BUCKET, pathsToSign, renderImages, type ImageMap, type RenderImages } from '../_shared/image-library.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -79,6 +81,23 @@ serve(async (req: Request) => {
       pages = all.map(p => p.path);
       const p = pageFor(all, body.page ?? '/');
       const base = site.domain && host === site.domain ? '' : `/b/${site.slug}`;
+      /* The images (00023, docs/WHITE_LABEL.md → Image library): the
+       * company's own, the template's approved ones, the library's of the
+       * template's category or a neutral block, resolved by the database.
+       * The company's uploads are private: signed here for an hour, like the
+       * logo. If the map cannot be read (00023 not applied yet), the
+       * template's assets are used as before. */
+      let images: RenderImages | null = null;
+      const { data: map, error: mapError } = await db.rpc('site_template_image_map', { p_template: site.template_id, p_org: site.organization_id });
+      if (!mapError && map) {
+        const paths = pathsToSign(map as ImageMap);
+        const signed: Record<string, string> = {};
+        if (paths.length) {
+          const { data: urls } = await db.storage.from(COMPANY_IMAGE_BUCKET).createSignedUrls(paths, 3600);
+          for (const u of urls ?? []) if (u.path && u.signedUrl) signed[u.path] = u.signedUrl;
+        }
+        images = renderImages(map as ImageMap, Deno.env.get('SUPABASE_URL')!, signed);
+      }
       if (p) {
         page = {
           path: p.path,
@@ -91,6 +110,7 @@ serve(async (req: Request) => {
             bookingUrl: shop && booking === 'none' ? `${base}/shop` : `${base}/book`,
             sellerNotice: notice,
             assetHosts: [new URL(Deno.env.get('SUPABASE_URL')!).host],
+            images,
           }),
         };
       }

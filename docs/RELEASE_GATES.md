@@ -81,10 +81,11 @@ A gate is met only by the person named for it: a lawyer's item by a Norwegian la
 | Stripe refunds, retries and both webhooks (integration prerequisites above). | Developer | open |
 | Rollback: `00020_down.sql` stops while a company is on the plan Online shop; orders are exported to each company before any rollback. | Owner | noted |
 
-### Website template photos (00009, 00021)
+### Website template photos (00009, 00021, 00023)
 
 | Gate | Who | State |
 |---|---|---|
+| **Image library (00023):** migration 00023 after 00022 (rollback `00023_down.sql`, tested with data), then `white-label-site` deployed. Each library photo is approved in Admin → White label → Image library only with its licence and the evidence of it checked by a person (the importer adds harvested photos as pending; running it with `--upload` writes to FlyttGo's storage and database and needs the owner's approval). Companies' own uploads are checked by their bytes in the browser; the bucket limits type and size (the server does not read the bytes again). | Owner / FlyttGo | open |
 | Every photo in an offered template has a licence that allows FlyttGo and the companies to use it on their pages (source and licence recorded with the template), or is replaced. | Owner / Developer | open |
 | Each template is checked by FlyttGo before it is offered (no sample prices, reviews, figures or claims), as the template review already requires ([`WHITE_LABEL.md`](WHITE_LABEL.md) → Website templates). | FlyttGo | per template |
 

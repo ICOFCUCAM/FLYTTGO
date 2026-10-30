@@ -1,5 +1,5 @@
 -- ============================================================================
--- Release rehearsal, part 2: data only 00016–00022 allow, written after the
+-- Release rehearsal, part 2: data only 00016–00023 allow, written after the
 -- migrations, on top of part 1 (data_before.sql). Synthetic, committed.
 --
 --   D Bistro Nord  plan Restaurant: tables, reservations booked online and
@@ -16,6 +16,8 @@
 --   G Kunde        API add-on without a plan; a move booked through the API
 --   bank files     FlyttGo's series (G's open invoice, the rest of A's) and
 --                  B's own series, with matched, unmatched and repeated rows
+--   images         library photos (approved and pending, 00023); C on a
+--                  salon template with its own hero and a library pick
 -- ============================================================================
 \set ON_ERROR_STOP 1
 
@@ -278,4 +280,33 @@ BEGIN
   PERFORM set_config('request.jwt.claims', '', false);
 END $$;
 
-\echo 'rehearsal data after 00022: written'
+-- ── Image library (00023): a salon template, library photos, C's own images ──
+DO $$
+DECLARE v_lib uuid; v_sha text; n int;
+BEGIN
+  PERFORM set_config('request.jwt.claims', '', false);         -- the importer, as the server
+  PERFORM public.import_site_template(jsonb_build_object('id', 'rh-salon', 'name', 'Rehearsal Salon', 'industry', '["hair-salon"]'::jsonb,
+    'style', 'chic', 'source_id', 'rh-salon', 'assets', '[{"key": "hero", "url": "https://rh.example/site-template-assets/shared/containers.jpg"}]'::jsonb,
+    'pages', '[{"path": "/", "html": "<img src=\"{{ASSET:hero}}\" alt=\"Hero\"><img src=\"{{ASSET:services.1}}\" alt=\"One\">"}]'::jsonb));
+  UPDATE public.site_templates SET status = 'approved' WHERE id = 'rh-salon';
+  FOR n IN 1..3 LOOP
+    v_sha := encode(sha256(convert_to('rehearsal library ' || n, 'UTF8')), 'hex');
+    INSERT INTO storage.objects (bucket_id, name) VALUES ('site-image-library', 'appointments/' || v_sha || '.jpg');
+    PERFORM tests.rh_admin();
+    v_lib := (public.admin_add_library_image(jsonb_build_object('path', 'appointments/' || v_sha || '.jpg', 'sha256', v_sha,
+      'mime', 'image/jpeg', 'width', 1920, 'height', 1080, 'category', 'appointments', 'origin', 'rehearsal',
+      'licence', 'Rehearsal licence', 'licence_evidence', 'https://rh.example/licence/' || n, 'alt', 'Salon photo ' || n))).id;
+    IF n < 3 THEN PERFORM public.admin_review_library_image(v_lib, 'approved', NULL); END IF;
+  END LOOP;
+  PERFORM tests.rh_as(tests.rh_id('owner_C'));
+  PERFORM public.set_white_label_site(tests.rh_id('org_C'), 'rh-salon', 'Oslo');
+  INSERT INTO storage.objects (bucket_id, name) VALUES ('organization-site-images', tests.rh_id('org_C') || '/hero-aaaaaaaaaaaa.jpg');
+  PERFORM public.set_organization_site_image(tests.rh_id('org_C'), 'hero', jsonb_build_object('path', tests.rh_id('org_C') || '/hero-aaaaaaaaaaaa.jpg',
+    'mime', 'image/jpeg', 'sha256', repeat('a', 64), 'width', 1600, 'height', 900, 'alt', 'Salong Lys'));
+  -- And picks one of the approved library photos (the third is still pending).
+  PERFORM public.set_organization_site_image(tests.rh_id('org_C'), 'services.1', jsonb_build_object('library_image_id',
+    (SELECT id FROM public.image_library WHERE review_status = 'approved' ORDER BY alt_text LIMIT 1)));
+  PERFORM set_config('request.jwt.claims', '', false);
+END $$;
+
+\echo 'rehearsal data after 00023: written'
