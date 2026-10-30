@@ -9,18 +9,30 @@
  * phone, page by page); opened from the gallery, the preview steps through
  * the gallery's results and the gallery keeps its filters. Previews are
  * sandboxed without scripts, as the published site is.
+ *
+ * Images (docs/WHITE_LABEL.md → Image library): previews show what the site
+ * would show, resolved by the database for the company (its own images, the
+ * template's approved ones, the library of the template's category, else a
+ * plain colour block). A thumbnail drawn with other photos than the
+ * template shows now is stale (00024; before 00024, any thumbnail in a
+ * category that has library photos): it is not shown until it is drawn again
+ * (scripts/redraw-thumbnails.ts). The current choice is then drawn live in
+ * the company's name, colours and images, and gallery cards live as the
+ * template's own demo with the library's photos (gallery.ts, cardPicture()).
  */
-import { useMemo, useState } from 'react';
-import { bestFor, type Brand } from '../../../supabase/functions/_shared/site-template';
-import { loadTemplate, thumbnailOf, type SiteTemplate, type SiteTemplateSummary } from '../../lib/whiteLabel';
+import { useEffect, useMemo, useState } from 'react';
+import { bestFor, type Brand, type RenderImages } from '../../../supabase/functions/_shared/site-template';
+import {
+  loadLibraryCategories, loadRenderImages, loadStaleThumbnails, loadTemplate, thumbnailOf, type SiteTemplate, type SiteTemplateSummary,
+} from '../../lib/whiteLabel';
 import TemplateGallery from './TemplateGallery';
 import TemplatePreview from './TemplatePreview';
 import TemplateThumb from './TemplateThumb';
-import { NO_FILTER, cardFacts, type GalleryFilter } from './gallery';
+import { NO_FILTER, cardFacts, cardPicture, type GalleryFilter } from './gallery';
 
 const btn = 'px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50';
 
-export default function TemplateCatalogue({ templates, selected, onSelect, canEdit, brand, sellerNotice }: {
+export default function TemplateCatalogue({ templates, selected, onSelect, canEdit, brand, sellerNotice, orgId }: {
   templates: SiteTemplateSummary[];
   selected: string;
   onSelect: (id: string) => void;
@@ -28,18 +40,42 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
   /** The company's name, colours and contact details, as the preview shows them. */
   brand: Brand;
   sellerNotice: string;
+  /** The company, for its own images in previews. */
+  orgId?: string | null;
 }) {
   const offered = useMemo(() => templates.filter(t => t.status === 'approved'), [templates]);
   const [browsing, setBrowsing] = useState(false);
   const [filter, setFilter] = useState<GalleryFilter>(NO_FILTER);
-  const [preview, setPreview] = useState<{ t: SiteTemplate; path: string; results?: string[] } | null>(null);
+  const [preview, setPreview] = useState<{ t: SiteTemplate; path: string; results?: string[]; images: RenderImages | null } | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
+  /* Categories with approved library photos, and the current choice's images. */
+  const [libraryCats, setLibraryCats] = useState<string[]>([]);
+  const [currentImages, setCurrentImages] = useState<RenderImages | null>(null);
+  useEffect(() => { loadLibraryCategories().then(setLibraryCats).catch(() => setLibraryCats([])); }, []);
+  /* The templates whose thumbnail is stale (00024); null: not known (the categories above decide). */
+  const [staleThumbs, setStaleThumbs] = useState<string[] | null>(null);
+  useEffect(() => { loadStaleThumbnails().then(setStaleThumbs).catch(() => setStaleThumbs(null)); }, []);
+  /* A stale card's images, as the template's own demo (no company): each loaded once. */
+  const cardImages = useMemo(() => {
+    const seen = new Map<string, Promise<RenderImages | null>>();
+    return (id: string) => {
+      if (!seen.has(id)) seen.set(id, loadRenderImages(id).catch(() => null));
+      return seen.get(id)!;
+    };
+  }, []);
+  useEffect(() => {
+    setCurrentImages(null);
+    if (!selected) return;
+    let live = true;
+    loadRenderImages(selected, orgId).then(i => { if (live) setCurrentImages(i); }).catch(() => {});
+    return () => { live = false; };
+  }, [selected, orgId]);
 
   const open = async (id: string, results?: string[]) => {
     setLoading(id);
-    const t = await loadTemplate(id);
+    const [t, images] = await Promise.all([loadTemplate(id), loadRenderImages(id, orgId).catch(() => null)]);
     setLoading(null);
-    if (t) setPreview({ t, path: t.pages[0]?.path ?? '/', results });
+    if (t) setPreview({ t, path: t.pages[0]?.path ?? '/', results, images });
   };
   const choose = (id: string) => { onSelect(id); setPreview(null); setBrowsing(false); };
 
@@ -61,10 +97,10 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
         <div className="relative sm:w-64 shrink-0 aspect-[16/10] rounded-lg overflow-hidden border border-gray-100 bg-gray-100">
           {!current ? (
             <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-sm text-gray-600">Simple branded front page</div>
-          ) : thumbnailOf(current) ? (
+          ) : thumbnailOf(current) && cardPicture(current, staleThumbs, libraryCats) === 'thumbnail' ? (
             <img src={thumbnailOf(current)!} alt="" loading="lazy" decoding="async" width={720} height={450} className="absolute inset-0 w-full h-full object-cover object-top" />
           ) : (
-            <TemplateThumb template={current} brand={brand} sellerNotice={sellerNotice} />
+            <TemplateThumb template={current} brand={brand} sellerNotice={sellerNotice} images={currentImages} />
           )}
         </div>
         <div className="min-w-0 flex-1 flex flex-col">
@@ -87,13 +123,14 @@ export default function TemplateCatalogue({ templates, selected, onSelect, canEd
       </button>
 
       {browsing && (
-        <TemplateGallery templates={offered} selected={selected} canEdit={canEdit} filter={filter} onFilter={setFilter}
+        <TemplateGallery templates={offered} selected={selected} canEdit={canEdit} filter={filter} onFilter={setFilter} libraryCategories={libraryCats}
+          staleThumbnails={staleThumbs} loadCardImages={cardImages}
           opening={loading} onPreview={(id, results) => open(id, results)} onChoose={choose} onClose={() => setBrowsing(false)} />
       )}
       {preview && (
         <TemplatePreview template={preview.t} path={preview.path} onPath={path => setPreview({ ...preview, path })}
           selected={selected} canEdit={canEdit} onChoose={() => choose(preview.t.id)} onClose={() => setPreview(null)}
-          brand={brand} sellerNotice={sellerNotice} step={step} />
+          brand={brand} sellerNotice={sellerNotice} step={step} images={preview.images} />
       )}
     </div>
   );

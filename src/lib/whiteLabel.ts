@@ -9,9 +9,14 @@
  * Every change goes through a database function or an Edge Function that
  * checks who may make it; this file only calls them.
  */
-import { supabase } from './supabase';
+import { SUPABASE_URL, supabase } from './supabase';
+import {
+  COMPANY_IMAGE_BUCKET, LIBRARY_BUCKET, MAX_LIBRARY_IMAGE, libraryPath, pathsToSign, renderImages,
+  type ImageMap, type LibraryShape, type LibraryStatus, type RenderImages,
+} from '../../supabase/functions/_shared/image-library';
 import { callJson, logoUrl } from './invoicing';
 import { isFlyttgoHost } from './hosts';
+import type { PageBooking } from '../../supabase/functions/_shared/white-label';
 import type { CheckResult, TemplateChecks } from '../../supabase/functions/_shared/template-quality';
 import {
   EXTENSION, MAX_TEMPLATE_IMAGE, imageInfo, sha256Hex, type ImageSource, type TemplateImage,
@@ -24,8 +29,44 @@ export interface WhiteLabelPlan {
   code: string; name: string; seller_model: SellerModel; summary: string; for_whom: string | null;
   setup_fee: number; monthly_fee: number; platform_fee_pct: number; platform_fee_min: number; own_domain: boolean;
   features: string[]; flyttgo_does: string[]; company_does: string[]; requirements: string[];
-  is_default: boolean; sort: number; active: boolean; price_status: 'proposed' | 'confirmed';
+  is_default: boolean; sort: number; active: boolean; price_status: PriceStatus;
   prices_confirmed_at: string | null;
+  /** Shown beside a pilot price (00022). */
+  price_note?: string | null;
+  /** What the set-up fee includes (00022). */
+  setup_fee_includes?: string[];
+}
+
+/** A plan's prices: a proposal, accepted provisionally for the pilot, or
+ * confirmed (00009, pilot since 00022). */
+export type PriceStatus = 'proposed' | 'pilot' | 'confirmed';
+
+export const PRICE_STATUS_LABELS: Record<PriceStatus, string> = {
+  proposed: 'Proposed price', pilot: 'Pilot pricing', confirmed: 'Confirmed price',
+};
+
+/** An add-on module on a company's primary plan (00022), enabled by FlyttGo. */
+export interface OrgAddon {
+  id: string; organization_id: string; module: AddonModule; status: 'active' | 'ended';
+  pricing: 'quote' | 'pilot'; setup_fee: number | null; monthly_fee: number | null;
+  quote_reference: string | null; price_note: string | null;
+  enabled_at: string; ended_at: string | null; end_reason: string | null;
+}
+export type AddonModule = 'jobs' | 'appointments' | 'restaurant_reservations' | 'hotel_reservations' | 'shop' | 'sales_invoicing' | 'api';
+
+export const ADDON_LABELS: Record<AddonModule, string> = {
+  jobs: 'Jobs', appointments: 'Appointments', restaurant_reservations: 'Restaurant: table booking',
+  hotel_reservations: 'Hotel: room booking', shop: 'Online shop', sales_invoicing: 'Invoices in your own name',
+  api: 'API access',
+};
+
+/** How an add-on is priced, in words: the written quote or the approved pilot price, never a derived one. */
+export function addonPrice(a: Pick<OrgAddon, 'pricing' | 'setup_fee' | 'monthly_fee' | 'quote_reference' | 'price_note'>,
+                           nok: (n: number) => string): string {
+  if (a.pricing === 'quote') return `By written quote ${a.quote_reference ?? ''}`.trim();
+  const parts = [a.monthly_fee != null ? `${nok(a.monthly_fee)} / month` : null,
+                 a.setup_fee != null ? `${nok(a.setup_fee)} set-up` : null].filter(Boolean);
+  return `Pilot price${parts.length ? `: ${parts.join(', ')}` : ''} (excl. MVA)`;
 }
 
 export interface OrgWhiteLabel {
@@ -65,12 +106,32 @@ export interface PublicSite {
   support: { email: string | null; phone: string | null };
   terms_url: string | null; privacy_url: string | null;
   seller_notice: string;
-  /** What the page books: FlyttGo's moves, or the company's Jobs or Appointments. */
-  booking: 'moves' | 'jobs' | 'appointments' | 'none';
+  /** What the page books: FlyttGo's moves, or the company's Jobs,
+   * Appointments, Restaurant or Hotel module (bookingFor()). */
+  booking: PageBooking;
+  /** The page has a shop (module 'shop', 00020): /b/<slug>/shop. */
+  shop?: boolean;
   modules: string[];
   pages: string[];
   page: { path: string; html: string } | null;
+  /** Websites that may show the booking widget (00018). */
+  widget_origins?: string[];
 }
+
+/** The page's booking button: what a visitor books there. */
+export function bookingLabel(booking: PageBooking | undefined, fallback = 'Book a move'): string {
+  switch (booking) {
+    case 'jobs':         return 'Ask for a job';
+    case 'appointments': return 'Book a time';
+    case 'restaurant':   return 'Book a table';
+    case 'hotel':        return 'Book a room';
+    default:             return fallback;
+  }
+}
+
+/** A company outside moving books its own services on its page, not moves. */
+export const ownBooking = (booking: PageBooking | undefined) =>
+  booking === 'jobs' || booking === 'appointments' || booking === 'restaurant' || booking === 'hotel';
 
 export const DPA_VERSION = '2026-10-draft';
 
@@ -181,6 +242,34 @@ export async function loadTemplates(): Promise<SiteTemplate[]> {
   return (data ?? []) as SiteTemplate[];
 }
 
+/* ── Add-on modules (00022) ────────────────────────────────────────── */
+/** A company's add-ons, active and ended (RLS: its members; FlyttGo's administrators all). */
+export async function loadAddons(orgId?: string): Promise<OrgAddon[]> {
+  let q = supabase.from('organization_addons').select('*').order('enabled_at', { ascending: false });
+  if (orgId) q = q.eq('organization_id', orgId);
+  const { data } = await q;
+  return (data ?? []) as OrgAddon[];
+}
+
+/** What the company can use now: its plan's modules and its active add-ons (org_modules). */
+export async function loadModules(orgId: string): Promise<string[]> {
+  const { data } = await supabase.rpc('org_modules', { p_org: orgId });
+  return (data ?? []) as string[];
+}
+
+export async function enableAddon(orgId: string, module: AddonModule, a: {
+  pricing: 'quote' | 'pilot'; setup_fee: number | null; monthly_fee: number | null; quote_reference: string | null; price_note: string | null;
+}): Promise<string | null> {
+  return err((await supabase.rpc('admin_enable_addon', {
+    p_org: orgId, p_module: module, p_pricing: a.pricing, p_setup_fee: a.setup_fee, p_monthly_fee: a.monthly_fee,
+    p_quote_reference: a.quote_reference, p_price_note: a.price_note,
+  })).error);
+}
+
+export async function endAddon(orgId: string, module: AddonModule, reason: string): Promise<string | null> {
+  return err((await supabase.rpc('admin_end_addon', { p_org: orgId, p_module: module, p_reason: reason })).error);
+}
+
 /* ── FlyttGo administrators ────────────────────────────────────────── */
 export async function loadAllWhiteLabels() {
   const { data } = await supabase.from('organization_white_label')
@@ -205,6 +294,11 @@ export async function updatePlan(code: string, p: {
     p_platform_fee_pct: p.platform_fee_pct ?? null, p_platform_fee_min: p.platform_fee_min ?? null,
     p_active: p.active ?? null, p_confirm: p.confirm,
   })).error);
+}
+
+/** Accept a plan's current prices provisionally for the pilot, with the note shown beside them. */
+export async function setPilotPrice(code: string, note: string): Promise<string | null> {
+  return err((await supabase.rpc('admin_set_white_label_pilot_price', { p_code: code, p_note: note })).error);
 }
 
 export async function updateTemplatePage(id: string, path: string, html: string): Promise<string | null> {
@@ -267,25 +361,172 @@ export async function reviewTemplateImage(templateId: string, key: string, statu
   })).error);
 }
 
+/* ── The image library (00023) ─────────────────────────────────────── */
+
+/** One library image (approved ones for companies; every one for FlyttGo's administrators). */
+export interface LibraryImage {
+  id: string; storage_path: string; category: string; shape: LibraryShape; width: number; height: number; mime: string;
+  bytes: number | null; focal_x: number | null; focal_y: number | null; tags: string[]; alt_text: string | null; origin: string;
+  licence: string | null; licence_evidence: string | null; sources: unknown[]; sha256: string; review_status: LibraryStatus;
+  reviewed_by: string | null; reviewed_at: string | null; review_reason: string | null;
+  history: { at: string; by: string | null; action: string; from?: string; to?: string; reason?: string | null }[];
+  created_at: string;
+}
+
+/** The public address of a library image. */
+export const libraryImageUrl = (path: string) => supabase.storage.from(LIBRARY_BUCKET).getPublicUrl(path).data.publicUrl;
+
+/** What each image slot of a template shows (for a company, with its own images), resolved by the database. */
+export async function loadImageMap(templateId: string, orgId?: string | null): Promise<ImageMap | null> {
+  const { data, error } = await supabase.rpc('site_template_image_map', { p_template: templateId, p_org: orgId ?? null });
+  return error ? null : (data as ImageMap);
+}
+
+/**
+ * The resolved images as the preview renders them: library images by their
+ * public address, the company's own (private) by a signed one. Null when the
+ * map cannot be read: the preview then shows the template's assets as before.
+ */
+export async function loadRenderImages(templateId: string, orgId?: string | null): Promise<RenderImages | null> {
+  const map = await loadImageMap(templateId, orgId);
+  return map ? renderableImages(map) : null;
+}
+
+/** A resolved map with addresses: public ones for library images, signed ones (an hour) for the company's own uploads. */
+export async function renderableImages(map: ImageMap): Promise<RenderImages> {
+  const paths = pathsToSign(map);
+  const signed: Record<string, string> = {};
+  if (paths.length) {
+    const { data } = await supabase.storage.from(COMPANY_IMAGE_BUCKET).createSignedUrls(paths, 3600);
+    for (const u of data ?? []) if (u.path && u.signedUrl) signed[u.path] = u.signedUrl;
+  }
+  return renderImages(map, SUPABASE_URL, signed);
+}
+
+/** The categories that have approved library images (their templates show the library's photos). */
+export async function loadLibraryCategories(): Promise<string[]> {
+  const { data } = await supabase.rpc('image_library_categories');
+  return (data ?? []) as string[];
+}
+
+/**
+ * The offered templates whose thumbnail is stale (drawn with other photos
+ * than they show now; 00024), by id. Null when it cannot be read (00024 not
+ * applied): the gallery then goes by the categories with library photos.
+ */
+export async function loadStaleThumbnails(): Promise<string[] | null> {
+  const { data, error } = await supabase.rpc('stale_site_template_thumbnails');
+  return error ? null : ((data ?? []) as string[]);
+}
+
+/** Thumbnails per category (FlyttGo's administrators, 00024): how many are fresh, stale or missing. Null when it cannot be read. */
+export async function loadThumbnailCounts(): Promise<{ category: string; templates: number; fresh: number; stale: number; missing: number }[] | null> {
+  const { data, error } = await supabase.rpc('admin_thumbnail_stale_counts');
+  return error ? null : (data ?? []) as { category: string; templates: number; fresh: number; stale: number; missing: number }[];
+}
+
+/** Library images, newest first (RLS: companies see approved ones only). */
+export async function loadLibrary(f: { category?: string; shape?: string; status?: string; shapes?: string[] } = {}): Promise<LibraryImage[]> {
+  let q = supabase.from('image_library').select('*').order('created_at', { ascending: false }).limit(500);
+  if (f.category) q = q.eq('category', f.category);
+  if (f.shape) q = q.eq('shape', f.shape);
+  if (f.shapes) q = q.in('shape', f.shapes);
+  if (f.status) q = q.eq('review_status', f.status);
+  const { data } = await q;
+  return (data ?? []) as LibraryImage[];
+}
+
+/** Per category and shape: approved and pending images against what the category's templates need (administrators). */
+export async function loadLibraryCoverage(): Promise<{ category: string; shape: LibraryShape; approved: number; pending: number;
+                                                        templates: number; most_in_a_template: number; slots: number }[]> {
+  const { data } = await supabase.rpc('admin_image_library_coverage');
+  return (data ?? []) as Awaited<ReturnType<typeof loadLibraryCoverage>>;
+}
+
+/** Check an image file by its bytes (PNG, JPEG or WebP; never its name or claimed type) and size (at most 8 MB). */
+async function checkedImage(file: File) {
+  if (file.size > MAX_LIBRARY_IMAGE) return { error: 'the image must be at most 8 MB' } as const;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const info = imageInfo(bytes);
+  if (!info) return { error: 'the file is not a PNG, JPEG or WebP image' } as const;
+  return { bytes, info, sha: await sha256Hex(bytes) } as const;
+}
+
+/**
+ * Add an image to the library (FlyttGo administrators): checked by its
+ * bytes, stored at <category>/<sha256>.<ext>, recorded as pending.
+ */
+export async function addLibraryImage(file: File, meta: {
+  category: string; shape: LibraryShape; tags: string[]; alt: string; origin: string; licence: string; licence_evidence: string;
+}): Promise<string | null> {
+  const c = await checkedImage(file);
+  if ('error' in c) return c.error ?? null;
+  const path = libraryPath(meta.category, c.sha, c.info.mime);
+  const { error: upErr } = await supabase.storage.from(LIBRARY_BUCKET).upload(path, c.bytes, { contentType: c.info.mime, upsert: false });
+  if (upErr && !/exists|duplicate/i.test(upErr.message)) return upErr.message;
+  return err((await supabase.rpc('admin_add_library_image', { p: {
+    path, sha256: c.sha, mime: c.info.mime, width: c.info.width, height: c.info.height, bytes: c.bytes.byteLength,
+    category: meta.category, shape: meta.shape, tags: meta.tags, alt: meta.alt, origin: meta.origin, licence: meta.licence,
+    licence_evidence: meta.licence_evidence, sources: [],
+  } })).error);
+}
+
+/** Correct what is recorded about a library image (a changed shape, origin or licence sends it back to review). */
+export async function updateLibraryImage(id: string, patch: Record<string, unknown>): Promise<string | null> {
+  return err((await supabase.rpc('admin_update_library_image', { p_id: id, p: patch })).error);
+}
+
+/** Approve, reject or retire a library image (a reason for the last two), or put it back to pending. */
+export async function reviewLibraryImage(id: string, status: LibraryStatus, reason?: string | null): Promise<string | null> {
+  return err((await supabase.rpc('admin_review_library_image', { p_id: id, p_status: status, p_reason: reason ?? null })).error);
+}
+
+/** A company's own image for one slot: its upload, checked by its bytes, in its own folder. */
+export async function setCompanyImageUpload(orgId: string, key: string, file: File, alt: string): Promise<string | null> {
+  const c = await checkedImage(file);
+  if ('error' in c) return c.error ?? null;
+  const path = `${orgId}/${key.replace(/[^A-Za-z0-9.-]+/g, '-')}-${c.sha.slice(0, 12)}.${EXTENSION[c.info.mime]}`;
+  const { error: upErr } = await supabase.storage.from(COMPANY_IMAGE_BUCKET).upload(path, c.bytes, { contentType: c.info.mime, upsert: false });
+  if (upErr && !/exists|duplicate/i.test(upErr.message)) return upErr.message;
+  return err((await supabase.rpc('set_organization_site_image', { p_org: orgId, p_key: key, p: {
+    path, mime: c.info.mime, sha256: c.sha, width: c.info.width, height: c.info.height, alt: alt.trim() || null,
+  } })).error);
+}
+
+/** A company's pick from the approved library of its template's category for one slot. */
+export async function setCompanyImageFromLibrary(orgId: string, key: string, libraryImageId: string): Promise<string | null> {
+  return err((await supabase.rpc('set_organization_site_image', { p_org: orgId, p_key: key, p: { library_image_id: libraryImageId } })).error);
+}
+
+/** Back to the default image for one slot. */
+export async function resetCompanyImage(orgId: string, key: string): Promise<string | null> {
+  return err((await supabase.rpc('reset_organization_site_image', { p_org: orgId, p_key: key })).error);
+}
+
 /* ── The public page ───────────────────────────────────────────────── */
 const BRAND_KEY = 'flyttgo.brand';
+/* Inside a frame (the booking widget, or its preview in the dashboard, which
+ * shares the tab's session storage) the page is remembered apart, so the
+ * dashboard around a preview never turns into the company's page. */
+const brandKey = () => (typeof window !== 'undefined' && window.self !== window.top ? `${BRAND_KEY}.framed` : BRAND_KEY);
 
-/** Which company's page this visit is on: /b/<slug>, a company's own
- *  domain or subdomain, or the page the visitor came from in this tab. */
+/** Which company's page this visit is on: /b/<slug> (or /embed/<slug>, the
+ *  booking widget), a company's own domain or subdomain, or the page the
+ *  visitor came from in this tab. */
 export function brandTarget(): { slug?: string; host?: string } | null {
   if (typeof window === 'undefined') return null;
   const { pathname, hostname } = window.location;
-  const m = /^\/b\/([a-z0-9-]{3,63})(?:\/|$)/.exec(pathname);
+  const m = /^\/(?:b|embed)\/([a-z0-9-]{3,63})(?:\/|$)/.exec(pathname);
   const store = (v: string | null) => {
     try {
-      if (v) sessionStorage.setItem(BRAND_KEY, v); else sessionStorage.removeItem(BRAND_KEY);
+      if (v) sessionStorage.setItem(brandKey(), v); else sessionStorage.removeItem(brandKey());
     } catch { /* private mode */ }
   };
   if (m) { store(m[1]); return { slug: m[1] }; }
   if (!isFlyttgoHost(hostname)) return { host: hostname };
   if (pathname === '/') { store(null); return null; }             // back on FlyttGo's own front page
   try {
-    const kept = sessionStorage.getItem(BRAND_KEY);
+    const kept = sessionStorage.getItem(brandKey());
     return kept ? { slug: kept } : null;
   } catch { return null; }
 }

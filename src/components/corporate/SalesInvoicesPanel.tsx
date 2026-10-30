@@ -2,8 +2,9 @@
  * Corporate dashboard → Invoices to customers (00011): the company's own
  * invoices, in its name, its number series and bank account. Settings
  * (the seller on the invoice), new invoices with lines, and per invoice:
- * issue, PDF/EHF, email, payment, reminder, credit note. Jobs and
- * appointments are invoiced from their own tabs. Owners, admins and
+ * issue, PDF/EHF, email, payment, reminder, credit note; payments from the
+ * company's bank file matched by KID (00016). Jobs and appointments are
+ * invoiced from their own tabs. Owners, admins and
  * finance; the database checks every step.
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -13,6 +14,7 @@ import {
   createSalesInvoice, creditInvoice, deleteDraft, issueInvoice, loadInvoiceSettings, loadSalesInvoices, recordPayment,
   saveInvoiceSettings, sendInvoice, sendReminder, type InvoiceSettings, type SalesInvoice,
 } from '../../lib/services';
+import BankFileImport from '../invoicing/BankFileImport';
 
 const input = 'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm';
 const btn = 'px-2.5 py-1 rounded text-xs font-medium disabled:opacity-50';
@@ -24,6 +26,7 @@ export default function SalesInvoicesPanel({ membership }: { membership: Members
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [settings, setSettings] = useState<Partial<InvoiceSettings>>({});
   const [showSettings, setShowSettings] = useState(false);
+  const [showBank, setShowBank] = useState(false);
   const [draft, setDraft] = useState<{ name: string; email: string; address: string; postcode_city: string; org_number: string; reference: string; lines: Line[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -58,8 +61,16 @@ export default function SalesInvoicesPanel({ membership }: { membership: Members
           <button onClick={() => setDraft({ name: '', email: '', address: '', postcode_city: '', org_number: '', reference: '', lines: [{ description: '', quantity: 1, unit_price: 0, vat_rate: 25 }] })}
             className="px-4 py-2 rounded-xl bg-[#0B2E59] text-white text-sm font-semibold">New invoice</button>
           <button onClick={() => setShowSettings(!showSettings)} className="px-4 py-2 rounded-xl bg-gray-100 text-sm">Invoice settings</button>
+          <button onClick={() => setShowBank(!showBank)} className="px-4 py-2 rounded-xl bg-gray-100 text-sm">Bank file</button>
         </div>
       </div>
+
+      {showBank && (
+        <div className="bg-white rounded-2xl border p-5">
+          <h3 className="font-bold mb-1">Payments from your bank file</h3>
+          <BankFileImport orgId={org.id} onChanged={reload} />
+        </div>
+      )}
 
       {showSettings && (
         <div className="bg-white rounded-2xl border p-5">
@@ -132,7 +143,8 @@ export default function SalesInvoicesPanel({ membership }: { membership: Members
             {invoices.map(i => (
               <tr key={i.id} className="border-t align-top">
                 <td className="p-3">{i.number ?? '—'}{i.kind === 'credit_note' ? ' (credit)' : ''}</td>
-                <td className="p-3">{i.buyer?.name}<div className="text-xs text-gray-400">{i.source_type === 'job' ? 'Job' : i.source_type === 'appointment' ? 'Appointment' : ''} {i.reference ?? ''}</div></td>
+                <td className="p-3">{i.buyer?.name}<div className="text-xs text-gray-400">{i.source_type === 'job' ? 'Job' : i.source_type === 'appointment' ? 'Appointment'
+                  : i.source_type === 'restaurant_reservation' ? 'Table' : i.source_type === 'hotel_stay' ? 'Stay' : ''} {i.reference ?? ''}</div></td>
                 <td className="p-3">{i.issue_date ?? '—'}</td>
                 <td className={`p-3 ${isOverdue(i) ? 'text-red-700 font-medium' : ''}`}>{i.due_date ?? '—'}</td>
                 <td className="p-3">{formatNok(i.total)}</td>

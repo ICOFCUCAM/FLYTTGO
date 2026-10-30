@@ -44,7 +44,7 @@ export default function InvoiceBillingPage() {
           <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:shadow-md transition">
             <div className="text-3xl mb-3">🔗</div>
             <h3 className="font-bold text-gray-900 mb-2">Accounting Integration</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">Direct integration with Tripletex, PowerOffice, Xledger, and other Norwegian systems.</p>
+            <p className="text-gray-500 text-sm leading-relaxed">Invoices carry MVA, organisation numbers and KID, so they can be entered in your accounting system.</p>
           </div>
           <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:shadow-md transition">
             <div className="text-3xl mb-3">📊</div>
@@ -77,7 +77,7 @@ export default function InvoiceBillingPage() {
             <div className="text-center">
               <div className="w-10 h-10 bg-[#0B2E59] text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-3">2</div>
               <h3 className="font-bold text-gray-900 text-sm mb-1">Month End</h3>
-              <p className="text-gray-500 text-xs">Consolidated invoice generated on the 1st of each month covering all activity.</p>
+              <p className="text-gray-500 text-xs">Invoiced per booking or once a month, as your company chooses, on its payment terms.</p>
             </div>
             <div className="text-center">
               <div className="w-10 h-10 bg-[#0B2E59] text-white rounded-full flex items-center justify-center text-lg font-bold mx-auto mb-3">3</div>
@@ -96,7 +96,7 @@ export default function InvoiceBillingPage() {
       {/* USE CASES */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <h2 className="text-2xl font-extrabold text-[#0B2E59] mb-3">Industries & Use Cases</h2>
-        <p className="text-gray-500 mb-8">Trusted by operations teams across Norway.</p>
+        <p className="text-gray-500 mb-8">Examples of what companies can use FlyttGo for.</p>
         <div className="flex flex-wrap justify-center gap-3">
           <span className="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">Corporate procurement</span>
           <span className="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">Multi-branch retailers</span>
@@ -111,7 +111,7 @@ export default function InvoiceBillingPage() {
       <section className="bg-gradient-to-r from-[#0B2E59] to-[#1a4a8a] py-16">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-extrabold text-white mb-4">Ready to Scale Your Logistics?</h2>
-          <p className="text-white/70 mb-8">Join 500+ companies using FlyttGo Corporate across Norway.</p>
+          <p className="text-white/70 mb-8">Create a company account for free and book your first job when you need it.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button onClick={() => { setShowAuthModal(true); setAuthMode('signup'); }}
               className="px-10 py-4 bg-[#F2B705] text-[#0B2E59] rounded-xl font-bold text-base hover:bg-[#F2B705]/90 transition shadow-lg">

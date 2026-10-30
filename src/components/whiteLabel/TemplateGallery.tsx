@@ -4,13 +4,21 @@
  * grid, with categories, search, what the pages have, style and order
  * (gallery.ts), shown in batches. Each card is the template's thumbnail
  * (its home page as its own demo) or, without one, a plain card with its
- * name and style: no live page is drawn in the grid. Preview and Choose sit
- * over the picture on hover and keyboard focus, and always on touch screens.
+ * name and style. A card whose thumbnail is out of date (drawn with other
+ * photos than the image library now gives it, 00024) shows its home page
+ * live instead, as its own demo with the resolved photos, loaded only when
+ * the card comes into view, until the thumbnail is drawn again; when the
+ * page cannot be loaded, the plain card. Preview and Choose sit over the
+ * picture on hover and keyboard focus, and always on touch screens.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { bestFor, featureLabel } from '../../../supabase/functions/_shared/site-template';
+import { bestFor, demoBrand, featureLabel, type RenderImages } from '../../../supabase/functions/_shared/site-template';
 import { thumbnailOf, type SiteTemplateSummary } from '../../lib/whiteLabel';
-import { BATCH, NO_FILTER, SORTS, cardFacts, facets, filterTemplates, narrowed, styleLabel, type GalleryFilter, type GallerySort } from './gallery';
+import {
+  BATCH, NO_FILTER, SORTS, cardFacts, cardPicture, facets, filterTemplates, narrowed, styleLabel,
+  type CardPictureKind, type GalleryFilter, type GallerySort,
+} from './gallery';
+import TemplateThumb from './TemplateThumb';
 import { useDialog } from './useDialog';
 
 const btn = 'px-3 py-1.5 rounded-lg text-sm font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0B2E59] focus-visible:ring-offset-2';
@@ -34,23 +42,40 @@ export function Placeholder({ name, style }: { name: string; style: string | nul
   );
 }
 
-/** The picture of a template: its thumbnail, lazily, or the plain card. */
-export function CardPicture({ t }: { t: SiteTemplateSummary }) {
-  const thumb = thumbnailOf(t);
+/**
+ * The picture of a template (cardPicture() in gallery.ts): its thumbnail,
+ * lazily; while the thumbnail is stale, the live miniature drawn with the
+ * resolved images (`loadImages`, called only once the card is in view), the
+ * plain card when it cannot be drawn; without a thumbnail, the plain card.
+ */
+export function CardPicture({ t, picture, loadImages }: {
+  t: SiteTemplateSummary; picture?: CardPictureKind; loadImages?: (id: string) => Promise<RenderImages | null>;
+}) {
+  const kind = picture ?? (thumbnailOf(t) ? 'thumbnail' : 'plain');
+  const plain = <Placeholder name={t.name} style={t.style} />;
+  if (kind === 'live') {
+    return loadImages ? (
+      <div className="absolute inset-0" data-live-thumb>
+        <TemplateThumb template={t} brand={demoBrand(t)} sellerNotice="" loadImages={() => loadImages(t.id)} fallback={plain} />
+      </div>
+    ) : plain;
+  }
+  const thumb = kind === 'thumbnail' ? thumbnailOf(t) : null;
   return thumb ? (
     <img src={thumb} alt="" loading="lazy" decoding="async" width={720} height={450}
       className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 ease-out group-hover:scale-[1.04] group-focus-within:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100 motion-reduce:group-focus-within:scale-100" />
-  ) : <Placeholder name={t.name} style={t.style} />;
+  ) : plain;
 }
 
-function Card({ t, chosen, canEdit, opening, onPreview, onChoose }: {
+function Card({ t, chosen, canEdit, opening, onPreview, onChoose, picture, loadImages }: {
   t: SiteTemplateSummary; chosen: boolean; canEdit: boolean; opening: boolean; onPreview: () => void; onChoose: () => void;
+  picture: CardPictureKind; loadImages?: (id: string) => Promise<RenderImages | null>;
 }) {
   const id = `tpl-${t.id}`;
   return (
     <article aria-labelledby={id} className={`group relative flex flex-col rounded-xl border bg-white overflow-hidden ${chosen ? 'border-[#0B2E59] ring-2 ring-[#0B2E59]' : 'border-gray-200 hover:shadow-lg focus-within:shadow-lg'} transition-shadow motion-reduce:transition-none`}>
       <div className="relative aspect-[16/10] bg-gray-100 overflow-hidden border-b border-gray-100">
-        <CardPicture t={t} />
+        <CardPicture t={t} picture={picture} loadImages={loadImages} />
         {chosen && <span className="absolute top-2 left-2 z-10 rounded-full bg-[#0B2E59] text-white text-[11px] font-semibold px-2.5 py-0.5 shadow">✓ Chosen</span>}
         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-[#0B2E59]/60 opacity-0 transition-opacity duration-200 motion-reduce:transition-none group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 [@media(hover:none)]:bg-transparent [@media(hover:none)]:items-end [@media(hover:none)]:justify-end [@media(hover:none)]:p-2">
           <button onClick={onPreview} aria-label={`Preview ${t.name}`} className={`${btn} bg-white text-gray-900 shadow`}>{opening ? 'Opening…' : 'Preview'}</button>
@@ -97,7 +122,9 @@ function Filters({ id, filter, set, f }: { id: string; filter: GalleryFilter; se
   );
 }
 
-export default function TemplateGallery({ templates, selected, canEdit, filter, onFilter, opening, onPreview, onChoose, onClose }: {
+export default function TemplateGallery({
+  templates, selected, canEdit, filter, onFilter, opening, onPreview, onChoose, onClose, libraryCategories = [], staleThumbnails, loadCardImages,
+}: {
   /** The offered templates, in the catalogue's order. */
   templates: SiteTemplateSummary[];
   selected: string;
@@ -110,6 +137,12 @@ export default function TemplateGallery({ templates, selected, canEdit, filter, 
   onPreview: (id: string, results: string[]) => void;
   onChoose: (id: string) => void;
   onClose: () => void;
+  /** Categories with approved library photos: while `staleThumbnails` is unknown, their thumbnails count as stale. */
+  libraryCategories?: string[];
+  /** The templates whose thumbnail is stale (00024); null or left out: not known. */
+  staleThumbnails?: string[] | null;
+  /** The resolved images of a template as its demo (no company), for a stale card's live miniature. */
+  loadCardImages?: (id: string) => Promise<RenderImages | null>;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
@@ -252,6 +285,7 @@ export default function TemplateGallery({ templates, selected, canEdit, filter, 
               {shown.map(t => (
                 <li key={t.id}>
                   <Card t={t} chosen={selected === t.id} canEdit={canEdit} opening={opening === t.id}
+                    picture={cardPicture(t, staleThumbnails, libraryCategories)} loadImages={loadCardImages}
                     onPreview={() => onPreview(t.id, ids)} onChoose={() => onChoose(t.id)} />
                 </li>
               ))}

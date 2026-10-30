@@ -1,12 +1,14 @@
 /**
  * Companies (organisations) for the browser: reads through RLS, changes
- * through the database functions of migrations 00005 and 00006, emails
- * through send-organization-invitation. The database decides every
+ * through the database functions of migrations 00005, 00006 and 00017
+ * (spending limits and approval), emails through
+ * send-organization-invitation. The database decides every
  * permission; canManage() and friends only decide which buttons to show,
  * using the same rules (00005 change_member_role / remove_member /
  * invite_member).
  */
 import { callFunction, supabase } from './supabase';
+import type { ApprovalReason, ApprovalStatus } from '../../supabase/functions/_shared/spending';
 
 export type OrgRole = 'owner' | 'admin' | 'booker' | 'finance' | 'viewer' | 'staff';
 export type OrgStatus = 'pending' | 'active' | 'suspended' | 'closed';
@@ -88,7 +90,7 @@ export async function myMemberships(userId: string): Promise<Membership[]> {
 export async function loadCompanyBookings(orgId: string) {
   const { data } = await supabase
     .from('bookings')
-    .select('id, status, payment_status, pickup_city, dropoff_city, move_date, move_time, price_estimate, customer_name, customer_email, created_at')
+    .select('id, customer_id, status, payment_status, pickup_city, dropoff_city, move_date, move_time, price_estimate, customer_name, customer_email, created_at')
     .eq('organization_id', orgId)
     .order('created_at', { ascending: false })
     .limit(200);
@@ -137,4 +139,52 @@ export async function inviteByEmail(orgId: string, email: string, role: OrgRole)
   } catch {
     return 'the invitation could not be sent; try again';
   }
+}
+
+/* ── Spending limits and approval (00017) ────────────────────────────────── */
+
+export interface MemberSpending {
+  user_id: string; role: OrgRole; per_booking_limit: number | null; monthly_limit: number | null; month_spend: number;
+}
+export interface SpendingRules { approval_above: number | null; approval_roles: OrgRole[]; approval_expiry_hours: number }
+export interface BookingApproval {
+  booking_id: string; organization_id: string; requested_by: string; amount: number; reasons: ApprovalReason[];
+  month_spend: number | null; status: ApprovalStatus; requested_at: string; expires_at: string | null;
+  decided_by: string | null; decided_at: string | null; decision_reason: string | null;
+}
+
+/** Limits and this month's spend (owners, admins, finance: everyone; others: themselves). */
+export async function loadSpending(orgId: string): Promise<MemberSpending[]> {
+  const { data } = await supabase.rpc('organization_spending', { p_org: orgId });
+  return ((data ?? []) as MemberSpending[]).map(r => ({ ...r, month_spend: Number(r.month_spend ?? 0) }));
+}
+
+export async function loadSpendingRules(orgId: string): Promise<SpendingRules | null> {
+  const { data } = await supabase.from('organization_spending_rules')
+    .select('approval_above, approval_roles, approval_expiry_hours').eq('organization_id', orgId).maybeSingle();
+  return (data as SpendingRules | null) ?? null;
+}
+
+export const setMemberLimits = (orgId: string, userId: string, perBooking: number | null, monthly: number | null) =>
+  rpc('set_member_spending_limits', { p_org: orgId, p_user: userId, p_per_booking: perBooking, p_monthly: monthly });
+export const setSpendingRules = (orgId: string, approvalAbove: number | null, roles: OrgRole[], expiryHours: number) =>
+  rpc('set_spending_rules', { p_org: orgId, p_approval_above: approvalAbove, p_approval_roles: roles, p_expiry_hours: expiryHours });
+/** With the amount the approver saw: refused if the request has changed since (00022). */
+export const decideApproval = (bookingId: string, approve: boolean, reason: string | null, amount?: number | null) =>
+  rpc('decide_booking_approval', { p_booking: bookingId, p_approve: approve, p_reason: reason, p_amount: amount ?? null });
+
+/** The company's approval requests (RLS: owners, admins, finance; a booker their own). Ends expired ones first. */
+export async function loadApprovals(orgId: string): Promise<BookingApproval[]> {
+  await supabase.rpc('expire_booking_approvals', { p_org: orgId });
+  const { data } = await supabase.from('company_booking_approvals')
+    .select('*').eq('organization_id', orgId).neq('status', 'not_required')
+    .order('requested_at', { ascending: false }).limit(200);
+  return (data ?? []) as BookingApproval[];
+}
+
+/** Approval of the signed-in person's own bookings, by booking id. */
+export async function loadMyApprovals(bookingIds: string[]): Promise<Record<string, BookingApproval>> {
+  if (!bookingIds.length) return {};
+  const { data } = await supabase.from('company_booking_approvals').select('*').in('booking_id', bookingIds);
+  return Object.fromEntries(((data ?? []) as BookingApproval[]).map(a => [a.booking_id, a]));
 }

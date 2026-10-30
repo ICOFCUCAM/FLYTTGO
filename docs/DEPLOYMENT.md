@@ -94,19 +94,27 @@ supabase functions deploy <name> --no-verify-jwt
 | `route-distance` | OSRM/ORS driving distance lookup | `routing.ts` (home widget + BookingFlow preview) |
 | `process-payment` | Dual-confirm escrow release + recalc | `CustomerDashboard`, `DriverPortal`, `MyBookings` |
 | `create-checkout-session` | Stripe Checkout session | `PaymentPage`, `DriverPortal.subscribeToPlan` |
-| `stripe-webhook` | Flips `payment_status → paid` post-Stripe | Stripe (webhook endpoint) |
+| `stripe-webhook` | Flips `payment_status → paid` post-Stripe; also companies' sales invoices and, since 00020, shop orders (`record_shop_payment`, then the order confirmation email) and shop refunds (`shop_refund_mark`) | Stripe (webhook endpoint and Connect endpoint) |
 | `create-vipps-session` | Vipps Checkout v3 session | `PaymentPage`, `DriverPortal.subscribeToPlan` |
 | `vipps-webhook` | Flips `payment_status → paid` post-Vipps | Vipps (webhook endpoint) |
 | `calculate-price` | Server-authoritative pricing helper | (backend only) |
+| `public-api` | The companies' REST API (`/v1/...`), authenticated by the company's API key, not a session ([`API.md`](API.md), migration 00018) | Companies' own servers |
+| `white-label-site` | A company's public page, and the websites that may frame its booking widget | `BrandSitePage`, `EmbedPage`, `middleware.ts` |
 | `release-escrow` | Legacy commission calculator (harmless) | (none — dead code) |
+| `shop-checkout` | Card payment of a shop order (00020) on the company's connected account, no fee to FlyttGo | `ShopPage`, `MyServicesPage` |
+| `shop-refund` | A company refunds a shop order through Stripe on its own account (idempotent), credit note on success | `ShopPanel` (Corporate dashboard → Shop) |
+| `white-label-site` | The company's public page; since 00020 also says whether it has a shop | `whiteLabel.ts` (`/b/<slug>`) |
 
 `--no-verify-jwt` is **required** for every function — Supabase's default JWT check blocks unauthenticated browser calls (Stripe webhooks, Vipps webhooks, anon booking widgets).
+
+`public-api` sends no CORS headers on purpose (API keys belong on servers). The booking widget's frame header comes from the Vercel Routing Middleware `middleware.ts` (project root, `/embed/*` only); it needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` at runtime, which section 1 already sets. Check on a preview deployment that `/embed/<slug>` answers with `Content-Security-Policy: frame-ancestors 'self' …` before companies paste the widget ([`WHITE_LABEL.md`](WHITE_LABEL.md) → Booking widget).
 
 Deploy them all in one go:
 ```bash
 for fn in send-booking-email route-distance process-payment \
           create-checkout-session stripe-webhook \
-          create-vipps-session vipps-webhook; do
+          create-vipps-session vipps-webhook \
+          shop-checkout shop-refund white-label-site; do
   supabase functions deploy $fn --no-verify-jwt
 done
 ```
@@ -121,6 +129,7 @@ done
 3. Events:
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
+   - On the **Connect** endpoint (companies' own accounts: Model B, sales invoices, shops) the same, plus `account.updated`, `refund.updated` and `refund.failed` (shop refunds, 00020); its secret is `STRIPE_CONNECT_WEBHOOK_SECRET`
 4. Reveal the signing secret (`whsec_...`) and set `STRIPE_WEBHOOK_SECRET` (section 2).
 
 ### Vipps

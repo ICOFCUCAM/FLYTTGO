@@ -82,7 +82,10 @@ export function facets(templates: readonly Summary[], f: GalleryFilter) {
     .map(c => ({ id: c.id, label: c.label, count: byCategory.get(c.id) ?? 0 }));
   const all = templates.filter(t => passes(t, f, 'category')).length;
   const byFeature = count('features', t => t.features ?? []);
-  const features = GALLERY_FEATURES.map(x => ({ ...x, count: byFeature.get(x.id) ?? 0 }));
+  /* A feature every template has narrows nothing (every master has a pricing and a contact page): left out unless chosen. */
+  const everywhere = (id: string) => templates.length > 0 && templates.every(t => (t.features ?? []).includes(id));
+  const features = GALLERY_FEATURES.filter(x => !everywhere(x.id) || f.features.includes(x.id))
+    .map(x => ({ ...x, count: byFeature.get(x.id) ?? 0 }));
   const byStyle = count('style', t => t.style ? [t.style] : []);
   const styles = [...new Set(templates.map(t => t.style).filter((s): s is string => !!s))]
     .map(id => ({ id, label: styleLabel(id), count: byStyle.get(id) ?? 0 }))
@@ -99,3 +102,21 @@ export const cardFacts = (t: Pick<SiteTemplateSummary, 'style' | 'page_count' | 
   t.page_count ? `${t.page_count} ${t.page_count === 1 ? 'page' : 'pages'}` : '',
   (t.features ?? []).map(featureLabel).join(', '),
 ].filter(Boolean).join(' · ');
+
+/**
+ * What a gallery card shows (docs/WHITE_LABEL.md → Image library,
+ * "Thumbnails"): the template's thumbnail while it is up to date; a live
+ * miniature of its home page with the library's photos while the thumbnail
+ * is stale (drawn with other photos than the template shows now, 00024),
+ * until it is drawn again; a plain card when it has no thumbnail. `stale`:
+ * the templates whose thumbnail the database finds stale; when it cannot say
+ * (00024 not applied, or not loaded yet), a thumbnail in a category with
+ * library photos counts as stale (it was drawn with the imported photos).
+ */
+export type CardPictureKind = 'thumbnail' | 'live' | 'plain';
+export function cardPicture(t: Pick<SiteTemplateSummary, 'id' | 'industry' | 'assets'>,
+                            stale: readonly string[] | null | undefined, libraryCategories: readonly string[] = []): CardPictureKind {
+  if (!t.assets.some(a => a.key === 'thumbnail')) return 'plain';
+  const out = stale ? stale.includes(t.id) : libraryCategories.includes(templateCategory(t.industry) ?? '');
+  return out ? 'live' : 'thumbnail';
+}

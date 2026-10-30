@@ -238,7 +238,7 @@ SELECT tests.throws($$SELECT public.record_invoice_reminder((SELECT id FROM i))$
 -- Make it overdue (only possible by switching the guard off as the owner).
 RESET ROLE;
 ALTER TABLE public.invoices DISABLE TRIGGER guard_invoice_write;
-UPDATE public.invoices SET due_date = current_date - 20 WHERE id = (SELECT id FROM i);
+UPDATE public.invoices SET due_date = (now() AT TIME ZONE 'Europe/Oslo')::date - 20 WHERE id = (SELECT id FROM i);
 ALTER TABLE public.invoices ENABLE TRIGGER guard_invoice_write;
 UPDATE public.platform_config SET config_value = '35' WHERE config_key = 'invoice_reminder_fee';
 UPDATE public.platform_config SET config_value = '12.25' WHERE config_key = 'invoice_late_interest_pct';

@@ -14,11 +14,19 @@
 // the result carries the account and FlyttGo's application fee, and the
 // split is written on the booking. Other payment methods are refused for
 // it (opts.allowConnect is set only by the card checkout).
+//
+// A company booking is then checked against the member's spending limits
+// and the company's approval rules (company_booking_check, migration
+// 00017) at the server's price. When it needs approval nothing is
+// charged: the result is 409 with the request, the approvers are told
+// (in the app, and by email through send-booking-email), and the booking
+// waits unpaid. Once approved, the same call goes ahead.
 // ============================================================================
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { bookingChargeNok, bookingCoordinates, routeDistance } from './pricing.ts';
 import { sellerSplit } from './white-label.ts';
+import { interpretCheck, type ApprovalHold, type CheckResult } from './spending.ts';
 
 export interface ConnectCharge {
   account: string;
@@ -31,7 +39,12 @@ export interface ConnectCharge {
 
 export type ChargeResult =
   | { ok: true; bookingId: string; amountNok: number; priceChanged: boolean; customerEmail: string | null; connect: ConnectCharge | null }
-  | { ok: false; status: number; error: string };
+  | { ok: false; status: number; error: string; approval?: ApprovalHold };
+
+/** The response body for a charge that cannot go ahead (or waits for approval). */
+export function chargeRefusal(r: { error: string; approval?: ApprovalHold }) {
+  return r.approval ? { awaitingApproval: true, error: r.error, approval: r.approval } : { error: r.error };
+}
 
 export async function chargeForBooking(
   db:        SupabaseClient,
@@ -41,7 +54,7 @@ export async function chargeForBooking(
 ): Promise<ChargeResult> {
   const { data: booking, error } = await db
     .from('bookings')
-    .select('id, customer_id, customer_email, payment_status, status, van_type, estimated_hours, helpers, additional_services, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, price_estimate, white_label_org, seller_model')
+    .select('id, customer_id, customer_email, payment_status, status, van_type, estimated_hours, helpers, additional_services, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, price_estimate, white_label_org, seller_model, organization_id, move_date, pickup_address, dropoff_address')
     .eq('id', bookingId)
     .maybeSingle();
 
@@ -116,5 +129,43 @@ export async function chargeForBooking(
                 platformFee: split.platformFee, sellerName: seller.name, siteBase: seller.domain ? `https://${seller.domain}` : null };
   }
 
+  /* Company booking: the member's limits and the company's rules, at the
+   * price that would be charged. */
+  if (booking.organization_id) {
+    const { data: check, error: checkErr } = await db.rpc('company_booking_check',
+      { p_booking: bookingId, p_caller: callerId, p_amount: charged });
+    if (checkErr) {
+      return { ok: false, status: checkErr.code === '42501' ? 403 : checkErr.code === 'P0002' ? 404 : 409, error: checkErr.message };
+    }
+    const decision = interpretCheck(check as CheckResult);
+    if (!decision.proceed) {
+      if ((check as CheckResult).new) await emailApprovers(check as CheckResult, booking);
+      return { ok: false, status: decision.status, error: decision.error, approval: decision.approval };
+    }
+  }
+
   return { ok: true, bookingId, amountNok: charged, priceChanged, customerEmail: booking.customer_email ?? null, connect };
+}
+
+/* Best effort: the request is recorded and the approvers already have it
+ * in the app; a failed email changes nothing. */
+async function emailApprovers(check: CheckResult, booking: { id: string; pickup_address?: string | null;
+                              dropoff_address?: string | null; move_date?: string | null }) {
+  const url = Deno.env.get('SUPABASE_URL');
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!url || !key) return;
+  for (const to of check.approvers ?? []) {
+    try {
+      await fetch(`${url.replace(/\/$/, '')}/functions/v1/send-booking-email`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template: 'approval_requested', to, bookingId: booking.id, data: {
+          company: check.organization ?? null, amount: check.amount, reasons: check.reasons ?? [],
+          expiresAt: check.expires_at ?? null, pickupAddress: booking.pickup_address ?? null,
+          dropoffAddress: booking.dropoff_address ?? null, moveDate: booking.move_date ?? null } }),
+      });
+    } catch (e) {
+      console.warn(`approval email for booking ${booking.id} not sent: ${(e as Error).message}`);
+    }
+  }
 }

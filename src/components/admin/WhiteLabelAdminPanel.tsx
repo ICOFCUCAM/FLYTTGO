@@ -3,8 +3,11 @@
  *   Requests  companies' plans: approve once every requirement is met (the
  *             database refuses otherwise), decline with a reason, suspend,
  *             end or reactivate.
- *   Plans     the price list: change prices (they become proposals) and
- *             confirm them.
+ *   Plans     the price list: change prices (they become proposals),
+ *             accept them as pilot prices with a note, or confirm them.
+ *   Add-ons   modules on a company's plan, and API access (00022): enabled
+ *             and ended here, priced by a written quote or an approved
+ *             pilot price recorded with the add-on.
  *   Templates the website template library: check each imported template's
  *             wording (sample prices, reviews, claims) and its automated
  *             checks (template-quality.ts: overflow on phones, images, alt
@@ -14,13 +17,18 @@
  *             slot (template-images.ts): where each comes from, its
  *             licence, review, and replacing one. Previews are sandboxed,
  *             without scripts.
+ *   Image library  the shared photos every template slot draws from (00023,
+ *             ImageLibraryAdmin): upload, review, coverage per category.
  */
 import { useCallback, useEffect, useState } from 'react';
+import ImageLibraryAdmin from './ImageLibraryAdmin';
 import { formatNok } from '../../lib/invoicing';
+import { supabase } from '../../lib/supabase';
 import {
-  SELLER_LABELS, STATUS_LABELS, decide, loadAllWhiteLabels, loadPlans, loadTemplate, loadTemplateList, missingFor, reviewTemplate,
-  loadTemplateImages, recordPageChecks, replaceTemplateImage, reviewTemplateImage, setStatus, updatePlan, updateTemplatePage,
-  type SiteTemplate, type SiteTemplateSummary, type WhiteLabelPlan,
+  ADDON_LABELS, addonPrice, decide, enableAddon, endAddon, loadAddons, loadAllWhiteLabels, loadPlans, loadTemplate,
+  loadTemplateImages, loadTemplateList, missingFor, PRICE_STATUS_LABELS, recordPageChecks, replaceTemplateImage, reviewTemplate,
+  reviewTemplateImage, SELLER_LABELS, setPilotPrice, setStatus, STATUS_LABELS, updatePlan, updateTemplatePage, type AddonModule,
+  type OrgAddon, type SiteTemplate, type SiteTemplateSummary, type WhiteLabelPlan,
 } from '../../lib/whiteLabel';
 import { SOURCE_LABELS, type ImageSource, type TemplateImage } from '../../../supabase/functions/_shared/template-images';
 import {
@@ -34,7 +42,9 @@ type Row = Awaited<ReturnType<typeof loadAllWhiteLabels>>[number];
 const btn = 'px-2.5 py-1 rounded text-xs font-medium disabled:opacity-50';
 
 export default function WhiteLabelAdminPanel() {
-  const [view, setView] = useState<'requests' | 'plans' | 'templates'>('requests');
+  const [view, setView] = useState<'requests' | 'plans' | 'addons' | 'templates' | 'library'>('requests');
+  const [addons, setAddons] = useState<OrgAddon[]>([]);
+  const [orgs, setOrgs] = useState<{ id: string; name: string; slug: string }[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
   const [missing, setMissing] = useState<Record<string, string[]>>({});
   const [plans, setPlans] = useState<WhiteLabelPlan[]>([]);
@@ -48,8 +58,9 @@ export default function WhiteLabelAdminPanel() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const reload = useCallback(async () => {
-    const [r, p, t] = await Promise.all([loadAllWhiteLabels(), loadPlans(), loadTemplateList(true)]);
-    setRows(r); setPlans(p); setTemplates(t);
+    const [r, p, t, a, o] = await Promise.all([loadAllWhiteLabels(), loadPlans(), loadTemplateList(true), loadAddons(),
+      supabase.from('organizations').select('id, name, slug').eq('status', 'active').order('name')]);
+    setRows(r); setPlans(p); setTemplates(t); setAddons(a); setOrgs((o.data ?? []) as { id: string; name: string; slug: string }[]);
     const m: Record<string, string[]> = {};
     for (const x of r.filter(x => x.status === 'requested' || x.requested_plan_code)) m[x.organization_id] = await missingFor(x.organization_id);
     setMissing(m);
@@ -81,15 +92,19 @@ export default function WhiteLabelAdminPanel() {
       <p className="text-sm text-gray-500 mb-4">
         Companies' own booking pages. Model A: FlyttGo sells under the company's brand (the default). Model B: the company sells, paid into its own Stripe account.
       </p>
-      <div className="flex gap-2 mb-4">
-        {(['requests', 'plans', 'templates'] as const).map(v => (
+      <div className="flex flex-wrap gap-2 mb-4">
+        {(['requests', 'plans', 'addons', 'templates', 'library'] as const).map(v => (
           <button key={v} onClick={() => setView(v)}
             className={`px-3 py-1.5 rounded-full text-xs font-medium ${view === v ? 'bg-gray-900 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}>
-            {v === 'requests' ? `Companies (${rows.length})` : v === 'plans' ? 'Plans and prices' : `Templates (${templates.length})`}
+            {v === 'requests' ? `Companies (${rows.length})` : v === 'plans' ? 'Plans and prices'
+              : v === 'addons' ? `Add-ons (${addons.filter(a => a.status === 'active').length})`
+              : v === 'templates' ? `Templates (${templates.length})` : 'Image library'}
           </button>
         ))}
       </div>
       {msg && <div className={`mb-4 rounded-lg px-4 py-3 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{msg.text}</div>}
+
+      {view === 'library' && <ImageLibraryAdmin />}
 
       {view === 'requests' && (
         <div className="bg-white rounded-lg shadow overflow-x-auto">
@@ -132,12 +147,19 @@ export default function WhiteLabelAdminPanel() {
 
       {view === 'plans' && (
         <div className="space-y-3">
-          <p className="text-sm text-gray-500">Prices exclude MVA. A changed price is a proposal until you confirm it; the public page says so meanwhile.</p>
+          <p className="text-sm text-gray-500">Prices exclude MVA. A changed price is a proposal until you confirm it or accept it as a pilot price; the public page says which.</p>
           {plans.map(p => (
             <PlanEditor key={p.code} plan={p} busy={busy}
-              onSave={(v, confirm) => run(() => updatePlan(p.code, { ...v, confirm }), confirm ? 'Prices confirmed.' : 'Saved as proposal.')} />
+              onSave={(v, confirm) => run(() => updatePlan(p.code, { ...v, confirm }), confirm ? 'Prices confirmed.' : 'Saved as proposal.')}
+              onPilot={note => run(() => setPilotPrice(p.code, note), 'Accepted as pilot pricing.')} />
           ))}
         </div>
+      )}
+
+      {view === 'addons' && (
+        <AddonsView addons={addons} orgs={orgs} busy={busy}
+          onEnable={(org, m, a) => run(() => enableAddon(org, m, a), 'Add-on enabled.')}
+          onEnd={(org, m, reason) => run(() => endAddon(org, m, reason), 'Add-on ended.')} />
       )}
 
       {view === 'templates' && (
@@ -238,9 +260,77 @@ export default function WhiteLabelAdminPanel() {
   );
 }
 
-function PlanEditor({ plan, busy, onSave }: {
+function AddonsView({ addons, orgs, busy, onEnable, onEnd }: {
+  addons: OrgAddon[]; orgs: { id: string; name: string; slug: string }[]; busy: boolean;
+  onEnable: (org: string, m: AddonModule, a: { pricing: 'quote' | 'pilot'; setup_fee: number | null; monthly_fee: number | null;
+                                              quote_reference: string | null; price_note: string | null }) => void;
+  onEnd: (org: string, m: AddonModule, reason: string) => void;
+}) {
+  const [org, setOrg] = useState('');
+  const [mod, setMod] = useState<AddonModule>('api');
+  const [pricing, setPricing] = useState<'quote' | 'pilot'>('quote');
+  const [quote, setQuote] = useState('');
+  const [monthly, setMonthly] = useState('');
+  const [setup, setSetup] = useState('');
+  const [note, setNote] = useState('');
+  const name = (id: string) => orgs.find(o => o.id === id)?.name ?? id.slice(0, 8);
+  const num = (v: string) => v.trim() === '' ? null : Number(v.replace(',', '.'));
+  const field = 'w-full border border-gray-200 rounded px-2 py-1 text-sm';
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500">
+        Modules on top of a company's plan (one plan per company), and API access. Each is priced by a written quote, or by a pilot price you
+        approve now and record here: never a price worked out from the plans. On a plan where FlyttGo sells, only the API can be added;
+        the API is also available to an active company without a plan.
+      </p>
+      <div className="bg-white rounded-lg shadow p-4 grid md:grid-cols-3 gap-3 text-xs">
+        <label>Company<select value={org} onChange={e => setOrg(e.target.value)} className={field}>
+          <option value="">Choose…</option>{orgs.map(o => <option key={o.id} value={o.id}>{o.name} ({o.slug})</option>)}</select></label>
+        <label>Module<select value={mod} onChange={e => setMod(e.target.value as AddonModule)} className={field}>
+          {(Object.keys(ADDON_LABELS) as AddonModule[]).map(m => <option key={m} value={m}>{ADDON_LABELS[m]}</option>)}</select></label>
+        <label>Priced by<select value={pricing} onChange={e => setPricing(e.target.value as 'quote' | 'pilot')} className={field}>
+          <option value="quote">Written quote</option><option value="pilot">Approved pilot price</option></select></label>
+        {pricing === 'quote'
+          ? <label className="md:col-span-3">Quote reference<input value={quote} onChange={e => setQuote(e.target.value)} className={field} placeholder="e.g. Q-2026-014" /></label>
+          : (<>
+            <label>Monthly (NOK excl. MVA)<input value={monthly} onChange={e => setMonthly(e.target.value)} className={field} inputMode="decimal" /></label>
+            <label>Set-up (NOK, optional)<input value={setup} onChange={e => setSetup(e.target.value)} className={field} inputMode="decimal" /></label>
+            <label>Approval note<input value={note} onChange={e => setNote(e.target.value)} className={field} placeholder="Who approved it, and when" /></label>
+          </>)}
+        <div className="md:col-span-3">
+          <button disabled={busy || !org} className={`${btn} bg-emerald-600 text-white`}
+            onClick={() => onEnable(org, mod, pricing === 'quote'
+              ? { pricing, setup_fee: null, monthly_fee: null, quote_reference: quote, price_note: null }
+              : { pricing, setup_fee: num(setup), monthly_fee: num(monthly), quote_reference: null, price_note: note })}>Enable add-on</button>
+        </div>
+      </div>
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50"><tr>{['Company', 'Module', 'Price', 'Status', ''].map(h => <th key={h} className="text-left p-3 text-xs uppercase text-gray-500">{h}</th>)}</tr></thead>
+          <tbody>
+            {addons.map(a => (
+              <tr key={a.id} className="border-t align-top">
+                <td className="p-3">{name(a.organization_id)}</td>
+                <td className="p-3">{ADDON_LABELS[a.module] ?? a.module}</td>
+                <td className="p-3 text-xs">{addonPrice(a, formatNok)}{a.price_note && <div className="text-gray-400">{a.price_note}</div>}</td>
+                <td className="p-3 text-xs">{a.status === 'active' ? `active since ${new Date(a.enabled_at).toLocaleDateString('nb-NO')}`
+                  : `ended ${a.ended_at ? new Date(a.ended_at).toLocaleDateString('nb-NO') : ''}${a.end_reason ? `: ${a.end_reason}` : ''}`}</td>
+                <td className="p-3">{a.status === 'active' && <button disabled={busy} className={`${btn} bg-gray-200 text-gray-700`}
+                  onClick={() => { const why = prompt('Reason for ending the add-on:'); if (why?.trim()) onEnd(a.organization_id, a.module, why.trim()); }}>End</button>}</td>
+              </tr>
+            ))}
+            {addons.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-gray-400">No add-ons yet.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function PlanEditor({ plan, busy, onSave, onPilot }: {
   plan: WhiteLabelPlan; busy: boolean;
   onSave: (v: { setup_fee: number; monthly_fee: number; platform_fee_pct: number; platform_fee_min: number }, confirm: boolean) => void;
+  onPilot: (note: string) => void;
 }) {
   const [v, setV] = useState({ setup_fee: plan.setup_fee, monthly_fee: plan.monthly_fee, platform_fee_pct: plan.platform_fee_pct, platform_fee_min: plan.platform_fee_min });
   const field = (k: keyof typeof v, label: string, disabled = false) => (
@@ -253,10 +343,15 @@ function PlanEditor({ plan, busy, onSave }: {
     <div className="bg-white rounded-lg shadow p-4">
       <div className="flex justify-between mb-2">
         <div><span className="font-semibold">{plan.name}</span> <span className="text-xs text-gray-500">{SELLER_LABELS[plan.seller_model]}{plan.is_default ? ' · default' : ''}</span></div>
-        <span className={`text-xs ${plan.price_status === 'confirmed' ? 'text-emerald-700' : 'text-yellow-700'}`}>
-          {plan.price_status === 'confirmed' ? `confirmed ${plan.prices_confirmed_at ? new Date(plan.prices_confirmed_at).toLocaleDateString('nb-NO') : ''}` : 'proposed'}
+        <span className={`text-xs ${plan.price_status === 'confirmed' ? 'text-emerald-700' : plan.price_status === 'pilot' ? 'text-sky-700' : 'text-yellow-700'}`}>
+          {plan.price_status === 'proposed' ? 'proposed'
+            : `${PRICE_STATUS_LABELS[plan.price_status].toLowerCase()}${plan.prices_confirmed_at ? ` ${new Date(plan.prices_confirmed_at).toLocaleDateString('nb-NO')}` : ''}`}
         </span>
       </div>
+      {plan.price_note && <div className="text-xs text-sky-800 mb-2">{plan.price_note}</div>}
+      {(plan.setup_fee_includes?.length ?? 0) > 0 && (
+        <div className="text-xs text-gray-500 mb-2">Set-up includes: {plan.setup_fee_includes!.join('; ')}</div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {field('setup_fee', 'Set-up (NOK)')}
         {field('monthly_fee', 'Monthly (NOK)')}
@@ -267,6 +362,10 @@ function PlanEditor({ plan, busy, onSave }: {
       <div className="flex gap-2 mt-3">
         <button disabled={busy} onClick={() => onSave(v, false)} className={`${btn} bg-gray-100 text-gray-800`}>Save as proposal</button>
         <button disabled={busy} onClick={() => { if (confirm(`Confirm these prices for ${plan.name}? They apply to new charges from now.`)) onSave(v, true); }} className={`${btn} bg-emerald-600 text-white`}>Confirm prices</button>
+        {plan.price_status !== 'pilot' && (
+          <button disabled={busy} onClick={() => { const note = prompt(`Accept the current prices of ${plan.name} as pilot pricing. Note shown beside them:`, 'Pilot pricing: accepted provisionally by FlyttGo for the pilot.'); if (note?.trim()) onPilot(note.trim()); }}
+            className={`${btn} bg-sky-600 text-white`}>Accept as pilot pricing</button>
+        )}
       </div>
     </div>
   );

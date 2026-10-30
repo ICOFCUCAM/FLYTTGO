@@ -3,15 +3,23 @@
  * domain). With a website template from the library, the page is shown in
  * a sandboxed iframe: no scripts, nothing it can reach in this window;
  * links open at the top level (to another page of the site, or booking).
- * Without one, a simple branded front page.
+ * Without one, a simple branded front page; a company with a shop (00020)
+ * shows a few of its products and the way to the shop.
  */
+import { useEffect, useState } from 'react';
 import { useApp } from '../lib/store';
-import { textOn } from '../lib/whiteLabel';
+import { bookingLabel, textOn } from '../lib/whiteLabel';
 import { useWhiteLabel } from '../lib/whiteLabelContext';
+import { formatNok } from '../lib/invoicing';
+import { imageUrl, loadCatalogue, type ShopProduct } from '../lib/shop';
 
 export default function BrandSitePage() {
   const { setPage } = useApp();
   const { site, loading } = useWhiteLabel();
+  const [products, setProducts] = useState<ShopProduct[]>([]);
+  useEffect(() => {
+    if (site?.shop && !site.page) loadCatalogue(site.organization_id).then(c => setProducts(c.products.filter(p => p.active).slice(0, 6)));
+  }, [site?.organization_id, site?.shop, site?.page]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center text-gray-400">Loading…</div>;
   if (!site) return (
@@ -37,20 +45,38 @@ export default function BrandSitePage() {
 
   const bg = site.primary_color ?? '#0b2e59';
   const accent = site.accent_color ?? '#10b981';
+  const shopOnly = !!site.shop && site.booking === 'none';
   return (
     <div>
       <section style={{ background: bg, color: textOn(bg) }} className="px-4 py-20">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4">{site.display_name}</h1>
-          <p className="text-lg opacity-90 mb-8">{site.tagline ?? (site.booking === 'moves' ? 'Book your move online: an instant price, verified drivers and live tracking.' : 'Book online in a minute.')}</p>
-          <button onClick={() => setPage('booking')} style={{ background: accent, color: textOn(accent) }}
-            className="px-6 py-3 rounded-xl font-semibold text-lg">{site.booking === 'appointments' ? 'Book a time' : site.booking === 'jobs' ? 'Ask for a job' : 'Get a price and book'}</button>
+          <p className="text-lg opacity-90 mb-8">{site.tagline ?? (site.booking === 'moves' ? 'Book your move online: an instant price, verified drivers and live tracking.'
+            : shopOnly ? 'Order online: pick up in the shop or have it delivered.' : 'Book online in a minute.')}</p>
+          <button onClick={() => setPage(shopOnly ? 'shop' : 'booking')} style={{ background: accent, color: textOn(accent) }}
+            className="px-6 py-3 rounded-xl font-semibold text-lg">{shopOnly ? 'Visit the shop' : bookingLabel(site.booking, 'Get a price and book')}</button>
+          {/* A booking module and a shop (an add-on, 00022): both ways in. */}
+          {site.shop && !shopOnly && (
+            <button onClick={() => setPage('shop')} style={{ borderColor: textOn(bg), color: textOn(bg) }}
+              className="ms-3 px-6 py-3 rounded-xl font-semibold text-lg border-2">Visit the shop</button>
+          )}
         </div>
       </section>
       {site.booking === 'moves' && <section className="max-w-4xl mx-auto px-4 py-12 grid md:grid-cols-3 gap-6 text-sm text-gray-600">
         <div><h2 className="font-bold text-gray-900 mb-1">Price before you book</h2>The price is calculated from your addresses, van size and helpers. No surprises.</div>
         <div><h2 className="font-bold text-gray-900 mb-1">Verified drivers</h2>Every move is carried out by a vetted driver with goods-in-transit insurance.</div>
         <div><h2 className="font-bold text-gray-900 mb-1">Follow your move</h2>Track the driver live on the day and get messages along the way.</div>
+      </section>}
+      {site.shop && products.length > 0 && <section className="max-w-5xl mx-auto px-4 py-12">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {products.map(p => (
+            <button key={p.id} onClick={() => setPage('shop')} className="text-left bg-white border rounded-2xl overflow-hidden">
+              {p.images[0] && <img src={imageUrl(p.images[0])} alt={p.name} className="w-full aspect-square object-cover" />}
+              <div className="p-3 flex justify-between gap-2 text-sm"><span className="font-semibold">{p.name}</span><span>{formatNok(p.price)}</span></div>
+            </button>
+          ))}
+        </div>
+        <button onClick={() => setPage('shop')} className="mt-6 underline text-sm">All products</button>
       </section>}
     </div>
   );

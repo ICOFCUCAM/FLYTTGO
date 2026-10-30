@@ -2,27 +2,33 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 
+/* What FlyttGo actually checks and does today (platform audit
+ * 2026-10-30): a driver uploads four documents in the application
+ * (DriverOnboarding) and an administrator approves the driver only when
+ * they are there (AdminDashboard REQUIRED_DOCS). No background check,
+ * interview, BankID or vehicle-register lookup is made, and FlyttGo has no
+ * insurance policy of its own to state limits for. */
 const VETTING_STEPS = [
-  { step: '1', title: 'Identity check', desc: 'Valid BankID or passport matched to a Norwegian driver license.' },
-  { step: '2', title: 'Business check', desc: 'Active Brønnøysund registration number, VAT status and company address verified.' },
-  { step: '3', title: 'Insurance check', desc: 'Goods-in-transit policy confirmed with the carrier (Gjensidige, If, Tryg, etc.).' },
-  { step: '4', title: 'Vehicle check', desc: 'Registration, EU-control (PKK) and road-worthiness verified against SVV records.' },
-  { step: '5', title: 'Background check', desc: 'Driving-history report. No serious convictions in the last five years.' },
-  { step: '6', title: 'Interview',      desc: 'Personal interview with our ops team. Unsatisfactory answers = no activation.' },
+  { step: '1', title: 'Identity document', desc: 'The driver uploads a government-issued photo ID or passport.' },
+  { step: '2', title: 'Driving licence', desc: 'The driver uploads a valid Norwegian or EU/EEA driving licence.' },
+  { step: '3', title: 'Insurance document', desc: 'The driver uploads proof of insurance for the vehicle.' },
+  { step: '4', title: 'Vehicle registration', desc: 'The driver uploads the vehicle\u2019s current registration document.' },
+  { step: '5', title: 'Review by FlyttGo', desc: 'A FlyttGo administrator reviews the application and its documents before the driver can take jobs.' },
+  { step: '6', title: 'Suspension', desc: 'FlyttGo can suspend a driver\u2019s account, after which the driver gets no new jobs.' },
 ];
 
 const INSURANCE = [
-  { title: 'Goods in transit',  limit: 'Up to 500,000 NOK', desc: 'Every booking is covered from pickup to delivery by the driver\u2019s carrier policy.' },
-  { title: 'Public liability',  limit: 'Up to 10 M NOK',    desc: 'Covers damage to property at pickup and drop-off addresses (walls, floors, lifts).' },
-  { title: 'Escrow protection', limit: 'Full booking cost', desc: 'Payment is held by FlyttGo until you confirm the delivery. No confirm = no charge.' },
-  { title: 'Dispute resolution',limit: '7-day window',      desc: 'Our ops team mediates any dispute and can reverse the escrow payment if justified.' },
+  { title: 'Driver\u2019s insurance',  limit: 'Driver\u2019s policy', desc: 'Each driver has their own insurance, documented when they apply. What it covers depends on the driver\u2019s policy.' },
+  { title: 'Damage at the addresses',  limit: 'See Liability', desc: 'Who is responsible for damage at pickup and delivery is set out on the Liability page and in the Terms.' },
+  { title: 'Card payment',      limit: 'Through Stripe', desc: 'Card payments are taken at checkout through Stripe. FlyttGo pays the driver after the job is confirmed as done.' },
+  { title: 'Cancellation and refunds', limit: 'Terms \u00a76', desc: 'Cancel more than 24 hours before pickup for a full refund; within 24 hours, 50 % is refunded. Refunds go back to the card or Vipps you paid with.' },
 ];
 
 const CLAIM_STEPS = [
-  { title: 'Open the booking in your dashboard',   desc: 'Go to My Bookings, select the relevant job and click "File a claim".' },
-  { title: 'Describe the issue',                    desc: 'Upload photos (before/after if possible), describe what happened, and list the damaged items.' },
-  { title: 'We contact the driver\u2019s insurance', desc: 'FlyttGo routes the claim to the carrier\u2019s policy and tracks progress on your behalf.' },
-  { title: 'Resolution',                            desc: 'Most claims are settled within 14 days. If the driver\u2019s insurance denies without cause, FlyttGo covers it.' },
+  { title: 'Contact us',                            desc: 'Use the contact form and choose \u201cClaim or complaint\u201d. Give your booking reference and describe what happened and what was damaged.' },
+  { title: 'Keep evidence',                         desc: 'Keep photos of the damage and of the items before the move if you have them. We will ask for them when we reply.' },
+  { title: 'We look at it with the driver',         desc: 'FlyttGo passes your claim to the driver, who may refer it to their insurance.' },
+  { title: 'Resolution',                            desc: 'Responsibility follows the Liability page and the Terms. Refunds of the booking price follow the cancellation rules.' },
 ];
 
 export default function SafetyPage() {
@@ -114,7 +120,7 @@ export default function SafetyPage() {
           <h2 className="text-2xl font-extrabold mb-3">{t('safety.securityTitle')}</h2>
           <p className="text-white/70 mb-8 max-w-2xl mx-auto">{t('safety.securityBody')}</p>
           <div className="flex flex-wrap justify-center gap-3">
-            {['GDPR', 'PCI-DSS', 'HTTPS-only', 'EU-hosted', 'Encrypted at rest'].map(b => (
+            {['GDPR', 'Card data only at Stripe', 'HTTPS-only', 'EU-hosted', 'Encrypted at rest'].map(b => (
               <span key={b} className="bg-white/10 text-white/80 text-sm px-4 py-1.5 rounded-full border border-white/10">✓ {b}</span>
             ))}
           </div>

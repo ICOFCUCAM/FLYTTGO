@@ -78,3 +78,7 @@ html {
   body { @apply bg-background text-foreground font-sans; }
   pre, code { @apply font-mono; }
 }
+
+/* Inside the booking widget's frame (src/lib/embed.ts) pages take the
+ * height of their content, so the frame on the company's site fits it. */
+html.flyttgo-embedded .min-h-screen { min-height: 0; }

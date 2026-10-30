@@ -2,48 +2,51 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 
+/* What a customer can do today and what FlyttGo does not do yet: no
+ * figures, fleet shares or offsets it cannot back (platform audit
+ * 2026-10-30). */
 const INITIATIVES = [
   {
     icon: 'M17 8l4 4m0 0l-4 4m4-4H3',
-    title: 'Shared vans, fewer trips',
-    desc:  'Our matching algorithm bundles compatible jobs along the same route, cutting empty miles by up to 28% vs. solo bookings.',
-    stat:  '−28%',
-    statLabel: 'empty miles',
+    title: 'The right van size',
+    desc:  'The van size guide and calculator help you book the smallest van that fits your things, so you do not move empty space.',
+    stat:  'Guide',
+    statLabel: 'van size calculator',
   },
   {
     icon: 'M13 10V3L4 14h7v7l9-11h-7z',
-    title: 'Electric fleet incentives',
-    desc:  'Drivers using EV or hybrid vans get a 3% commission discount and priority dispatch. Over 34% of our Oslo fleet is now electric.',
-    stat:  '34%',
-    statLabel: 'EV fleet share',
+    title: 'Electric vans',
+    desc:  'FlyttGo does not yet record which drivers use electric vans and has no EV-only option. When it does, it will say so here.',
+    stat:  '\u2014',
+    statLabel: 'not recorded yet',
   },
   {
     icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
-    title: 'Smart timing',
-    desc:  'Route optimisation and off-peak incentives keep vans out of rush hour — less idling, less CO\u2082, better for everyone.',
-    stat:  '−15%',
-    statLabel: 'idle time',
+    title: 'Your choice of time',
+    desc:  'You choose when the move starts. A time outside rush hour usually means less time in traffic.',
+    stat:  'You',
+    statLabel: 'choose the time',
   },
   {
     icon: 'M4 6h16M4 12h16M4 18h7',
-    title: 'Paperless by default',
-    desc:  'All quotes, receipts, MVA invoices and damage claims are digital. No printed paperwork in the van — ever.',
-    stat:  '0',
-    statLabel: 'printed receipts',
+    title: 'Digital paperwork',
+    desc:  'Prices, receipts and MVA invoices are sent digitally.',
+    stat:  'Digital',
+    statLabel: 'receipts and invoices',
   },
   {
     icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
     title: 'Reusable blankets & crates',
-    desc:  'Every partner driver carries reusable moving blankets, straps and crates — no single-use plastic wrap, no cardboard waste.',
-    stat:  '100%',
-    statLabel: 'reusable kit',
+    desc:  'Ask for reusable blankets and straps instead of single-use plastic wrap: write it in the special instructions when you book.',
+    stat:  'Ask',
+    statLabel: 'in your booking notes',
   },
   {
     icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-    title: 'Carbon offset for every booking',
-    desc:  'A fixed percentage of every booking goes to verified Norwegian forest projects via Klimafondet. You get a certificate in your receipt.',
-    stat:  '1%',
-    statLabel: 'per booking',
+    title: 'Carbon offset',
+    desc:  'FlyttGo does not offset emissions today and issues no certificates. It will only say so here once a real scheme is in place.',
+    stat:  '\u2014',
+    statLabel: 'no scheme yet',
   },
 ];
 
@@ -75,12 +78,7 @@ export default function SustainabilityPage() {
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-10 mb-16">
         <div className="bg-white rounded-3xl shadow-xl p-8 sm:p-10 border border-gray-100">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { v: '1,240 t', l: t('sustainability.statCo2') },
-              { v: '34%',      l: t('sustainability.statEv') },
-              { v: '1,000+',   l: t('sustainability.statKits') },
-              { v: '1%',       l: t('sustainability.statOffset') },
-            ].map(s => (
+            {[1, 2, 3, 4].map(n => ({ v: t(`sustainability.stat${n}Value`), l: t(`sustainability.stat${n}Label`) })).map(s => (
               <div key={s.l}>
                 <div className="text-3xl sm:text-4xl font-extrabold text-emerald-600 mb-1">{s.v}</div>
                 <div className="text-xs text-gray-500 leading-snug">{s.l}</div>

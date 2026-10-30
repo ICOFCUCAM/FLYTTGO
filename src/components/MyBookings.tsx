@@ -5,6 +5,8 @@ import { CANCELLATION_NOTICE, cancelBookingWithRefund } from "../lib/cancelBooki
 import { releaseEscrow } from "../lib/releaseEscrow";
 import { useAuth } from "../lib/auth";
 import { useApp } from "../lib/store";
+import { loadMyApprovals, type BookingApproval } from "../lib/organizations";
+import { APPROVAL_REASON_LABELS } from "../../supabase/functions/_shared/spending";
 
 /* Lazy-load Leaflet so the map bundle (~150 KB) is only fetched on
  * pages that actually have an in-transit booking to track. */
@@ -38,6 +40,7 @@ interface Booking {
   start_time?: string | null; end_time?: string | null;
   price_adjusted?: boolean | null; move_date: string | null; created_at: string | null;
   customer_confirmation?: boolean | null; driver_confirmation?: boolean | null;
+  organization_id?: string | null;
 }
 
 export default function MyBookings() {
@@ -48,6 +51,8 @@ export default function MyBookings() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [escrowMap, setEscrowMap] = useState<any>({});
+  /* Company bookings: the company's approval, when one was needed (00017). */
+  const [approvalMap, setApprovalMap] = useState<Record<string, BookingApproval>>({});
 
   useEffect(() => { if (!user) return; fetchBookings(); }, [user]);
 
@@ -65,6 +70,7 @@ export default function MyBookings() {
       escrow?.forEach(e => { map[e.booking_id] = e; });
       setEscrowMap(map);
     }
+    setApprovalMap(await loadMyApprovals(rows.filter(r => r.organization_id).map(r => r.id)));
     setLoading(false);
   }
 
@@ -155,11 +161,13 @@ export default function MyBookings() {
           const escrow = escrowMap[booking.id];
           const rawPrice = booking.final_price ?? booking.original_price ?? booking.price_estimate;
           const price = (rawPrice === null || rawPrice === undefined || isNaN(Number(rawPrice))) ? 0 : Number(rawPrice);
+          const approval = approvalMap[booking.id];
+          const awaitingApproval = approval?.status === "pending";
           return (
             <div key={booking.id} className="bg-white p-6 rounded-xl border mb-4">
               <div className="flex gap-3 mb-3 flex-wrap">
                 <span className={`px-3 py-1 rounded text-xs font-medium ${statusColors[booking.status || ""] || "bg-gray-100 text-gray-600"}`}>{booking.status?.replace(/_/g, " ")}</span>
-                <span className={`px-3 py-1 rounded text-xs font-medium ${paymentColors[booking.payment_status || ""] || "bg-gray-100 text-gray-600"}`}>{booking.payment_status}</span>
+                <span className={`px-3 py-1 rounded text-xs font-medium ${paymentColors[booking.payment_status || ""] || "bg-gray-100 text-gray-600"}`}>{booking.payment_status === "escrow" ? "paid" : booking.payment_status}</span>
               </div>
               <div className="mb-3">
                 <p className="text-sm text-gray-500">Pickup</p><p className="font-medium">{booking.pickup_address}</p>
@@ -193,7 +201,30 @@ export default function MyBookings() {
                * but the user walked away before PaymentPage captured
                * the money. The booking is effectively a draft until
                * they finish checkout. */}
-              {booking.payment_status === "pending" && booking.status !== "cancelled" && (
+              {/* Company approval (spending limits): waiting, approved or
+               * not approved, with the approver's reason. */}
+              {approval?.status === "pending" && booking.status !== "cancelled" && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 text-sm">
+                  <p className="font-semibold text-amber-800">Waiting for your company's approval</p>
+                  <p className="text-amber-700 text-xs mt-0.5">
+                    {approval.reasons.map(r => APPROVAL_REASON_LABELS[r] ?? r).join("; ")}. It is not paid or sent to drivers until an approver decides
+                    {approval.expires_at ? ` (by ${new Date(approval.expires_at).toLocaleString("nb-NO", { timeZone: "Europe/Oslo" })})` : ""}.
+                  </p>
+                </div>
+              )}
+              {approval?.status === "approved" && booking.payment_status === "pending" && booking.status !== "cancelled" && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-3 text-sm text-emerald-800">
+                  Approved by your company{approval.decision_reason ? `: ${approval.decision_reason}` : ""}. Complete the booking below.
+                </div>
+              )}
+              {(approval?.status === "refused" || approval?.status === "expired") && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-3 text-sm text-red-700">
+                  {approval.status === "refused"
+                    ? `Not approved by your company: ${approval.decision_reason ?? ""}.`
+                    : "Your company's approval was not given in time."} The booking is cancelled without any fee.
+                </div>
+              )}
+              {booking.payment_status === "pending" && booking.status !== "cancelled" && !awaitingApproval && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3 flex items-start gap-2">
                   <span className="text-yellow-500 flex-shrink-0">⚠️</span>
                   <div className="flex-1 text-sm">
@@ -203,7 +234,7 @@ export default function MyBookings() {
                 </div>
               )}
               <div className="flex gap-3 flex-wrap">
-                {booking.payment_status === "pending" && booking.status !== "cancelled" && (
+                {booking.payment_status === "pending" && booking.status !== "cancelled" && !awaitingApproval && (
                   <button
                     onClick={() => completePayment(booking.id)}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-semibold"

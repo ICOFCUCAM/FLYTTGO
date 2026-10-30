@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "category": "transport",
+  "style": "Realistic documentary photograph of a small Norwegian moving and transport business at work, natural Nordic daylight, muted natural colours, honest everyday working conditions, believable Scandinavian streets, apartment buildings and warehouses, plain unmarked vehicles and boxes, shot on a full-frame camera with a 35mm lens.",
+  "briefs": [
+    { "id": "movers-van-street", "shape": "hero", "subject": "Two movers in plain work clothes carrying a sofa from a plain white unmarked van into a wooden apartment building on a quiet Scandinavian street", "tags": ["moving", "movers", "van"], "alt": "Two movers carrying a sofa from a van into a building" },
+    { "id": "van-fjord-road", "shape": "hero", "subject": "A plain white unmarked delivery van driving on a winding road beside a fjord, mountains behind, early autumn", "tags": ["transport", "van", "delivery"], "alt": "A delivery van on a road beside a fjord" },
+    { "id": "warehouse-aisle", "shape": "hero", "subject": "A worker pulling a pallet jack down an aisle of a tidy warehouse with tall racks of plain brown boxes", "tags": ["warehousing", "logistics"], "alt": "A worker with a pallet jack in a warehouse aisle" },
+    { "id": "mover-boxes-stairs", "shape": "wide", "subject": "A mover carrying two plain cardboard boxes down the stairwell of an apartment building", "tags": ["moving", "boxes"], "alt": "A mover carrying boxes down a stairwell" },
+    { "id": "van-loading", "shape": "wide", "subject": "Movers loading wrapped furniture and plain boxes into the back of an open unmarked van, straps on the walls", "tags": ["moving", "van", "loading"], "alt": "Movers loading furniture into a van" },
+    { "id": "packing-boxes-home", "shape": "wide", "subject": "A mover taping a plain cardboard box in a half-packed living room with wrapped furniture", "tags": ["moving", "packing"], "alt": "A mover taping a box in a half-packed living room" },
+    { "id": "courier-doorstep", "shape": "wide", "subject": "A courier in a plain jacket handing a plain parcel to an adult at the door of a wooden house", "tags": ["courier", "delivery", "parcel"], "alt": "A courier handing a parcel at a front door" },
+    { "id": "courier-bike-city", "shape": "wide", "subject": "A courier on a cargo bike with a plain box riding on a city street in light rain", "tags": ["courier", "last-mile"], "alt": "A courier on a cargo bike in the city" },
+    { "id": "warehouse-loading-dock", "shape": "wide", "subject": "A plain unmarked truck backed up to a loading dock, a worker moving a pallet with a pallet jack", "tags": ["logistics", "freight", "loading-dock"], "alt": "A truck at a loading dock with a worker and a pallet" },
+    { "id": "storage-units", "shape": "wide", "subject": "A clean corridor of self-storage units with closed grey doors, bright even lighting", "tags": ["storage", "self-storage"], "alt": "A corridor of self-storage units" },
+    { "id": "boxes-stack", "shape": "square", "subject": "A neat stack of plain cardboard moving boxes with a roll of tape in an empty bright room", "tags": ["moving", "boxes"], "alt": "A stack of moving boxes in an empty room" },
+    { "id": "wrapped-furniture", "shape": "square", "subject": "A chair and a lamp wrapped in moving blankets and stretch film, ready to move", "tags": ["moving", "packing"], "alt": "Furniture wrapped for a move" },
+    { "id": "parcels-shelf", "shape": "square", "subject": "Plain brown parcels sorted on a metal shelf in a small depot", "tags": ["parcel", "courier"], "alt": "Parcels sorted on a shelf" },
+    { "id": "portrait-mover", "shape": "portrait", "subject": "Portrait of a fictional mover in their thirties in plain work clothes and gloves, standing beside an open van", "tags": ["team", "mover"], "alt": "A mover standing beside an open van" },
+    { "id": "portrait-driver", "shape": "portrait", "subject": "Portrait of a fictional van driver in their fifties in a plain jacket, standing in a depot yard", "tags": ["team", "driver"], "alt": "A van driver standing in a depot yard" },
+    { "id": "portrait-warehouse", "shape": "portrait", "subject": "Portrait of a fictional warehouse worker in their forties in a plain high-visibility vest, standing in a warehouse aisle", "tags": ["team", "warehousing"], "alt": "A warehouse worker in a high-visibility vest" }
+  ]
+}

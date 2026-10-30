@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MADE-UP SAMPLE for the tests (src/test/bank-files.test.ts): not from a bank, no real account or person. -->
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.054.001.02" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <BkToCstmrDbtCdtNtfctn>
+    <GrpHdr>
+      <MsgId>SAMPLE-054-20261031-0001</MsgId>
+      <CreDtTm>2026-10-31T06:02:11+01:00</CreDtTm>
+    </GrpHdr>
+    <Ntfctn>
+      <Id>SAMPLE-NTF-0001</Id>
+      <CreDtTm>2026-10-31T06:02:11+01:00</CreDtTm>
+      <Acct>
+        <Id><IBAN>NO9312345678903</IBAN></Id>
+        <Ccy>NOK</Ccy>
+      </Acct>
+      <!-- An OCR batch credited as one entry with two transactions. -->
+      <Ntry>
+        <NtryRef>1</NtryRef>
+        <Amt Ccy="NOK">1700.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-10-31</Dt></BookgDt>
+        <ValDt><Dt>2026-10-31</Dt></ValDt>
+        <AcctSvcrRef>SAMPLE20261031000123</AcctSvcrRef>
+        <BkTxCd><Domn><Cd>PMNT</Cd><Fmly><Cd>RCDT</Cd><SubFmlyCd>DMCT</SubFmlyCd></Fmly></Domn></BkTxCd>
+        <NtryDtls>
+          <TxDtls>
+            <Refs><AcctSvcrRef>SAMPLE20261031000123-A</AcctSvcrRef><EndToEndId>NOTPROVIDED</EndToEndId></Refs>
+            <AmtDtls><TxAmt><Amt Ccy="NOK">1200.00</Amt></TxAmt></AmtDtls>
+            <RltdPties><Dbtr><Nm>Eksempel Bedrift AS</Nm></Dbtr></RltdPties>
+            <RmtInf>
+              <Strd>
+                <CdtrRefInf><Tp><CdOrPrtry><Cd>SCOR</Cd></CdOrPrtry></Tp><Ref>000000018</Ref></CdtrRefInf>
+              </Strd>
+            </RmtInf>
+          </TxDtls>
+          <TxDtls>
+            <AmtDtls><TxAmt><Amt Ccy="NOK">500.00</Amt></TxAmt></AmtDtls>
+            <RltdPties><Dbtr><Nm>Prøve &amp; Sønn AS</Nm></Dbtr></RltdPties>
+            <RmtInf>
+              <Strd>
+                <CdtrRefInf><Tp><CdOrPrtry><Cd>SCOR</Cd></CdOrPrtry></Tp><Ref>0000 00026</Ref></CdtrRefInf>
+              </Strd>
+            </RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <!-- A transfer with the KID written in the message. -->
+      <Ntry>
+        <Amt Ccy="NOK">300.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-10-31</Dt></BookgDt>
+        <AcctSvcrRef>SAMPLE20261031000124</AcctSvcrRef>
+        <NtryDtls>
+          <TxDtls>
+            <RltdPties><Dbtr><Nm>Ola Eksempel</Nm></Dbtr></RltdPties>
+            <RmtInf><Ustrd>Betaling faktura 3, KID 000000034</Ustrd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <!-- A payment in euros. -->
+      <Ntry>
+        <Amt Ccy="EUR">100.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-10-31</Dt></BookgDt>
+        <AcctSvcrRef>SAMPLE20261031000125</AcctSvcrRef>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Strd><CdtrRefInf><Ref>000000026</Ref></CdtrRefInf></Strd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+      <!-- A bank fee (debit): not a payment. -->
+      <Ntry>
+        <Amt Ccy="NOK">12.50</Amt>
+        <CdtDbtInd>DBIT</CdtDbtInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-10-31</Dt></BookgDt>
+        <AcctSvcrRef>SAMPLE20261031000126</AcctSvcrRef>
+      </Ntry>
+      <!-- Not yet booked. -->
+      <Ntry>
+        <Amt Ccy="NOK">900.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <Sts>PDNG</Sts>
+        <BookgDt><Dt>2026-11-01</Dt></BookgDt>
+        <AcctSvcrRef>SAMPLE20261031000127</AcctSvcrRef>
+      </Ntry>
+      <!-- A returned payment. -->
+      <Ntry>
+        <Amt Ccy="NOK">25.00</Amt>
+        <CdtDbtInd>CRDT</CdtDbtInd>
+        <RvslInd>true</RvslInd>
+        <Sts>BOOK</Sts>
+        <BookgDt><Dt>2026-10-31</Dt></BookgDt>
+        <AcctSvcrRef>SAMPLE20261031000128</AcctSvcrRef>
+        <NtryDtls>
+          <TxDtls>
+            <RmtInf><Strd><CdtrRefInf><Ref>000000018</Ref></CdtrRefInf></Strd></RmtInf>
+          </TxDtls>
+        </NtryDtls>
+      </Ntry>
+    </Ntfctn>
+  </BkToCstmrDbtCdtNtfctn>
+</Document>

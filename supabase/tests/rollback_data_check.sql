@@ -11,8 +11,25 @@ SELECT tests.ok((SELECT payment_intent_id FROM public.bookings WHERE id = 'b0000
   'the provider reference stays (the column predates 00004)');
 SELECT tests.ok((SELECT subscription_status FROM public.driver_subscriptions WHERE driver_id = 'd0000000-0000-0000-0000-000000000002') = 'expired',
   'an expired subscription stays, under a CHECK left NOT VALID');
+SELECT tests.ok((SELECT status = 'cancelled' AND payment_status = 'pending' FROM public.bookings
+                  WHERE id = 'b0000000-0000-0000-0000-000000000017'),
+  'a booking that waited for approval is cancelled, unpaid, rather than left payable without approval');
 SELECT tests.ok(to_regclass('public.payment_refunds') IS NULL AND to_regclass('public.organizations') IS NULL,
   'refund records and organisations are dropped (export them first)');
+SELECT tests.ok(to_regclass('public.restaurant_reservations') IS NULL AND to_regclass('public.hotel_stays') IS NULL,
+  'table reservations and hotel stays are dropped (export them first)');
+
+SELECT tests.ok(to_regclass('public.api_keys') IS NULL AND to_regclass('public.organization_widget_origins') IS NULL,
+  'API keys, their log and the widget''s websites are dropped (every key stops working)');
+
+SELECT tests.ok(to_regclass('public.shop_orders') IS NULL AND to_regclass('public.shop_products') IS NULL,
+  'shop catalogues and orders are dropped (export them first)');
+
+SELECT tests.ok(to_regclass('public.organization_addons') IS NULL,
+  'add-on modules are dropped (00022), with a company''s API add-on and a pilot price in place');
+
+SELECT tests.ok(to_regclass('public.image_library') IS NULL AND to_regclass('public.organization_site_images') IS NULL,
+  'the image library and companies'' own images are dropped (00023; export them first; the files stay in storage)');
 
 \echo '── left NOT VALID by the rollback (rows written while the migrations were in force):'
 SELECT c.relname || '.' || con.conname AS constraint_not_valid

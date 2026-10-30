@@ -46,7 +46,9 @@ const PAGE_TO_PATH: Record<Page, string> = {
   'white-label':             '/business/white-label',
   'white-label-dpa':         '/business/white-label/agreement',
   'brand-site':              '/b',
+  'embed':                   '/embed',
   'my-services':             '/my-services',
+  'shop':                    '/shop',
   'accounting':              '/accounting',
 
   /* Legal */
@@ -97,7 +99,7 @@ export interface PageMeta {
 }
 
 const PAGE_TITLES: Record<Page, string> = {
-  'home':                    'FlyttGo — Norway\u2019s #1 Moving Marketplace',
+  'home':                    'FlyttGo — Moving & Transport Marketplace in Norway',
   'booking':                 'Book a Move · FlyttGo',
   'payment':                 'Secure Payment · FlyttGo',
   'tracking':                'Track Your Delivery · FlyttGo',
@@ -136,7 +138,9 @@ const PAGE_TITLES: Record<Page, string> = {
   'white-label':             'White label: plans and prices · FlyttGo Business',
   'white-label-dpa':         'Data processing agreement (white label) · FlyttGo',
   'brand-site':              'Book a move',
+  'embed':                   'Booking',
   'my-services':             'My jobs and appointments',
+  'shop':                    'Shop',
   'accounting':              'Regnskap · Accounting · FlyttGo',
   'not-found':               'Page Not Found · FlyttGo',
 };
@@ -148,15 +152,15 @@ const PAGE_TITLES: Record<Page, string> = {
  */
 const PAGE_DESCRIPTIONS: Record<Page, string> = {
   'home':
-    "Book verified, insured movers and cargo drivers across Norway. Real-time tracking, transparent pricing, escrow payment. Oslo, Bergen, Trondheim and more.",
+    "Book approved movers and cargo drivers across Norway. Upfront prices incl. MVA, tracking during the job and secure card payment through Stripe.",
   'booking':
-    'Book your next move in under 3 minutes. Get an instant quote, pick a verified driver, and track your delivery live — all with escrow payment built in.',
+    'Book your next move online. Get an instant quote, pay securely through Stripe or Vipps, and follow your delivery on the tracking page.',
   'payment':
-    'Secure escrow checkout for your FlyttGo booking. Pay with card, Vipps, Google Pay or corporate invoice — money is held until the delivery is confirmed.',
+    'Pay for your FlyttGo booking: card on Stripe\u2019s secure page, Vipps, or invoice for companies. FlyttGo pays the driver after the job is confirmed.',
   'tracking':
     'Track your FlyttGo delivery in real time. Live driver location, ETA, progress timeline and in-app chat with your driver.',
   'services':
-    'From single-item deliveries to full office relocations — every FlyttGo service is run by registered Norwegian carriers with goods-in-transit insurance.',
+    'From single-item deliveries to full office relocations, carried out by drivers FlyttGo has approved after checking their documents.',
   'van-guide':
     'Not sure what size van you need? Compare Small, Medium, Large and Luton options side-by-side and get an instant recommendation for your move.',
   'checklist':
@@ -164,7 +168,7 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
   'subscriptions':
     'Drive for FlyttGo and keep more of what you earn. Pick a subscription that matches your volume — lower commission, higher dispatch priority.',
   'driver-onboarding':
-    'Apply to become a FlyttGo driver. Flexible hours, weekly payouts, verified jobs across Norway. Requirements, fees and application walkthrough inside.',
+    'Apply to become a FlyttGo driver. Flexible hours, payouts from your wallet, jobs across Norway. Requirements, fees and application walkthrough inside.',
   'customer-dashboard':
     'Your FlyttGo dashboard — active bookings, past moves, receipts and driver tracking all in one place.',
   'my-bookings':
@@ -182,13 +186,13 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
   'bulk-booking':
     'Upload multiple delivery jobs at once. Perfect for retailers, warehouses and event logistics managing dozens of drops in a single run.',
   'recurring-deliveries':
-    'Set up daily, weekly or monthly delivery runs with automatic driver assignment. Ideal for scheduled freight, laundry, catering and more.',
+    'Recurring delivery runs for companies: coming soon. Until then, book each run from your company account.',
   'company-dashboard-info':
     'Take the tour of the FlyttGo corporate dashboard — reporting, user management, invoicing and analytics.',
   'invoice-billing':
     'Consolidated monthly invoicing, MVA-compliant receipts and flexible payment terms for FlyttGo business customers.',
   'corporate-api-access':
-    'The FlyttGo REST API — create bookings, track deliveries and reconcile invoices straight from your ERP, WMS or e-commerce platform.',
+    'The FlyttGo REST API for companies: price moves, book them on your company\u2019s invoice and follow their status from your ERP, WMS or web shop.',
   'terms':
     'FlyttGo\u2019s Terms of Service — the rules that govern using the FlyttGo marketplace as a customer or business.',
   'privacy':
@@ -198,21 +202,21 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
   'driver-terms':
     'The FlyttGo Driver Agreement — commission, commitments, conduct and the rules for accepting jobs on the FlyttGo platform.',
   'about':
-    'FlyttGo is Norway\u2019s #1 moving marketplace. Verified drivers, escrow payment, real-time tracking — built in Oslo, run by Norwegians.',
+    'FlyttGo is a moving marketplace for Norway: approved drivers, upfront prices, secure card payment through Stripe and tracking during the job.',
   'contact':
-    'Get in touch with FlyttGo — phone, email, WhatsApp, office address and a contact form. Support available 7 days a week, 08:00\u201322:00.',
+    'Get in touch with FlyttGo by email or the contact form. Every message reaches the FlyttGo team.',
   'faq':
     'Answers to the most common questions about booking, payment, drivers, insurance and cancellations on FlyttGo.',
   'help':
     'Browse help articles and guides for booking, payment, safety, account management and using FlyttGo for business.',
   'safety':
-    'How FlyttGo keeps you safe — 6-step driver vetting, mandatory goods-in-transit insurance, escrow payments and our damage claims process.',
+    'How FlyttGo checks drivers before they take jobs, how card payment and refunds work, and what to do if something is damaged.',
   'careers':
-    'Join the FlyttGo team. Open roles in engineering, design, operations, support and marketing — plus how to apply as a driver.',
+    'Working at FlyttGo: send an open application, or apply as a driver.',
   'press':
-    'Press & media kit for FlyttGo — quick facts, executive bios, brand assets and press contact.',
+    'Press & media for FlyttGo: quick facts, brand assets on request and press contact.',
   'sustainability':
-    'How FlyttGo makes moving greener — shared routes, EV fleet incentives, reusable moving kits and carbon offset on every booking.',
+    'Moving with a lighter footprint: the right van size, your choice of time, digital paperwork, and what FlyttGo does not do yet.',
   'auth-callback':
     'Confirming your FlyttGo account and signing you in. You\u2019ll be redirected to your dashboard automatically.',
   'driver-application-status':
@@ -225,8 +229,12 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     'The data processing agreement for companies that sell moving under their own name on FlyttGo (plan Own seller).',
   'brand-site':
     'Book a move online: instant price, verified drivers and live tracking.',
+  'embed':
+    'Book online with the company.',
   'my-services':
     'Your jobs and appointments with companies on FlyttGo, and their invoices.',
+  'shop':
+    'Shop online from the company: pickup or delivery, card payment, and 14 days to change your mind.',
   'accounting':
     'The books you keep or review for companies on FlyttGo: accountants, bookkeepers and auditors.',
   'not-found':
@@ -309,10 +317,13 @@ function upsertLink(rel: string, href: string) {
 export function pathToPage(path: string): Page {
   if (!path) return 'home';
   const normalised = path === '/' ? '/' : path.replace(/\/+$/, '');
-  /* A company's white-label page: /b/<slug>, and /b/<slug>/book for its
-   * booking; on a company's own domain or subdomain, its front page. */
-  const brand = /^\/b\/[a-z0-9-]{3,63}(\/book)?$/.exec(normalised);
-  if (brand) return brand[1] ? 'booking' : 'brand-site';
+  /* A company's white-label page: /b/<slug>, /b/<slug>/book for its
+   * booking and /b/<slug>/shop for its shop; on a company's own domain or
+   * subdomain, its front page. */
+  const brand = /^\/b\/[a-z0-9-]{3,63}(\/book|\/shop)?$/.exec(normalised);
+  if (brand) return brand[1] === '/shop' ? 'shop' : brand[1] ? 'booking' : 'brand-site';
+  /* The booking widget's frame on a company's own website. */
+  if (/^\/embed\/[a-z0-9-]{3,63}$/.test(normalised)) return 'embed';
   if (normalised === '/' && typeof window !== 'undefined' && !isFlyttgoHost(window.location.hostname)) return 'brand-site';
   /* Unknown paths resolve to 'not-found' rather than silently
    * serving the homepage. NotFoundPage sets robots=noindex so

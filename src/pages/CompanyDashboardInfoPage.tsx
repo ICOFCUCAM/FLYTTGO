@@ -59,7 +59,7 @@ export default function CompanyDashboardInfoPage() {
           <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:shadow-md transition">
             <div className="text-3xl mb-3">🔒</div>
             <h3 className="font-bold text-gray-900 mb-2">Enterprise Security</h3>
-            <p className="text-gray-500 text-sm leading-relaxed">SOC 2 compatible data handling with role-based access control and audit logs.</p>
+            <p className="text-gray-500 text-sm leading-relaxed">Role-based access for your team, with data hosted in the EU.</p>
           </div>
         </div>
       </section>
@@ -96,7 +96,7 @@ export default function CompanyDashboardInfoPage() {
       {/* USE CASES */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <h2 className="text-2xl font-extrabold text-[#0B2E59] mb-3">Industries & Use Cases</h2>
-        <p className="text-gray-500 mb-8">Trusted by operations teams across Norway.</p>
+        <p className="text-gray-500 mb-8">Examples of what companies can use FlyttGo for.</p>
         <div className="flex flex-wrap justify-center gap-3">
           <span className="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">Multi-site retail operations</span>
           <span className="px-4 py-2 bg-gray-100 rounded-full text-sm font-medium text-gray-700">Enterprise procurement teams</span>
@@ -111,7 +111,7 @@ export default function CompanyDashboardInfoPage() {
       <section className="bg-gradient-to-r from-[#0B2E59] to-[#1a4a8a] py-16">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-extrabold text-white mb-4">Ready to Scale Your Logistics?</h2>
-          <p className="text-white/70 mb-8">Join 500+ companies using FlyttGo Corporate across Norway.</p>
+          <p className="text-white/70 mb-8">Create a company account for free and book your first job when you need it.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button onClick={() => { setShowAuthModal(true); setAuthMode('signup'); }}
               className="px-10 py-4 bg-[#F2B705] text-[#0B2E59] rounded-xl font-bold text-base hover:bg-[#F2B705]/90 transition shadow-lg">

@@ -9,12 +9,12 @@ const VALUE_ICONS = [
   'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
 ];
 
+/* Services FlyttGo's code actually uses (it is not a list of press
+ * coverage or partners: there is none to show; platform audit 2026-10-30). */
 const PRESS = [
-  'E24',
-  'Dagens Næringsliv',
-  'Tek.no',
-  'Shifter',
-  'NRK',
+  'Stripe',
+  'Kartverket',
+  'Brønnøysundregistrene',
 ];
 
 export default function AboutUsPage() {
@@ -28,12 +28,11 @@ export default function AboutUsPage() {
     { icon: VALUE_ICONS[3], title: t('about.value4Title'), desc: t('about.value4Desc') },
   ];
 
-  const timeline = [
-    { year: '2023', title: t('about.timeline2023Title'), desc: t('about.timeline2023Desc') },
-    { year: '2024', title: t('about.timeline2024Title'), desc: t('about.timeline2024Desc') },
-    { year: '2025', title: t('about.timeline2025Title'), desc: t('about.timeline2025Desc') },
-    { year: '2026', title: t('about.timeline2026Title'), desc: t('about.timeline2026Desc') },
-  ];
+  /* How a move works, step by step (this was a company history FlyttGo
+   * could not back; platform audit 2026-10-30). */
+  const timeline = [1, 2, 3, 4].map(n => ({
+    year: t('about.stepLabel', { n }), title: t(`about.step${n}Title`), desc: t(`about.step${n}Desc`),
+  }));
 
   return (
     <div className="min-h-screen bg-white">
@@ -134,12 +133,7 @@ export default function AboutUsPage() {
       <section className="bg-gradient-to-r from-[#0B2E59] to-[#1a4a8a] py-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { v: '25,000+', l: t('about.statDeliveries') },
-              { v: '500+',    l: t('about.statCarriers') },
-              { v: '40+',     l: t('about.statCities') },
-              { v: '4.8★',    l: t('about.statRating') },
-            ].map(s => (
+            {[1, 2, 3, 4].map(n => ({ v: t(`about.stat${n}Value`), l: t(`about.stat${n}Label`) })).map(s => (
               <div key={s.l} className="text-center">
                 <div className="text-4xl sm:text-5xl font-extrabold text-emerald-400 mb-1">{s.v}</div>
                 <div className="text-sm text-white/60">{s.l}</div>

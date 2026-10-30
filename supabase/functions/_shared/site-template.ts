@@ -182,6 +182,20 @@ export interface Brand {
   logoUrl?: string | null;
 }
 
+/**
+ * The neutral sample brand the importer draws pages with: the template's own
+ * colours, a plain name, no real contact details.
+ */
+export const SAMPLE_BRAND: Brand = { name: 'Your Company', tagline: 'Your tagline here', phone: '+47 00 00 00 00',
+  email: 'post@example.com', city: 'Your town' };
+
+/**
+ * A template's own demo identity, as its gallery thumbnail shows it: its
+ * name and colours, sample contact details. The importer, the thumbnail
+ * redraw (scripts/redraw-thumbnails.ts) and the gallery's live card use it.
+ */
+export const demoBrand = (t: { name: string }): Brand => ({ ...SAMPLE_BRAND, name: t.name, tagline: null });
+
 export interface RenderContext {
   brand: Brand;
   assets: TemplateAsset[];
@@ -193,6 +207,34 @@ export interface RenderContext {
   sellerNotice: string;
   /** Hosts images may come from (the asset store). */
   assetHosts?: string[];
+  /**
+   * The resolved images (site_template_image_map(), 00023, through
+   * renderImages() in _shared/image-library.ts): the company's own, the
+   * template's approved ones, the library's or a neutral block, per slot.
+   * Without it the page uses `assets` as before.
+   */
+  images?: RenderImages | null;
+}
+
+/** What the renderer fills in for one image slot: an address, or none (the neutral block). */
+export interface RenderImage {
+  url: string | null;
+  alt?: string | null;
+  source: 'company' | 'template' | 'library' | 'assets' | 'fallback';
+  focal?: { x: number; y: number } | null;
+}
+/** The resolved images of a page; 'assets' mode: slots not in the map use the template's assets as before. */
+export interface RenderImages { mode: 'library' | 'assets'; byKey: Record<string, RenderImage> }
+
+/**
+ * The neutral block: a plain rectangle in the company's colour, no photo, as
+ * an SVG data address (it stretches to the slot; safe inside src="" and
+ * CSS url() because nothing in it needs quoting).
+ */
+export function neutralImage(colour: string | null | undefined): string {
+  const c = /^#[0-9a-f]{6}$/i.test(colour ?? '') ? colour! : '#0b2e59';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 9" preserveAspectRatio="none"><rect width="16" height="9" fill="${c}"/></svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(svg).replace(/'/g, '%27').replace(/\(/g, '%28').replace(/\)/g, '%29');
 }
 
 const BOOK_LABEL = 'Get a price and book';
@@ -653,13 +695,49 @@ export function renderTemplatePage(html: string, ctx: RenderContext): string {
   let h = sanitiseHtml(html, hosts).html;
   const b = ctx.brand;
   const assets = new Map(ctx.assets.map(a => [a.key, a.url]));
-  h = h.replace(/\{\{ASSET:([^}]{1,60})\}\}/g, (_m, key: string) => {
-    const url = assets.get(key) ?? assets.get(key.replace(/\.\d+$/, '')) ?? assets.get(`${key}.1`) ?? '';
+  const onHost = (url: string) => {
     try {
       const u = new URL(url);
-      return u.protocol === 'https:' && hosts.includes(u.host.toLowerCase()) ? escapeHtml(url) : '';
-    } catch { return ''; }
-  });
+      return u.protocol === 'https:' && hosts.includes(u.host.toLowerCase());
+    } catch { return false; }
+  };
+  const assetFor = (key: string) => assets.get(key) ?? assets.get(key.replace(/\.\d+$/, '')) ?? assets.get(`${key}.1`) ?? '';
+  const resolved = ctx.images ?? null;
+  if (resolved) {
+    // The resolved images (00023): each slot's own image, or the neutral
+    // block in the company's colour; never a photo from elsewhere.
+    const block = neutralImage(b.primaryColor);
+    const pick = (key: string): RenderImage | null =>
+      resolved.byKey[key] ?? resolved.byKey[key.replace(/\.\d+$/, '')] ?? resolved.byKey[`${key}.1`] ?? null;
+    const urlFor = (key: string): string => {
+      const e = pick(key);
+      if (e?.url && onHost(e.url)) return e.url;
+      if (!e && resolved.mode === 'assets' && onHost(assetFor(key))) return assetFor(key);
+      return block;
+    };
+    // An image's description follows the picture: the company's or the
+    // library's alt text, none for the neutral block (it is decoration).
+    h = h.replace(/<img\b[^>]*>/gi, (tag) => {
+      const key = /\{\{ASSET:([^}]{1,60})\}\}/.exec(tag)?.[1];
+      if (!key) return tag;
+      const e = pick(key);
+      const url = urlFor(key);
+      const alt = url === block ? '' : e && (e.source === 'company' || e.source === 'library') && e.alt ? e.alt : null;
+      let out = tag;
+      if (alt !== null) {
+        out = /\salt\s*=\s*("[^"]*"|'[^']*')/i.test(out) ? out.replace(/\salt\s*=\s*("[^"]*"|'[^']*')/i, ` alt="${escapeHtml(alt)}"`)
+          : out.replace(/^<img\b/i, `<img alt="${escapeHtml(alt)}"`);
+      }
+      if (url !== block && e?.focal && !/\sstyle\s*=/i.test(out)) {
+        const pct = (v: number) => `${Math.round(Math.max(0, Math.min(1, v)) * 100)}%`;
+        out = out.replace(/^<img\b/i, `<img style="object-position:${pct(e.focal.x)} ${pct(e.focal.y)}"`);
+      }
+      return out;
+    });
+    h = h.replace(/\{\{ASSET:([^}]{1,60})\}\}/g, (_m, key: string) => escapeHtml(urlFor(key)));
+  } else {
+    h = h.replace(/\{\{ASSET:([^}]{1,60})\}\}/g, (_m, key: string) => onHost(assetFor(key)) ? escapeHtml(assetFor(key)) : '');
+  }
   // Links between the site's pages, and to the booking page, leave the frame.
   h = h.replace(/href\s*=\s*("|')\{\{BASE\}\}(\/[^"']*)?\1/g, (_m, q: string, path: string) =>
     `href=${q}${escapeHtml(ctx.pageUrl(path && path !== '' ? path : '/'))}${q} target="_top"`);

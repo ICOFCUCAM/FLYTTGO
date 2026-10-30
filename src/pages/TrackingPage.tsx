@@ -273,7 +273,7 @@ export default function TrackingPage() {
                     { label: t('tracking.service'), value: booking.van_type || 'Large Van', key: 'service' },
                     { label: t('tracking.moveDate'), value: booking.move_date || 'Today', key: 'moveDate' },
                     { label: t('tracking.total'), value: `${Number(booking.final_price || booking.price_estimate || 2450).toFixed(0)} NOK`, key: 'total' },
-                    { label: 'Payment', value: booking.payment_status === 'escrow' ? '🔒 In Escrow' : booking.payment_status || 'Secured', key: 'payment' },
+                    { label: 'Payment', value: booking.payment_status === 'escrow' ? '🔒 Paid' : booking.payment_status || 'Secured', key: 'payment' },
                   ].map(row => (
                     <div key={row.key} className="flex justify-between items-center text-sm">
                       <span className="text-gray-500">{row.label}</span>

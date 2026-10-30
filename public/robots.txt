@@ -11,6 +11,7 @@ Disallow: /driver-portal
 Disallow: /admin
 Disallow: /my-bookings
 Disallow: /profile
+Disallow: /embed/
 
 # Sitemap
 Sitemap: https://flyttgo.no/sitemap.xml

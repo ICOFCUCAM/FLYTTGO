@@ -8,7 +8,8 @@
  * scripts, as the published site is.
  */
 import { useRef, useState } from 'react';
-import { hostsOf, renderTemplatePage, type Brand } from '../../../supabase/functions/_shared/site-template';
+import { hostsOf, renderTemplatePage, type Brand, type RenderImages } from '../../../supabase/functions/_shared/site-template';
+import { imageUrls } from '../../../supabase/functions/_shared/image-library';
 import type { SiteTemplate } from '../../lib/whiteLabel';
 import { useDialog } from './useDialog';
 
@@ -24,7 +25,7 @@ type Device = (typeof DEVICES)[number]['id'];
 
 const pageName = (path: string) => path === '/' ? 'Home' : path.replace(/^\//, '').replace(/[-/]/g, ' ').replace(/^./, c => c.toUpperCase());
 
-export default function TemplatePreview({ template, path, onPath, selected, canEdit, onChoose, onClose, brand, sellerNotice, step }: {
+export default function TemplatePreview({ template, path, onPath, selected, canEdit, onChoose, onClose, brand, sellerNotice, step, images }: {
   template: SiteTemplate;
   path: string;
   onPath: (path: string) => void;
@@ -36,6 +37,8 @@ export default function TemplatePreview({ template, path, onPath, selected, canE
   sellerNotice: string;
   /** From the gallery: where this website is in its results, and how to step to the one before or after. */
   step?: { at: number; of: number; go: (by: -1 | 1) => void; loading: boolean };
+  /** The resolved images (00023: the company's own, the template's approved ones, the library's or a plain block); none: the template's assets. */
+  images?: RenderImages | null;
 }) {
   const box = useRef<HTMLDivElement>(null);
   useDialog(box, onClose);
@@ -88,11 +91,11 @@ export default function TemplatePreview({ template, path, onPath, selected, canE
             className={`bg-white ${frame.width ? 'self-stretch shadow-xl sm:my-3 sm:rounded-lg border border-gray-300 shrink-0' : 'w-full h-full'}`}
             style={frame.width ? { width: frame.width, maxWidth: '100%' } : undefined}
             srcDoc={renderTemplatePage(pages[at]?.html ?? '', {
-              brand, assets: template.assets, pageUrl: () => '#', bookingUrl: '#', sellerNotice,
-              assetHosts: hostsOf(template.assets, brand.logoUrl),
+              brand, assets: template.assets, pageUrl: () => '#', bookingUrl: '#', sellerNotice, images,
+              assetHosts: hostsOf([...template.assets, ...imageUrls(images)], brand.logoUrl),
             })} />
         </div>
-        <p className="text-xs text-gray-600 px-3 py-2 border-t">Shown with your name, colours and contact details; the wording and pictures are the template's samples. On your site every "book" button opens your booking page.</p>
+        <p className="text-xs text-gray-600 px-3 py-2 border-t">Shown with your name, colours and contact details; the wording is the template's sample; the pictures are those your site shows (yours, the library's for this kind of business, or a plain colour block). On your site every "book" button opens your booking page.</p>
       </div>
     </div>
   );

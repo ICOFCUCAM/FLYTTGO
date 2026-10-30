@@ -35,14 +35,18 @@ DO $$
 DECLARE n int;
 BEGIN
   SELECT count(*) INTO n FROM cron.job;
-  IF n <> 4 THEN RAISE EXCEPTION 'FAIL: % jobs after two runs, expected 4', n; END IF;
+  IF n <> 6 THEN RAISE EXCEPTION 'FAIL: % jobs after two runs, expected 6', n; END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-accounting-cancellations' AND schedule = '20 0 * * *'
                  AND command LIKE '%accounting.apply_cancellations()%') THEN RAISE EXCEPTION 'FAIL: accounting cancellations job'; END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'auto-downgrade-expired-subscriptions' AND schedule = '0 * * * *'
                  AND command LIKE '%expire_lapsed_subscriptions(NULL)%') THEN RAISE EXCEPTION 'FAIL: expiry job'; END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-invoice-run' AND schedule = '15 5 * * *') THEN RAISE EXCEPTION 'FAIL: invoice job'; END IF;
   IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-appointment-reminders' AND schedule = '10 * * * *') THEN RAISE EXCEPTION 'FAIL: reminder job'; END IF;
-  RAISE NOTICE 'ok: four jobs, a re-run replaces them and the old expiry job';
+  IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-shop-expiry' AND schedule = '*/5 * * * *'
+                 AND command LIKE '%public.expire_shop_orders()%') THEN RAISE EXCEPTION 'FAIL: shop expiry job'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'flyttgo-approval-expiry' AND schedule = '*/15 * * * *'
+                 AND command LIKE '%public.expire_booking_approvals(NULL)%') THEN RAISE EXCEPTION 'FAIL: approval expiry job'; END IF;
+  RAISE NOTICE 'ok: six jobs, a re-run replaces them and the old expiry job';
 END $$;
 
 -- Without the Vault secrets a job fails and sends nothing.
@@ -64,13 +68,51 @@ INSERT INTO vault.secrets_stub VALUES ('flyttgo_project_url', 'https://example.s
 DO $$
 DECLARE c text;
 BEGIN
-  FOR c IN SELECT command FROM cron.job WHERE jobname NOT IN ('auto-downgrade-expired-subscriptions', 'flyttgo-accounting-cancellations') ORDER BY jobname LOOP EXECUTE c; END LOOP;
+  FOR c IN SELECT command FROM cron.job WHERE jobname NOT IN ('auto-downgrade-expired-subscriptions', 'flyttgo-accounting-cancellations',
+                                                              'flyttgo-approval-expiry') ORDER BY jobname LOOP EXECUTE c; END LOOP;
   IF NOT EXISTS (SELECT 1 FROM net.sent WHERE url = 'https://example.supabase.co/functions/v1/invoice-run'
                  AND headers ->> 'Authorization' = 'Bearer test-key' AND timeout_milliseconds = 150000) THEN RAISE EXCEPTION 'FAIL: invoice-run request'; END IF;
   IF NOT EXISTS (SELECT 1 FROM net.sent WHERE url = 'https://example.supabase.co/functions/v1/appointment-reminders') THEN RAISE EXCEPTION 'FAIL: reminder request'; END IF;
   EXECUTE (SELECT command FROM cron.job WHERE jobname = 'auto-downgrade-expired-subscriptions');
   RAISE NOTICE 'ok: each job runs; the functions get the key from Vault';
 END $$;
+
+-- The approval expiry job, as pg_cron runs it (no JWT claims: the
+-- server): a request past its deadline ends, its unpaid booking is
+-- cancelled without a fee, a request still running is left alone, and a
+-- second run finds nothing more.
+BEGIN;
+SET LOCAL ROLE authenticated;
+CREATE TEMP TABLE o ON COMMIT DROP AS SELECT tests.acme() AS id;
+SELECT tests.activate((SELECT id FROM o));
+SELECT public.set_spending_rules((SELECT id FROM o), NULL, ARRAY['booker'], 24);
+SELECT tests.login('d0000000-0000-0000-0000-000000000001');
+CREATE TEMP TABLE b ON COMMIT DROP AS SELECT tests.book((SELECT id FROM o)) AS id, 1 AS n;
+INSERT INTO b SELECT tests.book((SELECT id FROM o)), 2;
+RESET ROLE;
+SELECT set_config('request.jwt.claims', '{"role":"service_role"}', true);
+SELECT public.company_booking_check(id, 'd0000000-0000-0000-0000-000000000001', 1200) FROM b;
+UPDATE public.company_booking_approvals SET expires_at = now() - interval '1 minute' WHERE booking_id = (SELECT id FROM b WHERE n = 1);
+SELECT set_config('request.jwt.claims', '', true);
+DO $$
+DECLARE c text := (SELECT command FROM cron.job WHERE jobname = 'flyttgo-approval-expiry');
+BEGIN
+  EXECUTE c;
+  IF NOT (SELECT a.status = 'expired' AND bk.status = 'cancelled' AND bk.payment_status = 'pending' AND bk.cancelled_by = 'platform'
+            FROM public.company_booking_approvals a JOIN public.bookings bk ON bk.id = a.booking_id
+           WHERE a.booking_id = (SELECT id FROM b WHERE n = 1)) THEN
+    RAISE EXCEPTION 'FAIL: the approval expiry job did not end the request past its deadline';
+  END IF;
+  IF (SELECT status FROM public.company_booking_approvals WHERE booking_id = (SELECT id FROM b WHERE n = 2)) <> 'pending' THEN
+    RAISE EXCEPTION 'FAIL: the approval expiry job ended a request still running';
+  END IF;
+  IF public.expire_booking_approvals(NULL) <> 0 THEN RAISE EXCEPTION 'FAIL: a second run found more to end'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.company_booking_approval_events WHERE booking_id = (SELECT id FROM b WHERE n = 1) AND action = 'expired') THEN
+    RAISE EXCEPTION 'FAIL: the expiry is not logged';
+  END IF;
+  RAISE NOTICE 'ok: the approval expiry job ends requests past their deadline (booking cancelled, unpaid, logged), once, and only those';
+END $$;
+ROLLBACK;
 
 DO $$
 BEGIN

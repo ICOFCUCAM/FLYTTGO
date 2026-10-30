@@ -46,6 +46,86 @@ UPDATE public.bookings SET captured_at = now(), captured_amount = 2875 WHERE id 
 SELECT public.record_organization_verification((SELECT id FROM public.organizations WHERE slug = 'rollback-as'),
                                                'brreg', true, '{"navn":"ROLLBACK AS"}');
 
+-- 00017: the company is activated, has an approval rule and a member
+-- limit, and a booking waits for approval (the rollback cancels it).
+SELECT set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
+SELECT public.admin_set_organization_status((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'active', 'rollback test');
+SELECT set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
+SELECT public.set_spending_rules((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 1000, ARRAY['owner'], 168);
+INSERT INTO public.bookings (id, customer_id, organization_id, price_estimate, original_price, estimated_hours,
+                             pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, van_type)
+SELECT 'b0000000-0000-0000-0000-000000000017', 'c0000000-0000-0000-0000-000000000001', id, 1200, 1200, 1,
+       59.91, 10.75, 59.95, 10.80, 'medium_van'
+  FROM public.organizations WHERE slug = 'rollback-as';
+SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false);
+SELECT public.company_booking_check('b0000000-0000-0000-0000-000000000017', 'c0000000-0000-0000-0000-000000000001', 1200);
+-- 00022: FlyttGo enables the API add-on (needed for keys since 00022) and
+-- accepts a plan's prices as pilot pricing.
+SELECT set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
+SELECT public.admin_enable_addon((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'api', 'quote', NULL, NULL, 'Q-ROLLBACK', NULL);
+SELECT public.admin_set_white_label_pilot_price('jobs', 'Pilot pricing (rollback test)');
+-- 00018: an API key with its log and a counted request, a widget
+-- website (the company was activated above).
+SELECT set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
+SELECT public.create_api_key((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'Rollback', ARRAY['quotes', 'bookings:read']);
+SELECT public.add_widget_origin((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'https://rollback.example');
+SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false);
+SELECT public.api_begin((SELECT key_hash FROM public.api_keys LIMIT 1), 'quotes');
+SELECT set_config('request.jwt.claims', '', false);
+-- 00019: a restaurant's table, a reservation on it with its log, a hotel's
+-- room type, room and stay with its log (the company is on no plan).
+INSERT INTO public.restaurant_settings (organization_id) SELECT id FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.restaurant_tables (organization_id, name, seats) SELECT id, 'T1', 2 FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.restaurant_reservations (organization_id, number, customer, party_size, starts_at, ends_at)
+SELECT id, 1, '{"name":"Kari","phone":"+47 900 00 000"}', 2, now() + interval '1 day', now() + interval '1 day 2 hours'
+  FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.restaurant_reservation_tables (reservation_id, table_id)
+SELECT r.id, t.id FROM public.restaurant_reservations r JOIN public.restaurant_tables t ON t.organization_id = r.organization_id;
+INSERT INTO public.restaurant_reservation_events (reservation_id, action) SELECT id, 'reservation.booked' FROM public.restaurant_reservations;
+INSERT INTO public.hotel_settings (organization_id, vat_rate) SELECT id, 12 FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.hotel_room_types (organization_id, name, capacity, nightly_price) SELECT id, 'Double', 2, 1120 FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.hotel_rooms (organization_id, room_type_id, name) SELECT organization_id, id, '101' FROM public.hotel_room_types;
+INSERT INTO public.hotel_stays (organization_id, number, room_type_id, room_id, customer, guests, check_in, check_out, nightly_price, total, vat_rate)
+SELECT organization_id, 1, room_type_id, id, '{"name":"Kari","phone":"+47 900 00 000"}', 2, current_date + 1, current_date + 3, 1120, 2240, 12
+  FROM public.hotel_rooms;
+INSERT INTO public.hotel_stay_events (stay_id, action) SELECT id, 'stay.booked' FROM public.hotel_stays;
+-- 00020: a shop's delivery options, a product with a size and an unpaid
+-- order holding it.
+INSERT INTO public.shop_settings (organization_id, pickup_address)
+SELECT id, 'Torget 1, 0150 Oslo' FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_products (id, organization_id, name, price, track_stock, variant_label)
+SELECT '5a000000-0000-0000-0000-000000000001', id, 'Mug', 199, true, 'Size' FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_variants (id, product_id, organization_id, name, stock)
+SELECT '5b000000-0000-0000-0000-000000000001', '5a000000-0000-0000-0000-000000000001', id, 'L', 2 FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_orders (id, organization_id, number, customer_user_id, customer, delivery_method, items_total, total, expires_at)
+SELECT '5c000000-0000-0000-0000-000000000001', id, 1, 'c0000000-0000-0000-0000-000000000002', '{"name":"Kari"}', 'pickup', 199, 199, now() + interval '1 hour'
+  FROM public.organizations WHERE slug = 'rollback-as';
+INSERT INTO public.shop_order_lines (order_id, line_no, product_id, variant_id, name, quantity, unit_price, vat_rate, total, stock_reserved)
+VALUES ('5c000000-0000-0000-0000-000000000001', 1, '5a000000-0000-0000-0000-000000000001', '5b000000-0000-0000-0000-000000000001',
+        'Mug (L)', 1, 199, 25, 199, true);
+
+-- 00023: an approved library image and the company's own image for a slot.
+INSERT INTO storage.objects (bucket_id, name) VALUES ('site-image-library', 'transport/' || repeat('d', 64) || '.jpg');
+INSERT INTO public.image_library (storage_path, category, shape, width, height, mime, origin, licence, licence_evidence, alt_text, sha256, review_status)
+VALUES ('transport/' || repeat('d', 64) || '.jpg', 'transport', 'hero', 1920, 1080, 'image/jpeg', 'rollback', 'Rollback licence',
+        'https://rollback.example/licence', 'A van', repeat('d', 64), 'approved');
+INSERT INTO public.organization_site_images (organization_id, slot_key, library_image_id)
+SELECT o.id, 'hero', l.id FROM public.organizations o, public.image_library l WHERE o.slug = 'rollback-as';
+
+-- 00024: a template whose thumbnail was drawn again, the images it was drawn with recorded.
+SELECT set_config('request.jwt.claims', '', false);
+SELECT public.import_site_template(jsonb_build_object('id', 'rollback-tpl', 'name', 'Rollback Movers', 'industry', '["moving"]'::jsonb,
+  'source_id', 'rollback-tpl', 'pages', '[{"path": "/", "html": "<img src=\"{{ASSET:hero}}\" alt=\"Hero\">"}]'::jsonb,
+  'assets', '[{"key": "hero", "url": "https://flyttgo.supabase.co/storage/v1/object/public/site-template-assets/rollback-tpl/hero.jpg"}]'::jsonb));
+INSERT INTO storage.objects (bucket_id, name) VALUES ('site-template-assets', 'rollback-tpl/thumbnail-' || repeat('e', 12) || '.jpg');
+SELECT public.record_site_template_thumbnail('rollback-tpl', 'rollback-tpl/thumbnail-' || repeat('e', 12) || '.jpg', repeat('e', 64));
+
+-- 00025: the template's image moved to its shared copy (recorded).
+INSERT INTO storage.objects (bucket_id, name) VALUES ('site-template-assets', 'shared/' || repeat('f', 64) || '.jpg');
+SELECT public.share_site_template_assets(jsonb_build_array(jsonb_build_object('template', 'rollback-tpl', 'key', 'hero', 'sha256', repeat('f', 64),
+  'from', 'https://flyttgo.supabase.co/storage/v1/object/public/site-template-assets/rollback-tpl/hero.jpg',
+  'to', 'https://flyttgo.supabase.co/storage/v1/object/public/site-template-assets/shared/' || repeat('f', 64) || '.jpg')));
+
 -- What exists before the rollback, for the comparison afterwards.
 CREATE TABLE public.zz_rollback_before AS
 SELECT 'bookings' t, count(*) n FROM public.bookings

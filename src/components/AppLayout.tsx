@@ -2,8 +2,10 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { useApp } from '../lib/store';
 import Header from './Header';
 import { useWhiteLabel } from '../lib/whiteLabelContext';
+import { ownBooking as ownCompanyBooking } from '../lib/whiteLabel';
 import { BrandFooter, BrandHeader } from './whiteLabel/BrandFrame';
 import AuthModal from './AuthModal';
+import { isEmbedded, useEmbedResize } from '../lib/embed';
 
 const HomePage           = lazy(() => import('./HomePage'));
 const BookingFlow        = lazy(() => import('./BookingFlow'));
@@ -23,8 +25,10 @@ const AcceptInvitationPage = lazy(() => import('../pages/AcceptInvitationPage'))
 const WhiteLabelPlansPage  = lazy(() => import('../pages/WhiteLabelPlansPage'));
 const WhiteLabelDpaPage    = lazy(() => import('../pages/WhiteLabelDpaPage'));
 const BrandSitePage        = lazy(() => import('../pages/BrandSitePage'));
+const EmbedPage            = lazy(() => import('../pages/EmbedPage'));
 const ServiceBookingPage   = lazy(() => import('../pages/ServiceBookingPage'));
 const MyServicesPage       = lazy(() => import('../pages/MyServicesPage'));
+const ShopPage             = lazy(() => import('../pages/ShopPage'));
 const AccountingPage       = lazy(() => import('../pages/AccountingPage'));
 const ServicesPage       = lazy(() => import('../pages/ServicesPage'));
 const CorporatePage             = lazy(() => import('../pages/CorporatePage'));
@@ -63,9 +67,15 @@ export default function AppLayout() {
   /* On a company's white-label page its own header and footer replace
    * FlyttGo's (the booking flow keeps working as usual underneath). */
   const { site } = useWhiteLabel();
-  const branded = !!site && ['brand-site', 'booking', 'payment', 'my-bookings', 'my-services', 'tracking', 'auth-callback', 'terms', 'privacy'].includes(currentPage);
-  /* A company outside moving books its own jobs or appointments, not moves. */
-  const ownBooking = !!site && (site.booking === 'jobs' || site.booking === 'appointments');
+  const branded = !!site && ['brand-site', 'booking', 'shop', 'payment', 'my-bookings', 'my-services', 'tracking', 'auth-callback', 'terms', 'privacy'].includes(currentPage);
+  /* A company outside moving books its own jobs, appointments, tables or
+   * rooms, not moves; a page with only a shop sends "book" to the shop (00020). */
+  const ownBooking = !!site && ownCompanyBooking(site.booking);
+  const shopOnly = !!site && site.booking === 'none' && !!site.shop;
+  /* In the booking widget's frame on the company's own website (src/lib/embed.ts):
+   * no header or footer, and the frame follows the page's height. */
+  const embedded = currentPage === 'embed' || isEmbedded();
+  useEmbedResize(embedded && currentPage !== 'embed');
 
   /* Scroll to the top of the viewport whenever the current page
    * changes. Without this, clicking a link from deep down the page
@@ -80,13 +90,13 @@ export default function AppLayout() {
   /* The auth callback page is a transient, full-screen landing surface
    * for Supabase email-confirmation / OAuth redirects — chrome would
    * just be visual noise during the ~100 ms session handoff. */
-  const showHeader = currentPage !== 'auth-callback';
-  const showFooter = !['booking', 'driver-portal', 'admin', 'auth-callback'].includes(currentPage) || (currentPage === 'booking' && ownBooking);
+  const showHeader = currentPage !== 'auth-callback' && !embedded;
+  const showFooter = !embedded && (!['booking', 'driver-portal', 'admin', 'auth-callback'].includes(currentPage) || (currentPage === 'booking' && (ownBooking || shopOnly)));
 
   const renderPage = () => {
     switch (currentPage) {
       case 'home':             return <HomePage />;
-      case 'booking':          return ownBooking ? <ServiceBookingPage /> : <BookingFlow />;
+      case 'booking':          return ownBooking ? <ServiceBookingPage /> : shopOnly ? <ShopPage /> : <BookingFlow />;
       case 'driver-portal':    return <DriverPortal />;
       case 'driver-onboarding':return <DriverOnboarding />;
       case 'checklist':        return <MovingChecklist />;
@@ -124,7 +134,9 @@ export default function AppLayout() {
       case 'white-label':            return <WhiteLabelPlansPage />;
       case 'white-label-dpa':        return <WhiteLabelDpaPage />;
       case 'brand-site':             return <BrandSitePage />;
+      case 'embed':                  return <EmbedPage />;
       case 'my-services':            return <MyServicesPage />;
+      case 'shop':                   return <ShopPage />;
       case 'accounting':             return <AccountingPage />;
       case 'not-found':              return <NotFoundPage />;
       default:                       return <NotFoundPage />;
@@ -132,7 +144,7 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className={embedded ? 'bg-white' : 'min-h-screen bg-white'}>
       {showHeader && (branded && site ? <BrandHeader site={site} /> : <Header />)}
       <AuthModal />
       <Suspense fallback={<Loading />}>
@@ -143,7 +155,7 @@ export default function AppLayout() {
           <Footer />
         </Suspense>
       ))}
-      {currentPage === 'brand-site' && site && !site.page && <BrandFooter site={site} />}
+      {currentPage === 'brand-site' && site && !site.page && !embedded && <BrandFooter site={site} />}
     </div>
   );
 }

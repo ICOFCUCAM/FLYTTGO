@@ -8,20 +8,28 @@
 // database decides that (white_label_public).
 //
 // Returns the brand, the seller (FlyttGo under Model A, the company under
-// Model B), the seller notice, a short-lived link to the logo and, when the
+// Model B), the seller notice, which booking and whether a shop the page
+// offers, a short-lived link to the logo and, when the
 // company chose a website template, the requested page rendered with its
-// brand (_shared/site-template.ts: sanitised again here; the browser shows
+// brand and its images (_shared/site-template.ts: sanitised again here; the
+// images resolved by site_template_image_map(), 00023; the browser shows
 // it in a sandboxed iframe without scripts).
 //
 //   POST /functions/v1/white-label-site
 //   { "slug": "acme" } | { "host": "booking.acme.no" }, optional "page": "/services"
+//
+// Also the websites that may show the company's booking widget
+// (widget_origins, migration 00018): the embed page checks its parent
+// against them. With "widget": true only those are returned, for the
+// frame-ancestors header (middleware.ts).
 //
 // DEPLOY: supabase functions deploy white-label-site --no-verify-jwt
 // ============================================================================
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { serviceClient } from '../_shared/auth.ts';
 import { pageFor, renderTemplatePage, type TemplateAsset, type TemplatePage } from '../_shared/site-template.ts';
-import { sellerNotice } from '../_shared/white-label.ts';
+import { bookingFor, pageHasShop, sellerNotice } from '../_shared/white-label.ts';
+import { COMPANY_IMAGE_BUCKET, pathsToSign, renderImages, type ImageMap, type RenderImages } from '../_shared/image-library.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -34,7 +42,7 @@ const json = (body: unknown, status = 200) =>
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST')    return json({ error: 'Method not allowed' }, 405);
-  const body = await req.json().catch(() => ({})) as { slug?: string; host?: string; page?: string };
+  const body = await req.json().catch(() => ({})) as { slug?: string; host?: string; page?: string; widget?: boolean };
   const slug = typeof body.slug === 'string' ? body.slug.slice(0, 63) : null;
   const host = typeof body.host === 'string' ? body.host.slice(0, 253) : null;
   if (!slug && !host) return json({ error: 'slug or host is required' }, 400);
@@ -43,19 +51,26 @@ serve(async (req: Request) => {
   const { data: site, error } = await db.rpc('white_label_public', { p_slug: slug, p_host: host });
   if (error) return json({ error: 'site lookup failed' }, 500);
   if (!site) return json({ error: 'not found' }, 404);
+  const { data: origins } = await db.rpc('widget_origins_public', { p_org: site.organization_id });
+  const widgetOrigins: string[] = Array.isArray(origins) ? origins : [];
+  if (body.widget === true) return json({ slug: site.slug, widget_origins: widgetOrigins });
 
   let logoUrl: string | null = null;
   if (site.logo_path) {
     const { data } = await db.storage.from('organization-logos').createSignedUrl(site.logo_path, 3600);
     logoUrl = data?.signedUrl ?? null;
   }
-  const notice = sellerNotice(site);
   /* Which booking the page offers: FlyttGo's moves (transport plans), or the
-   * company's own Jobs or Appointments module (docs/SERVICE_PLATFORM.md). */
-  const { data: plan } = await db.from('white_label_plans').select('modules').eq('code', site.plan).maybeSingle();
-  const modules: string[] = plan?.modules ?? [];
-  const booking = modules.includes('jobs') ? 'jobs' : modules.includes('appointments') ? 'appointments'
-    : modules.length === 0 ? 'moves' : 'none';
+   * company's own Jobs, Appointments, Restaurant or Hotel module
+   * (docs/SERVICE_PLATFORM.md). The modules are its plan's and the add-ons
+   * FlyttGo enabled on it (org_modules, 00022). */
+  const { data: mods } = await db.rpc('org_modules', { p_org: site.organization_id });
+  const modules: string[] = Array.isArray(mods) ? mods : [];
+  const booking = bookingFor(modules);
+  const notice = sellerNotice({ ...site, booking });
+  /* And whether it has a shop (00020), also beside a booking module: the
+   * catalogue at /b/<slug>/shop, linked in the page's header. */
+  const shop = pageHasShop(modules);
 
   let page: { path: string; html: string } | null = null;
   let pages: string[] = [];
@@ -66,6 +81,23 @@ serve(async (req: Request) => {
       pages = all.map(p => p.path);
       const p = pageFor(all, body.page ?? '/');
       const base = site.domain && host === site.domain ? '' : `/b/${site.slug}`;
+      /* The images (00023, docs/WHITE_LABEL.md → Image library): the
+       * company's own, the template's approved ones, the library's of the
+       * template's category or a neutral block, resolved by the database.
+       * The company's uploads are private: signed here for an hour, like the
+       * logo. If the map cannot be read (00023 not applied yet), the
+       * template's assets are used as before. */
+      let images: RenderImages | null = null;
+      const { data: map, error: mapError } = await db.rpc('site_template_image_map', { p_template: site.template_id, p_org: site.organization_id });
+      if (!mapError && map) {
+        const paths = pathsToSign(map as ImageMap);
+        const signed: Record<string, string> = {};
+        if (paths.length) {
+          const { data: urls } = await db.storage.from(COMPANY_IMAGE_BUCKET).createSignedUrls(paths, 3600);
+          for (const u of urls ?? []) if (u.path && u.signedUrl) signed[u.path] = u.signedUrl;
+        }
+        images = renderImages(map as ImageMap, Deno.env.get('SUPABASE_URL')!, signed);
+      }
       if (p) {
         page = {
           path: p.path,
@@ -74,14 +106,17 @@ serve(async (req: Request) => {
                      city: site.city, primaryColor: site.primary_color, accentColor: site.accent_color, logoUrl },
             assets: (t.assets ?? []) as TemplateAsset[],
             pageUrl: (path) => path === '/' ? (base || '/') : `${base || '/'}?page=${encodeURIComponent(path)}`,
-            bookingUrl: `${base}/book`,
+            /* A page with only a shop: its "book" links lead to the shop. */
+            bookingUrl: shop && booking === 'none' ? `${base}/shop` : `${base}/book`,
             sellerNotice: notice,
             assetHosts: [new URL(Deno.env.get('SUPABASE_URL')!).host],
+            images,
           }),
         };
       }
     }
   }
 
-  return json({ ...site, logo_path: undefined, logo_url: logoUrl, seller_notice: notice, modules, booking, pages, page });
+  return json({ ...site, logo_path: undefined, logo_url: logoUrl, seller_notice: notice, modules, booking, shop, pages, page,
+                widget_origins: widgetOrigins });
 });

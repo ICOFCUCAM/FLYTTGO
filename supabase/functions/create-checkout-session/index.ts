@@ -42,6 +42,10 @@
 // re-computed on the server from the booking (see
 // _shared/booking-charge.ts). An `amount` in the body is ignored.
 //
+// A company booking that needs the company's approval (spending limits,
+// migration 00017) gets no session: 409 { awaitingApproval: true, approval }.
+// The booker pays once it is approved.
+//
 // A booking the company sells on its own page (white label, Model B) is a
 // direct charge on the company's connected Stripe account, at the
 // company's price, with FlyttGo's price and platform fee taken as the
@@ -68,7 +72,7 @@
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { serviceClient, getCaller, driverProfileIdOf } from '../_shared/auth.ts';
-import { chargeForBooking } from '../_shared/booking-charge.ts';
+import { chargeForBooking, chargeRefusal } from '../_shared/booking-charge.ts';
 import { subscriptionCharge, DRIVER_PLAN_LABELS } from '../_shared/pricing.ts';
 import { currentSubscription } from '../_shared/plans.ts';
 
@@ -165,7 +169,8 @@ serve(async (req: Request) => {
       return json({ error: 'bookingId is required' }, 400);
     }
     const charge = await chargeForBooking(db, body.bookingId, caller.id, { allowConnect: true });
-    if (!charge.ok) return json({ error: charge.error }, charge.status);
+    /* Waits for the company's approval (409, awaitingApproval): no Stripe session yet. */
+    if (!charge.ok) return json(chargeRefusal(charge), charge.status);
 
     amountNok     = charge.amountNok;
     customerEmail = charge.customerEmail ?? caller.email;

@@ -22,6 +22,7 @@ else
 fi
 PSQL=(psql -X -q -v ON_ERROR_STOP=1)
 export PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
+export PGTZ="${PGTZ:-Europe/Oslo}"   # Oslo days, as in ../run.sh
 q() { "${PSQL[@]}" -d "$DB" -At -c "$1"; }
 show() { PGOPTIONS='-c client_min_messages=notice' "${PSQL[@]}" -d "$DB" -f "$1" 2>&1 | grep -E '^(psql:.*)?(NOTICE:  ok|ERROR|FAIL)|passed|data: ' | sed 's/^psql:[^ ]* //'; }
 fail() { echo "FAIL: $*" >&2; exit 1; }

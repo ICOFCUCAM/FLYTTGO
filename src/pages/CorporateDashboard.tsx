@@ -9,8 +9,12 @@ import CompanyInvoices from '../components/corporate/CompanyInvoices';
 import WhiteLabelPanel from '../components/corporate/WhiteLabelPanel';
 import JobsPanel from '../components/corporate/JobsPanel';
 import AppointmentsPanel from '../components/corporate/AppointmentsPanel';
+import RestaurantPanel from '../components/corporate/RestaurantPanel';
+import HotelPanel from '../components/corporate/HotelPanel';
 import SalesInvoicesPanel from '../components/corporate/SalesInvoicesPanel';
+import ShopPanel from '../components/corporate/ShopPanel';
 import AccountingPanel from '../components/corporate/AccountingPanel';
+import ApiWidgetPanel from '../components/corporate/ApiWidgetPanel';
 import { hasModule } from '../lib/services';
 
 /* Visitors see the dashboard preview with sample figures. A signed-in
@@ -20,7 +24,7 @@ import { hasModule } from '../lib/services';
  * company can register one. */
 
 type DashTab = 'overview' | 'shipments' | 'recurring' | 'invoices' | 'drivers' | 'analytics' | 'api' | 'team' | 'white-label'
-  | 'jobs' | 'appointments' | 'sales' | 'accounting' | 'documents' | 'support';
+  | 'jobs' | 'appointments' | 'restaurant' | 'hotel' | 'shop' | 'sales' | 'accounting' | 'documents' | 'support';
 
 function StatCard({ icon, label, value, sub, color = 'emerald' }: { icon: string; label: string; value: string; sub?: string; color?: string }) {
   const colors: Record<string, string> = { emerald: 'bg-emerald-50 text-emerald-600', blue: 'bg-blue-50 text-blue-600', purple: 'bg-purple-50 text-purple-600', orange: 'bg-orange-50 text-orange-600' };
@@ -56,12 +60,16 @@ const NAV_ITEMS: { id: DashTab; icon: string; label: string }[] = [
   { id: 'invoices',   icon: '💳', label: 'Invoices' },
   { id: 'drivers',    icon: '👤', label: 'Drivers' },
   { id: 'analytics',  icon: '📈', label: 'Analytics' },
-  { id: 'api',        icon: '🔗', label: 'API & Webhooks' },
+  /* API keys, the booking widget and its websites (00018). */
+  { id: 'api',        icon: '🔗', label: 'API and widget' },
   { id: 'team',       icon: '👥', label: 'Team' },
   { id: 'white-label', icon: '🏷️', label: 'Plan and website' },
-  /* Shown when the company's plan includes the module (00010–00013). */
+  /* Shown when the company's plan includes the module (00010–00013, 00019, 00020). */
   { id: 'jobs',         icon: '🔧', label: 'Jobs' },
   { id: 'appointments', icon: '📅', label: 'Appointments' },
+  { id: 'restaurant',   icon: '🍽️', label: 'Restaurant' },
+  { id: 'hotel',        icon: '🛏️', label: 'Hotel' },
+  { id: 'shop',         icon: '🛍️', label: 'Shop' },
   { id: 'sales',        icon: '🧾', label: 'Invoices to customers' },
   /* The accounting add-on (00014/00015), for owners, admins and finance. */
   { id: 'accounting',   icon: '📒', label: 'Accounting' },
@@ -91,15 +99,16 @@ export default function CorporateDashboard() {
   const [modules, setModules] = useState<string[]>([]);
   useEffect(() => {
     if (!current) { setModules([]); return; }
-    Promise.all((['jobs', 'appointments', 'sales_invoicing'] as const).map(async m => (await hasModule(current.organization.id, m)) ? m : null))
+    Promise.all((['jobs', 'appointments', 'restaurant_reservations', 'hotel_reservations', 'shop', 'sales_invoicing'] as const).map(async m => (await hasModule(current.organization.id, m)) ? m : null))
       .then(r => setModules(r.filter(Boolean) as string[]));
   }, [current?.organization.id]);
-  const MODULE_TABS: Partial<Record<DashTab, string>> = { jobs: 'jobs', appointments: 'appointments', sales: 'sales_invoicing' };
+  const MODULE_TABS: Partial<Record<DashTab, string>> = { jobs: 'jobs', appointments: 'appointments', restaurant: 'restaurant_reservations',
+                                                       hotel: 'hotel_reservations', shop: 'shop', sales: 'sales_invoicing' };
   const navItems = NAV_ITEMS.filter(n => (!MODULE_TABS[n.id] || modules.includes(MODULE_TABS[n.id]!))
     && (n.id !== 'accounting' || (!!current && ['owner', 'admin', 'finance'].includes(current.role))));
   const live = !!current;                                    // a real company, not the preview
   const needsCompany = !!user && memberships !== null && memberships.length === 0;
-  const SAMPLE_TABS: DashTab[] = ['overview', 'recurring', 'api'];
+  const SAMPLE_TABS: DashTab[] = ['overview', 'recurring'];
 
   const filteredShipments = SHIPMENTS.filter(s => {
     const matchSearch = s.id.toLowerCase().includes(search.toLowerCase()) || s.from.toLowerCase().includes(search.toLowerCase()) || s.to.toLowerCase().includes(search.toLowerCase());
@@ -175,7 +184,7 @@ export default function CorporateDashboard() {
               </span>
             ) : (
               <>
-                <span className="hidden sm:block text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full font-medium">⚡ Live Mode</span>
+                <span className="hidden sm:block text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-full font-medium">Sample data</span>
                 {!user && (
                   <button onClick={() => { setShowAuthModal(true); setAuthMode('signup'); }}
                     className="px-4 py-2 bg-[#0B2E59] text-white rounded-xl text-sm font-semibold hover:bg-[#1a4a8a] transition">
@@ -198,6 +207,14 @@ export default function CorporateDashboard() {
               {current.organization.status === 'pending'
                 ? 'Your company is awaiting verification. FlyttGo checks it in Brønnøysundregistrene before bookings and invoicing are switched on; meanwhile you can set up your team.'
                 : `This company is ${ORG_STATUS_LABELS[current.organization.status].toLowerCase()}${current.organization.status_reason ? `: ${current.organization.status_reason}` : ''}. Contact FlyttGo support.`}
+            </div>
+          )}
+
+          {/* Visitors see a preview: every figure in it is an example
+            * (platform audit 2026-10-30). */}
+          {!live && (
+            <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-5 py-3 text-xs text-gray-500" data-testid="sample-notice">
+              Sample data: this is a preview of the company dashboard. Every figure, shipment and invoice below is an example, not real activity.
             </div>
           )}
 
@@ -386,9 +403,16 @@ export default function CorporateDashboard() {
             </div>
           )}
 
-          {/* ── API ── */}
-          {tab === 'api' && (
+          {/* ── API AND WIDGET ── */}
+          {tab === 'api' && live && current && (
+            <ApiWidgetPanel key={current.organization.id} membership={current} onOpenPlan={() => setTab('white-label')} />
+          )}
+          {tab === 'api' && !live && (
             <div className="space-y-6">
+              <div className="rounded-2xl border border-gray-200 bg-white px-5 py-3 text-xs text-gray-500">
+                Example figures. Sign in to your company to create API keys and set up the booking widget for your website.{' '}
+                <button className="underline text-[#0B2E59]" onClick={() => setPage('corporate-api-access')}>About the API</button>
+              </div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <StatCard icon="⚡" label="API Calls Today" value="12,482" sub="↑ 8% vs yesterday" color="blue"/>
                 <StatCard icon="✅" label="Success Rate" value="99.8%" sub="Last 30 days" color="emerald"/>
@@ -414,7 +438,8 @@ export default function CorporateDashboard() {
                 </div>
               </div>
               <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                <h3 className="font-bold text-gray-900 mb-4">Webhook Endpoints</h3>
+                <h3 className="font-bold text-gray-900 mb-1">Webhook Endpoints</h3>
+                <p className="text-xs text-gray-400 mb-4">Example only: webhooks are planned and not available yet.</p>
                 {[
                   { url: 'https://erp.acme.no/webhooks/flyttgo', events: 'delivery.completed, delivery.failed', status: 'Active' },
                   { url: 'https://wms.acme.no/hooks/inbound', events: 'booking.created, booking.cancelled', status: 'Active' },
@@ -434,6 +459,9 @@ export default function CorporateDashboard() {
           {/* ── OTHER INDUSTRIES: jobs, appointments, own invoices ── */}
           {tab === 'jobs' && live && current && <JobsPanel key={current.organization.id} membership={current} />}
           {tab === 'appointments' && live && current && <AppointmentsPanel key={current.organization.id} membership={current} />}
+          {tab === 'restaurant' && live && current && <RestaurantPanel key={current.organization.id} membership={current} />}
+          {tab === 'hotel' && live && current && <HotelPanel key={current.organization.id} membership={current} />}
+          {tab === 'shop' && live && current && <ShopPanel key={current.organization.id} membership={current} />}
           {tab === 'sales' && live && current && <SalesInvoicesPanel key={current.organization.id} membership={current} />}
           {tab === 'accounting' && live && current && <AccountingPanel key={current.organization.id} membership={current} />}
 

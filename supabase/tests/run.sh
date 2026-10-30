@@ -10,6 +10,11 @@
 #   rollback with data
 #               as rollback, after writing data only the migrated schema
 #               allows; the rollback must succeed and keep the core rows
+#   release rehearsal (rehearsal/run.sh)
+#               the replica with 00002–00015 as production runs today,
+#               representative data, 00016–00026 applied over it, then
+#               isolation per table, payment idempotency, financial records
+#               preserved and immutable, rollback 00026 → 00016 with data
 #
 # Every migration is applied twice (re-running must be harmless). Uses
 # the usual PG* variables (PGHOST, PGPORT, PGUSER, PGPASSWORD); needs a
@@ -24,6 +29,10 @@ EXPECTED_FP=supabase/schema/production-2026-10-29.fingerprint
 MIGRATIONS=(supabase/migrations/0000[2-9]_*.sql supabase/migrations/000[1-9][0-9]_*.sql)
 PSQL=(psql -X -q -v ON_ERROR_STOP=1)
 export PGOPTIONS="${PGOPTIONS:-} -c client_min_messages=warning"
+# The platform's days are Oslo days (due dates, invoice dates, the month):
+# the tests' current_date must be one too, or they fail between midnight
+# UTC and midnight in Oslo.
+export PGTZ=Europe/Oslo
 
 fresh() {
   "${PSQL[@]}" -d postgres -c "DROP DATABASE IF EXISTS \"$DB\" WITH (FORCE)" -c "CREATE DATABASE \"$DB\""
@@ -53,12 +62,15 @@ echo "── repo ──"
 fresh
 "${PSQL[@]}" -d "$DB" -f supabase/migrations/00001_complete_schema.sql
 migrate
-run_tests supabase/tests/p0_security.test.sql supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql supabase/tests/template_quality.test.sql
+run_tests supabase/tests/p0_security.test.sql supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql supabase/tests/bank_import.test.sql supabase/tests/spending_limits.test.sql supabase/tests/api_keys.test.sql supabase/tests/reservations.test.sql supabase/tests/shop.test.sql supabase/tests/template_quality.test.sql supabase/tests/pilot_addons.test.sql supabase/tests/image_library.test.sql supabase/tests/thumbnail_redraw.test.sql supabase/tests/shared_template_assets.test.sql supabase/tests/contact_messages.test.sql
 
 # The scheduled jobs (supabase/ops/schedules.sql), with stand-ins for
 # pg_cron, pg_net and Vault.
 PGOPTIONS='-c client_min_messages=notice' "${PSQL[@]}" -d "$DB" -f supabase/tests/schedules.test.sql 2>&1 \
   | grep -E '^(psql:.*)?(NOTICE:  ok|ERROR|FAIL)|passed' | sed 's/^psql:[^ ]* //'
+
+# Online shops under load: competing orders for the last items (00020).
+bash supabase/tests/shop_concurrency.sh "$DB"
 
 echo "── production ──"
 fresh
@@ -69,7 +81,7 @@ fi
 echo "replica matches the production fingerprint"
 migrate
 run_tests supabase/tests/p0_security.test.sql supabase/tests/p0_production.test.sql \
-  supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql supabase/tests/template_quality.test.sql
+  supabase/tests/organizations.test.sql supabase/tests/launch_decisions.test.sql supabase/tests/company_bookings.test.sql supabase/tests/invoicing.test.sql supabase/tests/white_label.test.sql supabase/tests/service_platform.test.sql supabase/tests/company_invoicing.test.sql supabase/tests/jobs.test.sql supabase/tests/appointments.test.sql supabase/tests/accounting.test.sql supabase/tests/bank_import.test.sql supabase/tests/spending_limits.test.sql supabase/tests/api_keys.test.sql supabase/tests/reservations.test.sql supabase/tests/shop.test.sql supabase/tests/template_quality.test.sql supabase/tests/pilot_addons.test.sql supabase/tests/image_library.test.sql supabase/tests/thumbnail_redraw.test.sql supabase/tests/shared_template_assets.test.sql supabase/tests/contact_messages.test.sql
 
 echo "── rollback ──"
 # Function bodies and settings (the fingerprint covers structure, not
@@ -124,3 +136,6 @@ PGOPTIONS='-c client_min_messages=notice' "${PSQL[@]}" -d "$DB" -f supabase/test
 
 echo "── accounting controls (copy of production, concurrency, isolation, rollback with books) ──"
 bash supabase/tests/accounting_controls/run.sh
+
+echo "── release rehearsal (copy of production with representative data: 00016–00026 up, isolation, idempotency, financial records, rollback) ──"
+bash supabase/tests/rehearsal/run.sh
