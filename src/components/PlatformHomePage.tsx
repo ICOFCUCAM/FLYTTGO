@@ -3,12 +3,17 @@
  * platform design (docs/flyttgo-premium-platform-homepage-stage-20.html,
  * generated into ./platformHome by scripts/platform-home/build.py) with
  * everything the former homepage had (owner, 2026-10-30):
- *   - FlyttGo's own menu bar and footer (AppLayout), in place of the design's;
+ *   - the design's header as designed, with FlyttGo's own menu bar (all its
+ *     items, sign-in, language, notifications) wired in directly under it; the
+ *     design's Sign in / Get started open the sign-in dialog, or the dashboard
+ *     once signed in; FlyttGo's footer in place of the design's;
  *   - the former slideshow in the design's hero picture;
- *   - the former booking widget (address lookup, instant price estimate)
- *     and its sections (trust bar, stats, services, how it works, van types,
- *     moving tools, cities, testimonials, driver plans, corporate and driver
- *     calls to action), each in the slot the design keeps for it;
+ *   - the design's skeleton kept whole, with the former booking widget
+ *     (address lookup, instant price estimate) and sections (trust bar,
+ *     stats, services, how it works, van types, moving tools, cities,
+ *     testimonials, driver plans, corporate and driver calls to action) each
+ *     wired in under the design section it belongs with; the design's own
+ *     service form leads to the booking flow;
  *   - the design's other sections as designed, in navy, emerald and white,
  *     in English or Bokmål with the site's language;
  *   - every design link marked data-page opens that FlyttGo page.
@@ -27,6 +32,7 @@ import {
   BookingWidget, CitiesSection, CorporateCTA, DriverCTA, HowItWorks, MovingToolsSection, ServicesSection,
   StatsSection, SubscriptionTeaser, TestimonialsSection, TrustBar, VanTypesSection,
 } from './HomePage';
+import Header from './Header';
 import designEn from './platformHome/design.html?raw';
 import designNo from './platformHome/design.no.html?raw';
 import { initDesign as initEn } from './platformHome/design-scripts';
@@ -35,12 +41,18 @@ import './platformHome/design.css';
 import './platformHome/app.css';
 
 /* The design in the visitor's language: English, or its Bokmål (scripts/platform-home/no.json). */
-const VERSIONS = { en: { html: designEn, init: initEn }, no: { html: designNo, init: initNo } } as const;
+const VERSIONS = {
+  en: { html: designEn, init: initEn, signIn: 'Sign in', dashboard: 'Dashboard',
+        noFrom: 'Enter where you are moving from to continue.', pastDate: 'Choose today or a future date.' },
+  no: { html: designNo, init: initNo, signIn: 'Logg inn', dashboard: 'Min side',
+        noFrom: 'Skriv inn hvor du flytter fra for å fortsette.', pastDate: 'Velg i dag eller en senere dato.' },
+} as const;
 
 /* The former homepage's sections, each in the slot the design keeps for it
  * (SLOTS in scripts/platform-home/build.py). */
 const SECTIONS: Record<string, () => React.ReactElement> = {
-  booking: () => <div className="pt-24"><BookingWidget /></div>,
+  menubar: () => <Header />,
+  booking: () => <div className="pt-24 pb-4"><BookingWidget /></div>,
   stats: () => <><TrustBar /><StatsSection /></>,
   services: () => <ServicesSection />,
   how: () => <HowItWorks />,
@@ -92,7 +104,7 @@ function useDesignFonts() {
 }
 
 export default function PlatformHomePage() {
-  const { setPage, setShowAuthModal, setAuthMode } = useApp();
+  const { setPage, setShowAuthModal, setAuthMode, setBookingData } = useApp();
   const { user, profile } = useAuth();
   const { i18n: { language } } = useTranslation();
   const version = VERSIONS[language === 'no' ? 'no' : 'en'];
@@ -140,9 +152,35 @@ export default function PlatformHomePage() {
       e.preventDefault();
       open(a.dataset.page!);
     };
+    /* The design's "Looking for a service?" form, as designed, leads to the
+     * real pages: moving and transport to the booking flow with what was
+     * typed (the booking widget under it has the address lookup and price). */
+    const onSubmit = (e: Event) => {
+      if ((e.target as HTMLElement).id !== 'booking-form') return;
+      e.preventDefault();
+      const value = (id: string) => el.querySelector<HTMLInputElement>(`#${id}`)?.value.trim() ?? '';
+      const say = (m: string) => { const st = el.querySelector('#booking-status'); if (st) st.textContent = m; };
+      const service = el.querySelector<HTMLSelectElement>('#service')?.selectedIndex ?? 0;
+      if (service === 2 || service === 3) { setPage('services'); return; }
+      if (service === 4) { setPage('corporate'); return; }
+      if (service === 5) { el.querySelector('#business-platform')?.scrollIntoView({ behavior: 'smooth' }); return; }
+      const from = value('from'), to = value('to'), date = value('date');
+      if (!from) { say(version.noFrom); return; }
+      const min = el.querySelector<HTMLInputElement>('#date')?.min ?? '';
+      if (date && min && date < min) { say(version.pastDate); return; }
+      setBookingData({ pickupAddress: from, dropoffAddress: to, ...(date ? { moveDate: date } : {}) });
+      setPage('booking');
+    };
     el.addEventListener('click', onClick);
-    return () => el.removeEventListener('click', onClick);
-  }, [version, setPage, setShowAuthModal, setAuthMode]);
+    el.addEventListener('submit', onSubmit);
+    return () => { el.removeEventListener('click', onClick); el.removeEventListener('submit', onSubmit); };
+  }, [version, setPage, setShowAuthModal, setAuthMode, setBookingData]);
+
+  /* Signed in, the design's Sign in link leads to the dashboard. */
+  useEffect(() => {
+    const signIn = root.current?.querySelector<HTMLElement>('[data-page="auth:signin"]');
+    if (signIn) signIn.textContent = user ? version.dashboard : version.signIn;
+  }, [user, version]);
 
   return (
     <>

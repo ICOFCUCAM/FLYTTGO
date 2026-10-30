@@ -172,10 +172,12 @@ def scope_css(css: str) -> str:
 
 
 # ── The former homepage's working parts (owner, 2026-10-30) ─────────────────
-# The design's own header and top line give way to FlyttGo's menu bar. These
-# sections of the design are replaced by the former homepage's real
-# sections (src/components/HomePage.tsx), which PlatformHomePage renders into
-# the slot: same id, so the design's links to them still work.
+# The design's skeleton is kept whole (owner, 2026-10-30): no section is
+# removed or changed. The former homepage's working parts are wired in
+# directly under the design part they belong with: FlyttGo's menu bar under
+# the design's header, and each of the former homepage's real sections
+# (src/components/HomePage.tsx) under the matching design section, in a slot
+# PlatformHomePage renders into.
 SLOTS = [
     ('section', 'id="booking"', 'booking'),            # BookingWidget: address lookup, price estimate
     ('section', 'id="corporate-benefits"', 'corporate'),  # CorporateCTA
@@ -203,17 +205,20 @@ def element_span(body: str, start: int, tag: str) -> int:
 
 
 def slot_sections(body: str) -> str:
+    """Adds each slot after its design section; the design's own markup is not changed."""
     for tag, attr, name in SLOTS:
         m = re.search(r'<%s\b[^>]*%s[^>]*>' % (tag, re.escape(attr)), body)
         if not m:
             raise SystemExit(f'slot {name}: no <{tag} {attr}> in the design')
         end = element_span(body, m.start(), tag)
-        ident = re.search(r'\bid="([^"]*)"', m.group(0))
-        id_attr = f' id="{ident.group(1)}"' if ident else ''
-        body = body[:m.start()] + f'<section{id_attr} class="fgp-slot" data-slot="{name}"></section>' + body[end:]
-    # FlyttGo's menu bar replaces the design's top line and header.
-    body = re.sub(r'<div class="topline"[^>]*>.*?</div>\s*', '', body, count=1, flags=re.S)
-    body = re.sub(r'<header class="wrap nav">.*?</header>\s*', '', body, count=1, flags=re.S)
+        body = body[:end] + f'<section class="fgp-slot" data-slot="{name}"></section>' + body[end:]
+    # The design's top line and header stay exactly as designed (owner,
+    # 2026-10-30); FlyttGo's menu bar, with everything it has, is wired in
+    # directly under them.
+    body, n = re.subn(r'(<header class="wrap nav">.*?</header>)',
+                      r'\1<div class="fgp-slot" data-slot="menubar"></div>', body, count=1, flags=re.S)
+    if n != 1:
+        raise SystemExit('the design has no header')
     return body
 
 
