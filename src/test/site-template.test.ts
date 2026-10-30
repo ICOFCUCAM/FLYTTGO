@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  OTHER_CATEGORY, TEMPLATE_CATEGORIES, categoryLabel, contentFlags, htmlProblems, pageFor, prepareTemplate, renderTemplatePage,
-  replaceForms, sanitiseHtml, templateCategory, templateId,
+  AA_CONTRAST, OTHER_CATEGORY, TEMPLATE_CATEGORIES, bestFor, categoryLabel, contrastRatio, readableOn, readableShade, contentFlags, featureLabel, htmlProblems, pageFor, prepareTemplate,
+  renderTemplatePage, replaceForms, sanitiseHtml, templateCategory, templateFeatures, templateId,
 } from '../../supabase/functions/_shared/site-template.ts';
 
 const ASSET_HOST = 'assets.flyttgo.test';
@@ -94,7 +94,7 @@ describe('renderTemplatePage (serve)', () => {
     expect(html).toContain('Acme &lt;Flytt&gt;');
     expect(html).not.toContain('<Flytt>');
     expect(html).toContain('href="tel:+4722334455"');
-    expect(html).toContain(':root{--c-primary:#0055aa;--c-accent:#ffcc00}');
+    expect(html).toContain(':root{--c-primary:#0055aa;--c-accent:#ffcc00;');
     expect(html).toContain(`src="https://${ASSET_HOST}/hero.jpg"`);
   });
 
@@ -164,7 +164,7 @@ describe('keeping the template\'s look', () => {
       '<html><head><title>Fast Man & Van — UK</title></head><body><a class="brand">Fast Man &amp; Van</a>'
       + '<img src="{{ASSET:hero}}" alt="A Fast Man &amp; Van removal van"><p>Fast Man &amp; Vans</p></body></html>' }] });
     const h = t.pages[0].html;
-    expect(h).toContain('<a class="brand">{{brand.name}}</a>');
+    expect(h).toContain('<a class="brand fg-brand-slot">{{brand.logo}}<span class="fg-brand-name">{{brand.name}}</span></a>');
     expect(h).toContain('alt="A {{brand.name}} removal van"');
     expect(h).toContain('<title>{{brand.name}} — UK</title>');
     expect(h).toContain('Fast Man &amp; Vans');                      // a longer word is left alone
@@ -174,5 +174,139 @@ describe('keeping the template\'s look', () => {
       brand: { name: 'A' }, assets: [], pageUrl: () => '#', bookingUrl: '#', sellerNotice: 'n' });
     expect(h).toMatch(/\.reveal\{opacity:1!important;transform:none!important\}/);
     expect(h.indexOf('.reveal{opacity:1')).toBeGreaterThan(h.indexOf('.reveal{opacity:0}'));
+  });
+});
+
+describe('the catalogue cards', () => {
+  it('finds what a template\'s pages have from their paths, headings and sections', () => {
+    const f = templateFeatures([
+      { path: '/', html: '<section class="hero"><h1>Hair that turns heads</h1></section><section id="pricing"><h2>A look at our <em>pricing</em></h2></section>'
+        + '<h2>Talented hands, <em>friendly faces</em></h2><h3>What our clients say</h3>' },
+      { path: '/contact', html: '<h1>Request <em>service</em></h1><h2>Quick <em>answers</em></h2>' },
+      { path: '/gallery', html: '<p>Photos</p>' },
+    ]);
+    expect(f).toEqual(['pricing', 'gallery', 'testimonials', 'team', 'faq', 'contact']);
+    expect(templateFeatures([{ path: '/', html: '<h1>Fast moves</h1><p>We offer pricing on request</p>' }])).toEqual([]);  // body text is not a section
+    expect(featureLabel('faq')).toBe('FAQ');
+  });
+  it('says what a template is best for, in words, from its industries', () => {
+    expect(bestFor(['hair-salon', 'beauty', 'personal-care', 'spa'])).toBe('hair salon, beauty and personal care');
+    expect(bestFor(['plumbing', 'plumber'])).toBe('plumbing');
+    expect(bestFor(['moving'])).toBe('moving');
+    expect(bestFor([])).toBe('other businesses');
+  });
+  it('lists features at import', () => {
+    const t = prepareTemplate({ id: 'x', name: 'Swiftmove', pages: [{ path: '/', html: HOME }, { path: '/pricing', html: '<h1>Rates</h1>' }] });
+    expect(t.features).toEqual(['pricing']);
+  });
+});
+
+describe('the company\'s brand, whatever it is', () => {
+  const page = (body: string, title = 'Verve Hair Salon') => `<html><head><title>${title} — Nashville</title><style>.brand{letter-spacing:.24em}</style></head><body>${body}</body></html>`;
+  const verve = prepareTemplate({ id: 'salon-verve01', name: 'Verve Hair Salon', pages: [
+    { path: '/', html: page('<header><a class="brand" href="{{BASE}}/"><span class="mk"></span>Verve</a></header>'
+      + '<p>Verve is a salon. At Verve Hair Salon we listen.</p><img src="{{ASSET:hero}}" alt="A stylist at Verve">'
+      + '<footer><div class="brand fbrand"><span class="mk"></span>Ver<em>ve</em></div></footer>') },
+    { path: '/about', html: page('<h1>About Verve\'s team</h1><p>Nothing but verve and good taste.</p>') },
+  ] });
+
+  it('finds the short name the logo uses and replaces it with the full one', () => {
+    expect(verve.sample_names).toEqual(['Verve Hair Salon', 'Verve']);
+    const h = verve.pages[0].html;
+    expect(h).toContain('<a class="brand fg-brand-slot" href="{{BASE}}/"><span class="mk"></span>{{brand.logo}}<span class="fg-brand-name">{{brand.name}}</span></a>');
+    expect(h).toContain('<div class="brand fbrand fg-brand-slot"><span class="mk"></span>{{brand.logo}}<span class="fg-brand-name">{{brand.name}}</span></div>');
+  });
+
+  it('leaves a short name that is an everyday word in the page alone (written in lower case there)', () => {
+    // "verve" is written as a word on /about, so the short form is replaced only in the logo
+    expect(verve.pages[0].html).toContain('<p>Verve is a salon. At {{brand.name}} we listen.</p>');
+    expect(verve.flags.some(f => f.kind === 'sample_name')).toBe(false);
+    const fast = prepareTemplate({ id: 'x', name: 'Fast Man & Van', pages: [{ path: '/', html:
+      '<a class="brand">Fast</a><h1>Fast, reliable moves</h1>' }] });
+    expect(fast.pages[0].html).toContain('<h1>Fast, reliable moves</h1>');
+    expect(fast.pages[0].html).toContain('<span class="fg-brand-name">{{brand.name}}</span>');
+  });
+
+  it('replaces a distinctive short name everywhere: text, title, image descriptions', () => {
+    const t = prepareTemplate({ id: 'x', name: 'Redwater Plumbing', pages: [{ path: '/', html:
+      '<html><head><title>Redwater — Plumbers</title><meta name="description" content="Book Redwater Plumbing today"></head><body><a class="logo">Redwater</a><p>Call Redwater\'s crew.</p>'
+      + '<img src="{{ASSET:hero}}" alt="A Redwater van"></body></html>' }] });
+    const h = t.pages[0].html;
+    expect(h).toContain('<title>{{brand.name}} — Plumbers</title>');
+    expect(h).toContain('content="Book {{brand.name}} today"');
+    expect(h).toContain('<p>Call {{brand.name}}\'s crew.</p>');
+    expect(h).toContain('alt="A {{brand.name}} van"');
+    expect(h).not.toContain('Redwater');
+  });
+
+  it('never takes an unrelated logo strip for the brand', () => {
+    const t = prepareTemplate({ id: 'x', name: 'Verve Hair Salon', pages: [{ path: '/', html: '<div class="logo-grid"><span>Acme</span></div>' }] });
+    expect(t.pages[0].html).toBe('<div class="logo-grid"><span>Acme</span></div>');
+  });
+
+  const render = (brand: Parameters<typeof renderTemplatePage>[1]['brand'], html = verve.pages[0].html) => renderTemplatePage(html, {
+    brand, assets: [{ key: 'hero', url: `https://${ASSET_HOST}/hero.jpg` }], pageUrl: () => '/', bookingUrl: '/book', sellerNotice: 'n',
+    assetHosts: [ASSET_HOST],
+  });
+
+  it('shows the company\'s logo in the brand slot when it has one, in place of the template\'s mark', () => {
+    const h = render({ name: 'Acme', logoUrl: `https://${ASSET_HOST}/logos/acme.png?token=a&b=1` });
+    expect(h).toContain(`<img class="fg-logo" src="https://${ASSET_HOST}/logos/acme.png?token=a&amp;b=1" alt=""><span class="fg-brand-name">Acme</span>`);
+    expect(h).toContain('.fg-brand-slot>:not(.fg-logo):not(.fg-brand-name){display:none!important}');
+    const none = render({ name: 'Acme' });
+    expect(none).not.toContain('<img class="fg-logo"');
+    expect(none).not.toContain('display:none!important');
+  });
+
+  it('never shows a logo from elsewhere or a script URL', () => {
+    for (const logoUrl of ['https://evil.example/x.png', 'javascript:alert(1)', `http://${ASSET_HOST}/x.png`, '"><script>x</script>']) {
+      expect(render({ name: 'Acme', logoUrl })).not.toMatch(/fg-logo" src|<script/);
+    }
+  });
+
+  it('escapes every company value and never reads it as a placeholder', () => {
+    const h = render({ name: '"><img src=x onerror=alert(1)> {{BOOKING_URL}} {{brand.email}}', tagline: '<b>x</b>',
+      email: 'a"b@x.no', phone: '+47 "1"', city: '<i>' });
+    expect(h).toContain('&quot;&gt;&lt;img src=x onerror=alert(1)&gt; {{BOOKING_URL}} {{brand.email}}');
+    expect(h).not.toMatch(/<img src=x/);
+    expect(h).toContain('<p>Verve is a salon. At &quot;&gt;&lt;img src=x onerror=alert(1)&gt; {{BOOKING_URL}}');
+    expect(h).toContain('<title>&quot;&gt;&lt;img src=x onerror=alert(1)&gt;');
+  });
+
+  it('sets a long name smaller and lets it wrap instead of breaking the header', () => {
+    const short = render({ name: 'Acme' });
+    const long = render({ name: 'Nordlys Flytting og Transport AS' });
+    const longer = render({ name: 'Trøndelag Flytte- og Transportbyrå Aksjeselskap Avdeling Sør' });
+    for (const h of [short, long, longer]) {
+      expect(h).toContain('.fg-brand-slot{min-width:0;max-width:100%;flex-shrink:1');
+      expect(h).toContain('.fg-brand-name{min-width:0;overflow-wrap:anywhere;white-space:normal}');
+      expect(h).toContain('html{overflow-wrap:break-word}');
+    }
+    expect(short).not.toContain('font-size:.8em');
+    expect(long).toContain('.fg-brand-name{font-size:.8em;letter-spacing:.02em');
+    expect(longer).toContain('.fg-brand-name{font-size:.62em;letter-spacing:0');
+  });
+
+  it('gives the brand colours as custom properties, with readable text on them', () => {
+    const h = render({ name: 'A', primaryColor: '#F2A900', accentColor: '#1B2A4A' });
+    expect(h).toContain(':root{--c-primary:#F2A900;--c-accent:#1B2A4A;--fg-primary:var(--c-primary,#0b2e59);'
+      + '--fg-accent:var(--c-accent,var(--fg-primary));--fg-on-primary:#111827;--fg-on-accent:#ffffff}');
+    expect(render({ name: 'A', primaryColor: 'red;}body{display:none' })).not.toContain('display:none;');
+  });
+});
+
+describe('contrast', () => {
+  it('measures as WCAG does', () => {
+    expect(contrastRatio('#ffffff', '#000000')).toBeCloseTo(21, 5);
+    expect(contrastRatio('#777777', '#ffffff')).toBeCloseTo(4.48, 2);
+    expect(readableOn('#F2A900')).toBe('#111827');
+    expect(readableOn('#0B2E59')).toBe('#ffffff');
+  });
+  it('suggests the nearest shade that reads, and keeps a colour that already does', () => {
+    expect(readableShade('#0B2E59')).toBe('#0B2E59');
+    const s = readableShade('#F2A900');
+    expect(contrastRatio(s, '#ffffff')).toBeGreaterThanOrEqual(AA_CONTRAST);
+    expect(s).not.toBe('#F2A900');
+    expect(contrastRatio(readableShade('#333333', '#111111'), '#111111')).toBeGreaterThanOrEqual(AA_CONTRAST);
   });
 });

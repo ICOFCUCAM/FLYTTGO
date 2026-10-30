@@ -18,11 +18,14 @@
 // shows `.reveal` content).
 // ============================================================================
 
+type Route = { abort(): Promise<void>; continue(): Promise<void>; request(): { url(): string } };
 type Page = {
-  setContent(html: string, o?: { waitUntil?: string }): Promise<void>;
+  setContent(html: string, o?: { waitUntil?: string; timeout?: number }): Promise<void>;
   evaluate<T>(fn: () => T | Promise<T>): Promise<T>;
-  route(url: string, handler: (r: { abort(): Promise<void> }) => Promise<void>): Promise<void>;
+  route(url: string, handler: (r: Route) => Promise<void>): Promise<void>;
   waitForTimeout(ms: number): Promise<void>;
+  screenshot(o: { type: 'jpeg'; quality: number }): Promise<Uint8Array>;
+  setViewportSize(s: { width: number; height: number }): Promise<void>;
   close(): Promise<void>;
 };
 type Context = { newPage(): Promise<Page>; close(): Promise<void> };
@@ -33,8 +36,32 @@ export interface Snapshotter {
   settle(html: string): Promise<string>;
   /** Characters of text a visitor can see on the page (opacity 0, hidden and display none left out). */
   visibleChars(html: string, scripts: boolean): Promise<number>;
+  /**
+   * The catalogue's thumbnail of a page (a rendered page, as served): drawn
+   * without scripts in a desktop window of 1440 × 900, what a visitor sees
+   * first, saved as a JPEG of 720 × 450. Images load only from `hosts` (the template's asset store).
+   */
+  thumbnail(html: string, hosts: string[]): Promise<Uint8Array>;
+  /**
+   * The quality checks' measurements of a rendered page (without scripts):
+   * whether it draws text, how wide it is at each phone width (and what
+   * sticks out), and each image: loaded or not, its size.
+   */
+  inspect(html: string, hosts: string[], widths: readonly number[]): Promise<PageInspection>;
   close(): Promise<void>;
 }
+
+import type { PageInspection } from '../supabase/functions/_shared/template-quality.ts';
+
+/** Thumbnails: the page width they are drawn at, how much of the page, and the scale. */
+export const THUMBNAIL = { width: 1440, height: 900, scale: 0.5 } as const;
+
+/** Requests to these hosts go through; every other one is refused. */
+const allowOnly = (hosts: string[]) => async (r: Route) => {
+  let host = '';
+  try { host = new URL(r.request().url()).host.toLowerCase(); } catch { /* not a URL */ }
+  if (host && hosts.includes(host)) await r.continue(); else await r.abort();
+};
 
 export async function snapshotter(): Promise<Snapshotter | null> {
   let chromium: { launch(o?: Record<string, unknown>): Promise<Browser> };
@@ -43,7 +70,10 @@ export async function snapshotter(): Promise<Snapshotter | null> {
   } catch {
     return null;
   }
-  const browser = await chromium.launch();
+  // Images for thumbnails come from the template's asset store; behind a
+  // proxy (HTTPS_PROXY), the browser uses it too.
+  const proxy = process.env.HTTPS_PROXY || process.env.https_proxy;
+  const browser = await chromium.launch(proxy ? { proxy: { server: proxy } } : {});
   const open = async (scripts: boolean) => {
     const ctx = await browser.newContext({ reducedMotion: 'reduce', javaScriptEnabled: scripts, viewport: { width: 1280, height: 900 } });
     const page = await ctx.newPage();
@@ -97,6 +127,57 @@ export async function snapshotter(): Promise<Snapshotter | null> {
           }
           return n;
         });
+      } finally {
+        await ctx.close();
+      }
+    },
+    async thumbnail(html, hosts) {
+      const ctx = await browser.newContext({
+        reducedMotion: 'reduce', javaScriptEnabled: false,
+        viewport: { width: THUMBNAIL.width, height: THUMBNAIL.height }, deviceScaleFactor: THUMBNAIL.scale,
+      });
+      try {
+        const page = await ctx.newPage();
+        await page.route('**/*', allowOnly(hosts.map(h => h.toLowerCase())));
+        await page.setContent(html, { waitUntil: 'load', timeout: 30000 }).catch(() => { /* draw what has loaded */ });
+        await page.waitForTimeout(300);
+        return await page.screenshot({ type: 'jpeg', quality: 80 });
+      } finally {
+        await ctx.close();
+      }
+    },
+    async inspect(html, hosts, widths) {
+      const ctx = await browser.newContext({ reducedMotion: 'reduce', javaScriptEnabled: false, viewport: { width: 1280, height: 900 } });
+      try {
+        const page = await ctx.newPage();
+        await page.route('**/*', allowOnly(hosts.map(h => h.toLowerCase())));
+        let rendered = true;
+        await page.setContent(html, { waitUntil: 'load', timeout: 30000 }).catch(() => { rendered = false; });
+        const found = await page.evaluate(() => ({
+          textChars: (document.body?.innerText ?? '').replace(/\s+/g, '').length,
+          images: [...document.images].map(i => ({ src: i.getAttribute('src') ?? '', loaded: i.complete && i.naturalWidth > 0,
+                                                  width: i.naturalWidth, height: i.naturalHeight })),
+        }));
+        const overflow: PageInspection['overflow'] = [];
+        for (const width of widths) {
+          await page.setViewportSize({ width, height: 800 });
+          await page.waitForTimeout(50);
+          overflow.push(await page.evaluate(() => {
+            const w = document.documentElement.clientWidth;
+            const culprits: string[] = [];
+            for (const el of document.body.querySelectorAll('*')) {
+              const r = el.getBoundingClientRect();
+              if (r.width > 0 && r.right > w + 1 && getComputedStyle(el).position !== 'fixed') {
+                // The outermost element that sticks out, named by tag and classes.
+                if (el.parentElement && el.parentElement.getBoundingClientRect().right > w + 1) continue;
+                culprits.push(`${el.tagName.toLowerCase()}${el.classList.length ? `.${[...el.classList].join('.')}` : ''}`);
+                if (culprits.length >= 5) break;
+              }
+            }
+            return { width: w, scrollWidth: document.documentElement.scrollWidth, culprits };
+          }));
+        }
+        return { rendered, ...found, overflow };
       } finally {
         await ctx.close();
       }

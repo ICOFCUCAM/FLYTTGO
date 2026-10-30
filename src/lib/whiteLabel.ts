@@ -10,8 +10,12 @@
  * checks who may make it; this file only calls them.
  */
 import { supabase } from './supabase';
-import { callJson } from './invoicing';
+import { callJson, logoUrl } from './invoicing';
 import { isFlyttgoHost } from './hosts';
+import type { CheckResult, TemplateChecks } from '../../supabase/functions/_shared/template-quality';
+import {
+  EXTENSION, MAX_TEMPLATE_IMAGE, imageInfo, sha256Hex, type ImageSource, type TemplateImage,
+} from '../../supabase/functions/_shared/template-images';
 
 export type SellerModel = 'flyttgo' | 'company';
 export type WhiteLabelStatus = 'requested' | 'active' | 'suspended' | 'ended' | 'declined';
@@ -40,7 +44,16 @@ export interface SiteTemplate {
   pages: { path: string; html: string }[]; assets: { key: string; url: string }[];
   content_flags: { kind: string; page: string; sample: string }[];
   status: 'imported' | 'approved' | 'retired'; review_note: string | null; reviewed_at: string | null;
+  /** What the pages have (templateFeatures(), found at import) and how many pages (00021). */
+  features?: string[]; page_count?: number;
+  /** The automated checks (template-quality.ts) and approvals given despite failing ones (00021). */
+  checks?: TemplateChecks | Record<string, never>;
+  check_overrides?: { at: string; by: string; reason: string; checks: string[]; checked_at: string | null }[];
 }
+
+/** A template's catalogue thumbnail (asset 'thumbnail', drawn by the importer), if it has one. */
+export const thumbnailOf = (t: { assets: { key: string; url: string }[] }): string | null =>
+  t.assets.find(a => a.key === 'thumbnail')?.url ?? null;
 
 export interface PublicSite {
   organization_id: string; slug: string; display_name: string; tagline: string | null;
@@ -81,6 +94,12 @@ export async function loadPlans(): Promise<WhiteLabelPlan[]> {
 export async function loadOrgWhiteLabel(orgId: string): Promise<OrgWhiteLabel | null> {
   const { data } = await supabase.from('organization_white_label').select('*').eq('organization_id', orgId).maybeSingle();
   return (data ?? null) as OrgWhiteLabel | null;
+}
+
+/** A short-lived link to the company's logo (Invoices → logo), for previews of its site. */
+export async function loadLogoUrl(orgId: string): Promise<string | null> {
+  const { data } = await supabase.from('organizations').select('logo_path').eq('id', orgId).maybeSingle();
+  return logoUrl((data as { logo_path?: string | null } | null)?.logo_path);
 }
 
 export async function missingFor(orgId: string, plan?: string | null): Promise<string[]> {
@@ -135,17 +154,23 @@ export async function loadStats(orgId: string) {
 /** A template as the catalogue lists it: no pages (they are loaded when one is opened). */
 export type SiteTemplateSummary = Omit<SiteTemplate, 'pages' | 'content_flags'> & { content_flags?: SiteTemplate['content_flags'] };
 
+/** A template's home page only, for the catalogue's miniature of it (one page instead of five). */
+export async function loadTemplateHome(id: string): Promise<{ path: string; html: string } | null> {
+  const { data } = await supabase.from('site_templates').select('home:pages->0').eq('id', id).maybeSingle();
+  return ((data as { home?: { path: string; html: string } } | null)?.home) ?? null;
+}
+
 /** The catalogue: approved templates (companies) or every template (FlyttGo administrators), without their pages. */
 export async function loadTemplateList(withFlags = false): Promise<SiteTemplateSummary[]> {
   const { data } = await supabase.from('site_templates')
-    .select(`id, name, industry, style, assets, status, review_note, reviewed_at${withFlags ? ', content_flags' : ''}`).order('name');
+    .select(`id, name, industry, style, assets, status, review_note, reviewed_at, features, page_count${withFlags ? ', content_flags, checks' : ''}`).order('name');
   return (data ?? []) as unknown as SiteTemplateSummary[];
 }
 
 /** One template with its pages (for a preview or a review). */
 export async function loadTemplate(id: string): Promise<SiteTemplate | null> {
   const { data } = await supabase.from('site_templates')
-    .select('id, name, industry, style, pages, assets, content_flags, status, review_note, reviewed_at').eq('id', id).maybeSingle();
+    .select('id, name, industry, style, pages, assets, content_flags, status, review_note, reviewed_at, features, page_count, checks, check_overrides').eq('id', id).maybeSingle();
   return (data ?? null) as SiteTemplate | null;
 }
 
@@ -186,9 +211,59 @@ export async function updateTemplatePage(id: string, path: string, html: string)
   return err((await supabase.rpc('admin_update_site_template_page', { p_id: id, p_path: path, p_html: html })).error);
 }
 
-export async function reviewTemplate(id: string, approve: boolean, contentChecked: boolean, note: string): Promise<string | null> {
+/** Approve or retire a template. Approval despite failing automated checks needs `overrideReason` (kept with the template). */
+export async function reviewTemplate(id: string, approve: boolean, contentChecked: boolean, note: string,
+                                     overrideReason?: string | null): Promise<string | null> {
   return err((await supabase.rpc('admin_review_site_template', {
     p_id: id, p_approve: approve, p_content_checked: contentChecked, p_note: note,
+    ...(overrideReason ? { p_override_reason: overrideReason } : {}),
+  })).error);
+}
+
+/** After a page is saved: its checks that need no browser and its content flags, found again from the saved page. */
+export async function recordPageChecks(id: string, path: string, results: CheckResult[], flags: SiteTemplate['content_flags']): Promise<string | null> {
+  return err((await supabase.rpc('admin_record_site_template_page_checks', { p_id: id, p_path: path, p_results: results, p_flags: flags })).error);
+}
+
+/* ── Template images (00021): slots, metadata, replacement, review ── */
+
+/** A template's image slots and what is known about each (FlyttGo administrators). */
+export async function loadTemplateImages(id: string): Promise<(TemplateImage & { history: unknown[]; reviewed_at: string | null; replaced_at: string | null })[]> {
+  const { data } = await supabase.from('site_template_images').select('*').eq('template_id', id).order('asset_key');
+  return (data ?? []) as (TemplateImage & { history: unknown[]; reviewed_at: string | null; replaced_at: string | null })[];
+}
+
+/**
+ * Replace the image of one slot: the file is checked by its bytes (PNG,
+ * JPEG or WebP, at most 5 MB; never by its name or the type the browser
+ * claims), stored in the template bucket under its hash, then recorded
+ * with where it comes from. The template goes back to review.
+ */
+export async function replaceTemplateImage(templateId: string, key: string, file: File, meta: {
+  source: Exclude<ImageSource, 'architect-ai'>; licence?: string; model?: string; prompt?: string; intended_use?: string;
+}): Promise<string | null> {
+  if (file.size > MAX_TEMPLATE_IMAGE) return 'the image must be at most 5 MB';
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const info = imageInfo(bytes);
+  if (!info) return 'the file is not a PNG, JPEG or WebP image';
+  const sha = await sha256Hex(bytes);
+  const path = `${templateId}/${key.replace(/[^A-Za-z0-9.-]+/g, '-')}-${sha.slice(0, 12)}.${EXTENSION[info.mime]}`;
+  const { error: upErr } = await supabase.storage.from('site-template-assets').upload(path, bytes, { contentType: info.mime, upsert: false });
+  if (upErr && !/exists/i.test(upErr.message)) return upErr.message;
+  return err((await supabase.rpc('admin_replace_site_template_image', {
+    p_template: templateId, p_key: key, p_path: path,
+    p_meta: { mime: info.mime, sha256: sha, width: info.width, height: info.height, source: meta.source,
+              licence: meta.licence?.trim() || null, intended_use: meta.intended_use?.trim() || null,
+              generation: meta.source === 'ai-generated' ? { model: meta.model?.trim() ?? '', prompt: meta.prompt?.trim() || undefined,
+                                                              date: new Date().toISOString().slice(0, 10) } : null },
+  })).error);
+}
+
+/** Approve or reject an image (the licence of an imported one may be recorded at the same time). */
+export async function reviewTemplateImage(templateId: string, key: string, status: 'approved' | 'rejected' | 'unreviewed',
+                                          licence?: string | null): Promise<string | null> {
+  return err((await supabase.rpc('admin_review_site_template_image', {
+    p_template: templateId, p_key: key, p_status: status, p_licence: licence ?? null,
   })).error);
 }
 
