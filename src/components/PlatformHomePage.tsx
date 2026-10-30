@@ -88,7 +88,7 @@ export default function PlatformHomePage() {
             <div className="text-[11px] tracking-[0.13em]">{t('platformHome.visualKicker')}</div>
             <div className="font-serif text-2xl md:text-3xl leading-tight mt-2">{t('platformHome.visualTitle')}</div>
           </div>
-          <div className="hidden sm:block absolute right-5 bottom-16 bg-white rounded-2xl px-5 py-4 shadow-lg text-[11px] text-gray-600">
+          <div className="hidden sm:block absolute right-5 top-16 bg-white rounded-2xl px-5 py-4 shadow-lg text-[11px] text-gray-600">
             {t('platformHome.floatKicker')}
             <b className="block text-emerald-700 text-sm">{t('platformHome.floatTitle')}</b>
             {t('platformHome.floatText')}
