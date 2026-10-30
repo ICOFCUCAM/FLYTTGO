@@ -5,6 +5,7 @@ import CompaniesPanel from "./admin/CompaniesPanel";
 import InvoicingPanel from "./admin/InvoicingPanel";
 import WhiteLabelAdminPanel from "./admin/WhiteLabelAdminPanel";
 import AccountingAdminPanel from "./admin/AccountingAdminPanel";
+import InboxPanel from "./admin/InboxPanel";
 import { activePlansByUser, ASSIGNABLE_PLANS } from "../lib/plans";
 import { useAuth } from "../lib/auth";
 
@@ -24,6 +25,7 @@ type AdminTab =
   | "invoicing"
   | "white-label"
   | "accounting"
+  | "inbox"
   | "settings";
 
 /* ── CSV export helper ──────────────────────────────────────────
@@ -155,6 +157,7 @@ export default function AdminDashboard() {
     "invoicing",
     "white-label",
     "accounting",
+    "inbox",
     "settings",
   ];
 
@@ -986,6 +989,7 @@ export default function AdminDashboard() {
         {tab === "invoicing" && <InvoicingPanel />}
         {tab === "white-label" && <WhiteLabelAdminPanel />}
         {tab === "accounting" && <AccountingAdminPanel />}
+        {tab === "inbox" && <InboxPanel />}
 
         {tab === "settings" && (
           <div>

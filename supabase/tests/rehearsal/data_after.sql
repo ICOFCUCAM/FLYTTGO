@@ -310,3 +310,13 @@ BEGIN
 END $$;
 
 \echo 'rehearsal data after 00023: written'
+
+-- ── Inbound messages (00026): a visitor's contact message and a corporate enquiry ──
+DO $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', '', false);
+  PERFORM public.submit_contact_message('contact', 'Rehearsal Visitor', 'visitor@rh.example', NULL, NULL, 'General question', 'Do you move pianos?');
+  PERFORM public.submit_contact_message('corporate', 'Rehearsal Buyer', 'buyer@rh.example', '+47 400 00 000', 'Rehearsal Kjøpmann AS', '10–50 jobs/month', NULL);
+END $$;
+
+\echo 'rehearsal data after 00026: written'
