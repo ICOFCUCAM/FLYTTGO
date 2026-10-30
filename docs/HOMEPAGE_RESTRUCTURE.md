@@ -167,13 +167,13 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
 
 ### Integrated platform experience (owner, 2026-10-30)
 
-**Colours.** In order, the owner rejected the brief's gold, emerald all over the page, navy with blue, and then architectpro.co's indigo and lavender. Asked about black, the page now uses near-black, white and neutral greys with one violet accent:
-- `build.py` (`PALETTES['ink']`) recolours the design. The platform page keeps `PALETTES['emerald']` and is unchanged.
-- **Near-black** `#111116` is for headings, dark panels, the top strip, Get started and the booking widget's header.
-- **Soft grey** `#F6F6F8` and white are the grounds.
-- **Violet** `#5B4CF0` is the single accent: main actions, Book Now (the bar and the widget), links and small labels. Labels use the deeper `#4335C9`.
-- Text on light grounds is darkened to 7:1, after the owner's reference of crisp, dark type; the minimum is 4.5:1.
-- The FlyttGo logo keeps its emerald, as the brand mark.
+**Colours.** In order, the owner rejected the brief's gold, emerald all over the page, navy with blue, architectpro.co's indigo and lavender, and near-black with violet. The second-pass art-direction brief returns to the established palette, each colour with one job. The failures before were gold and green used as text and fills.
+- **Ivory `#F5F3EB` and soft white `#FFFEFA`:** every ground. Sections alternate between them, divided by one warm hairline, so the page stays light.
+- **Deep blue `#203F68`:** headings, primary actions, labels and the few dark panels.
+- **Forest `#24513B` and evergreen `#20352B`:** positive signals only: available, approved, Book Now, ticks.
+- **Champagne gold `#C3A66C`:** hairlines, connectors and numerals. It appears as text only on deep blue, lightened to `#DCC9A0`. `readable_css` turns any gold text on a light ground into deep blue.
+- `build.py` recolours the design with `PALETTES['brand']`. The platform page keeps `PALETTES['emerald']` and is unchanged.
+- Text on light grounds is darkened to 7:1; the minimum is 4.5:1.
 
 **What changed on the page:**
 - **Hero:**
@@ -182,7 +182,7 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
   - The headline is still the owner's earlier choice, "Assisting Companies to Fly High. Run your company." The brief's recommended "One platform. More ways to grow." is not used yet.
 - **Journeys:** Find a Service, My Company and For Organisations are three equal cards. The third lists corporate solutions, the provider network and marketplace infrastructure, the last marked optional.
 - **One connected platform:**
-  - It now shows five capabilities: marketplace, business platform, financial infrastructure, the provider and business network, and white-label infrastructure, the last labelled "build · optional".
+  - It shows four capabilities around the platform core, with the provider and business network as the layer that joins them; white-label infrastructure is labelled "build · optional".
   - The lifecycle is Discover → Request → Quote → Book → Deliver → Invoice → Pay → Record.
 - **How FlyttGo works** (new, `#how-flyttgo-works`):
   - the lifecycle;
@@ -209,6 +209,36 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
 | Operator-managed provider networks | In development |
 | Other businesses and categories in the central FlyttGo Marketplace; providers other than drivers | Planned |
 | Workspace, finance, studio, network and industry screens | Illustrative (marked on the page) |
+
+### Second-pass art direction (owner, 2026-10-30)
+
+A visual upgrade of the same structure: the three journeys, the four capabilities and white label as a specialised offering are kept.
+
+- **System:**
+  - One type scale: display headings 36–62 px, introductions 16 px, small print 14–15 px, labels 11 px.
+  - One section rhythm, 84–132 px.
+  - Square surfaces with one warm hairline; product mockups lift with a single soft shadow.
+  - Deep-blue primary and outlined secondary buttons, and a visible gold focus ring.
+  - One motif: the hero's curved top-right corner on every dark panel, and a gold hairline before every label.
+- **Hero:**
+  - The owner's "Assisting Companies to Fly High." stays, with "Find services. Run your company. Grow." in the serif line.
+  - The slideshow stays. The floating card and the index label are gone. The three journeys run as a deep-blue band at the foot of the picture.
+  - Explore services and My Company are buttons; For Organisations is a quieter text link.
+- **Journeys:** Explore (deep blue) and My Company (soft white) side by side. For Organisations is a strip across both, with its three options and marketplace infrastructure marked optional.
+- **One connected platform:**
+  - Four capabilities around the FlyttGo platform core, tied to it by gold hairlines.
+  - The provider and business network is the layer that joins them, inside the core, not a fifth product.
+  - White label is "04 / build · optional".
+- **Marketplace:** a Browse row of categories above the editorial gallery, with "More categories open as businesses join." beside it.
+- **Moving and transport:**
+  - Labelled "A FlyttGo vertical".
+  - Eight services: move-out cleaning and packing and assembly join them. Both are booking extras (`constants.ts`).
+  - The van note says rates are on the van size guide.
+- **Corporate:** the made-up figures and growth curve are removed. The demonstration shows bookings awaiting approval under a booker's spending limit, roles and permissions, and one monthly invoice, all marked as example data.
+- **Provider network:** told as part of the ecosystem (same business tools and records); plans stay on their own page.
+- **Marketplace Studio:** says provider onboarding is in development.
+- **Network model:** three plain tiers a business owner can read: identities, shared infrastructure, then supply and demand. The connector labels are removed.
+- **Pictures:** one treatment with a deep-blue veil. The cleaning card uses the design's own living-room photograph (Unsplash licence); every other picture is FlyttGo's own.
 
 ## Stage D: content checked against the source
 

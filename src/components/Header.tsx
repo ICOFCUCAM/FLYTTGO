@@ -263,8 +263,8 @@ export default function Header() {
     ] },
   ];
   const journeyItem = (item: JourneyItem) => (
-    <button key={item.label} onClick={item.go} className="w-full text-left px-3 py-2 hover:bg-[#f6f6f8] transition group">
-      <div className="text-sm font-semibold text-gray-900 group-hover:text-[#5b4cf0]">{item.label}</div>
+    <button key={item.label} onClick={item.go} className="w-full text-left px-3 py-2 hover:bg-[#F5F3EB] transition group">
+      <div className="text-sm font-semibold text-gray-900 group-hover:text-[#203F68]">{item.label}</div>
       {item.desc && <div className="text-xs text-gray-600 mt-0.5">{item.desc}</div>}
     </button>
   );
@@ -325,7 +325,7 @@ export default function Header() {
       <div className="relative">
         {/* TOP BAR — collapses on scroll */}
         <div
-          className={`${preview ? 'bg-[#111116]' : 'bg-[#1A365D]'} text-white overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
+          className={`${preview ? 'bg-[#203F68]' : 'bg-[#1A365D]'} text-white overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
             scrolled ? 'max-h-0 opacity-0' : 'max-h-12 opacity-100'
           }`}
         >
@@ -405,7 +405,7 @@ export default function Header() {
                   <div key={j.id}>
                     <button onClick={() => toggleJourney(j.id)} aria-expanded={journeyOpen === j.id}
                       className={`flex items-center gap-1 px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium transition ${
-                        journeyOpen === j.id ? 'text-[#111116] bg-[#f4f3ff]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                        journeyOpen === j.id ? 'text-[#203F68] bg-[#F5F3EB]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                       }`}>{j.label}{chevron(journeyOpen === j.id)}</button>
                     {/* Under the bar, centred on it: the menus are wide (columns). */}
                     {journeyOpen === j.id && (
@@ -479,7 +479,7 @@ export default function Header() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
-              <button onClick={() => handleNav('booking')} className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-2.5 xl:px-5 whitespace-nowrap' : 'px-5'} py-2 ${preview ? 'bg-[#5b4cf0] hover:bg-[#4a3bdc]' : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded-lg text-sm font-semibold transition shadow-sm`}>{t('header.bookNow')}</button>
+              <button onClick={() => handleNav('booking')} className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-2.5 xl:px-5 whitespace-nowrap' : 'px-5'} py-2 ${preview ? 'bg-[#24513B] hover:bg-[#20352B]' : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded-lg text-sm font-semibold transition shadow-sm`}>{t('header.bookNow')}</button>
 
               {/* Notifications bell — signed-in only. Subscribes to
                * the notifications table over Supabase Realtime; flips
@@ -596,7 +596,7 @@ export default function Header() {
                   <button
                     onClick={openSignUp}
                     className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border rounded-lg text-sm font-semibold transition shadow-sm ${
-                      preview ? 'bg-[#111116] border-[#111116] text-white hover:bg-[#26262e]' : 'border-emerald-600 text-emerald-600 hover:bg-emerald-50'
+                      preview ? 'bg-[#203F68] border-[#203F68] text-white hover:bg-[#18304f]' : 'border-emerald-600 text-emerald-600 hover:bg-emerald-50'
                     }`}
                   >
                     {preview ? t('header.journeys.getStarted') : t('header.signUp')}

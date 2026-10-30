@@ -27,12 +27,6 @@ import './homeV2.css';
 
 const VERSIONS = { en: { html: designEn, init: initEn }, no: { html: designNo, init: initNo } } as const;
 
-/* The fifth capability of the connected platform (owner, 30 October 2026); the
- * design's script describes the other four. */
-const NETWORK = {
-  en: ['Provider and Business Network', 'The participation layer: drivers, transport partners and service providers receive and fulfil eligible work, using the same business tools and records as every company on FlyttGo.'],
-  no: ['Leverandør- og bedriftsnettverk', 'Deltakelseslaget: sjåfører, transportpartnere og tjenesteleverandører mottar og utfører kvalifiserte oppdrag, med de samme forretningsverktøyene og registrene som alle bedrifter på FlyttGo.'],
-} as const;
 
 /* The design's cards and buttons, in the design's order, and the page each opens. */
 const WIRES: { selector: string; target: (i: number) => string }[] = [
@@ -112,15 +106,7 @@ export default function HomeV2Page() {
       }
       setPage(target as Page);
     };
-    const network = NETWORK[language === 'no' ? 'no' : 'en'];
     const onClick = (e: MouseEvent) => {
-      const pillar = (e.target as HTMLElement).closest<HTMLElement>('[data-pillar="network"]');
-      if (pillar && el.contains(pillar)) {
-        el.querySelector('#ecosystem-detail-title')!.textContent = network[0];
-        el.querySelector('#ecosystem-detail-copy')!.textContent = network[1];
-        el.querySelectorAll('[data-pillar]').forEach(b => b.setAttribute('aria-pressed', String(b === pillar)));
-        return;
-      }
       const a = (e.target as HTMLElement).closest<HTMLElement>('[data-page]');
       if (!a || !el.contains(a)) return;
       e.preventDefault();
@@ -133,7 +119,7 @@ export default function HomeV2Page() {
     el.addEventListener('click', onClick);
     el.addEventListener('keydown', onKey);
     return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); };
-  }, [version, language, setPage, setShowAuthModal, setAuthMode]);
+  }, [version, setPage, setShowAuthModal, setAuthMode]);
 
   return (
     <>
