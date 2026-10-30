@@ -187,6 +187,11 @@ describe('the gallery filters', () => {
     expect(c.features.some(x => x.id === 'services')).toBe(false);
     expect(c.styles.map(s => [s.id, s.count])).toEqual([['bold', 1], ['editorial', 0]]);
   });
+  it('leave out a feature every template has, unless it is chosen', () => {
+    const everyone = all.map(t => ({ ...t, features: [...new Set([...(t.features ?? []), 'contact'])] }));
+    expect(facets(everyone, f({})).features.some(x => x.id === 'contact')).toBe(false);
+    expect(facets(everyone, f({ features: ['contact'] })).features.some(x => x.id === 'contact')).toBe(true);
+  });
 });
 
 describe('the preview', () => {

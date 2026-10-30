@@ -82,7 +82,10 @@ export function facets(templates: readonly Summary[], f: GalleryFilter) {
     .map(c => ({ id: c.id, label: c.label, count: byCategory.get(c.id) ?? 0 }));
   const all = templates.filter(t => passes(t, f, 'category')).length;
   const byFeature = count('features', t => t.features ?? []);
-  const features = GALLERY_FEATURES.map(x => ({ ...x, count: byFeature.get(x.id) ?? 0 }));
+  /* A feature every template has narrows nothing (every master has a pricing and a contact page): left out unless chosen. */
+  const everywhere = (id: string) => templates.length > 0 && templates.every(t => (t.features ?? []).includes(id));
+  const features = GALLERY_FEATURES.filter(x => !everywhere(x.id) || f.features.includes(x.id))
+    .map(x => ({ ...x, count: byFeature.get(x.id) ?? 0 }));
   const byStyle = count('style', t => t.style ? [t.style] : []);
   const styles = [...new Set(templates.map(t => t.style).filter((s): s is string => !!s))]
     .map(id => ({ id, label: styleLabel(id), count: byStyle.get(id) ?? 0 }))
