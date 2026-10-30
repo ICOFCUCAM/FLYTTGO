@@ -17,7 +17,7 @@ One core shared by every company: companies, teams and roles, verification, plan
 
 A company states its **industry**. What it can use comes with its **plan** (`white_label_plans.modules`), checked in one place, `org_has_module()`: the company is active and its active plan includes the module.
 
-**Outside transport the company is always the seller.** FlyttGo cannot sell a plumber's or an electrician's work in its own name, so Model A (FlyttGo sells) is for moving and delivery only; the database refuses anything else (`white_label_plans_modules_check`, `white_label_missing`). FlyttGo's moving engine refuses bookings on non-transport plans (`guard_booking_transport_plan`).
+**Outside transport the company is always the seller.** FlyttGo cannot sell a plumber's or an electrician's work in its own name, so Model A (FlyttGo sells) is for moving and delivery only; the database refuses anything else (`white_label_plans_modules_check`, `white_label_missing`). FlyttGo's moving engine refuses bookings on non-transport plans (`guard_booking_transport_plan`). The seller notice on the company's pages says so ("<company> sells and carries out the appointments booked here. FlyttGo AS provides the booking system."), and a website template's booking button reads "Ask for a job" or "Book a time" (`sellerNotice()` and `BOOKING_LABELS` in `_shared/white-label.ts`).
 
 ## Plans and prices (proposals until FlyttGo confirms them)
 

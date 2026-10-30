@@ -189,12 +189,15 @@ export interface RenderContext {
   pageUrl: (path: string) => string;
   /** The company's booking page. */
   bookingUrl: string;
-  /** Shown at the foot of every page: who sells the moves. */
+  /** The words on the booking button of a quote form turned into a card (BOOKING_LABELS by plan); default BOOK_LABEL. */
+  bookingLabel?: string;
+  /** Shown at the foot of every page: who sells what is booked (sellerNotice()). */
   sellerNotice: string;
   /** Hosts images may come from (the asset store). */
   assetHosts?: string[];
 }
 
+/** The booking button's words where the plan is not known (stored by earlier imports in place of {{BOOKING_LABEL}}). */
 const BOOK_LABEL = 'Get a price and book';
 
 /** Escape text for HTML. */
@@ -210,12 +213,14 @@ function count(re: RegExp, s: string): number {
 /**
  * Forms become a card with a link to the booking page. The card keeps the
  * form's classes (and so the template's look); what the form asked for is
- * asked on the booking page instead.
+ * asked on the booking page instead. The button's words are filled in when
+ * the page is served, by the company's plan ("Book a time" for
+ * appointments…).
  */
 export function replaceForms(html: string): string {
   return String(html ?? '').replace(/<form\b([^>]*)>[\s\S]*?<\/form\s*>/gi, (_m, attrs: string) => {
     const cls = /\sclass\s*=\s*("|')([^"']*)\1/i.exec(attrs)?.[2]?.replace(/[^\w\s-]/g, '') ?? '';
-    return `<div class="${cls ? `${cls} ` : ''}fg-book-card"><p class="fg-book"><a href="{{BOOKING_URL}}">${BOOK_LABEL}</a></p></div>`;
+    return `<div class="${cls ? `${cls} ` : ''}fg-book-card"><p class="fg-book"><a href="{{BOOKING_URL}}">{{BOOKING_LABEL}}</a></p></div>`;
   }).replace(/<\/?form\b[^>]*>/gi, '');
 }
 
@@ -664,11 +669,14 @@ export function renderTemplatePage(html: string, ctx: RenderContext): string {
   h = h.replace(/href\s*=\s*("|')\{\{BASE\}\}(\/[^"']*)?\1/g, (_m, q: string, path: string) =>
     `href=${q}${escapeHtml(ctx.pageUrl(path && path !== '' ? path : '/'))}${q} target="_top"`);
   h = h.replace(/\{\{BASE\}\}/g, '');
+  // A card from an earlier import has the words written in: those too follow the plan.
+  if (ctx.bookingLabel) h = h.replace(new RegExp(`(<p class="fg-book"><a\\b[^>]*>)${BOOK_LABEL}(</a>)`, 'g'), '$1{{BOOKING_LABEL}}$2');
   h = h.replace(/href\s*=\s*("|')\{\{BOOKING_URL\}\}\1/g, (_m, q: string) => `href=${q}${escapeHtml(ctx.bookingUrl)}${q} target="_top"`);
   h = h.replace(/\{\{BOOKING_URL\}\}/g, escapeHtml(ctx.bookingUrl));
   const values: Record<string, string> = {
     'brand.name': b.name, 'brand.tagline': b.tagline ?? '', 'brand.phone': b.phone ?? '',
     'brand.phone_tel': telOf(b.phone), 'brand.email': b.email ?? '', 'brand.city': b.city ?? '',
+    BOOKING_LABEL: ctx.bookingLabel || BOOK_LABEL,
   };
   const logo = safeAssetUrl(b.logoUrl, hosts);
   // One pass: the company's values (escaped) go in, any other placeholder is

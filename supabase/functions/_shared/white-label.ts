@@ -55,15 +55,41 @@ export function sellerSplit(flyttgoPrice: number, pricing: SellerPricing): Selle
   };
 }
 
-/** The public page's seller notice, shown on every page and at payment. */
+/**
+ * Which booking a company's page offers: FlyttGo's moves (transport plans,
+ * no modules), or the company's own Jobs or Appointments module
+ * (docs/SERVICE_PLATFORM.md).
+ */
+export type BookingKind = 'moves' | 'jobs' | 'appointments' | 'none';
+
+export function bookingKind(modules: readonly string[]): BookingKind {
+  return modules.includes('jobs') ? 'jobs' : modules.includes('appointments') ? 'appointments'
+    : modules.length === 0 ? 'moves' : 'none';
+}
+
+/** The words on a template's booking button (a quote form turned into a card) for each booking. */
+export const BOOKING_LABELS: Record<BookingKind, string> = {
+  moves: 'Get a price and book', jobs: 'Ask for a job', appointments: 'Book a time', none: 'Book online',
+};
+
+/**
+ * The public page's seller notice, shown on every page and at payment.
+ * Outside transport the company is always the seller and does the work
+ * itself; FlyttGo only provides the booking system.
+ */
 export function sellerNotice(site: {
   seller_model: 'flyttgo' | 'company';
   display_name?: string | null;
   seller?: { name?: string | null; org_number?: string | null } | null;
-}): string {
+}, booking: BookingKind = 'moves'): string {
   const s = site.seller ?? {};
   const org = s.org_number ? ` (org. nr. ${s.org_number})` : '';
+  const company = `${s.name ?? site.display_name ?? 'The company'}${org}`;
+  if (booking !== 'moves') {
+    const what = booking === 'jobs' ? 'the jobs' : booking === 'appointments' ? 'the appointments' : 'what is';
+    return `${company} sells and carries out ${what} booked here. FlyttGo AS provides the booking system.`;
+  }
   return site.seller_model === 'company'
-    ? `${s.name ?? site.display_name ?? 'The company'}${org} sells the moves booked here. FlyttGo AS carries them out as its subcontractor.`
+    ? `${company} sells the moves booked here. FlyttGo AS carries them out as its subcontractor.`
     : `Moves booked here are sold and carried out by ${s.name ?? 'FlyttGo AS'}${org}, for ${site.display_name ?? 'this company'}.`;
 }

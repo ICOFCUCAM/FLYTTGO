@@ -159,6 +159,16 @@ describe('keeping the template\'s look', () => {
     expect(h).toContain('href="{{BOOKING_URL}}"');
     expect(h).not.toMatch(/<form|<input|<button/);
   });
+  it('words the booking button by the company\'s plan, also on cards from earlier imports', () => {
+    const ctx = { brand: { name: 'A' }, assets: [], pageUrl: () => '#', bookingUrl: '/b/a/book', sellerNotice: 'n' };
+    const card = replaceForms('<form class="lead"><input></form>');
+    expect(renderTemplatePage(card, ctx)).toContain('>Get a price and book</a>');
+    expect(renderTemplatePage(card, { ...ctx, bookingLabel: 'Book a time' })).toContain('target="_top">Book a time</a>');
+    const earlier = '<div class="lead fg-book-card"><p class="fg-book"><a href="{{BOOKING_URL}}">Get a price and book</a></p></div>';
+    const h = renderTemplatePage(earlier, { ...ctx, bookingLabel: 'Ask for a job' });
+    expect(h).toContain('>Ask for a job</a>');
+    expect(h).not.toContain('Get a price and book');
+  });
   it('replaces the sample name where the page writes "&" as "&amp;", also in image descriptions', () => {
     const t = prepareTemplate({ id: 'x', name: 'Fast Man & Van', pages: [{ path: '/', html:
       '<html><head><title>Fast Man & Van — UK</title></head><body><a class="brand">Fast Man &amp; Van</a>'

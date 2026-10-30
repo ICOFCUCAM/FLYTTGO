@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sellerNotice, sellerSplit } from '../../supabase/functions/_shared/white-label.ts';
+import { BOOKING_LABELS, bookingKind, sellerNotice, sellerSplit } from '../../supabase/functions/_shared/white-label.ts';
 
 const OWN_SELLER = { platform_fee_pct: 4, platform_fee_min: 49 };
 
@@ -34,5 +34,24 @@ describe('sellerNotice', () => {
       .toBe('Moves booked here are sold and carried out by FlyttGo AS (org. nr. 923609016), for Acme Flytt.');
     expect(sellerNotice({ seller_model: 'company', display_name: 'Acme Flytt', seller: { name: 'Acme AS', org_number: '987654321' } }))
       .toBe('Acme AS (org. nr. 987654321) sells the moves booked here. FlyttGo AS carries them out as its subcontractor.');
+  });
+  it('never speaks of moves outside transport: the company sells and does the work', () => {
+    const salon = { seller_model: 'company' as const, display_name: 'Verve', seller: { name: 'Verve Hår AS', org_number: '912345678' } };
+    expect(sellerNotice(salon, 'appointments'))
+      .toBe('Verve Hår AS (org. nr. 912345678) sells and carries out the appointments booked here. FlyttGo AS provides the booking system.');
+    expect(sellerNotice({ ...salon, display_name: 'Rør', seller: { name: 'Rør AS' } }, 'jobs'))
+      .toBe('Rør AS sells and carries out the jobs booked here. FlyttGo AS provides the booking system.');
+    expect(sellerNotice(salon, 'none')).not.toMatch(/move/i);
+  });
+});
+
+describe('bookingKind', () => {
+  it('follows the plan\'s modules, with a booking button label for each', () => {
+    expect(bookingKind([])).toBe('moves');
+    expect(bookingKind(['jobs', 'sales_invoicing'])).toBe('jobs');
+    expect(bookingKind(['appointments', 'sales_invoicing'])).toBe('appointments');
+    expect(bookingKind(['sales_invoicing'])).toBe('none');
+    expect(BOOKING_LABELS.appointments).toBe('Book a time');
+    expect(BOOKING_LABELS.jobs).toBe('Ask for a job');
   });
 });
