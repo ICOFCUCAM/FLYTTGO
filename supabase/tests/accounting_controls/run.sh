@@ -40,7 +40,7 @@ fi
 diff <("${PSQL[@]}" -d "$DB" -At -F' ' -f supabase/schema/fingerprint-summary.sql) supabase/schema/production-2026-10-29.fingerprint \
   || fail "the copy's schema differs from production's recorded fingerprint"
 ok "the copy matches production's schema fingerprint before the migrations"
-for f in supabase/migrations/0000[2-9]_*.sql supabase/migrations/0001[0-9]_*.sql; do "${PSQL[@]}" -d "$DB" -f "$f"; done
+for f in supabase/migrations/0000[2-9]_*.sql supabase/migrations/000[1-9][0-9]_*.sql; do "${PSQL[@]}" -d "$DB" -f "$f"; done
 "${PSQL[@]}" -d "$DB" -f supabase/tests/helpers.sql
 # The fixture functions the other suites define (their own data rolls back).
 for f in p0_security organizations launch_decisions company_bookings invoicing white_label service_platform; do
