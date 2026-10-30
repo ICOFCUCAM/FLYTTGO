@@ -55,6 +55,8 @@
 //
 // Options:
 //   --apply            perform it (otherwise a dry run: nothing is written)
+//   --keep-old         with --apply: copy, move and check, but remove no file yet
+//                      (run --apply again later to remove the earlier copies)
 //   --hash-unknown     download and hash template files whose SHA-256 is not recorded
 //   --out <dir>        where the dry run writes plan.json (default template-asset-dedupe)
 //   --retired-files    the library's retired photos' files instead
@@ -351,7 +353,7 @@ async function readState(a: Api, hashUnknown: boolean) {
   return { templates, images, moved, objects, hashes };
 }
 
-async function apply(a: Api, plan: DedupePlan) {
+async function apply(a: Api, plan: DedupePlan, keepOld = false) {
   // 1. The shared copies: copied once, each checked by its SHA-256.
   for (const c of plan.shared) {
     if (!c.exists) {
@@ -389,6 +391,10 @@ async function apply(a: Api, plan: DedupePlan) {
     if (!d.ok || !d.bytes || !imageInfo(d.bytes)) throw new Error(`${u} does not answer with an image (${d.status}); nothing was removed`);
   }
   console.log(`checked: every shared address answers with its picture`);
+  if (keepOld) {
+    console.log(`--keep-old: ${plan.remove.length} earlier copies (${mb(plan.totals.removeBytes)}) are kept; run --apply again to remove them`);
+    return;
+  }
   // 4. Only then the earlier copies, from what FlyttGo holds now.
   const now = planDedupe({ supabaseUrl: a.url, ...after });
   if (now.moves.length) throw new Error(`${now.moves.length} slot(s) are not moved yet; nothing was removed. Run again.`);
@@ -440,7 +446,7 @@ async function main() {
     return;
   }
   if (state.moved === null) throw new Error('apply migration 00025 first (share_site_template_assets)');
-  await apply(a, plan);
+  await apply(a, plan, has('keep-old'));
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main().catch((e) => { console.error(e.message ?? e); process.exit(1); });
