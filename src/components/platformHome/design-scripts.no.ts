@@ -4,7 +4,7 @@
 // @ts-nocheck
 export function initDesign() {
   /* ── script 1 ── */
-  {function showToast(message){
+  try {function showToast(message){
   const el=document.getElementById('toast');
   if(!el)return;
   el.textContent=message;
@@ -43,9 +43,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
     menuButton.textContent='☰';
   }
 }));
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 2 ── */
-  {(function(){
+  try {(function(){
  const data={
   plumbing:{kicker:'HÅNDVERKSTJENESTE · BESØK PÅ STEDET',title:'Rørleggerbedrift',description:'Håndter serviceoppdrag, installasjoner og vedlikeholdsbesøk med informasjonen som trengs før fagpersonen kommer.',types:['Reparasjonsforespørsel','Installasjon','Vedlikehold','Akuttutrykning'],flow:['Kunden beskriver problemet','Bedriften vurderer forespørselen','Besøket planlegges'],service:'Rørleggerreparasjon',booking:'Avtale på stedet',fields:'Beskrivelse av problemet · Adresse · Bilder (valgfritt)'},
   electrical:{kicker:'HÅNDVERKSTJENESTE · BESØK ELLER PROSJEKT',title:'Elektrikerbedrift',description:'Håndter kontroller, installasjoner og feilmeldinger med riktig omfang og stedsinformasjon knyttet til hver forespørsel.',types:['Feilsøking','Installasjon','Kontroll','Oppgraderingsprosjekt'],flow:['Kunden velger arbeid','Omfanget vurderes','Kvalifisert besøk avtales'],service:'Elektrisk kontroll',booking:'Befaring eller prosjekt',fields:'Arbeid som trengs · Boligtype · Detaljer om eksisterende anlegg'},
@@ -68,9 +68,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
  };
  tabs.forEach((t,i)=>{t.addEventListener('click',()=>set(t.dataset.industry));t.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();const next=(i+(e.key==='ArrowRight'?1:tabs.length-1))%tabs.length;tabs[next].focus();set(tabs[next].dataset.industry);}});});
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 3 ── */
-  {(function(){
+  try {(function(){
   const content = {
     customer: {
       kicker:'FOR PERSONER OG ORGANISASJONER SOM KJØPER EN TJENESTE',
@@ -105,9 +105,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
   }
   buttons.forEach(button=>button.addEventListener('click',()=>render(button.dataset.experience)));
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 4 ── */
-  {(function(){
+  try {(function(){
  const data={
  overview:{k:'BEDRIFTEN DIN I ET BLIKK',t:'Bedriftsoversikt',m:[['ÅPNE HENVENDELSER','Gå gjennom forespørsler','Etterspørsel fra kunder'],['KOMMENDE ARBEID','Planlegg timeplanen din','Timeavtaler og jobber'],['ØKONOMISK AKTIVITET','Følg transaksjoner','Tilbud, fakturaer og betalinger']],pt:'Din arbeidsflyt',pm:'SAMMENKOBLET BEDRIFTSREGISTER',pc:'Henvendelse → Tilbud → Bestilling → Jobb → Faktura → Betaling → Bedriftsregister',lo:[['TILPASSBARE ARBEIDSFLYTER','Timeavtaler · Tilbud · Prosjekter · Faste oppdrag'],['STYRING AV BEDRIFTEN','Tjenester · Priser · Team · Tilganger']]},
  customers:{k:'RELASJONER OG TJENESTEHISTORIKK',t:'Kunderegister',m:[['KUNDEPROFILER','Kontaktopplysninger','Bedrift eller privatperson'],['TJENESTEHISTORIKK','Tidligere oppdrag','Forespørsler og utført arbeid'],['KOMMUNIKASJON','Hold sammenhengen samlet','Meldinger og oppdateringer']],pt:'Et sammenkoblet kunderegister',pm:'KUNDERELASJON',pc:'Kontaktopplysninger · Forespørsler · Avtalt arbeid · Dokumenter · Tjenestehistorikk',lo:[['KUNDETYPER','Privatpersoner · Bedrifter · Organisasjoner'],['SAMMENHENG I REGISTERET','Relevant historikk · Dokumenter · Kommunikasjon']]},
@@ -132,9 +132,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
  }
  buttons.forEach(b=>b.addEventListener('click',()=>render(b.dataset.bw)));
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 5 ── */
-  {(function(){
+  try {(function(){
  const name=document.getElementById('wl-name'),tagline=document.getElementById('wl-tagline'),market=document.getElementById('wl-market');
  const brand=document.getElementById('wl-preview-brand'),store=document.getElementById('wl-store-name'),heroTitle=document.getElementById('wl-preview-tagline'),marketLabel=document.getElementById('wl-market-label'),cta=document.getElementById('wl-cta');
  const grid=document.getElementById('wl-category-grid'),hero=document.getElementById('wl-hero');
@@ -160,9 +160,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
  }));
  update();
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 6 ── */
-  {(function(){
+  try {(function(){
  const details={
   operator:['Eierskap til markedsplassen','En uavhengig operatør styrer markedsplassens identitet, kundetilbud, leverandørrelasjoner og konfigurerte kommersielle regler. Plattformen leverer den underliggende teknologien i tråd med den avtalte tjenestemodellen.'],
   business:['Bedriftsdeltakelse','Bedrifter definerer tjenester, priser, bestillingsregler og driftsteam. Deltakelse i en sentral markedsplass eller en white label-markedsplass bør styres av tydelige avtaler og avgrensede tillatelser.'],
@@ -177,9 +177,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
   buttons.forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
  }));
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 7 ── */
-  {(function(){
+  try {(function(){
  const views={
  overview:{k:'SAMMENKOBLET ØKONOMISK AKTIVITET',t:'Økonomisk oversikt',m:[['TILBUD','Utarbeid og følg opp','Forslag og godkjenninger'],['FAKTURAER','Utsted faktureringsposter','Knyttet til utført arbeid'],['BETALINGER','Registrer innbetalinger','Avstemming og kvitteringer']],doc:'Illustrerende fakturapost',status:'UTKASTVISNING',rows:[['Avtalt tjenestearbeid','1','Konfigurert beløp'],['Ytterligere avtalte poster','—','Konfigurert beløp']],total:'Fakturabeløp'},
  quotes:{k:'AVTAL OMFANG OG PRIS FØR ARBEIDET',t:'Tilbud og estimater',m:[['FORESPØRSEL','Forstå arbeidet','Omfang og kundeopplysninger'],['ESTIMAT','Lag tilbudet','Poster, arbeid og vilkår'],['GODKJENNING','Registrer aksept','Avtalt omfang og revisjoner']],doc:'Tilbud og estimat',status:'TILBUDSVISNING',rows:[['Tjenestebeskrivelse','1','Foreslått beløp'],['Materialer eller tilleggsarbeid','—','Foreslått beløp']],total:'Tilbudsbeløp'},
@@ -209,9 +209,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
  }
  buttons.forEach(b=>b.addEventListener('click',()=>render(b.dataset.finance)));
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 8 ── */
-  {(function(){
+  try {(function(){
  const pillars={
   marketplace:['Markedsplass','Søke- og transaksjonslaget: kundene finner passende tjenester, sammenligner leverandører og starter en bestilling, en avtale eller en tilbudsforespørsel.'],
   business:['Driftsplattform for bedrifter','Det daglige driftslaget: bedrifter håndterer kunder, tjenestekataloger, priser, bestillinger, tilbud, oppdrag, team og kundekommunikasjon.'],
@@ -227,9 +227,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
   buttons.forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
  }));
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 9 ── */
-  {(function(){
+  try {(function(){
  const journeys={
   customer:{label:'KUNDEOPPLEVELSE',title:'Finn riktig tjeneste for jobben.',description:'Utforsk tjenester på tvers av bransjer, sammenlign passende leverandører og velg riktig måte å forespørre eller bestille jobben på.',steps:['Finn','Velg','Bekreft','Følg','Fullfør'],cards:[['OPPDAG','Utforsk tjenestekategorier og leverandører'],['VELG','Timeavtale, bestilling eller tilbudsforespørsel'],['BEKREFT','Avtal omfang, tidspunkt og vilkår'],['FULLFØR','Ta vare på dokumentasjon av arbeid og betaling']],kicker:'DITT UTGANGSPUNKT',side:'En tjeneste du trenger',copy:'Velg hva du trenger hjelp til. FlyttGo kan støtte ulike tjeneste- og bestillingsmodeller, avhengig av leverandør og markedsplass.',list:['Tjenester for hjem og eiendom','Flytting og transport','Bedrifts- og fagtjenester']},
   business:{label:'BEDRIFTSOPPLEVELSEN',title:'Samle bedriftens drift.',description:'Presenter tjenestene dine, håndter kunderelasjoner og koordiner arbeidet bak bedriften fra ett sammenkoblet driftsmiljø.',steps:['Sett opp','Konfigurer','Motta arbeid','Lever','Administrer'],cards:[['SETT OPP','Opprett bedriftsprofil og team'],['KONFIGURER','Definer tjenester, priser og bestillingsregler'],['DRIFT','Håndter forespørsler, tilbud, oppdrag og timeplaner'],['ADMINISTRER','Koble sammen fakturaer, betalinger og registre']],kicker:'DITT UTGANGSPUNKT',side:'En bedrift å drive',copy:'Tilpass arbeidsområdet til tjenestene dine, måten du tar imot arbeid på og størrelsen og strukturen på organisasjonen din.',list:['Tjenestekatalog og priser','Kunder, bestillinger og oppdrag','Team, fakturaer og bedriftsregistre']},
@@ -254,5 +254,5 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
  }
  buttons.forEach(button=>button.addEventListener('click',()=>render(button.dataset.journey)));
 })();
-  }
+  } catch { /* its section is not on this page */ }
 }

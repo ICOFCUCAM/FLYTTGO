@@ -97,17 +97,45 @@ No link on the new page points to a page that does not exist. The three missing 
 
 ---
 
-## Stage C: implementation
+## Stage C: implementation, upgraded from the design (owner, 2026-10-30)
 
-| File | What it holds |
+The page is built from the owner's own Stage 20 design, upgraded, not replaced.
+
+`scripts/platform-home/build.py` (`V2_SECTIONS`) takes the strongest section of each topic from `docs/flyttgo-premium-platform-homepage-stage-20.html`, in the twelve-section order. It writes:
+
+| File | Content |
 |---|---|
-| `src/components/homeV2/HomeV2Page.tsx` | The twelve sections |
-| `src/components/homeV2/demos.tsx` | The demonstrations: business workspace, finance workspace, Marketplace Studio, industry selector, corporate view, network illustration |
-| `src/components/homeV2/homeV2.css` | The palette (#203F68, #24513B, #C3A66C, #F5F3EB, #FFFEFA, #20352B) and type, scoped under `.hv2` |
+| `src/components/homeV2/design.v2.html` | The page in English |
+| `src/components/homeV2/design.v2.no.html` | The page in Bokmål, from `no.json` |
+| `src/components/homeV2/design.v2.css` | The design's styles, scoped under `.fgv2` |
 
-The page reuses what exists: FlyttGo's menu bar and footer, the real booking widget (`BookingCard`), the site's own photographs, and the live van data (`VAN_TYPES`).
+`HomeV2Page.tsx` renders the page with the design's own scripts (its tabs and live previews).
 
-**Contrast:** gold is used for lines and numbers. Gold text on light grounds uses a darker gold, `--gold-text` (#8A6F3A), to keep 4.5:1.
+| # | Topic | The design's section kept | Left out as a duplicate |
+|---|---|---|---|
+| 1 | Hero | Hero (the site's own photograph) | — |
+| 2 | Journeys | Entry cards | Visitor journey, next step |
+| 3 | Four capabilities | "Not four separate products" (pillars and ecosystem) | Platform overview, manifesto |
+| 4 | Business platform | Business workspace | Business platform, business workflow |
+| 5 | Finance | Financial administration, with a booking → … → financial record strip added | Finance blueprint |
+| 6 | Marketplace | Market cards | — |
+| 7 | Own marketplace | White-label builder | White label, white-label blueprint |
+| 8 | Network | Network experience, headed "Shared infrastructure does not mean shared private data." | Marketplace network |
+| 9 | Industries | Industry experience | — |
+| 10 | Corporate | Business operations (features and dashboard), with recurring bookings added and the API marked paid add-on | Corporate benefits |
+| 11 | Moving | Moving services; the real booking widget (`BookingCard`); how it works; van cards (rates on the van guide); driver panel; "What every booking includes" (cancellation and MVA) | Providers, driver plans, moving tools, cities (on their pages and `/transport`) |
+| 12 | Call to action | Final call to action | Metrics, experience, "how" |
+
+**What the upgrade does:**
+
+- **Wording the code does not support is corrected** (`V2_CLAIMS`): operators' own provider networks are in development; "branded booking site"; the API is a paid add-on.
+- **Finance wording stays softened** (`SOFTEN`).
+- **In-page links to sections left out** point to the section that now carries the topic (`V2_ANCHORS`).
+- **Cards and buttons open real pages:** the design's `LINKS` and the page's `WIRES`.
+- **The brief's palette:** forest, evergreen, champagne gold, ivory and soft white, with deep blue for primary actions (`homeV2.css`).
+- **The design's network diagram is repaired:** a class it used twice squeezed the cards to 26px, and its grid had three columns for five items. Its text is raised to a readable size.
+- **On phones**, the design's wide workspace panels fit.
+- **Scripts:** each of the design's scripts runs on its own, so a script for a section left out does no harm.
 
 ## Stage D: content checked against the source
 

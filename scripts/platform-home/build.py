@@ -148,25 +148,25 @@ def split_selectors(sel: str):
     return [s.strip() for s in out if s.strip()]
 
 
-def scope_selector(s: str) -> str:
+def scope_selector(s: str, scope: str = '.fgp') -> str:
     if s in ('html', 'body', ':root', 'html body'):
-        return '.fgp'
+        return scope
     for root in ('html ', 'body ', ':root '):
         if s.startswith(root):
-            return '.fgp ' + s[len(root):]
-    return '.fgp ' + s
+            return scope + ' ' + s[len(root):]
+    return scope + ' ' + s
 
 
-def scope_css(css: str) -> str:
+def scope_css(css: str, scope: str = '.fgp') -> str:
     css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
     out = []
     for prelude, block in split_top(css):
         if prelude.startswith('@media') or prelude.startswith('@supports') or prelude.startswith('@container'):
-            out.append(f'{prelude}{{{scope_css(block)}}}')
+            out.append(f'{prelude}{{{scope_css(block, scope)}}}')
         elif prelude.startswith('@'):
             out.append(f'{prelude}{{{block}}}')     # @keyframes, @font-face
         else:
-            sels = ','.join(scope_selector(s) for s in split_selectors(prelude))
+            sels = ','.join(scope_selector(s, scope) for s in split_selectors(prelude))
             out.append(f'{sels}{{{block.strip()}}}')
     return '\n'.join(out)
 
@@ -230,6 +230,86 @@ def header_places(body: str) -> str:
     if n != 1 or m != 1:
         raise SystemExit('the design has no top line or header')
     return body
+
+
+# ── The restructured homepage (/preview/home, docs/HOMEPAGE_RESTRUCTURE.md) ─
+# Built from the design's own sections, upgraded, not replaced (owner,
+# 2026-10-30): the strongest section of each topic, in the twelve-section
+# order, with the weaker duplicates left out. Written to
+# src/components/homeV2/ as design.v2(.no).html and design.v2.css (scoped
+# under .fgv2, in the design's own palette, which HomeV2Page tunes to the
+# brief's colours).
+V2_OUT = ROOT / 'src' / 'components' / 'homeV2'
+V2_SECTIONS = [                                   # (attribute in the section's opening tag, topic)
+    ('class="hero wrap"', '1 hero'),
+    ('id="entry-points"', '2 journeys'),
+    ('id="unified-platform"', '3 one connected platform: four capabilities'),
+    ('id="business-workspace"', '4 business operating platform'),
+    ('id="financial-administration"', '5 financial management'),
+    ('id="marketplace"', '6 marketplace categories'),
+    ('id="white-label-builder"', '7 build your own marketplace'),
+    ('id="marketplace-network-experience"', '8 connected network'),
+    ('id="industry-experiences"', '9 industry workflows'),
+    ('id="business"', '10 corporate solutions'),
+    ('id="moving-services"', '11 moving services'),
+    ('id="how-it-works"', '11 booking and tracking journey'),
+    ('id="van-types"', '11 vehicle sizes (rates on the van guide)'),
+    ('id="driver-network"', '11 driver network'),
+    ('class="section testimonials"', '11 what every booking includes'),
+    ('class="final-cta"', '12 final call to action'),
+]
+# Wording the code does not support, corrected (the audit's status table).
+V2_CLAIMS = [
+    ('Create a branded marketplace with your identity, domain, services and provider network.',
+     'Create a branded booking site with your identity, domain, services and customers.'),
+    ('<p>Own brand, domain, customer proposition, provider network and commercial rules.</p>',
+     '<p>Own brand, domain, customer proposition and commercial rules. Own provider networks: in development.</p>'),
+    ('<h2 class="display">Connected by design.<br/><span class="serif">Separate by ownership.</span></h2>',
+     '<h2 class="display">Shared infrastructure does not mean<br/><span class="serif">shared private data.</span></h2>'),
+    ('<span>API Integration — connect FlyttGo to your warehouse or ERP</span>',
+     '<span>API Integration — connect FlyttGo to your warehouse or ERP (paid add-on)</span>'),
+    ('<span>Analytics Dashboard — track delivery volumes, costs and performance</span></div>',
+     '<span>Analytics Dashboard — track delivery volumes, costs and performance</span></div><div class="feature"><i>✓</i><span>Recurring bookings — repeat deliveries on a schedule</span></div>'),
+]
+# In-page links to sections the restructured page leaves out go to the section that carries the topic now.
+V2_ANCHORS = {'#platform': '#unified-platform', '#business-platform': '#business-workspace', '#white-label': '#white-label-builder',
+              '#top': '#main-content', '#booking': '#moving-services'}
+V2_LIFECYCLE = ('<ol class="v2-lifecycle" aria-label="From booking to financial record">'
+                + ''.join(f'<li><b>0{i + 1}</b>{t}</li>' for i, t in enumerate(
+                    ['Booking', 'Quote', 'Job completed', 'Invoice', 'Payment', 'Financial record'])) + '</ol>')
+
+
+def element_span(body: str, start: int, tag: str) -> int:
+    """End index of the element opening at start (nested tags of the same name counted)."""
+    depth = 0
+    for m in re.finditer(r'<(/?)%s\b[^>]*>' % tag, body[start:]):
+        depth += -1 if m.group(1) else 1
+        if depth == 0:
+            return start + m.end()
+    raise SystemExit(f'unclosed <{tag}> at {start}')
+
+
+def build_v2(base: str) -> str:
+    main = []
+    for attr, topic in V2_SECTIONS:
+        m = re.search(r'<section\b[^>]*%s[^>]*>' % re.escape(attr), base)
+        if not m:
+            raise SystemExit(f'v2: the design has no section {attr} ({topic})')
+        main.append(base[m.start():element_span(base, m.start(), 'section')])
+    page = '<main id="main-content">' + '\n'.join(main) + '</main>'
+    for old, new in V2_ANCHORS.items():
+        page = page.replace(f'href="{old}"', f'href="{new}"')
+    for old, new in V2_CLAIMS:
+        if page.count(old) != 1:
+            raise SystemExit(f'v2: expected once: {old[:60]}')
+        page = page.replace(old, new)
+    # The lifecycle strip at the head of the finance section; the booking
+    # widget (BookingCard) under the moving services.
+    page = re.sub(r'(<section\b[^>]*id="financial-administration"[^>]*>\s*<div class="wrap">)', r'\1' + V2_LIFECYCLE, page, count=1)
+    m = re.search(r'<section\b[^>]*id="moving-services"', page)
+    end = element_span(page, m.start(), 'section')
+    page = page[:end] + '<div class="wrap v2-booking" data-slot="booking"></div>' + page[end:]
+    return page
 
 
 # The former homepage's colours (owner, 2026-10-30): navy #1A365D for dark
@@ -370,8 +450,10 @@ def main() -> int:
     body = re.sub(r'<style\b.*?</style>', '', body, flags=re.S)
     # FlyttGo's own footer replaces the design's (owner, 2026-10-30).
     body = re.sub(r'<footer\b.*?</footer>', '', body, flags=re.S)
-    body = booking_card(header_places(old_pictures(body)))
+    base = header_places(old_pictures(body))
+    body = booking_card(base)
     body, used = wire_links(body)
+    v2, _ = wire_links(build_v2(base))
 
     # The booking form is handled by the app (real address lookup and booking),
     # so the design's placeholder submit handler is left out.
@@ -383,7 +465,7 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     if '--strings' in sys.argv:
         seen: dict[str, None] = {}
-        for t in list(html_strings(body)) + [t for sc in scripts for t in js_strings(sc)]:
+        for t in list(html_strings(body)) + list(html_strings(v2)) + [t for sc in scripts for t in js_strings(sc)]:
             seen.setdefault(t, None)
         import json
         STRINGS_JSON.write_text(json.dumps(list(seen), ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
@@ -398,7 +480,8 @@ def main() -> int:
               '/* eslint-disable */', '// @ts-nocheck', 'export function initDesign() {']
         for i, sc in enumerate(scs):
             js.append(f'  /* ── script {i + 1} ── */')
-            js.append('  {' + sc.strip() + '\n  }')
+            # Each script on its own: a script for a section a page leaves out stops there, not the rest.
+            js.append('  try {' + sc.strip() + '\n  } catch { /* its section is not on this page */ }')
         js.append('}')
         (OUT / f'design-scripts{suffix}.ts').write_text('\n'.join(js) + '\n', encoding='utf-8')
 
@@ -416,6 +499,18 @@ def main() -> int:
         print(f'no.json lacks {len(missing)} strings, e.g. {sorted(missing)[:5]}; the Norwegian page is not written', file=sys.stderr)
         return 1
     write('.no', body_no, scripts_no, 'Norwegian')
+    V2_OUT.mkdir(parents=True, exist_ok=True)
+    v2_head = '<!-- Generated by scripts/platform-home/build.py (restructured homepage, {}). Do not edit. -->\n'
+    (V2_OUT / 'design.v2.html').write_text(v2_head.format('English') + v2 + '\n', encoding='utf-8')
+    v2_no = translate_html(v2, no, missing)
+    if missing:
+        print(f'no.json lacks {len(missing)} strings of the restructured page, e.g. {sorted(missing)[:5]}', file=sys.stderr)
+        return 1
+    (V2_OUT / 'design.v2.no.html').write_text(v2_head.format('Norwegian') + v2_no + '\n', encoding='utf-8')
+    (V2_OUT / 'design.v2.css').write_text(
+        '/* Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html.\n'
+        ' * The design\'s styles, scoped under .fgv2, in its own palette (the restructured homepage). Do not edit. */\n'
+        + scope_css(css, '.fgv2') + '\n', encoding='utf-8')
     print(f'design.html {len(body)} chars, design.css, design-scripts.ts ({len(scripts)} scripts); links wired:')
     for u in used:
         print('  ' + u)

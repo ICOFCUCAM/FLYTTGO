@@ -1309,5 +1309,13 @@
  "Your name, brand and domain strategy": "Ditt navn, din merkevare og din domenestrategi",
  "Your categories and provider network": "Dine kategorier og ditt leverandørnettverk",
  "Your commercial rules and permissions": "Dine kommersielle regler og tillatelser",
- "Companies": "Bedrifter"
+ "Companies": "Bedrifter",
+ "API Integration — connect FlyttGo to your warehouse or ERP (paid add-on)": "API-integrasjon – koble FlyttGo til lageret eller ERP-systemet ditt (tilleggstjeneste)",
+ "Create a branded booking site with your identity, domain, services and customers.": "Lag en bestillingsside med din egen identitet, ditt domene, dine tjenester og kunder.",
+ "Financial record": "Regnskapsføring",
+ "From booking to financial record": "Fra bestilling til regnskap",
+ "Own brand, domain, customer proposition and commercial rules. Own provider networks: in development.": "Eget merke, domene, kundetilbud og kommersielle regler. Egne leverandørnettverk: under utvikling.",
+ "Shared infrastructure does not mean": "Felles infrastruktur betyr ikke",
+ "shared private data.": "felles private data.",
+ "Recurring bookings — repeat deliveries on a schedule": "Faste bestillinger – gjentatte leveranser etter plan"
 }

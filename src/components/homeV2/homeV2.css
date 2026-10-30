@@ -1,60 +1,63 @@
-/* The restructured homepage (HomeV2Page, docs/HOMEPAGE_RESTRUCTURE.md):
- * the owner's palette and type, scoped under .hv2 so no other page changes. */
-.hv2 {
-  --blue: #203F68;
-  --forest: #24513B;
-  --gold: #C3A66C;
-  --gold-text: #8A6F3A;   /* the gold, darkened to read on ivory and white (4.5:1) */
-  --ivory: #F5F3EB;
-  --white: #FFFEFA;
-  --ever: #20352B;
+/* The restructured homepage (HomeV2Page, docs/HOMEPAGE_RESTRUCTURE.md): the
+ * design's own styles (design.v2.css, generated, scoped under .fgv2) tuned to
+ * the brief's palette, and what the page adds. Nothing outside .fgv2 changes. */
+.fgv2 {
+  --green: #24513B;      /* forest green */
+  --green2: #20352B;     /* evergreen */
+  --gold: #C3A66C;       /* champagne gold: lines, numbers, accents on dark */
+  --paper: #F5F3EB;      /* warm ivory */
+  --white: #FFFEFA;      /* soft white */
   --ink: #1d2a24;
   --muted: #56615a;
   --line: #e2e0d6;
-  background: var(--white);
-  color: var(--ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --blue: #203F68;       /* deep blue: primary actions */
+  overflow-x: clip;
 }
-.hv2 .serif { font-family: Georgia, "Times New Roman", serif; font-weight: 400; }
-.hv2 .kicker { font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--forest); }
-.hv2 .kicker::before { content: ""; display: inline-block; width: 28px; height: 1px; background: var(--gold); vertical-align: middle; margin-right: 12px; }
-.hv2 .on-dark .kicker { color: var(--gold); }
-.hv2 .display { font-size: clamp(2.5rem, 5.4vw, 4.75rem); line-height: 1.02; letter-spacing: -.035em; font-weight: 700; }
-.hv2 .h2 { font-size: clamp(2rem, 3.6vw, 3.1rem); line-height: 1.08; letter-spacing: -.03em; font-weight: 700; }
-.hv2 .lead { font-size: 1.125rem; line-height: 1.75; color: var(--muted); }
-.hv2 .on-dark .lead { color: #d7ddd8; }
-.hv2 section { scroll-margin-top: 110px; }
-.hv2 .wrap { width: min(1200px, calc(100% - 40px)); margin-inline: auto; }
-.hv2 .wrap > * { min-width: 0; }
-.hv2 .btn { display: inline-flex; align-items: center; gap: .55rem; padding: .95rem 1.4rem; font-weight: 600; font-size: .95rem; border: 1px solid transparent; transition: background .2s, color .2s, border-color .2s; }
-.hv2 .btn-primary { background: var(--blue); color: #fff; }
-.hv2 .btn-primary:hover { background: #18324f; }
-.hv2 .btn-ghost { border-color: #c9c6b8; color: var(--ink); background: transparent; }
-.hv2 .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
-.hv2 .btn-gold { background: var(--gold); color: var(--ever); }
-.hv2 .btn-gold:hover { background: #d3b97f; }
-.hv2 .btn-light { border-color: rgba(255, 255, 255, .5); color: #fff; }
-.hv2 .btn-light:hover { border-color: #fff; background: rgba(255, 255, 255, .08); }
-.hv2 .link { color: var(--blue); font-weight: 600; border-bottom: 1px solid var(--gold); padding-bottom: 2px; }
-.hv2 .link:hover { color: var(--forest); }
-.hv2 .on-dark .link { color: #fff; }
-.hv2 .rule { border-top: 1px solid var(--line); }
-.hv2 .status { display: inline-flex; align-items: center; gap: .4rem; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
-.hv2 .status::before { content: ""; width: 7px; height: 7px; border-radius: 9999px; background: currentColor; }
-.hv2 .status-live { color: var(--forest); }
-.hv2 .status-addon { color: var(--blue); }
-.hv2 .status-dev { color: var(--gold-text); }
-.hv2 .on-dark .status-live { color: #9fd3b2; }
-.hv2 .on-dark .status-dev { color: var(--gold); }
-/* Product demonstrations: one per topic, always labelled as illustrations. */
-.hv2 .mock { min-width: 0; background: var(--white); border: 1px solid var(--line); box-shadow: 0 30px 80px -40px rgba(32, 53, 43, .35); }
-.hv2 .mock-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); font-size: 13px; }
-.hv2 .mock-tag { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.hv2 .tabs { display: flex; gap: 0; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
-.hv2 .tabs button { padding: 12px 16px; font-size: 13px; white-space: nowrap; color: var(--muted); border-bottom: 2px solid transparent; }
-.hv2 .tabs button[aria-selected="true"] { color: var(--blue); border-bottom-color: var(--gold); font-weight: 600; }
-.hv2 .row { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 12px; padding: 12px 18px; border-bottom: 1px solid #efede5; font-size: 13px; align-items: center; }
-.hv2 .row:last-child { border-bottom: 0; }
-.hv2 .pill { font-size: 11px; padding: 3px 9px; background: var(--ivory); color: var(--ever); white-space: nowrap; }
-.hv2 .photo { object-fit: cover; width: 100%; height: 100%; display: block; }
-@media (prefers-reduced-motion: reduce) { .hv2 * { transition: none !important; scroll-behavior: auto !important; } }
+/* Primary actions in deep blue; gold text on light grounds darkened to read (4.5:1). */
+.fgv2 .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.fgv2 .btn-primary:hover { background: #18324f; }
+.fgv2 .eyebrow { color: var(--green); }
+
+/* 5. The lifecycle strip at the head of the finance section. */
+.fgv2 .v2-lifecycle { list-style: none; margin: 0 0 48px; padding: 0; display: grid; grid-template-columns: repeat(6, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.fgv2 .v2-lifecycle li { padding: 18px 16px; font-weight: 600; color: var(--green2); border-right: 1px solid var(--line); font-size: 14px; }
+.fgv2 .v2-lifecycle li:last-child { border-right: 0; }
+.fgv2 .v2-lifecycle b { display: block; font-family: Georgia, serif; font-weight: 400; color: #8A6F3A; font-size: 13px; margin-bottom: 6px; }
+@media (max-width: 900px) { .fgv2 .v2-lifecycle { grid-template-columns: repeat(3, 1fr); } .fgv2 .v2-lifecycle li:nth-child(3) { border-right: 0; } .fgv2 .v2-lifecycle li:nth-child(-n+3) { border-bottom: 1px solid var(--line); } }
+
+/* 11. The real booking widget under the moving services, square like the design's cards. */
+.fgv2 .v2-booking { padding: 8px 0 72px; }
+.fgv2 .fgp-oldcard, .fgv2 .fgp-oldcard * { border-radius: 0 !important; }
+.fgv2 .fgp-oldcard { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+.fgv2 .fgp-oldcard input, .fgv2 .fgp-oldcard select, .fgv2 .fgp-oldcard button { font-family: inherit; }
+/* 11. Hourly rates live on the van guide (linked); the cards keep size and use. */
+.fgv2 #van-types .price-from { display: none; }
+
+/* Phones: the design's workspace panels are wider than the screen; their tab
+ * rows scroll inside their box and their columns stack. */
+@media (max-width: 900px) {
+  .fgv2 .bw-body > *, .fgv2 .bw-main, .fgv2 .bw-sidebar, .fgv2 .bw-panel,
+  .fgv2 .finance-body > *, .fgv2 .finance-main, .fgv2 .finance-side { min-width: 0; }
+  .fgv2 .finance-body { grid-template-columns: 1fr; }
+  .fgv2 .bw-nav, .fgv2 .finance-side nav { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; }
+  .fgv2 .bw-metrics, .fgv2 .bw-lower { grid-template-columns: 1fr; }
+}
+
+/* 8. The design's network diagram, repaired: `.network-node` is also the
+ * design's 26px icon box elsewhere, which squeezed these cards to 26px; the
+ * canvas had three columns for five items (three columns, two connector
+ * lines). Its text is raised to a readable size. */
+.fgv2 .network-canvas .network-node { width: auto; height: auto; display: block; font: inherit; color: inherit; margin: 0; padding: 18px; }
+.fgv2 .network-canvas .network-node.core { padding: 26px; }
+.fgv2 .network-canvas { grid-template-columns: 1fr 120px 1.15fr 120px 1fr; }
+.fgv2 .network-canvas .network-node small { font-size: 10px; }
+.fgv2 .network-canvas .network-node strong { font-size: 15px; }
+.fgv2 .network-canvas .network-node.core strong { font-size: 20px; }
+.fgv2 .network-canvas .network-node p { font-size: 12.5px; }
+.fgv2 .network-lines b { font-size: 10px; text-align: center; }
+.fgv2 .network-controls button { font-size: 11px; }
+.fgv2 .network-detail strong { font-size: 13px; }
+.fgv2 .network-detail p { font-size: 13px; }
+@media (max-width: 900px) {
+  .fgv2 .network-canvas { grid-template-columns: 1fr; }
+}

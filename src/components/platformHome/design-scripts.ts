@@ -4,7 +4,7 @@
 // @ts-nocheck
 export function initDesign() {
   /* ── script 1 ── */
-  {function showToast(message){
+  try {function showToast(message){
   const el=document.getElementById('toast');
   if(!el)return;
   el.textContent=message;
@@ -43,9 +43,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
     menuButton.textContent='☰';
   }
 }));
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 2 ── */
-  {(function(){
+  try {(function(){
  const data={
   plumbing:{kicker:'TRADE SERVICE · ON-SITE VISIT',title:'Plumbing business',description:'Manage service calls, installations and maintenance visits with the information needed before a professional arrives.',types:['Repair request','Installation','Maintenance','Emergency call-out'],flow:['Customer describes issue','Business reviews request','Visit is scheduled'],service:'Plumbing repair',booking:'On-site appointment',fields:'Issue description · Property address · Photos (optional)'},
   electrical:{kicker:'TRADE SERVICE · VISIT OR PROJECT',title:'Electrical business',description:'Handle inspections, installations and fault reports with the right scope and site information attached to each request.',types:['Fault finding','Installation','Inspection','Upgrade project'],flow:['Customer selects work','Scope is reviewed','Qualified visit is arranged'],service:'Electrical inspection',booking:'Site visit or project',fields:'Work required · Property type · Existing installation details'},
@@ -68,9 +68,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
  };
  tabs.forEach((t,i)=>{t.addEventListener('click',()=>set(t.dataset.industry));t.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();const next=(i+(e.key==='ArrowRight'?1:tabs.length-1))%tabs.length;tabs[next].focus();set(tabs[next].dataset.industry);}});});
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 3 ── */
-  {(function(){
+  try {(function(){
   const content = {
     customer: {
       kicker:'FOR PEOPLE AND ORGANISATIONS BUYING A SERVICE',
@@ -105,9 +105,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
   }
   buttons.forEach(button=>button.addEventListener('click',()=>render(button.dataset.experience)));
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 4 ── */
-  {(function(){
+  try {(function(){
  const data={
  overview:{k:'YOUR BUSINESS AT A GLANCE',t:'Business overview',m:[['OPEN ENQUIRIES','Review requests','Customer demand'],['UPCOMING WORK','Plan your schedule','Appointments and jobs'],['FINANCIAL ACTIVITY','Track transactions','Quotes, invoices and payments']],pt:'Your operating workflow',pm:'CONNECTED BUSINESS RECORD',pc:'Enquiry → Quote → Booking → Job → Invoice → Payment → Business record',lo:[['CONFIGURABLE WORKFLOWS','Appointments · Quotes · Projects · Recurring work'],['BUSINESS CONTROL','Services · Pricing · Team · Permissions']]},
  customers:{k:'RELATIONSHIPS AND SERVICE HISTORY',t:'Customer records',m:[['CUSTOMER PROFILES','Contact details','Business or individual'],['SERVICE HISTORY','Past engagements','Requests and completed work'],['COMMUNICATION','Keep context together','Messages and updates']],pt:'A connected customer record',pm:'CUSTOMER RELATIONSHIP',pc:'Contact details · Requests · Agreed work · Documents · Service history',lo:[['CUSTOMER TYPES','Individuals · Companies · Organisations'],['RECORD CONTEXT','Relevant history · Documents · Communication']]},
@@ -132,9 +132,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
  }
  buttons.forEach(b=>b.addEventListener('click',()=>render(b.dataset.bw)));
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 5 ── */
-  {(function(){
+  try {(function(){
  const name=document.getElementById('wl-name'),tagline=document.getElementById('wl-tagline'),market=document.getElementById('wl-market');
  const brand=document.getElementById('wl-preview-brand'),store=document.getElementById('wl-store-name'),heroTitle=document.getElementById('wl-preview-tagline'),marketLabel=document.getElementById('wl-market-label'),cta=document.getElementById('wl-cta');
  const grid=document.getElementById('wl-category-grid'),hero=document.getElementById('wl-hero');
@@ -160,9 +160,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
  }));
  update();
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 6 ── */
-  {(function(){
+  try {(function(){
  const details={
   operator:['Marketplace ownership','An independent operator controls its marketplace identity, customer proposition, provider relationships and configured commercial rules. The platform supplies the underlying technology according to the agreed service model.'],
   business:['Business participation','Businesses define their services, prices, booking rules and operating teams. Their participation in a central or white-label marketplace should be governed by clear agreements and scoped permissions.'],
@@ -177,9 +177,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
   buttons.forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
  }));
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 7 ── */
-  {(function(){
+  try {(function(){
  const views={
  overview:{k:'CONNECTED FINANCIAL ACTIVITY',t:'Financial overview',m:[['QUOTES','Prepare and track','Proposals and approvals'],['INVOICES','Issue billing records','Linked to work delivered'],['PAYMENTS','Record collections','Reconciliation and receipts']],doc:'Illustrative invoice record',status:'DRAFT VIEW',rows:[['Agreed service work','1','Configured amount'],['Additional agreed items','—','Configured amount']],total:'Invoice total'},
  quotes:{k:'AGREE SCOPE AND PRICE BEFORE WORK',t:'Quotes and estimates',m:[['REQUEST','Understand the work','Scope and customer details'],['ESTIMATE','Build the proposal','Items, labour and terms'],['APPROVAL','Record acceptance','Agreed scope and revisions']],doc:'Quote and estimate',status:'PROPOSAL VIEW',rows:[['Service description','1','Proposed amount'],['Materials or additional work','—','Proposed amount']],total:'Quote total'},
@@ -209,9 +209,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
  }
  buttons.forEach(b=>b.addEventListener('click',()=>render(b.dataset.finance)));
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 8 ── */
-  {(function(){
+  try {(function(){
  const pillars={
   marketplace:['Marketplace','The discovery and transaction layer: customers find suitable services, compare providers and begin a booking, appointment or quote request.'],
   business:['Business Operating Platform','The day-to-day operating layer: businesses manage customers, service catalogues, prices, bookings, quotes, jobs, teams and customer communication.'],
@@ -227,9 +227,9 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
   buttons.forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
  }));
 })();
-  }
+  } catch { /* its section is not on this page */ }
   /* ── script 9 ── */
-  {(function(){
+  try {(function(){
  const journeys={
   customer:{label:'CUSTOMER EXPERIENCE',title:'Find the right service for the job.',description:'Explore services across different industries, compare suitable providers and choose the right way to request or book the work.',steps:['Discover','Choose','Confirm','Follow','Complete'],cards:[['DISCOVER','Explore service categories and providers'],['CHOOSE','Appointment, booking or quote request'],['CONFIRM','Agree scope, timing and terms'],['COMPLETE','Keep records of work and payment']],kicker:'YOUR STARTING POINT',side:'A service you need',copy:'Choose what you need help with. FlyttGo can support different service and booking models, depending on the provider and marketplace.',list:['Home and property services','Moving and transport','Business and professional services']},
   business:{label:'BUSINESS EXPERIENCE',title:'Bring your business operations together.',description:'Present your services, manage customer relationships and coordinate the work behind your business from one connected operating environment.',steps:['Set up','Configure','Receive work','Deliver','Administer'],cards:[['SET UP','Create your business profile and team'],['CONFIGURE','Define services, prices and booking rules'],['OPERATE','Manage requests, quotes, jobs and schedules'],['ADMINISTER','Connect invoices, payments and records']],kicker:'YOUR STARTING POINT',side:'A business to run',copy:'Shape the workspace around your services, the way you accept work and the size and structure of your organisation.',list:['Service catalogue and pricing','Customers, bookings and jobs','Team, invoices and business records']},
@@ -254,5 +254,5 @@ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',
  }
  buttons.forEach(button=>button.addEventListener('click',()=>render(button.dataset.journey)));
 })();
-  }
+  } catch { /* its section is not on this page */ }
 }
