@@ -27,7 +27,7 @@
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { serviceClient } from '../_shared/auth.ts';
 import { pageFor, renderTemplatePage, type TemplateAsset, type TemplatePage } from '../_shared/site-template.ts';
-import { bookingFor, sellerNotice } from '../_shared/white-label.ts';
+import { bookingFor, pageHasShop, sellerNotice } from '../_shared/white-label.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -60,13 +60,15 @@ serve(async (req: Request) => {
   }
   /* Which booking the page offers: FlyttGo's moves (transport plans), or the
    * company's own Jobs, Appointments, Restaurant or Hotel module
-   * (docs/SERVICE_PLATFORM.md). */
-  const { data: plan } = await db.from('white_label_plans').select('modules').eq('code', site.plan).maybeSingle();
-  const modules: string[] = plan?.modules ?? [];
+   * (docs/SERVICE_PLATFORM.md). The modules are its plan's and the add-ons
+   * FlyttGo enabled on it (org_modules, 00022). */
+  const { data: mods } = await db.rpc('org_modules', { p_org: site.organization_id });
+  const modules: string[] = Array.isArray(mods) ? mods : [];
   const booking = bookingFor(modules);
   const notice = sellerNotice({ ...site, booking });
-  /* And whether it has a shop (00020): the catalogue at /b/<slug>/shop. */
-  const shop = modules.includes('shop');
+  /* And whether it has a shop (00020), also beside a booking module: the
+   * catalogue at /b/<slug>/shop, linked in the page's header. */
+  const shop = pageHasShop(modules);
 
   let page: { path: string; html: string } | null = null;
   let pages: string[] = [];

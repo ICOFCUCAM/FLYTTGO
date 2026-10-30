@@ -59,6 +59,11 @@ SELECT 'b0000000-0000-0000-0000-000000000017', 'c0000000-0000-0000-0000-00000000
   FROM public.organizations WHERE slug = 'rollback-as';
 SELECT set_config('request.jwt.claims', '{"role":"service_role"}', false);
 SELECT public.company_booking_check('b0000000-0000-0000-0000-000000000017', 'c0000000-0000-0000-0000-000000000001', 1200);
+-- 00022: FlyttGo enables the API add-on (needed for keys since 00022) and
+-- accepts a plan's prices as pilot pricing.
+SELECT set_config('request.jwt.claims', '{"sub":"a0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);
+SELECT public.admin_enable_addon((SELECT id FROM public.organizations WHERE slug = 'rollback-as'), 'api', 'quote', NULL, NULL, 'Q-ROLLBACK', NULL);
+SELECT public.admin_set_white_label_pilot_price('jobs', 'Pilot pricing (rollback test)');
 -- 00018: an API key with its log and a counted request, a widget
 -- website (the company was activated above).
 SELECT set_config('request.jwt.claims', '{"sub":"c0000000-0000-0000-0000-000000000001","role":"authenticated"}', false);

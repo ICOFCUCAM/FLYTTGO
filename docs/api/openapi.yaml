@@ -468,8 +468,9 @@ components:
     Forbidden:
       description: |
         The key may not do this now: scope_missing, scope_unavailable (not in the company's plan or
-        terms now), organization_inactive, creator_not_member, or forbidden (the creator's company
-        role does not allow it)
+        terms now), organization_inactive, api_not_enabled (API access is an add-on FlyttGo enables
+        for the company, and it is not enabled), creator_not_member, or forbidden (the creator's
+        company role does not allow it)
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }

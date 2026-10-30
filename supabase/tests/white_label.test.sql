@@ -60,8 +60,9 @@ SELECT tests.ok((SELECT code FROM public.white_label_plans WHERE is_default) = '
   'the default plan is Model A: FlyttGo sells');
 SELECT tests.ok((SELECT seller_model FROM public.white_label_plans WHERE code = 'own_seller') = 'company',
   'Own seller is Model B: the company sells');
-SELECT tests.ok(NOT EXISTS (SELECT 1 FROM public.white_label_plans WHERE price_status <> 'proposed'),
-  'the shipped prices are proposals until FlyttGo confirms them');
+SELECT tests.ok(NOT EXISTS (SELECT 1 FROM public.white_label_plans WHERE price_status = 'confirmed')
+                AND NOT EXISTS (SELECT 1 FROM public.white_label_plans WHERE price_status = 'pilot' AND code NOT IN ('restaurant', 'hotel', 'shop')),
+  'the shipped prices are proposals until FlyttGo confirms them (Restaurant, Hotel and Online shop: pilot prices, 00022)');
 SELECT tests.throws($$UPDATE public.white_label_plans SET monthly_fee = 0$$, '42501', 'visitors cannot change prices');
 SET LOCAL ROLE authenticated;
 SELECT tests.login(:cust1);

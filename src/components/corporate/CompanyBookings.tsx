@@ -57,11 +57,12 @@ export default function CompanyBookings({ membership }: { membership: Membership
       if (!reason.trim()) { setMessage({ ok: false, text: 'A refusal needs a reason.' }); return; }
     }
     setBusy(true); setMessage(null);
-    const err = await decideApproval(bookingId, approve, reason);
+    // The amount shown: if the request has changed since, the database refuses and the list is reloaded.
+    const err = await decideApproval(bookingId, approve, reason, approvals[bookingId]?.amount ?? null);
     setBusy(false);
     setMessage(err ? { ok: false, text: err }
       : { ok: true, text: approve ? 'Approved. The person who booked can now complete it.' : 'Refused. The booking is cancelled without any fee.' });
-    if (!err) await reload();
+    await reload();
   }
 
   const q = search.toLowerCase();

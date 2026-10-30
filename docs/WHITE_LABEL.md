@@ -21,7 +21,7 @@ Model A asks more of FlyttGo (payment, receipts, support, refunds, complaints), 
 
 ## Plans and prices
 
-The price list is the table `white_label_plans`, shown at `/business/white-label` and in the company dashboard. **Shipped prices are proposals** (all excluding MVA) until an administrator confirms them in Admin → White label → Plans and prices; until then every page says so.
+The price list is the table `white_label_plans`, shown at `/business/white-label` and in the company dashboard. **Shipped prices are proposals** (all excluding MVA) until an administrator confirms them in Admin → White label → Plans and prices; until then every page says so. An administrator can also accept a plan's prices provisionally as **pilot pricing** (`admin_set_white_label_pilot_price`, with a note shown beside them; 00022); the owner did so for Restaurant, Hotel and Online shop on 2026-10-29 ([`SERVICE_PLATFORM.md`](SERVICE_PLATFORM.md)). A changed price becomes a proposal again. Add-on modules on a plan are described in [`SERVICE_PLATFORM.md`](SERVICE_PLATFORM.md) → Plans and prices.
 
 | Plan | Model | Set-up | Monthly | Per booking |
 |---|---|---|---|---|
@@ -95,7 +95,7 @@ Architect-AI's `site_masters` (210 generated five-page websites, read 2026-10-29
 
 ## Booking widget
 
-A company puts its booking page on its own website (migration 00018; the API keys of the same migration are in [`API.md`](API.md)). **No API key is involved:** customers book through the company's FlyttGo page, as on `/b/<slug>`.
+A company puts its booking page on its own website (migration 00018; the API keys of the same migration are in [`API.md`](API.md)). **No API key is involved:** customers book through the company's FlyttGo page, as on `/b/<slug>`. **Included in every plan** (owner's decision 2026-10-29): any active company with an active plan can use it; API access is a separate add-on ([`API.md`](API.md)).
 
 - **The snippet** (Corporate dashboard → **API and widget**, with a copy button and a live preview):
   ```html

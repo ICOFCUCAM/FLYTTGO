@@ -74,9 +74,9 @@ SET LOCAL ROLE anon;
 SELECT tests.login(NULL, 'anon');
 SELECT tests.ok((SELECT modules FROM public.white_label_plans WHERE code = 'shop') = ARRAY['shop', 'sales_invoicing']
                 AND (SELECT seller_model FROM public.white_label_plans WHERE code = 'shop') = 'company'
-                AND (SELECT price_status FROM public.white_label_plans WHERE code = 'shop') = 'proposed'
+                AND (SELECT price_status FROM public.white_label_plans WHERE code = 'shop') = 'pilot'
                 AND (SELECT requires_stripe FROM public.white_label_plans WHERE code = 'shop'),
-  'the plan Online shop: the company sells, card payments on its own Stripe account, price proposed');
+  'the plan Online shop: the company sells, card payments on its own Stripe account, a pilot price (00022)');
 RESET ROLE;
 SELECT tests.throws($$UPDATE public.white_label_plans SET modules = ARRAY['shop'] WHERE code = 'branded'$$, '23514',
   'a plan where FlyttGo sells cannot carry the shop');

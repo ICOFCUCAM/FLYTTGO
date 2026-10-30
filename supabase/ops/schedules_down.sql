@@ -1,10 +1,10 @@
 -- ============================================================================
 -- Undo supabase/ops/schedules.sql
 -- ============================================================================
--- Stops the four jobs and removes the caller. Leaves pg_cron, pg_net and
+-- Stops the six jobs and removes the caller. Leaves pg_cron, pg_net and
 -- the Vault secrets as they are (delete the secrets in Project settings →
 -- Vault if they are no longer needed). Nothing else changes: invoices,
--- reminders already sent and subscriptions stay as they are.
+-- reminders already sent, subscriptions and approval requests stay as they are.
 -- ============================================================================
 
 DO $$
@@ -12,7 +12,7 @@ DECLARE j text;
 BEGIN
   IF to_regnamespace('cron') IS NOT NULL THEN
     FOREACH j IN ARRAY ARRAY['auto-downgrade-expired-subscriptions', 'flyttgo-invoice-run', 'flyttgo-appointment-reminders',
-                             'flyttgo-accounting-cancellations', 'flyttgo-shop-expiry'] LOOP
+                             'flyttgo-accounting-cancellations', 'flyttgo-shop-expiry', 'flyttgo-approval-expiry'] LOOP
       IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = j) THEN PERFORM cron.unschedule(j); END IF;
     END LOOP;
   END IF;

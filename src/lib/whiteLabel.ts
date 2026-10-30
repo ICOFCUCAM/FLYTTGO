@@ -25,8 +25,44 @@ export interface WhiteLabelPlan {
   code: string; name: string; seller_model: SellerModel; summary: string; for_whom: string | null;
   setup_fee: number; monthly_fee: number; platform_fee_pct: number; platform_fee_min: number; own_domain: boolean;
   features: string[]; flyttgo_does: string[]; company_does: string[]; requirements: string[];
-  is_default: boolean; sort: number; active: boolean; price_status: 'proposed' | 'confirmed';
+  is_default: boolean; sort: number; active: boolean; price_status: PriceStatus;
   prices_confirmed_at: string | null;
+  /** Shown beside a pilot price (00022). */
+  price_note?: string | null;
+  /** What the set-up fee includes (00022). */
+  setup_fee_includes?: string[];
+}
+
+/** A plan's prices: a proposal, accepted provisionally for the pilot, or
+ * confirmed (00009, pilot since 00022). */
+export type PriceStatus = 'proposed' | 'pilot' | 'confirmed';
+
+export const PRICE_STATUS_LABELS: Record<PriceStatus, string> = {
+  proposed: 'Proposed price', pilot: 'Pilot pricing', confirmed: 'Confirmed price',
+};
+
+/** An add-on module on a company's primary plan (00022), enabled by FlyttGo. */
+export interface OrgAddon {
+  id: string; organization_id: string; module: AddonModule; status: 'active' | 'ended';
+  pricing: 'quote' | 'pilot'; setup_fee: number | null; monthly_fee: number | null;
+  quote_reference: string | null; price_note: string | null;
+  enabled_at: string; ended_at: string | null; end_reason: string | null;
+}
+export type AddonModule = 'jobs' | 'appointments' | 'restaurant_reservations' | 'hotel_reservations' | 'shop' | 'sales_invoicing' | 'api';
+
+export const ADDON_LABELS: Record<AddonModule, string> = {
+  jobs: 'Jobs', appointments: 'Appointments', restaurant_reservations: 'Restaurant: table booking',
+  hotel_reservations: 'Hotel: room booking', shop: 'Online shop', sales_invoicing: 'Invoices in your own name',
+  api: 'API access',
+};
+
+/** How an add-on is priced, in words: the written quote or the approved pilot price, never a derived one. */
+export function addonPrice(a: Pick<OrgAddon, 'pricing' | 'setup_fee' | 'monthly_fee' | 'quote_reference' | 'price_note'>,
+                           nok: (n: number) => string): string {
+  if (a.pricing === 'quote') return `By written quote ${a.quote_reference ?? ''}`.trim();
+  const parts = [a.monthly_fee != null ? `${nok(a.monthly_fee)} / month` : null,
+                 a.setup_fee != null ? `${nok(a.setup_fee)} set-up` : null].filter(Boolean);
+  return `Pilot price${parts.length ? `: ${parts.join(', ')}` : ''} (excl. MVA)`;
 }
 
 export interface OrgWhiteLabel {
@@ -202,6 +238,34 @@ export async function loadTemplates(): Promise<SiteTemplate[]> {
   return (data ?? []) as SiteTemplate[];
 }
 
+/* ── Add-on modules (00022) ────────────────────────────────────────── */
+/** A company's add-ons, active and ended (RLS: its members; FlyttGo's administrators all). */
+export async function loadAddons(orgId?: string): Promise<OrgAddon[]> {
+  let q = supabase.from('organization_addons').select('*').order('enabled_at', { ascending: false });
+  if (orgId) q = q.eq('organization_id', orgId);
+  const { data } = await q;
+  return (data ?? []) as OrgAddon[];
+}
+
+/** What the company can use now: its plan's modules and its active add-ons (org_modules). */
+export async function loadModules(orgId: string): Promise<string[]> {
+  const { data } = await supabase.rpc('org_modules', { p_org: orgId });
+  return (data ?? []) as string[];
+}
+
+export async function enableAddon(orgId: string, module: AddonModule, a: {
+  pricing: 'quote' | 'pilot'; setup_fee: number | null; monthly_fee: number | null; quote_reference: string | null; price_note: string | null;
+}): Promise<string | null> {
+  return err((await supabase.rpc('admin_enable_addon', {
+    p_org: orgId, p_module: module, p_pricing: a.pricing, p_setup_fee: a.setup_fee, p_monthly_fee: a.monthly_fee,
+    p_quote_reference: a.quote_reference, p_price_note: a.price_note,
+  })).error);
+}
+
+export async function endAddon(orgId: string, module: AddonModule, reason: string): Promise<string | null> {
+  return err((await supabase.rpc('admin_end_addon', { p_org: orgId, p_module: module, p_reason: reason })).error);
+}
+
 /* ── FlyttGo administrators ────────────────────────────────────────── */
 export async function loadAllWhiteLabels() {
   const { data } = await supabase.from('organization_white_label')
@@ -226,6 +290,11 @@ export async function updatePlan(code: string, p: {
     p_platform_fee_pct: p.platform_fee_pct ?? null, p_platform_fee_min: p.platform_fee_min ?? null,
     p_active: p.active ?? null, p_confirm: p.confirm,
   })).error);
+}
+
+/** Accept a plan's current prices provisionally for the pilot, with the note shown beside them. */
+export async function setPilotPrice(code: string, note: string): Promise<string | null> {
+  return err((await supabase.rpc('admin_set_white_label_pilot_price', { p_code: code, p_note: note })).error);
 }
 
 export async function updateTemplatePage(id: string, path: string, html: string): Promise<string | null> {

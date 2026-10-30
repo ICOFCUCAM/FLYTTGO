@@ -4,12 +4,14 @@
  * company create, scope and revoke API keys (the key is shown once), list
  * the websites that may show the booking widget, and copy the widget's
  * snippet with a live preview. The database decides every permission; the
- * panel only hides what the member's role cannot do.
+ * panel only hides what the member's role cannot do. The widget is in
+ * every plan; API access is the add-on 'api' FlyttGo enables (00022).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../lib/store';
 import type { Membership } from '../../lib/organizations';
 import { loadSite } from '../../lib/whiteLabel';
+import { hasModule } from '../../lib/services';
 import {
   API_SCOPES, EVENT_LABELS, SCOPE_LABELS, addWidgetOrigin, apiBaseUrl, availableScopes, canManageKeys, createApiKey,
   loadApiEvents, loadApiKeys, loadWidgetOrigins, removeWidgetOrigin, revokeApiKey, snippetFor, updateApiKey,
@@ -39,7 +41,8 @@ function keyState(k: ApiKey): { label: string; cls: string } {
 export default function ApiWidgetPanel({ membership, onOpenPlan }: { membership: Membership; onOpenPlan?: () => void }) {
   const { setPage } = useApp();
   const org = membership.organization;
-  const manage = canManageKeys(membership);
+  const [apiEnabled, setApiEnabled] = useState<boolean | null>(null);
+  const manage = canManageKeys(membership) && apiEnabled === true;
   const editOrigins = membership.role === 'owner' || membership.role === 'admin';
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [scopesOk, setScopesOk] = useState<ApiScope[]>([]);
@@ -56,14 +59,15 @@ export default function ApiWidgetPanel({ membership, onOpenPlan }: { membership:
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const reload = useCallback(async () => {
-    const [k, s, e, o] = await Promise.all([
-      manage || editOrigins ? loadApiKeys(org.id) : Promise.resolve([]),
+    const [k, s, e, o, a] = await Promise.all([
+      editOrigins ? loadApiKeys(org.id) : Promise.resolve([]),
       availableScopes(org.id),
-      manage || editOrigins ? loadApiEvents(org.id) : Promise.resolve([]),
+      editOrigins ? loadApiEvents(org.id) : Promise.resolve([]),
       loadWidgetOrigins(org.id),
+      hasModule(org.id, 'api'),
     ]);
-    setKeys(k); setScopesOk(s); setEvents(e); setOrigins(o);
-  }, [org.id, manage, editOrigins]);
+    setKeys(k); setScopesOk(s); setEvents(e); setOrigins(o); setApiEnabled(a);
+  }, [org.id, editOrigins]);
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => { loadSite({ slug: org.slug }).then(s => setPageActive(!!s)); }, [org.slug]);
 
@@ -111,6 +115,7 @@ export default function ApiWidgetPanel({ membership, onOpenPlan }: { membership:
         {!manage && (
           <p className="text-sm text-gray-500 mb-2">
             {org.status !== 'active' ? 'Keys can be created once FlyttGo has verified and activated your company.'
+              : apiEnabled === false ? 'API access is an add-on FlyttGo enables for your company, priced by a written quote. Ask FlyttGo for it. The booking widget below is included in your plan.'
               : 'Only owners and admins create and revoke keys.'}
           </p>
         )}
@@ -215,14 +220,15 @@ export default function ApiWidgetPanel({ membership, onOpenPlan }: { membership:
         )}
         <p className="text-xs text-gray-400 mt-4">
           Each key allows 60 requests a minute unless FlyttGo agrees another limit. A key stops working when it is revoked or expires,
-          while the company is not active, and when the member who created it is no longer an owner or admin.
+          while the company is not active or has no API add-on, and when the member who created it is no longer an owner or admin
+          (the key is then revoked at once).
         </p>
       </div>
 
       {/* ── WIDGET ── */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 space-y-4">
         <div>
-          <h3 className="font-bold text-gray-900 mb-1">Booking widget for your website</h3>
+          <h3 className="font-bold text-gray-900 mb-1">Booking widget for your website <span className="text-xs font-normal text-emerald-700">· included in your plan</span></h3>
           <p className="text-sm text-gray-500">
             Your booking page in a frame on your own website. Customers book as on your FlyttGo page; no API key is used.
             It shows only on the websites listed here.
