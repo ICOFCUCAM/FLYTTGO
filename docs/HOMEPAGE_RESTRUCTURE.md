@@ -165,6 +165,45 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
     - the "What every booking includes" cards are white, where they had no ground of their own and showed the grid's grey;
     - the hero's floating card no longer covers the caption.
 
+### Integrated platform experience (owner, 2026-10-30)
+
+**Colours.** The owner rejected the brief's gold and then emerald all over the page. The page is now navy and white with a blue accent: `build.py` recolours the design with `BLUE`, and the platform page keeps `EMERALD`. Emerald stays only on the booking actions. Text on light grounds is darkened to 7:1, after the owner's reference of crisp, dark type; the minimum is 4.5:1.
+
+**What changed on the page:**
+- **Hero:**
+  - The supporting message is the owner's: "Discover services, run your company and connect with a wider business network — all through one connected FlyttGo platform."
+  - Three actions: Explore services, My Company and For Organisations.
+  - The headline is still the owner's earlier choice, "Assisting Companies to Fly High. Run your company." The brief's recommended "One platform. More ways to grow." is not used yet.
+- **Journeys:** Find a Service, My Company and For Organisations are three equal cards. The third lists corporate solutions, the provider network and marketplace infrastructure, the last marked optional.
+- **One connected platform:**
+  - It now shows five capabilities: marketplace, business platform, financial infrastructure, the provider and business network, and white-label infrastructure, the last labelled "build · optional".
+  - The lifecycle is Discover → Request → Quote → Book → Deliver → Invoice → Pay → Record.
+- **How FlyttGo works** (new, `#how-flyttgo-works`):
+  - the lifecycle;
+  - how each journey connects;
+  - one business's path from registration to a recorded payment;
+  - a status beside every capability.
+- **Related links** at the foot of six sections lead between related capabilities. The local services card leads to the industry workflows, not to the moving services page.
+
+**Menu** (`Header.tsx`, only on `/preview/home`): Explore, My Company, For Organisations, How it works, Become a Driver, Book Now, Sign in and Get started. Every earlier item is kept.
+- **Explore:** the five service groups, plus the moving tools.
+- **My Company:** ten items, each opening the matching tab of the business or finance workspace on the page.
+- **For Organisations:** three groups. Corporate solutions links the existing corporate pages. Provider network covers drivers, provider plans and opportunities. Marketplace infrastructure is marked optional.
+- **Get started** opens the existing sign-up, which asks first whether the visitor is a customer, a driver or a business.
+
+**Status shown on the page.** Sources: `docs/PLATFORM_AUDIT_2026-10-30.md`, `SERVICE_PLATFORM.md`.
+
+| Capability | Status |
+|---|---|
+| Moving and transport booking and tracking; driver network and plans | Available |
+| Company accounts, teams, jobs, appointments, invoices in the company's name | Available |
+| Company bookings, multiple users, corporate invoicing | Available |
+| Branded booking pages (`/b/<slug>`) | Available |
+| Accounting add-on | In development (authorised accountant's review) |
+| Operator-managed provider networks | In development |
+| Other businesses and categories in the central FlyttGo Marketplace; providers other than drivers | Planned |
+| Workspace, finance, studio, network and industry screens | Illustrative (marked on the page) |
+
 ## Stage D: content checked against the source
 
 | Content | Where it is |
@@ -191,7 +230,7 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
 | Console | No script errors. Network errors also seen on `/transport`, so not caused by this page: the map library from unpkg, blocked in the test environment, and `flyttgo_public_identity`. |
 | Interactions | Hero scroll, workspace and finance tabs, studio preview and industry selector all work |
 | Links | Ten checked; each opens its real page |
-| Menu | Every item of Explore, My Company and For Organisations opens its page or section |
+| Menu | Every item of Explore, My Company and For Organisations opens its page, section or workspace tab (34 items checked); the bar fits from 1024 px |
 | Contrast | Every text at 4.5:1 (3:1 large) on its ground; smallest text 11 px; words on photographs on a veil |
 | Slideshow and booking widget | Six slides advance; the widget sits under the hero at 1440, 820 and 390 px |
 

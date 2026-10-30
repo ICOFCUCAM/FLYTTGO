@@ -97,6 +97,8 @@ def wire_links(body: str) -> tuple[str, list[str]]:
 
     def repl(m: re.Match) -> str:
         attrs, inner = m.group(1), m.group(2)
+        if 'data-anchor' in attrs:                       # kept as an in-page link on purpose
+            return m.group(0)
         href = re.search(r'href="([^"]*)"', attrs)
         key = (text_of(inner), href.group(1) if href else '')
         page = LINKS.get(key)
@@ -238,7 +240,7 @@ def header_places(body: str) -> str:
 # order, with the weaker duplicates left out. Written to
 # src/components/homeV2/ as design.v2(.no).html and design.v2.css (scoped
 # under .fgv2, in the design's own palette, which HomeV2Page tunes to the
-# brief's colours).
+# brief's colours, since replaced by the platform page's navy, emerald and white).
 V2_OUT = ROOT / 'src' / 'components' / 'homeV2'
 V2_SECTIONS = [                                   # (attribute in the section's opening tag, topic)
     # In the order of the three journeys (owner, 30 October 2026): find a
@@ -246,11 +248,11 @@ V2_SECTIONS = [                                   # (attribute in the section's 
     # specialised offering of a marketplace under one's own brand.
     ('class="hero wrap"', '1 hero'),
     ('id="entry-points"', '2 journeys'),
+    ('id="unified-platform"', 'one connected platform (how it works follows it)'),
     ('id="marketplace"', 'find a service: the FlyttGo Marketplace'),
     ('id="moving-services"', 'find a service: moving services'),
     ('id="how-it-works"', 'find a service: booking and tracking journey'),
     ('id="van-types"', 'find a service: vehicle sizes (rates on the van guide)'),
-    ('id="unified-platform"', 'my company: one connected platform'),
     ('id="business-workspace"', 'my company: business workspace'),
     ('id="financial-administration"', 'my company: payments and finance'),
     ('id="industry-experiences"', 'my company: industry workflows'),
@@ -269,26 +271,39 @@ V2_CLAIMS = [
     # The three entry points in the owner's words (30 October 2026): customer,
     # business and specialist, each with who it is for and where it leads.
     ('<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">One platform. Three ways to get started.</h2><p>Whether you need a service, run a company or want to build a marketplace, start with what matters to you.</p>',
-     '<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">Find a service. Or run your company.</h2><p>Most people come to FlyttGo to book a service or to run their company. A company uses the business tools and takes part in the FlyttGo Marketplace without building a marketplace of its own.</p>'),
+     '<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">Three journeys. One platform.</h2><p>Most people come to FlyttGo to book a service or to run their company. Organisations add corporate services, a provider network or, as one option, a marketplace of their own.</p>'),
     ('<h3>I need a service</h3><p>Explore moving, transport, trades and other services from participating providers.</p><a href="#marketplace">Explore services ↗</a>',
      '<h3>Find a Service</h3><p>Find moving, transport, home services and professionals.</p><p class="entry-for">For customers who need something done.</p><p class="entry-note">Moving and relocation, transport and delivery, home services, local professionals and other participating services.</p><a href="#marketplace">Explore services →</a>'),
     ('<h3>I run a business</h3><p>Manage services, appointments, customers, quotes, invoices, receipts and payments.</p><a href="#business-workspace">Explore business tools ↗</a>',
-     '<h3>My Company</h3><p>Manage your business, customers, services, bookings, employees, invoices and payments.</p><p class="entry-for">For independent professionals, small businesses and established companies.</p><p class="entry-note">Use the business tools and take part in the FlyttGo Marketplace. No marketplace of your own needed.</p><a href="#business-workspace">Manage my business →</a>'),
+     '<h3>My Company</h3><p>Manage your business, customers, services, bookings, employees, invoices and payments.</p><p class="entry-for">For independent professionals, small businesses and established companies.</p><p class="entry-note">Run your company with the business tools. No marketplace of your own needed.</p><a href="#business-workspace">Manage my business →</a>'),
     ('<h3>I want my own marketplace</h3><p>Create a branded marketplace with your identity, domain, services and provider network.</p><a href="#white-label-builder">Explore white-label ↗</a>',
-     '<div class="entry-side"><h3>Create a Marketplace</h3></div><div class="entry-body"><p>Launch your own branded marketplace, manage providers and build your own customer network.</p><p class="entry-for">For entrepreneurs, organisations and marketplace operators.</p><p class="entry-status">Managing your own providers is in development.</p><a href="#white-label-builder">Explore marketplace solutions →</a></div>'),
+     '<h3>For Organisations</h3><p>Corporate solutions, a provider network and marketplace infrastructure.</p><p class="entry-for">For corporate customers, provider network participants and marketplace operators.</p><ul class="entry-options"><li><a href="#business">Corporate solutions</a></li><li><a href="#driver-network">Provider network</a></li><li><a href="#white-label-builder">Marketplace infrastructure</a> <span>(optional)</span></li></ul><a href="#business">Explore organisational solutions →</a>'),
     # The specialised offering: a strip below the two main journeys, never their equal.
-    ('<article class="entry-card entry-gold"><span>03 / BUILD &amp; OWN</span><div class="entry-side">',
-     '<article class="entry-card entry-gold entry-specialised"><div class="entry-side"><span>SPECIALISED OFFERING · WHITE LABEL</span>'),
+    ('<article class="entry-card entry-gold"><span>03 / BUILD &amp; OWN</span>',
+     '<article class="entry-card entry-gold"><span>03 / ORGANISE &amp; SCALE</span>'),
     # The brief's three entry points in the hero (the design had two buttons).
     ('<div class="hero-actions"><a class="btn btn-primary" href="#entry-points">Explore your options<span class="arrow">↗</span></a><a class="btn btn-light" href="#unified-platform">See the platform<span class="arrow">↗</span></a></div>',
-     '<div class="hero-actions"><a class="btn btn-primary" href="#marketplace">Find a service<span class="arrow">↗</span></a><a class="btn btn-light" href="#business-workspace">Manage my business<span class="arrow">↗</span></a><a class="hero-more" href="#white-label-builder">Want a marketplace under your own brand? Explore marketplace solutions →</a></div>'),
+     '<div class="hero-actions"><a class="btn btn-primary" href="#marketplace">Explore services<span class="arrow">↗</span></a><a class="btn btn-light" href="#business-workspace">My Company<span class="arrow">↗</span></a><a class="btn btn-light" href="#business">For Organisations<span class="arrow">↗</span></a></div>'),
     # The hero introduces the two main journeys; a marketplace of one's own is not needed for either.
     ('<p class="hero-lede">Run a service company, manage customers and bookings, collect payments, issue invoices — or launch a marketplace under your own brand. FlyttGo brings business operations and marketplace infrastructure together.</p>',
-     '<p class="hero-lede">Find moving, transport and local services. Or run your service company on FlyttGo: manage customers and bookings, collect payments, issue invoices and take part in the FlyttGo Marketplace, without a marketplace of your own.</p>'),
+     '<p class="hero-lede">Discover services, run your company and connect with a wider business network — all through one connected FlyttGo platform.</p>'),
     ('<span>For independent professionals, growing companies and marketplace operators.</span>',
-     '<span>For customers, independent professionals and growing companies.</span>'),
+     '<span>For customers, independent professionals, growing companies and organisations.</span>'),
     # The driver panel's button opens the driver sign-up (WIRES), so it says so.
     ('<a class="btn btn-light" href="#main-content">Explore FlyttGo</a>', '<a class="btn btn-light" href="#main-content">Become a driver ↗</a>'),
+    # The lifecycle in the owner's words (30 October 2026): Pay between Invoice and Record.
+    ('<div>Deliver</div><div>Invoice</div><div>Record</div>', '<div>Deliver</div><div>Invoice</div><div>Pay</div><div>Record</div>'),
+    # The local services card leads to how trades and professionals take bookings, not to the moving services page.
+    ('<a class="market-card" href="#providers">', '<a class="market-card" href="#industry-experiences" data-anchor>'),
+    # Five connected capabilities (owner, 30 October 2026): the provider and business network joins, and
+    # white-label infrastructure comes last, marked optional. HomeV2Page gives the new card its description.
+    ('<div class="eyebrow">One platform · Four connected capabilities</div><h2 class="display">Not four separate products.<br/>',
+     '<div class="eyebrow">One platform · Five connected capabilities</div><h2 class="display">Not five separate products.<br/>'),
+    ('<p>FlyttGo brings service discovery, business operations, independent marketplace infrastructure and financial administration into one connected platform.',
+     '<p>FlyttGo brings service discovery, business operations, financial administration, a provider and business network and, for organisations that want one, independent marketplace infrastructure into one connected platform.'),
+    ('aria-label="Explore the four FlyttGo platform pillars"', 'aria-label="Explore the five FlyttGo platform capabilities"'),
+    ('<button type="button" class="ecosystem-pillar" data-pillar="white" aria-pressed="false"><small>03 / BUILD</small><strong>White-Label Infrastructure</strong><span>Create and operate a branded marketplace on shared technology.</span></button>\n        <button type="button" class="ecosystem-pillar" data-pillar="finance" aria-pressed="false"><small>04 / ADMINISTER</small><strong>Financial Infrastructure</strong><span>Connect quotes, invoices, payments, records and year-end exports.</span></button>',
+     '<button type="button" class="ecosystem-pillar" data-pillar="finance" aria-pressed="false"><small>03 / ADMINISTER</small><strong>Financial Infrastructure</strong><span>Connect quotes, invoices, payments, records and year-end exports.</span></button>\n        <button type="button" class="ecosystem-pillar" data-pillar="network" aria-pressed="false"><small>04 / CONNECT</small><strong>Provider and Business Network</strong><span>Drivers, transport partners and service providers receive and fulfil eligible work.</span></button>\n        <button type="button" class="ecosystem-pillar" data-pillar="white" aria-pressed="false"><small>05 / BUILD · OPTIONAL</small><strong>White-Label Infrastructure</strong><span>For organisations that want to operate their own branded marketplace.</span></button>'),
     # The central FlyttGo Marketplace, never confused with a marketplace of one's own.
     ('<div class="eyebrow">Explore the marketplace</div>', '<div class="eyebrow">The FlyttGo Marketplace</div>'),
     ('<p>Discover the FlyttGo marketplace: moving and transport, local services, business solutions and opportunities for providers.</p>',
@@ -316,6 +331,70 @@ V2_ANCHORS = {'#platform': '#unified-platform', '#business-platform': '#business
 V2_LIFECYCLE = ('<ol class="v2-lifecycle" aria-label="From booking to financial record">'
                 + ''.join(f'<li><b>0{i + 1}</b>{t}</li>' for i, t in enumerate(
                     ['Booking', 'Quote', 'Job completed', 'Invoice', 'Payment', 'Financial record'])) + '</ol>')
+
+# How FlyttGo works (owner, 30 October 2026): the lifecycle, how each journey
+# connects to the others, one business's journey, and what is available today,
+# in development or planned (docs/PLATFORM_AUDIT_2026-10-30.md, SERVICE_PLATFORM.md).
+V2_STEPS = ['Discover', 'Request', 'Quote', 'Book', 'Deliver', 'Invoice', 'Pay', 'Record']
+V2_LINKS_HOW = [
+    ('Customers', 'Explore', 'Customers discover and book services through Explore.',
+     [('ok', 'Moving and transport'), ('plan', 'Other categories in the central marketplace')], '#marketplace', 'Explore services'),
+    ('Businesses', 'My Company', 'Businesses manage customers, bookings, jobs, quotes, employees and invoices in My Company.',
+     [('ok', 'Company accounts, teams, jobs, appointments and invoices')], '#business-workspace', 'See the business workspace'),
+    ('Providers', 'Provider network', 'Providers receive and fulfil eligible work through the provider network.',
+     [('ok', 'Drivers and moving jobs'), ('plan', 'Other service providers')], '#driver-network', 'Join the provider network'),
+    ('Payments and records', 'Finance', 'Payments, invoices and financial records connect to the work that was done.',
+     [('ok', 'Invoices and payment records'), ('dev', 'Accounting add-on, awaiting an authorised accountant\'s review')], '#financial-administration', 'See payments and finance'),
+    ('Organisations', 'Corporate solutions', 'Corporate organisations manage bookings, users, invoicing and reporting with organisational tools.',
+     [('ok', 'Company bookings, multiple users and corporate invoicing')], '#business', 'See corporate solutions'),
+    ('Marketplace operators', 'Marketplace infrastructure', 'An operator can run its own branded marketplace on the same infrastructure. It is a separate operating model from the central FlyttGo Marketplace.',
+     [('ok', 'Branded booking pages'), ('dev', 'Operator-managed provider networks')], '#white-label-builder', 'See marketplace infrastructure'),
+]
+V2_BUSINESS_PATH = ['Registers on FlyttGo', 'Creates its company profile', 'Adds services and pricing', 'Manages customer enquiries',
+                    'Accepts bookings', 'Fulfils the work', 'Issues invoices', 'Records payments']
+V2_STATUS = {'ok': 'Available', 'dev': 'In development', 'plan': 'Planned'}
+V2_HOW = (
+    '<section class="v2-how" id="how-flyttgo-works"><div class="wrap">'
+    '<div class="section-head"><div><div class="eyebrow">How FlyttGo works</div>'
+    '<h2 class="display">Different journeys.<br/><span class="serif">One connected platform.</span></h2></div>'
+    '<p>Customers, businesses, providers and organisations each use FlyttGo in their own way. Underneath, the same records connect the work from the first request to the financial record.</p></div>'
+    '<ol class="v2-lifecycle v2-steps" aria-label="From discovery to financial record">'
+    + ''.join(f'<li><b>0{i + 1}</b>{t}</li>' for i, t in enumerate(V2_STEPS)) + '</ol>'
+    '<div class="v2-links">'
+    + ''.join(
+        f'<article><small>{who}</small><h3>{where}</h3><p>{text}</p><ul>'
+        + ''.join(f'<li class="v2-status v2-{k}"><span>{V2_STATUS[k]}</span>{t}</li>' for k, t in status)
+        + f'</ul><a href="{href}">{cta} →</a></article>'
+        for who, where, text, status, href, cta in V2_LINKS_HOW)
+    + '</div>'
+    '<div class="v2-path"><div><div class="eyebrow">One business on FlyttGo</div><h3>From registration to a paid invoice.</h3>'
+    '<p>If eligible, the same business can also take part in the central FlyttGo Marketplace. A separate organisation can run its own branded marketplace, onboard providers and set its commercial model. These are different journeys on shared infrastructure, not steps every account has to take.</p></div>'
+    '<ol>' + ''.join(f'<li><b>{i + 1}</b>{t}</li>' for i, t in enumerate(V2_BUSINESS_PATH)) + '</ol></div>'
+    '<p class="v2-legend"><span class="v2-status v2-ok"><span>Available</span></span> built in FlyttGo today '
+    '<span class="v2-status v2-dev"><span>In development</span></span> being built '
+    '<span class="v2-status v2-plan"><span>Planned</span></span> the intended product. '
+    'Screens marked “illustration” show example data, not live records.</p>'
+    '</div></section>')
+
+# Links between related capabilities at the foot of a section (owner, 30 October 2026).
+V2_RELATED = {
+    'business-workspace': [('Provider participation', '#how-flyttgo-works'), ('Payments and finance', '#financial-administration')],
+    'financial-administration': [('The business workspace', '#business-workspace'), ('How the records connect', '#how-flyttgo-works')],
+    'business': [('Service categories', '#marketplace'), ('Moving and transport services', '#moving-services')],
+    'driver-network': [('Business tools for providers', '#business-workspace'), ('How providers take part', '#how-flyttgo-works')],
+    'white-label-builder': [('Platform architecture', '#marketplace-network-experience'), ('How the platform connects', '#how-flyttgo-works')],
+    'marketplace': [('Book a move', '#booking'), ('How booking works', '#how-it-works')],
+}
+
+
+def related(page: str) -> str:
+    for sid, links in V2_RELATED.items():
+        m = re.search(r'<section\b[^>]*id="%s"' % sid, page)
+        end = element_span(page, m.start(), 'section')
+        block = ('<div class="wrap v2-related"><span>Related</span>'
+                 + ''.join(f'<a href="{href}">{text} →</a>' for text, href in links) + '</div>')
+        page = page[:end - len('</section>')] + block + page[end - len('</section>'):]
+    return page
 
 
 def element_span(body: str, start: int, tag: str) -> int:
@@ -346,6 +425,10 @@ def build_v2(base: str) -> str:
     # widget (BookingCard) between the hero and the first section, as on the
     # platform page (owner, 30 October 2026).
     page = re.sub(r'(<section\b[^>]*id="financial-administration"[^>]*>\s*<div class="wrap">)', r'\1' + V2_LIFECYCLE, page, count=1)
+    m = re.search(r'<section\b[^>]*id="unified-platform"', page)
+    end = element_span(page, m.start(), 'section')
+    page = page[:end] + V2_HOW + page[end:]
+    page = related(page)
     m = re.search(r'<section\b[^>]*class="hero wrap"', page)
     end = element_span(page, m.start(), 'section')
     page = page[:end] + '<div class="wrap v2-booking" id="booking" data-slot="booking"></div>' + page[end:]
@@ -360,19 +443,25 @@ def build_v2(base: str) -> str:
 import colorsys
 
 
-def recolour(r: int, g: int, b: int) -> tuple[int, int, int]:
+# The restructured page takes a blue accent instead of emerald (owner, 30
+# October 2026: "the green that runs all over the sites is not professional");
+# emerald stays only on the booking actions, which keep their own colours.
+EMERALD, BLUE = 160, 221
+
+
+def recolour(r: int, g: int, b: int, accent: int = EMERALD) -> tuple[int, int, int]:
     h, l, sat = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
     deg = h * 360
     if sat < 0.06 and (l > 0.97 or l < 0.08):
         return r, g, b                                   # white and black stay
     nl = l
     if 25 <= deg < 70 and sat > 0.2:                     # golds -> emerald-600 (readable on white); beiges -> emerald-50
-        nh, ns = (160 / 360, 0.90) if l < 0.8 else (152 / 360, 0.55)
+        nh, ns = (accent / 360, 0.90 if accent == EMERALD else 0.72) if l < 0.8 else ((accent - 8) / 360, 0.55)
         nl = min(l, 0.34) if l < 0.8 else l
     elif 70 <= deg < 190 and l < 0.42 and sat > 0.12:    # dark greens -> navy
         nh, ns = 214 / 360, 0.56
-    elif 70 <= deg < 190 and sat > 0.25:                 # mid greens -> emerald
-        nh, ns = 160 / 360, 0.84
+    elif 70 <= deg < 190 and sat > 0.25:                 # mid greens -> emerald (or the accent)
+        nh, ns = accent / 360, 0.84 if accent == EMERALD else 0.70
     elif l > 0.86:                                       # ivory and pale green-greys -> white / slate-50
         return (255, 255, 255) if l > 0.95 else tuple(round(x * 255) for x in colorsys.hls_to_rgb(214 / 360, l, 0.30))
     else:                                                # green-tinted greys -> slate
@@ -383,9 +472,10 @@ def recolour(r: int, g: int, b: int) -> tuple[int, int, int]:
 # Readability on the restructured page (owner, 30 October 2026: "letters cannot
 # be readable"). The design sets much of its small print in pale grey-greens and
 # golds at 8-10px. Text colours that fall short of 4.5:1 on the page's light
-# grounds are darkened in their own hue until they reach it; light colours made
-# for dark grounds are left alone. Text below 11px is raised to 11px.
-READABLE_GROUND = (233, 237, 229)                    # the darkest light ground on the page
+# grounds are darkened in their own hue until they reach 7:1, for crisp dark text
+# like the owner's reference; light colours made for dark grounds are left alone.
+# Text below 11px is raised to 11px.
+READABLE_GROUND = (225, 231, 239)                    # the darkest light ground on the page (slate, after recolouring)
 
 
 def _lum(c: tuple) -> float:
@@ -399,11 +489,14 @@ def _contrast(a: tuple, b: tuple) -> float:
     return (x + 0.05) / (y + 0.05)
 
 
+READABLE_TARGET = 7.0                                # crisp, dark text (owner, 30 October 2026), above the 4.5:1 minimum
+
+
 def _readable(c: tuple) -> tuple:
     h, l, sat = colorsys.rgb_to_hls(*(v / 255 for v in c))
-    if l > 0.8 or _contrast(c, READABLE_GROUND) >= 4.6:
+    if l > 0.8 or _contrast(c, READABLE_GROUND) >= READABLE_TARGET:
         return c
-    while l > 0 and _contrast(c, READABLE_GROUND) < 4.6:
+    while l > 0 and _contrast(c, READABLE_GROUND) < READABLE_TARGET:
         l -= 0.01
         c = tuple(round(v * 255) for v in colorsys.hls_to_rgb(h, l, sat))
     return c
@@ -430,17 +523,17 @@ def readable_css(css: str) -> str:
     return re.sub(r'(font:\s*(?:\d{3}\s+|italic\s+|normal\s+)*)(\d+(?:\.\d+)?)px', size, css)
 
 
-def recolour_css(css: str) -> str:
+def recolour_css(css: str, accent: int = EMERALD) -> str:
     def hexrep(m: re.Match) -> str:
         v = m.group(1)
         if len(v) == 3:
             v = ''.join(c * 2 for c in v)
         r, g, b = (int(v[i:i + 2], 16) for i in (0, 2, 4))
-        return '#%02x%02x%02x' % recolour(r, g, b)
+        return '#%02x%02x%02x' % recolour(r, g, b, accent)
 
     def rgbrep(m: re.Match) -> str:
         r, g, b = (int(x) for x in m.group(2, 3, 4))
-        nr, ng, nb = recolour(r, g, b)
+        nr, ng, nb = recolour(r, g, b, accent)
         return f'{m.group(1)}({nr},{ng},{nb}{m.group(5)})'
 
     css = re.sub(r'#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', hexrep, css)
@@ -599,8 +692,9 @@ def main() -> int:
     (V2_OUT / 'design.v2.no.html').write_text(v2_head.format('Norwegian') + v2_no + '\n', encoding='utf-8')
     (V2_OUT / 'design.v2.css').write_text(
         '/* Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html.\n'
-        ' * The design\'s styles, scoped under .fgv2, in its own palette (the restructured homepage). Do not edit. */\n'
-        + readable_css(scope_css(css, '.fgv2')) + '\n', encoding='utf-8')
+        ' * The design\'s styles, scoped under .fgv2, in FlyttGo\'s navy and white with a blue accent (owner,\n'
+        ' * 30 October 2026: no gold, no green all over), then made readable. Do not edit. */\n'
+        + readable_css(recolour_css(scope_css(css, '.fgv2'), BLUE)) + '\n', encoding='utf-8')
     print(f'design.html {len(body)} chars, design.css, design-scripts.ts ({len(scripts)} scripts); links wired:')
     for u in used:
         print('  ' + u)

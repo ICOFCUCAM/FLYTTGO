@@ -2,27 +2,29 @@
  * design's own styles (design.v2.css, generated, scoped under .fgv2) tuned to
  * the brief's palette, and what the page adds. Nothing outside .fgv2 changes. */
 .fgv2 {
-  --green: #24513B;      /* forest green */
-  --green2: #20352B;     /* evergreen */
-  --gold: #C3A66C;       /* champagne gold: lines, numbers, accents on dark */
-  --paper: #F5F3EB;      /* warm ivory */
-  --white: #FFFEFA;      /* soft white */
-  --ink: #1d2a24;
-  --muted: #56615a;
-  --line: #e2e0d6;
-  --blue: #203F68;       /* deep blue: primary actions */
+  /* FlyttGo's navy and white with a blue accent (owner, 30 October 2026: no gold, and
+   * not green all over); emerald stays only on the booking actions. */
+  --green: #1A365D;      /* navy: dark sections and headings */
+  --green2: #2D4A7A;     /* lighter navy */
+  --gold: #2563eb;       /* blue: accents and lines */
+  --paper: #ffffff;
+  --white: #ffffff;
+  --ink: #111827;
+  --muted: #374151;
+  --mint: #eff6ff;
+  --line: #e5e7eb;
+  --blue: #1A365D;       /* navy: primary actions */
   overflow-x: clip;
 }
-/* Primary actions in deep blue; gold text on light grounds darkened to read (4.5:1). */
 .fgv2 .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
-.fgv2 .btn-primary:hover { background: #18324f; }
-.fgv2 .eyebrow { color: var(--green); }
+.fgv2 .btn-primary:hover { background: #2D4A7A; }
+.fgv2 .eyebrow { color: #1d4ed8; }
 
 /* 5. The lifecycle strip at the head of the finance section. */
 .fgv2 .v2-lifecycle { list-style: none; margin: 0 0 48px; padding: 0; display: grid; grid-template-columns: repeat(6, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .fgv2 .v2-lifecycle li { padding: 18px 16px; font-weight: 600; color: var(--green2); border-right: 1px solid var(--line); font-size: 14px; }
 .fgv2 .v2-lifecycle li:last-child { border-right: 0; }
-.fgv2 .v2-lifecycle b { display: block; font-family: Georgia, serif; font-weight: 400; color: #6d5a2f; font-size: 13px; margin-bottom: 6px; }
+.fgv2 .v2-lifecycle b { display: block; font-family: Georgia, serif; font-weight: 400; color: #1d4ed8; font-size: 13px; margin-bottom: 6px; }
 @media (max-width: 900px) { .fgv2 .v2-lifecycle { grid-template-columns: repeat(3, 1fr); } .fgv2 .v2-lifecycle li:nth-child(3) { border-right: 0; } .fgv2 .v2-lifecycle li:nth-child(-n+3) { border-bottom: 1px solid var(--line); } }
 
 /* The real booking widget between the hero and the first section, square like the design's cards. */
@@ -86,45 +88,39 @@
 /* 2. The entry cards: who each is for, and a status where something is in development. */
 .fgv2 .entry-card p { margin: 0; }
 .fgv2 .entry-card .entry-for { font-size: 13px; font-weight: 600; margin-top: 14px; }
-.fgv2 .entry-card .entry-status { font-size: 12px; margin-top: 6px; color: #6d5a2f; }
+.fgv2 .entry-card .entry-status { font-size: 12px; margin-top: 6px; color: #1d4ed8; }
 .fgv2 .entry-card a { margin-top: 22px; }
 .fgv2 .entry-card .entry-note { font-size: 13px; line-height: 1.7; margin-top: 10px; }
 
-/* The two journeys most people take sit side by side; creating a marketplace
- * of one's own is a specialised offering in a quieter strip below them, never
- * their equal (owner, 30 October 2026). Type sizes are kept. */
-@media (min-width: 901px) {
-  .fgv2 .entry-grid { grid-template-columns: 1fr 1fr; }
-  .fgv2 .entry-specialised { grid-column: 1 / -1; min-height: 0; display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); column-gap: 48px; align-items: start; }
-  .fgv2 .entry-specialised .entry-side h3 { margin-bottom: 0; }
-}
-.fgv2 .entry-specialised { background: var(--white); color: var(--ink); border: 1px solid var(--line); box-shadow: none; padding-top: 24px; padding-bottom: 24px; }
-.fgv2 .entry-specialised .entry-side > span { font-size: 11px; letter-spacing: .15em; font-weight: 700; color: #6d5a2f; }
-.fgv2 .entry-specialised .entry-body a { display: inline-block; }
+/* The third journey, For Organisations: its three options, marketplace infrastructure marked optional. */
+.fgv2 .entry-card .entry-options { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+.fgv2 .entry-card .entry-options a { margin: 0; border-bottom: 1px solid currentColor; padding-bottom: 1px; font-size: 13px; }
+.fgv2 .entry-card .entry-options span { font-weight: 400; color: var(--muted); }
 
-/* 1. The hero: two actions, and marketplace creation as a quiet link after them. */
+/* 1. The hero: three actions, Explore services, My Company and For Organisations. */
 .fgv2 .hero-actions { flex-wrap: wrap; }
-.fgv2 .hero-actions .hero-more { flex-basis: 100%; font-size: 14px; font-weight: 600; color: var(--green2); margin-top: 6px; text-decoration: underline; text-underline-offset: 3px; }
 
 /* Readability audit (owner, 30 October 2026): every text measured against its
  * ground at 4.5:1 (3:1 for large text). build.py's readable_css darkens pale
  * text on light grounds; these are the grounds it cannot see. */
-/* Gold and pale labels on the dark green panels stay light. */
+/* Labels on the navy panels stay light. */
 .fgv2 .final-cta .eyebrow,
 .fgv2 .ecosystem-hub small,
-.fgv2 .network-canvas .network-node.core small { color: #d6c18e; }
+.fgv2 .network-canvas .network-node.core small { color: #93c5fd; }
+.fgv2 .driver-panel .eyebrow { color: #93c5fd !important; }
+.fgv2 .legacy-suite .step-no { color: #93c5fd; }
 .fgv2 .ecosystem-top span[style], .fgv2 .wl-top span[style], .fgv2 .bw-brand span[style],
 .fgv2 .finance-top span[style], .fgv2 .network-head span[style] { opacity: .9 !important; }
-.fgv2 .network-builder-foot { color: #56615a !important; font-size: 12px !important; }
+.fgv2 .network-builder-foot { color: #374151 !important; font-size: 12px !important; }
 /* The driver panel's button was dark on dark. */
 .fgv2 .driver-panel .btn-light { background: var(--white); border-color: var(--white); color: var(--green2); }
 /* "What every booking includes": white cards between the grid's 1px lines (they had no ground of their own). */
 .fgv2 .testimonial-grid .quote { background: var(--white); padding: 28px 26px; }
-.fgv2 .testimonial-grid .quote small { color: #6d5a2f; }
+.fgv2 .testimonial-grid .quote small { color: #1d4ed8; }
 /* Hero picture: words on the photograph sit on a darker veil, top and foot. */
-.fgv2 .hero-visual:after { z-index: 1; background: linear-gradient(180deg, rgba(13,38,27,.45) 0%, rgba(13,38,27,0) 26%, rgba(13,38,27,0) 52%, rgba(13,38,27,.72) 100%); pointer-events: none; }
+.fgv2 .hero-visual:after { z-index: 1; background: linear-gradient(180deg, rgba(15,28,52,.45) 0%, rgba(15,28,52,0) 26%, rgba(15,28,52,0) 52%, rgba(15,28,52,.72) 100%); pointer-events: none; }
 .fgv2 .hero-index, .fgv2 .image-caption { z-index: 2; text-shadow: 0 1px 8px rgba(0,0,0,.45); }
-.fgv2 .hero-index b { color: #f1e2bd; }
+.fgv2 .hero-index b { color: #93c5fd; }
 .fgv2 .image-caption small { opacity: 1; }
 .fgv2 .hero-visual .floating-card { z-index: 3; }
 @media (min-width: 901px) {
@@ -132,5 +128,57 @@
   .fgv2 .hero-visual .floating-card { top: 72px; bottom: auto; }
 }
 /* Marketplace photo cards: a deeper veil under the words at their foot. */
-.fgv2 .market-card:after { background: linear-gradient(180deg, rgba(10,31,23,0) 25%, rgba(10,31,23,.55) 58%, rgba(10,31,23,.86) 100%); }
+.fgv2 .market-card:after { background: linear-gradient(180deg, rgba(15,28,52,0) 25%, rgba(15,28,52,.55) 58%, rgba(15,28,52,.86) 100%); }
 .fgv2 .market-card .card-copy { text-shadow: 0 1px 6px rgba(0,0,0,.35); }
+/* The closing section's main button: white on the navy ground. */
+.fgv2 .final-cta .btn-primary { background: #fff; border-color: #fff; color: #1A365D; }
+.fgv2 .final-cta .btn-primary:hover { background: #eff6ff; }
+
+/* How FlyttGo works: the lifecycle, how each journey connects, one business's
+ * journey, and what is available, in development or planned. */
+.fgv2 .v2-how { padding: 96px 0; background: #f8fafc; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.fgv2 .v2-how .section-head { margin-bottom: 40px; }
+.fgv2 .v2-steps { grid-template-columns: repeat(8, 1fr); margin-bottom: 40px; background: #fff; }
+.fgv2 .v2-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.fgv2 .v2-links article { background: #fff; padding: 28px 26px; display: flex; flex-direction: column; }
+.fgv2 .v2-links small { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: #1d4ed8; }
+.fgv2 .v2-links h3 { font: 650 22px/1.2 Manrope, sans-serif; letter-spacing: -.02em; margin: 10px 0 8px; color: var(--green); }
+.fgv2 .v2-links p { font-size: 14px; line-height: 1.7; color: var(--muted); margin: 0 0 14px; }
+.fgv2 .v2-links ul { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 8px; }
+.fgv2 .v2-links a { margin-top: auto; font-size: 13px; font-weight: 700; color: var(--green); border-bottom: 1px solid currentColor; align-self: flex-start; padding-bottom: 3px; }
+.fgv2 .v2-status { font-size: 13px; line-height: 1.5; color: #374151; }
+.fgv2 .v2-status > span { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em; padding: 2px 8px; margin-right: 8px; border: 1px solid; }
+.fgv2 .v2-ok > span { color: #065f46; background: #ecfdf5; border-color: #a7f3d0; }
+.fgv2 .v2-dev > span { color: #92400e; background: #fffbeb; border-color: #fde68a; }
+.fgv2 .v2-plan > span { color: #1e40af; background: #eff6ff; border-color: #bfdbfe; }
+.fgv2 .v2-path { margin-top: 48px; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 48px; align-items: start; }
+.fgv2 .v2-path h3 { font: 650 clamp(24px, 2.4vw, 30px)/1.15 Manrope, sans-serif; letter-spacing: -.03em; margin: 14px 0 12px; color: var(--green); }
+.fgv2 .v2-path p { font-size: 14px; line-height: 1.8; color: var(--muted); margin: 0; }
+.fgv2 .v2-path ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.fgv2 .v2-path li { background: #fff; padding: 16px 18px; font-size: 14px; font-weight: 600; color: var(--ink); display: flex; gap: 12px; align-items: baseline; }
+.fgv2 .v2-path li b { color: #1d4ed8; font-family: Georgia, serif; font-weight: 400; }
+.fgv2 .v2-legend { margin: 32px 0 0; font-size: 13px; line-height: 2.2; color: var(--muted); }
+.fgv2 .v2-legend .v2-status { margin-left: 10px; }
+.fgv2 .v2-legend .v2-status:first-child { margin-left: 0; }
+@media (max-width: 900px) {
+  .fgv2 .v2-how { padding: 64px 0; }
+  .fgv2 .v2-steps { grid-template-columns: repeat(4, 1fr); }
+  .fgv2 .v2-steps li:nth-child(4) { border-right: 0; }
+  .fgv2 .v2-steps li:nth-child(-n+4) { border-bottom: 1px solid var(--line); }
+  .fgv2 .v2-links { grid-template-columns: 1fr; }
+  .fgv2 .v2-path { grid-template-columns: 1fr; gap: 24px; }
+}
+@media (max-width: 480px) { .fgv2 .v2-path ol { grid-template-columns: 1fr; } }
+
+/* Links between related capabilities at the foot of a section. */
+.fgv2 .v2-related { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 24px; padding-top: 28px; padding-bottom: 8px; font-size: 14px; }
+.fgv2 .v2-related span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: #374151; }
+.fgv2 .v2-related a { font-weight: 600; color: #1A365D; border-bottom: 1px solid #93c5fd; padding-bottom: 2px; }
+.fgv2 .v2-related a:hover { border-color: #1A365D; }
+.fgv2 .driver-panel ~ .v2-related, .fgv2 #driver-network .v2-related { margin-top: 0; }
+/* One connected platform: five capabilities in a row, the lifecycle in eight steps. */
+@media (min-width: 1101px) {
+  .fgv2 .ecosystem-pillars { grid-template-columns: repeat(5, 1fr); }
+  .fgv2 .ecosystem-pillars:before { left: 10%; right: 10%; }
+  .fgv2 .ecosystem-flow-track { grid-template-columns: repeat(8, 1fr); }
+}
