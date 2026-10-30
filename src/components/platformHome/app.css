@@ -8,8 +8,8 @@
  * the design's other colours into the same families. */
 .fgp { --green: #1A365D; --green2: #2D4A7A; --gold: #059669; --paper: #ffffff; --white: #ffffff;
        --ink: #111827; --muted: #4b5563; --mint: #ecfdf5; --line: #e5e7eb; }
-/* The former homepage's sections render into these slots with their own styles. */
-.fgp .fgp-slot { display: block; font-family: ui-sans-serif, system-ui, sans-serif; }
+/* The old menus' place in the design's header (HeaderExtras). */
+.fgp .fgp-header { display: inline-flex; align-items: center; margin-right: 6px; font-family: ui-sans-serif, system-ui, sans-serif; }
 /* The slideshow in the hero picture: the former homepage's slides, crossfading. */
 .fgp .hero-visual .fgp-slides { position: absolute; inset: 0; }
 .fgp .hero-visual .fgp-slides img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1s ease; }
@@ -17,3 +17,10 @@
 .fgp .fgp-dots { position: absolute; right: 22px; bottom: 18px; display: flex; gap: 6px; z-index: 3; }
 .fgp .fgp-dots button { width: 8px; height: 8px; border-radius: 9999px; border: 0; padding: 0; background: rgba(255,255,255,.55); }
 .fgp .fgp-dots button.on { background: #fff; width: 22px; }
+/* The header holds the old menus too: keep every item on one line. */
+.fgp .navright { flex-shrink: 0; white-space: nowrap; }
+.fgp .navright .login, .fgp .navright .btn { white-space: nowrap; }
+@media (max-width: 1440px) and (min-width: 901px) {
+  .fgp .navlinks { gap: 14px; }
+  .fgp .navlinks a { font-size: 11.5px; white-space: nowrap; }
+}

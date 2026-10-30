@@ -24,6 +24,7 @@ export const en = {
     adminDash:    'Admin Dashboard',
     signOut:      'Sign Out',
     profile:      'Profile',
+    myServices:   'My jobs and appointments',
     notifications: 'Notifications',
     notificationsEmpty: "You're all caught up",
     notificationsHint:  'New booking updates will appear here.',

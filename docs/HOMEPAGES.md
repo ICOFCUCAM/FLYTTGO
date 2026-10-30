@@ -24,33 +24,30 @@ Owner's decision, 2026-10-30.
 - **Where its links go:** links from the platform page to the moving page go to `/transport`, which keeps the visitor signed in, until `VITE_TRANSPORT_URL` is set in the Vercel project. After that they go to that address. Sign-in is kept per address by the browser, so a visitor signed in on one address is not signed in on the other.
 - **The subdomain is reserved:** every company's page is also `<slug>.flyttgo.no`. Migration `00027` reserves `transport`, `moving` and `flytting` so no company can take them (none had them; rollback `supabase/rollback/00027_down.sql`).
 - **The design is the source.** `scripts/platform-home/build.py` turns the design file into `src/components/platformHome/`:
-  - `design.html`: the markup, without scripts and without the design's footer. The design's top line and header stay exactly as designed;
+  - `design.html`: the markup, without scripts and without the design's footer, with the old site's pictures and a place in the header for the old menus;
   - `design.css`: its styles, scoped under `.fgp` so they change nothing outside the page, and recoloured (`recolour()`): dark greens to navy, golds and mid greens to emerald, ivory to white. `app.css` pins the main colours to the site's exact values: navy #1A365D, its hover #2D4A7A, emerald #059669, white;
   - `design-scripts.ts`: its menu, tabs and previews.
 
   After the design changes, run `python3 -I scripts/platform-home/build.py` and commit the result. Never edit the generated files. `app.css` holds the one style the app adds.
-- **The former homepage under the design** (owner, 2026-10-30): the design's skeleton is kept whole, and no section is removed or changed. `SLOTS` in `build.py` adds a slot directly under each design section listed below, and the page renders the former homepage's real section into it (exported from `HomePage.tsx`). The design's "Looking for a service?" form leads to the booking flow with what was typed; the booking widget under it has the address lookup and the price estimate.
+- **The old site's functions wired in beneath the design** (owner, 2026-10-30): the design looks as designed, with its own cards. Nothing of the old homepage is stacked on it; its functions run inside the design's elements:
 
-  | Former homepage section | Under the design section |
+  | Design element | Old function inside it |
   |---|---|
-  | Booking widget | `#booking` |
-  | Trust bar and stats | metrics |
-  | Services | `#moving-services` |
-  | How it works | `#how-it-works` |
-  | Van types | `#van-types` |
-  | Moving tools | `#moving-tools` |
-  | Cities | `#cities` |
-  | Testimonials | testimonials |
-  | Driver subscriptions | `#driver-plans` |
-  | Corporate call to action | `#corporate-benefits` |
-  | Driver call to action | `#driver-network` |
+  | Header | `HeaderExtras`: the EN/NO switch; once signed in, the notifications bell and the account menu in place of Sign in. "Moving" opens the old Moving Tools menu, and "Companies" (added beside Industries) opens the old Companies menu. |
+  | Hero picture | The old site's slideshow (`HERO_SLIDES`). |
+  | "Looking for a service?" | The old booking widget's parts: the Kartverket address lookup in the design's fields, the route distance, and the instant price (`estimateMovePrice()`, shared with the old widget) on the design's status line. It hands off to the booking flow with everything filled in. The other choices open services, business, or the business tools. |
+  | Van types, driver plans | Prices from `VAN_TYPES` and `SUBSCRIPTION_PLANS`. Van cards book that van; plans open driver subscriptions. |
+  | Services, cities, how it works | Open booking; the fourth step opens tracking. |
+  | Moving tools | Open the van size guide and the moving checklist. |
+  | Corporate benefits | Open bulk booking, recurring deliveries, the company dashboard, invoicing, API access and the corporate dashboard. |
+  | Driver panel, provider and other buttons | Open their real pages (`LINKS` in `build.py`, `WIRES` in the page). |
 
-  The slideshow (`HERO_SLIDES`) plays in the design's hero picture, after the design's own picture. It changes every 5 seconds, has dots, and stays still under reduced motion.
+  The design's seven stock photos are replaced by the old site's own pictures (`PICTURES` in `build.py`).
 - **What the app wires in** (`PlatformHomePage.tsx`):
   - Links that lead to a FlyttGo page carry `data-page` (list in `build.py`): services, booking, business, white label, API, become a driver.
   - In-page links (`#section`) stay as designed.
-- **Header and footer:** the design's header stays exactly as designed: logo, Platform, Business tools, How it works, White-label, Marketplace, Moving, Finance, Network, Industries, Sign in and Get started. FlyttGo's own menu bar is wired in directly under it, with all its items, sign-in, language switch, notifications, account menu and Book Now. The design's Sign in and Get started open the sign-in dialog, or the dashboard once signed in. The footer is FlyttGo's (owner, 2026-10-30).
-- **Language:** English and Bokmål, following the site's language. The menu bar's EN/NO switch changes it.
+- **Header and footer:** the design's header with the old menus wired into it (above); its Sign in and Get started open the sign-in dialog, or the dashboard and booking once signed in. The footer is FlyttGo's (owner, 2026-10-30).
+- **Language:** English and Bokmål, following the site's language. The EN/NO switch in the header changes it.
   - Every English text of the page maps to its Bokmål in `scripts/platform-home/no.json`. `build.py --strings` lists what to translate (`strings.json`).
   - The build writes `design.no.html` and `design-scripts.no.ts`, and fails while any text lacks a translation.
 - **Finance wording is softened** to what FlyttGo does today (owner, 2026-10-30; `SOFTEN` in `build.py`): vouchers, receipts and MVA codes in a ledger, SAF-T export and næringsspesifikasjon figures for the accountant. FlyttGo gives no tax advice and files no returns. "Tax preparation" reads "Year-end documents". The design file itself is unchanged.

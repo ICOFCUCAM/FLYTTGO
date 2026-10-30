@@ -5,9 +5,7 @@ import { useAuth } from '../lib/auth';
 import { HERO_SLIDES, VAN_TYPES, CITIES, HOW_IT_WORKS, SUBSCRIPTION_PLANS, calculateCommission } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { getRouteDistance } from '../lib/routing';
-
-/* The sections below are also rendered on the platform front page
- * (PlatformHomePage, docs/HOMEPAGES.md). */
+import { estimateMovePrice } from '../lib/moveEstimate';
 
 /* ── HERO SLIDER ── */
 function HeroSlider() {
@@ -71,7 +69,7 @@ function HeroSlider() {
 
 /* ── BOOKING WIDGET ── */
 
-export function BookingWidget() {
+function BookingWidget() {
   const { setPage, setBookingData } = useApp();
   const { t } = useTranslation();
   /* Structured Norwegian addresses from Kartverket (same component the
@@ -111,9 +109,7 @@ export function BookingWidget() {
 
   const handleEstimate = () => {
     if (!pickup?.formatted || !dropoff?.formatted) return;
-    const base: Record<string, number> = { 'single-item': 850, 'student': 1150, 'apartment': 1500, 'house': 2400, 'office': 3200 };
-    const km = distanceKm ?? 0;
-    setEstimatedPrice(Math.round((base[moveType] || 1500) + km * 12));
+    setEstimatedPrice(estimateMovePrice(moveType, distanceKm));
   };
 
   const handleBookNow = () => {
@@ -238,7 +234,7 @@ export function BookingWidget() {
  * Sits between the booking widget and the stats section. It's the
  * first thing the customer sees after the hero, so it does the heavy
  * lifting on perceived legitimacy. */
-export function TrustBar() {
+function TrustBar() {
   const { t } = useTranslation();
   const items = [
     { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
@@ -279,7 +275,7 @@ export function TrustBar() {
 /* ── STATS ──
  * How the service works, not figures: FlyttGo publishes no counts or
  * ratings it cannot back (platform audit 2026-10-30, owner's decision). */
-export function StatsSection() {
+function StatsSection() {
   const { t } = useTranslation();
   return (
     <section className="py-16">
@@ -309,7 +305,7 @@ export function StatsSection() {
 }
 
 /* ── SERVICES SECTION ── */
-export function ServicesSection() {
+function ServicesSection() {
   const { setPage } = useApp();
   const { t } = useTranslation();
   const services = [
@@ -348,7 +344,7 @@ export function ServicesSection() {
 }
 
 /* ── HOW IT WORKS ── */
-export function HowItWorks() {
+function HowItWorks() {
   const { t } = useTranslation();
   return (
     <section className="py-20">
@@ -372,7 +368,7 @@ export function HowItWorks() {
 }
 
 /* ── VAN TYPES ── */
-export function VanTypesSection() {
+function VanTypesSection() {
   const { setPage } = useApp();
   const { t } = useTranslation();
   const vanKey: Record<string, string> = { small_van: 'vanSmall', medium_van: 'vanMedium', large_van: 'vanLarge', luton_van: 'vanLuton' };
@@ -415,7 +411,7 @@ export function VanTypesSection() {
 }
 
 /* ── MOVING TOOLS ── */
-export function MovingToolsSection() {
+function MovingToolsSection() {
   const { setPage } = useApp();
   const { t } = useTranslation();
   const tools = [
@@ -453,7 +449,7 @@ export function MovingToolsSection() {
 }
 
 /* ── CITIES ── */
-export function CitiesSection() {
+function CitiesSection() {
   const { setPage } = useApp();
   const { t } = useTranslation();
   return (
@@ -486,7 +482,7 @@ export function CitiesSection() {
  * This section showed customer reviews; FlyttGo has none to show yet, so
  * it says what every booking includes instead (platform audit 2026-10-30).
  * Real reviews belong here once customers have left them. */
-export function TestimonialsSection() {
+function TestimonialsSection() {
   const { t } = useTranslation();
   return (
     <section className="py-20 bg-gray-50">
@@ -510,7 +506,7 @@ export function TestimonialsSection() {
 }
 
 /* ── SUBSCRIPTION TEASER ── */
-export function SubscriptionTeaser() {
+function SubscriptionTeaser() {
   const { setPage, setShowAuthModal, setAuthMode } = useApp();
   const { user, profile } = useAuth();
   const { t } = useTranslation();
@@ -562,7 +558,7 @@ export function SubscriptionTeaser() {
 }
 
 /* ── CORPORATE CTA ── */
-export function CorporateCTA() {
+function CorporateCTA() {
   const { setPage, setShowAuthModal, setAuthMode } = useApp();
   const { t } = useTranslation();
   const features = [
@@ -622,7 +618,7 @@ export function CorporateCTA() {
 }
 
 /* ── DRIVER CTA ── */
-export function DriverCTA() {
+function DriverCTA() {
   const { setShowAuthModal, setAuthMode } = useApp();
   const { t } = useTranslation();
   const features = [

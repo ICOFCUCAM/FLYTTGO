@@ -171,54 +171,43 @@ def scope_css(css: str) -> str:
     return '\n'.join(out)
 
 
-# ── The former homepage's working parts (owner, 2026-10-30) ─────────────────
-# The design's skeleton is kept whole (owner, 2026-10-30): no section is
-# removed or changed. The former homepage's working parts are wired in
-# directly under the design part they belong with: FlyttGo's menu bar under
-# the design's header, and each of the former homepage's real sections
-# (src/components/HomePage.tsx) under the matching design section, in a slot
-# PlatformHomePage renders into.
-SLOTS = [
-    ('section', 'id="booking"', 'booking'),            # BookingWidget: address lookup, price estimate
-    ('section', 'id="corporate-benefits"', 'corporate'),  # CorporateCTA
-    ('section', 'id="driver-plans"', 'subscriptions'),  # SubscriptionTeaser
-    ('section', 'id="driver-network"', 'driver'),       # DriverCTA
-    ('section', 'id="moving-services"', 'services'),    # ServicesSection
-    ('section', 'id="how-it-works"', 'how'),            # HowItWorks
-    ('section', 'id="van-types"', 'vans'),              # VanTypesSection
-    ('section', 'id="moving-tools"', 'tools'),          # MovingToolsSection
-    ('section', 'id="cities"', 'cities'),               # CitiesSection
-    ('section', 'class="metrics wrap"', 'stats'),       # TrustBar and StatsSection
-    ('section', 'class="section testimonials"', 'testimonials'),  # TestimonialsSection
-]
+# ── The old site's functions wired in beneath the design (owner, 2026-10-30) ─
+# The design looks as designed; PlatformHomePage wires the old site's working
+# parts into its own elements (booking with the address lookup and price,
+# live van and plan data, every card and button to a real page). Only these
+# changes are made to the markup:
+#   - the design's stock photos give way to the old site's own pictures;
+#   - the header gets a place for the old menus (language, account,
+#     notifications) and a Companies item beside Industries.
+OLD = 'https://d64gsuwffb70l.cloudfront.net/'
+PICTURES = {   # design stock photo (Unsplash id) -> the old site's picture
+    '1556761175-b413da4baf72': OLD + '69b48d1c24a3a59014dde38a_1773440407421_d3f9f76f.jpg',  # hero: the first slide
+    '1600210492486-724fe5c67fb0': OLD + '69b087fd736aea2f6794825c_1773177274288_a53014fe.jpg',  # moving & relocation: movers
+    '1586528116311-ad8dd3c8310d': OLD + '69bc733e874094bcf729aca5_1773958078738_546d64ee.png',  # transport & delivery: van
+    '1621905251918-48416bd8575a': OLD + '69b1b470fdd1af7483a60acc_1773254286622_a82a1d1b.jpg',  # local services: furniture service
+    '1517248135467-4c7edcad34c4': OLD + '69b9877aa085bb4df2a9da28_1773766806786_1db52f56.jpg',  # hospitality: office move
+    '1555529669-e69e7aa0ba9a': OLD + '69b1b470fdd1af7483a60acc_1773254050705_a292f56d.jpg',  # commerce: storage
+    '1600880292203-757bb62b4baf': OLD + '69b9877aa085bb4df2a9da28_1773766976394_04c23eab.jpg',  # providers: driver and vehicle
+}
 
 
-def element_span(body: str, start: int, tag: str) -> int:
-    """End index of the element opening at start (nested tags of the same name counted)."""
-    depth, i = 0, start
-    pat = re.compile(r'<(/?)%s\b[^>]*>' % tag)
-    for m in pat.finditer(body, start):
-        depth += -1 if m.group(1) else 1
-        if depth == 0:
-            return m.end()
-    raise SystemExit(f'unclosed <{tag}> at {start}')
+def old_pictures(body: str) -> str:
+    for photo, url in PICTURES.items():
+        body, n = re.subn(r'https://images\.unsplash\.com/photo-%s[^"]*' % re.escape(photo), url, body)
+        if n == 0:
+            raise SystemExit(f'picture {photo} is no longer in the design')
+    if 'images.unsplash.com' in body:
+        raise SystemExit('the design has a stock photo with no old-site picture to replace it')
+    return body
 
 
-def slot_sections(body: str) -> str:
-    """Adds each slot after its design section; the design's own markup is not changed."""
-    for tag, attr, name in SLOTS:
-        m = re.search(r'<%s\b[^>]*%s[^>]*>' % (tag, re.escape(attr)), body)
-        if not m:
-            raise SystemExit(f'slot {name}: no <{tag} {attr}> in the design')
-        end = element_span(body, m.start(), tag)
-        body = body[:end] + f'<section class="fgp-slot" data-slot="{name}"></section>' + body[end:]
-    # The design's top line and header stay exactly as designed (owner,
-    # 2026-10-30); FlyttGo's menu bar, with everything it has, is wired in
-    # directly under them.
-    body, n = re.subn(r'(<header class="wrap nav">.*?</header>)',
-                      r'\1<div class="fgp-slot" data-slot="menubar"></div>', body, count=1, flags=re.S)
+def header_places(body: str) -> str:
+    body, n = re.subn(r'<div class="navright">', '<div class="navright"><span class="fgp-slot fgp-header" data-slot="header"></span>', body, count=1)
     if n != 1:
-        raise SystemExit('the design has no header')
+        raise SystemExit('the design header has no navright')
+    body, n = re.subn(r'(<a href="#industry-experiences">Industries</a>)', r'\1<a href="#business" data-menu="companies">Companies</a>', body, count=1)
+    if n != 1:
+        raise SystemExit('the design menu has no Industries item')
     return body
 
 
@@ -360,7 +349,7 @@ def main() -> int:
     body = re.sub(r'<style\b.*?</style>', '', body, flags=re.S)
     # FlyttGo's own footer replaces the design's (owner, 2026-10-30).
     body = re.sub(r'<footer\b.*?</footer>', '', body, flags=re.S)
-    body = slot_sections(body)
+    body = header_places(old_pictures(body))
     body, used = wire_links(body)
 
     # The booking form is handled by the app (real address lookup and booking),

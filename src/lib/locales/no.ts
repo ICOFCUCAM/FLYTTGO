@@ -26,6 +26,7 @@ export const no: PartialTranslationKeys = {
     adminDash:    'Admin-panel',
     signOut:      'Logg ut',
     profile:      'Profil',
+    myServices:   'Mine timer og oppdrag',
     notifications: 'Varsler',
     notificationsEmpty: 'Du er à jour',
     notificationsHint:  'Nye bestillingsoppdateringer dukker opp her.',
