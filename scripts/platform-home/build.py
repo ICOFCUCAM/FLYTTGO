@@ -178,7 +178,9 @@ def scope_css(css: str) -> str:
 # changes are made to the markup:
 #   - the design's stock photos give way to the old site's own pictures;
 #   - the header gets a place for the old menus (language, account,
-#     notifications) and a Companies item beside Industries.
+#     notifications) and a Companies item beside Industries;
+#   - the booking card moves between the hero and the first section and
+#     holds the old booking widget (BookingCard) in place of the design's form.
 OLD = 'https://d64gsuwffb70l.cloudfront.net/'
 PICTURES = {   # design stock photo (Unsplash id) -> the old site's picture
     '1556761175-b413da4baf72': OLD + '69b48d1c24a3a59014dde38a_1773440407421_d3f9f76f.jpg',  # hero: the first slide
@@ -199,6 +201,24 @@ def old_pictures(body: str) -> str:
     if 'images.unsplash.com' in body:
         raise SystemExit('the design has a stock photo with no old-site picture to replace it')
     return body
+
+
+def booking_card(body: str) -> str:
+    """The old booking widget in the design's booking card, between the hero and the first section (owner, 2026-10-30)."""
+    m = re.search(r'<section class="booking-shell wrap" id="booking">.*?</section>', body, re.S)
+    if not m:
+        raise SystemExit('the design has no booking section')
+    section = m.group(0)
+    section, n = re.subn(r'<form class="booking" id="booking-form">.*?</form>',
+                         '<div class="booking" data-slot="booking"></div>', section, count=1, flags=re.S)
+    if n != 1:
+        raise SystemExit('the design booking section has no form')
+    body = body[:m.start()] + body[m.end():]
+    hero = re.search(r'<section class="hero wrap">', body)
+    end = body.index('</section>', hero.end()) + len('</section>')
+    if body.count('<section', hero.end(), end) != 0:
+        raise SystemExit('the hero holds a nested section; move the booking card by hand')
+    return body[:end] + section + body[end:]
 
 
 def header_places(body: str) -> str:
@@ -349,7 +369,7 @@ def main() -> int:
     body = re.sub(r'<style\b.*?</style>', '', body, flags=re.S)
     # FlyttGo's own footer replaces the design's (owner, 2026-10-30).
     body = re.sub(r'<footer\b.*?</footer>', '', body, flags=re.S)
-    body = header_places(old_pictures(body))
+    body = booking_card(header_places(old_pictures(body)))
     body, used = wire_links(body)
 
     # The booking form is handled by the app (real address lookup and booking),

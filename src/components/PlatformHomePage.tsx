@@ -6,9 +6,8 @@
  * (owner, 2026-10-30):
  *   - header: the old menus inside the design's header (HeaderExtras);
  *   - hero: the old site's pictures as a slideshow;
- *   - "Looking for a service?": the old booking widget's working parts in
- *     the design's form (Kartverket address lookup, instant price, booking
- *     flow with everything filled in);
+ *   - between the hero and the first section: the old booking widget in the
+ *     design's booking card (BookingCard: address lookup, estimate, Book Now);
  *   - van types and driver plans read the site's live data; every card and
  *     button leads to its real page (WIRES below);
  *   - FlyttGo's own footer (AppLayout); navy, emerald and white; English or
@@ -24,10 +23,8 @@ import { useApp, type Page } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { transportUrl } from '../lib/hosts';
 import { HERO_SLIDES, SUBSCRIPTION_PLANS, VAN_TYPES } from '../lib/constants';
-import { getRouteDistance } from '../lib/routing';
-import { estimateMovePrice } from '../lib/moveEstimate';
-import NorwayAddressAutocomplete, { type NorwegianAddress } from './NorwayAddressAutocomplete';
 import HeaderExtras from './platformHome/HeaderExtras';
+import BookingCard from './platformHome/BookingCard';
 import designEn from './platformHome/design.html?raw';
 import designNo from './platformHome/design.no.html?raw';
 import { initDesign as initEn } from './platformHome/design-scripts';
@@ -37,23 +34,9 @@ import './platformHome/app.css';
 
 /* The design in the visitor's language: English, or its Bokmål (scripts/platform-home/no.json). */
 const VERSIONS = {
-  en: { html: designEn, init: initEn, currency: 'NOK', locale: 'en-GB', from: 'Enter your location', to: 'Enter destination',
-        noFrom: 'Choose your pick-up address from the list to continue.', noTo: 'Choose the delivery address from the list to continue.',
-        pastDate: 'Choose today or a future date.', estimate: (kr: string) => `Estimated from ${kr} incl. MVA. The booking confirms the price.` },
-  no: { html: designNo, init: initNo, currency: 'kr', locale: 'nb-NO', from: 'Skriv inn adressen din', to: 'Skriv inn leveringsadresse',
-        noFrom: 'Velg henteadressen fra listen for å fortsette.', noTo: 'Velg leveringsadressen fra listen for å fortsette.',
-        pastDate: 'Velg i dag eller en senere dato.', estimate: (kr: string) => `Estimert fra ${kr} inkl. MVA. Bestillingen bekrefter prisen.` },
+  en: { html: designEn, init: initEn, currency: 'NOK', locale: 'en-GB' },
+  no: { html: designNo, init: initNo, currency: 'kr', locale: 'nb-NO' },
 } as const;
-
-/* The design's "I need" choices, in order, and what each does. */
-const NEEDS: ({ moveType: string } | { page: Page } | { scroll: string })[] = [
-  { moveType: 'apartment' },          // Moving & relocation
-  { moveType: 'single-item' },        // Transport & delivery
-  { page: 'services' },               // Electrician or plumbing service
-  { page: 'services' },               // Home and local services
-  { page: 'corporate' },              // Business booking / company logistics
-  { scroll: '#business-platform' },   // Explore business tools
-];
 
 /* The design's cards and buttons, in the design's order, and the page each opens. */
 const WIRES: { selector: string; target: (i: number) => string }[] = [
@@ -136,18 +119,7 @@ function useDesignFonts() {
   }, []);
 }
 
-/** Replaces one of the design's address inputs with the real address lookup, in the same field. */
-function addressSlot(root: HTMLElement, id: string): HTMLElement | null {
-  const input = root.querySelector<HTMLInputElement>(`input#${id}`);
-  const field = input?.parentElement;
-  if (!input || !field) return null;
-  const slot = document.createElement('div');
-  slot.className = 'fgp-address';
-  field.replaceChild(slot, input);
-  return slot;
-}
-
-type Places = { root: HTMLElement; hero: { el: HTMLElement; alt: string } | null; from: HTMLElement | null; to: HTMLElement | null; header: HTMLElement | null };
+type Places = { root: HTMLElement; hero: { el: HTMLElement; alt: string } | null; booking: HTMLElement | null; header: HTMLElement | null };
 
 export default function PlatformHomePage() {
   const { setPage, setShowAuthModal, setAuthMode, setBookingData } = useApp();
@@ -156,14 +128,11 @@ export default function PlatformHomePage() {
   const version = VERSIONS[language === 'no' ? 'no' : 'en'];
   const root = useRef<HTMLDivElement>(null);
   const [places, setPlaces] = useState<Places | null>(null);
-  const [pickup, setPickup] = useState<NorwegianAddress | null>(null);
-  const [dropoff, setDropoff] = useState<NorwegianAddress | null>(null);
-  const [route, setRoute] = useState<{ distanceKm: number; durationMinutes: number } | null>(null);
   useDesignFonts();
 
   /* The latest values for the handlers attached once to the design's markup. */
-  const live = useRef({ user, profile, pickup, dropoff, route, version });
-  live.current = { user, profile, pickup, dropoff, route, version };
+  const live = useRef({ user, profile });
+  live.current = { user, profile };
 
   useEffect(() => {
     const el = root.current;
@@ -175,7 +144,7 @@ export default function PlatformHomePage() {
       picture.replaceWith(holder);
       hero = { el: holder, alt: picture.alt };
     }
-    setPlaces({ root: el, hero, from: addressSlot(el, 'from'), to: addressSlot(el, 'to'), header: el.querySelector('[data-slot="header"]') });
+    setPlaces({ root: el, hero, booking: el.querySelector('[data-slot="booking"]'), header: el.querySelector('[data-slot="header"]') });
     version.init();
     wireCards(el);
     liveData(el, version.currency, version.locale);
@@ -209,69 +178,17 @@ export default function PlatformHomePage() {
       if (card && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(card.dataset.page!); }
     };
 
-    /* "Looking for a service?": the old booking widget's hand-off, from the design's form. */
-    const onSubmit = (e: Event) => {
-      if ((e.target as HTMLElement).id !== 'booking-form') return;
-      e.preventDefault();
-      const { pickup: from, dropoff: to, route: r, version: v } = live.current;
-      const say = (m: string) => { const st = el.querySelector('#booking-status'); if (st) st.textContent = m; };
-      const need = NEEDS[el.querySelector<HTMLSelectElement>('#service')?.selectedIndex ?? 0] ?? NEEDS[0];
-      if ('page' in need) { setPage(need.page); return; }
-      if ('scroll' in need) { el.querySelector(need.scroll)?.scrollIntoView({ behavior: 'smooth' }); return; }
-      if (!from) { say(v.noFrom); return; }
-      if (!to) { say(v.noTo); return; }
-      const dateInput = el.querySelector<HTMLInputElement>('#date');
-      const date = dateInput?.value ?? '';
-      if (date && dateInput?.min && date < dateInput.min) { say(v.pastDate); return; }
-      setBookingData({
-        pickupAddress: from.formatted, pickupLat: from.lat ?? null, pickupLng: from.lng ?? null,
-        pickupPostcode: from.postcode, pickupCity: from.city, pickupAddressData: from,
-        dropoffAddress: to.formatted, dropoffLat: to.lat ?? null, dropoffLng: to.lng ?? null,
-        dropoffPostcode: to.postcode, dropoffCity: to.city, dropoffAddressData: to,
-        distanceKm: r?.distanceKm ?? null, durationMinutes: r?.durationMinutes ?? null,
-        moveType: need.moveType, moveDate: date, step: 2,
-      });
-      setPage('booking');
-    };
     el.addEventListener('click', onClick);
     el.addEventListener('keydown', onKey);
-    el.addEventListener('submit', onSubmit);
-    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); el.removeEventListener('submit', onSubmit); };
+    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); };
   }, [version, setPage, setShowAuthModal, setAuthMode, setBookingData]);
-
-  /* The driving distance, as the old booking widget gets it (route-distance, with a straight-line fallback). */
-  useEffect(() => {
-    let cancelled = false;
-    setRoute(null);
-    if (pickup?.lat == null || pickup.lng == null || dropoff?.lat == null || dropoff.lng == null) return;
-    void getRouteDistance({ lat: pickup.lat, lng: pickup.lng }, { lat: dropoff.lat, lng: dropoff.lng })
-      .then(r => { if (!cancelled && r) setRoute({ distanceKm: r.distanceKm, durationMinutes: r.durationMinutes }); });
-    return () => { cancelled = true; };
-  }, [pickup, dropoff]);
-
-  /* The instant price on the design's status line, once both addresses are chosen. */
-  useEffect(() => {
-    const el = places?.root;
-    const status = el?.querySelector('#booking-status');
-    if (!el || !status) return;
-    if (!pickup || !dropoff) { status.textContent = ''; return; }
-    const need = NEEDS[el.querySelector<HTMLSelectElement>('#service')?.selectedIndex ?? 0];
-    const moveType = need && 'moveType' in need ? need.moveType : 'apartment';
-    const kr = new Intl.NumberFormat(version.locale).format(estimateMovePrice(moveType, route?.distanceKm));
-    status.textContent = version.estimate(`${kr} ${version.currency}`);
-  }, [places, pickup, dropoff, route, version]);
 
   return (
     <>
       <div key={language} ref={root} className="fgp" lang={language === 'no' ? 'nb' : 'en'} dangerouslySetInnerHTML={{ __html: version.html }} />
       {places?.hero && createPortal(<HeroSlides alt={places.hero.alt} />, places.hero.el)}
       {places?.header && createPortal(<HeaderExtras root={places.root} />, places.header)}
-      {places?.from && createPortal(
-        <NorwayAddressAutocomplete id="from" value={pickup?.formatted ?? ''} onSelect={setPickup} placeholder={version.from} required />,
-        places.from)}
-      {places?.to && createPortal(
-        <NorwayAddressAutocomplete id="to" value={dropoff?.formatted ?? ''} onSelect={setDropoff} placeholder={version.to} />,
-        places.to)}
+      {places?.booking && createPortal(<BookingCard />, places.booking)}
     </>
   );
 }

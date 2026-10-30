@@ -24,3 +24,26 @@
   .fgp .navlinks { gap: 14px; }
   .fgp .navlinks a { font-size: 11.5px; white-space: nowrap; }
 }
+/* The old booking widget in the design's booking card (BookingCard). */
+.fgp .fgp-booking-actions { display: flex; gap: 10px; }
+.fgp .fgp-booking-actions .btn-light { border: 1px solid var(--line); background: var(--white); color: var(--green); }
+.fgp .booking-status { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.fgp .booking-status .fgp-estimate { font-size: 15px; color: var(--green); }
+@media (max-width: 900px) { .fgp .fgp-booking-actions { grid-column: 1 / -1; } .fgp .fgp-booking-actions .btn { flex: 1; } }
+/* Phones (the design's own file is wider than the screen there): the
+ * business workspace's tab row scrolls inside its box, its columns may
+ * shrink, and the header fits the menu button beside the old menus. */
+@media (max-width: 900px) {
+  .fgp .bw-body > *, .fgp .bw-main, .fgp .bw-sidebar, .fgp .bw-panel,
+  .fgp .finance-body > *, .fgp .finance-main, .fgp .finance-side { min-width: 0; }
+  .fgp .finance-body { grid-template-columns: 1fr; }
+  .fgp .bw-nav, .fgp .finance-side nav { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; }
+  .fgp .bw-metrics, .fgp .bw-lower { grid-template-columns: 1fr; }
+}
+@media (max-width: 580px) {
+  .fgp .fgp-header { margin-right: 0; }
+  .fgp .fgp-header [role="group"] button { padding: 4px 7px; }
+  .fgp .navright .btn { padding: 0 12px; }
+  .fgp .navright .btn .arrow { display: none; }
+}
+.fgp { overflow-x: clip; }
