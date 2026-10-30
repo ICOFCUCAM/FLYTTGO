@@ -6,8 +6,10 @@ import { ownBooking as ownCompanyBooking } from '../lib/whiteLabel';
 import { BrandFooter, BrandHeader } from './whiteLabel/BrandFrame';
 import AuthModal from './AuthModal';
 import { isEmbedded, useEmbedResize } from '../lib/embed';
+import { isTransportHost } from '../lib/hosts';
 
 const HomePage           = lazy(() => import('./HomePage'));
+const PlatformHomePage   = lazy(() => import('./PlatformHomePage'));
 const BookingFlow        = lazy(() => import('./BookingFlow'));
 const DriverPortal       = lazy(() => import('./DriverPortal'));
 const DriverOnboarding   = lazy(() => import('./DriverOnboarding'));
@@ -95,7 +97,10 @@ export default function AppLayout() {
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'home':             return <HomePage />;
+      /* flyttgo.no: the platform's front page; transport.flyttgo.no and
+       * /transport: the moving and transport front page (docs/HOMEPAGES.md). */
+      case 'home':             return isTransportHost(window.location.hostname) ? <HomePage /> : <PlatformHomePage />;
+      case 'transport-home':   return <HomePage />;
       case 'booking':          return ownBooking ? <ServiceBookingPage /> : shopOnly ? <ShopPage /> : <BookingFlow />;
       case 'driver-portal':    return <DriverPortal />;
       case 'driver-onboarding':return <DriverOnboarding />;

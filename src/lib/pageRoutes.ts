@@ -1,5 +1,5 @@
 import type { Page } from './store';
-import { isFlyttgoHost } from './hosts';
+import { isFlyttgoHost, isTransportHost, TRANSPORT_HOST } from './hosts';
 
 /**
  * Bidirectional map between in-app Page ids and URL paths.
@@ -18,6 +18,8 @@ import { isFlyttgoHost } from './hosts';
 const PAGE_TO_PATH: Record<Page, string> = {
   /* Core flows */
   'home':                    '/',
+  /* The moving and transport front page; its own address is transport.flyttgo.no (docs/HOMEPAGES.md). */
+  'transport-home':          '/transport',
   'booking':                 '/book',
   'payment':                 '/payment',
   'tracking':                '/track',
@@ -99,7 +101,8 @@ export interface PageMeta {
 }
 
 const PAGE_TITLES: Record<Page, string> = {
-  'home':                    'FlyttGo — Moving & Transport Marketplace in Norway',
+  'home':                    'FlyttGo — Business and Marketplace Platform',
+  'transport-home':          'FlyttGo — Moving & Transport Marketplace in Norway',
   'booking':                 'Book a Move · FlyttGo',
   'payment':                 'Secure Payment · FlyttGo',
   'tracking':                'Track Your Delivery · FlyttGo',
@@ -152,6 +155,8 @@ const PAGE_TITLES: Record<Page, string> = {
  */
 const PAGE_DESCRIPTIONS: Record<Page, string> = {
   'home':
+    'Run a service company, take bookings and payments, send invoices, or launch a marketplace under your own brand. Moving and transport across Norway included.',
+  'transport-home':
     "Book approved movers and cargo drivers across Norway. Upfront prices incl. MVA, tracking during the job and secure card payment through Stripe.",
   'booking':
     'Book your next move online. Get an instant quote, pay securely through Stripe or Vipps, and follow your delivery on the tracking page.',
@@ -267,9 +272,13 @@ export function pageMeta(page: Page): PageMeta {
  */
 export function applyPageMeta(page: Page): void {
   if (typeof document === 'undefined') return;
-  const meta  = pageMeta(page);
-  const path  = pageToPath(page);
-  const url   = `https://flyttgo.no${path === '/' ? '' : path}`;
+  /* The front page of transport.flyttgo.no is the moving and transport
+   * page. It has one address, its own; every other page's is on
+   * flyttgo.no, whichever FlyttGo host shows it. */
+  const shown = page === 'home' && typeof window !== 'undefined' && isTransportHost(window.location.hostname) ? 'transport-home' : page;
+  const meta  = pageMeta(shown);
+  const path  = pageToPath(shown);
+  const url   = shown === 'transport-home' ? `https://${TRANSPORT_HOST}/` : `https://flyttgo.no${path === '/' ? '' : path}`;
   const image = 'https://flyttgo.no/og.svg';
 
   document.title = meta.title;

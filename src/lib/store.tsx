@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { pageToPath, pathToPage, applyPageMeta } from './pageRoutes';
 
 export type Page =
-  | 'home' | 'booking' | 'subscriptions' | 'customer-dashboard'
+  | 'home' | 'transport-home' | 'booking' | 'subscriptions' | 'customer-dashboard'
   | 'driver-portal' | 'admin' | 'my-bookings' | 'van-guide'
   | 'checklist' | 'driver-onboarding' | 'terms' | 'privacy'
   | 'liability' | 'driver-terms' | 'services' | 'corporate'

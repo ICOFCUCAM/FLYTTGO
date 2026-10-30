@@ -7,6 +7,7 @@ import { LogIn, Bell, User as UserIcon } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import type { Page as PageType } from '../lib/store';
 import { displayPhone, useCompanyIdentity } from '../lib/companyIdentity';
+import { isTransportHost } from '../lib/hosts';
 
 type Lang = 'en' | 'no';
 
@@ -276,6 +277,8 @@ export default function Header() {
             {/* Desktop nav */}
             <nav className="hidden lg:flex items-center gap-0.5">
               {navBtn(t('header.home'), 'home')}
+              {/* The moving and transport front page (docs/HOMEPAGES.md); on its own address it is Home. */}
+              {!isTransportHost(window.location.hostname) && navBtn(t('header.transport'), 'transport-home')}
               {navBtn(t('header.services'), 'services')}
 
               {/* Moving Tools */}
@@ -467,6 +470,7 @@ export default function Header() {
           <div className="max-w-7xl mx-auto px-4 pt-3 pb-4 space-y-1">
             {([
               [t('header.home'),         'home'],
+              ...(isTransportHost(window.location.hostname) ? [] : [[t('header.transport'), 'transport-home']]),
               [t('header.services'),     'services'],
               [t('header.becomeDriver'), 'driver-onboarding'],
               [t('header.companies'),    'corporate'],
