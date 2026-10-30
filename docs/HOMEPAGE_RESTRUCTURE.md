@@ -238,6 +238,10 @@ A visual upgrade of the same structure: the three journeys, the four capabilitie
 - **Provider network:** told as part of the ecosystem (same business tools and records); plans stay on their own page.
 - **Marketplace Studio:** says provider onboarding is in development.
 - **Network model:** three plain tiers a business owner can read: identities, shared infrastructure, then supply and demand. The connector labels are removed.
+- **The two flagship demonstrations** (`demoRecords.ts`, preview only): one example company's records.
+  - **Business workspace:** each tab shows a table of records (today's schedule, customers, services and prices, jobs, quotes, invoices, records, team) with status chips.
+  - **Financial workspace:** an invoice with line items, 25 % MVA, a KID and the total due; a quote; matched payments; expenses with receipts; the year-end export (preparation only); a monthly report.
+  - Everything is marked "example data" and amounts belong to the example company. The design's own script, shared with the platform page, is not changed: these render after it on the same tabs.
 - **Pictures:** one treatment with a deep-blue veil. The cleaning card uses the design's own living-room photograph (Unsplash licence); every other picture is FlyttGo's own.
 
 ## Stage D: content checked against the source

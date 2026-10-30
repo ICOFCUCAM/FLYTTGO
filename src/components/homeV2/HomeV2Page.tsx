@@ -6,8 +6,9 @@
  * twelve-section order, corrects wording the code does not support, and writes
  * design.v2(.no).html and design.v2.css here. This page renders it with the
  * design's own scripts, wires its cards and buttons to real pages, plays the
- * former homepage's slideshow in the hero picture and adds the real booking
- * widget between the hero and the first section. FlyttGo's menu bar and footer
+ * former homepage's slideshow in the hero picture, adds the real booking
+ * widget between the hero and the first section, and fills the business and
+ * financial workspaces with one example company's records (demoRecords.ts). FlyttGo's menu bar and footer
  * come from AppLayout. It replaces nothing until the owner approves it.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -22,6 +23,7 @@ import designEn from './design.v2.html?raw';
 import designNo from './design.v2.no.html?raw';
 import { initDesign as initEn } from '../platformHome/design-scripts';
 import { initDesign as initNo } from '../platformHome/design-scripts.no';
+import { installDemoRecords } from './demoRecords';
 import './design.v2.css';
 import './homeV2.css';
 
@@ -90,6 +92,7 @@ export default function HomeV2Page() {
       setHero({ el: holder, alt: picture.alt });
     }
     version.init();
+    const removeRecords = installDemoRecords(el, language === 'no' ? 'no' : 'en');
     wireCards(el);
 
     const open = (target: string) => {
@@ -118,8 +121,8 @@ export default function HomeV2Page() {
     };
     el.addEventListener('click', onClick);
     el.addEventListener('keydown', onKey);
-    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); };
-  }, [version, setPage, setShowAuthModal, setAuthMode]);
+    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); removeRecords(); };
+  }, [version, language, setPage, setShowAuthModal, setAuthMode]);
 
   return (
     <>
