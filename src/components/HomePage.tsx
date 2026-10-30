@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth';
 import { HERO_SLIDES, VAN_TYPES, CITIES, HOW_IT_WORKS, SUBSCRIPTION_PLANS, calculateCommission } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { getRouteDistance } from '../lib/routing';
+import { estimateMovePrice } from '../lib/moveEstimate';
 
 /* ── HERO SLIDER ── */
 function HeroSlider() {
@@ -108,9 +109,7 @@ function BookingWidget() {
 
   const handleEstimate = () => {
     if (!pickup?.formatted || !dropoff?.formatted) return;
-    const base: Record<string, number> = { 'single-item': 850, 'student': 1150, 'apartment': 1500, 'house': 2400, 'office': 3200 };
-    const km = distanceKm ?? 0;
-    setEstimatedPrice(Math.round((base[moveType] || 1500) + km * 12));
+    setEstimatedPrice(estimateMovePrice(moveType, distanceKm));
   };
 
   const handleBookNow = () => {

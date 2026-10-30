@@ -6,8 +6,11 @@ import { ownBooking as ownCompanyBooking } from '../lib/whiteLabel';
 import { BrandFooter, BrandHeader } from './whiteLabel/BrandFrame';
 import AuthModal from './AuthModal';
 import { isEmbedded, useEmbedResize } from '../lib/embed';
+import { isTransportHost } from '../lib/hosts';
 
 const HomePage           = lazy(() => import('./HomePage'));
+const PlatformHomePage   = lazy(() => import('./PlatformHomePage'));
+const HomeV2Page         = lazy(() => import('./homeV2/HomeV2Page'));
 const BookingFlow        = lazy(() => import('./BookingFlow'));
 const DriverPortal       = lazy(() => import('./DriverPortal'));
 const DriverOnboarding   = lazy(() => import('./DriverOnboarding'));
@@ -90,12 +93,21 @@ export default function AppLayout() {
   /* The auth callback page is a transient, full-screen landing surface
    * for Supabase email-confirmation / OAuth redirects — chrome would
    * just be visual noise during the ~100 ms session handoff. */
+  /* flyttgo.no shows the platform front page; transport.flyttgo.no the
+   * moving and transport one (docs/HOMEPAGES.md). Both have FlyttGo's menu bar
+   * (on the platform page with its Platform dropdown and square corners) and footer. */
+  const platformHome = currentPage === 'home' && !isTransportHost(window.location.hostname);
   const showHeader = currentPage !== 'auth-callback' && !embedded;
   const showFooter = !embedded && (!['booking', 'driver-portal', 'admin', 'auth-callback'].includes(currentPage) || (currentPage === 'booking' && (ownBooking || shopOnly)));
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'home':             return <HomePage />;
+      /* flyttgo.no: the platform's front page; transport.flyttgo.no and
+       * /transport: the moving and transport front page (docs/HOMEPAGES.md). */
+      case 'home':             return platformHome ? <PlatformHomePage /> : <HomePage />;
+      case 'transport-home':   return <HomePage />;
+      /* The restructured homepage under review (docs/HOMEPAGE_RESTRUCTURE.md). */
+      case 'home-preview':     return <HomeV2Page />;
       case 'booking':          return ownBooking ? <ServiceBookingPage /> : shopOnly ? <ShopPage /> : <BookingFlow />;
       case 'driver-portal':    return <DriverPortal />;
       case 'driver-onboarding':return <DriverOnboarding />;
