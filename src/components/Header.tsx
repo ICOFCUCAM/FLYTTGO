@@ -195,10 +195,10 @@ export default function Header() {
 
   /* On the restructured homepage (/preview/home, docs/HOMEPAGE_RESTRUCTURE.md)
    * the menu follows the three journeys: Explore, My Company, For
-   * Organisations. Every item of the menu bar is kept inside them (Moving is
-   * Book Now, Provider network is Become a Driver, the Moving Tools and the
-   * Companies links are their groups), and creating a marketplace of one's
-   * own sits apart at the foot of For Organisations as a specialised offering. */
+   * Organisations, with Become a Driver and Book Now on the bar as before.
+   * The Moving Tools and the Companies links are groups inside the menus, and
+   * creating a marketplace of one's own sits apart at the foot of For
+   * Organisations as a specialised offering. */
   const preview = currentPage === 'home-preview';
   type JourneyItem = { label: string; desc: string; go: () => void };
   const page = (label: string, desc: string, to: Page): JourneyItem => ({ label, desc, go: () => handleNav(to) });
@@ -369,7 +369,7 @@ export default function Header() {
                 {JOURNEYS.map((j) => (
                   <div key={j.id} className="relative">
                     <button onClick={() => toggleJourney(j.id)} aria-expanded={journeyOpen === j.id}
-                      className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition ${
+                      className={`flex items-center gap-1 px-2.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium transition ${
                         journeyOpen === j.id ? 'text-emerald-600 bg-emerald-50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                       }`}>{j.label}{chevron(journeyOpen === j.id)}</button>
                     {journeyOpen === j.id && (
@@ -379,6 +379,7 @@ export default function Header() {
                     )}
                   </div>
                 ))}
+                <button onClick={() => handleNav('driver-onboarding')} className="px-2.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.becomeDriver')}</button>
               </nav>
             )}
             <nav className={preview ? 'hidden' : 'hidden lg:flex items-center gap-0.5'}>
@@ -441,8 +442,7 @@ export default function Header() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
-              {/* On the restructured homepage Book Now is Explore › Moving. */}
-              <button onClick={() => handleNav('booking')} className={`${preview ? 'hidden' : 'hidden sm:flex'} items-center gap-1.5 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition shadow-sm`}>{t('header.bookNow')}</button>
+              <button onClick={() => handleNav('booking')} className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 xl:px-5 whitespace-nowrap' : 'px-5'} py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition shadow-sm`}>{t('header.bookNow')}</button>
 
               {/* Notifications bell — signed-in only. Subscribes to
                * the notifications table over Supabase Realtime; flips
@@ -551,14 +551,14 @@ export default function Header() {
                 <>
                   <button
                     onClick={openSignIn}
-                    className="hidden sm:flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm"
+                    className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm`}
                   >
                     <LogIn className="w-4 h-4" />
                     {t('header.signIn')}
                   </button>
                   <button
                     onClick={openSignUp}
-                    className={`hidden sm:flex items-center gap-1.5 px-4 py-2 border rounded-lg text-sm font-semibold transition shadow-sm ${
+                    className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border rounded-lg text-sm font-semibold transition shadow-sm ${
                       preview ? 'bg-[#203F68] border-[#203F68] text-white hover:bg-[#18324f]' : 'border-emerald-600 text-emerald-600 hover:bg-emerald-50'
                     }`}
                   >
@@ -591,6 +591,9 @@ export default function Header() {
                 {journeyMenu(j)}
               </div>
             ))}
+            {preview && (
+              <button onClick={() => handleNav('driver-onboarding')} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.becomeDriver')}</button>
+            )}
             {!preview && ([
               [t('header.home'),         'home'],
               ...(isTransportHost(window.location.hostname) ? [] : [[t('header.transport'), 'transport-home']]),

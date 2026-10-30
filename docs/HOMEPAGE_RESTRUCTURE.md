@@ -145,12 +145,12 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
 - **Hero and entry cards:**
   - The hero has two buttons, Find a service and Manage my business. Marketplace creation is a quiet text link after them.
   - In the entry section, Find a Service and My Company sit side by side. Create a Marketplace is a quieter full-width strip below them, labelled "Specialised offering · White label". Type sizes are unchanged.
-- **Menu** (`Header.tsx`, only on `/preview/home`): Explore, My Company, For Organisations, Sign in and Get started.
-  - Explore holds Services, Moving (Book Now), Transport and Local services, plus the Moving Tools group.
+- **Menu** (`Header.tsx`, only on `/preview/home`): Explore, My Company, For Organisations, Become a Driver, Book Now, Sign in and Get started. Labels stay on one line from 1024 px.
+  - Explore holds Services, Moving, Transport and Local services, plus the Moving Tools group.
   - My Company holds Business workspace, Business tools and Payments and finance, with the "no marketplace of your own needed" note.
-  - For Organisations holds Corporate solutions and Provider network (Become a Driver), plus the Companies links group. Create a marketplace sits apart at its foot as a specialised offering.
+  - For Organisations holds Corporate solutions and Provider network, plus the Companies links group. Create a marketplace sits apart at its foot as a specialised offering.
   - No item of the earlier menu bar is lost. The logo leads home. On every other page the menu bar is unchanged.
-- **The headline is the owner's own words:** "Assisting Companies to Fly High. Own your marketplace."
+- **The headline is the owner's own words:** "Assisting Companies to Fly High. Run your company." It sits in the hero's left column and is sized to it: "Assisting Companies" runs the full width of the column, with the picture beside it for the full height.
 
 ## Stage D: content checked against the source
 

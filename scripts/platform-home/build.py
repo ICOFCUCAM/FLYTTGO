@@ -264,7 +264,8 @@ V2_SECTIONS = [                                   # (attribute in the section's 
 # Wording the code does not support, corrected (the audit's status table).
 V2_CLAIMS = [
     # The owner's headline for the restructured page (brief, 30 October 2026).
-    ('<h1 class="display">Build your business.<br/>', '<h1 class="display">Assisting Companies to Fly High.<br/>'),
+    ('<h1 class="display">Build your business.<br/><span class="serif">Own your marketplace.</span></h1>',
+     '<h1 class="display"><span class="h1-line">Assisting Companies</span> <span class="h1-line">to Fly High.</span><br/><span class="serif">Run your company.</span></h1>'),
     # The three entry points in the owner's words (30 October 2026): customer,
     # business and specialist, each with who it is for and where it leads.
     ('<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">One platform. Three ways to get started.</h2><p>Whether you need a service, run a company or want to build a marketplace, start with what matters to you.</p>',
