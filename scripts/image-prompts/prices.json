@@ -1,0 +1,10 @@
+{
+  "note": "ASSUMED figures for the dry run's estimate and the --max-cost guard only. They are NOT OpenAI's prices: check https://openai.com/api/pricing/ before every run and change them here or with --price-per-image. Set per_million_tokens from the same page to have the cost log compute the actual cost from the usage the API returns (left null, it records the tokens only).",
+  "currency": "USD",
+  "per_image": {
+    "low":    { "1024x1024": 0.02, "1536x1024": 0.03, "1024x1536": 0.03 },
+    "medium": { "1024x1024": 0.05, "1536x1024": 0.08, "1024x1536": 0.08 },
+    "high":   { "1024x1024": 0.20, "1536x1024": 0.30, "1024x1536": 0.30 }
+  },
+  "per_million_tokens": { "text_input": null, "image_input": null, "output": null }
+}
