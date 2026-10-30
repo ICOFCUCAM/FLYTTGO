@@ -31,6 +31,9 @@ type Page = {
 type Context = { newPage(): Promise<Page>; close(): Promise<void> };
 type Browser = { newContext(o: Record<string, unknown>): Promise<Context>; close(): Promise<void> };
 
+
+/** Optional: not a dependency, so it is imported by name (TypeScript does not resolve it; CI has no Playwright). */
+const PLAYWRIGHT = 'playwright';
 export interface Snapshotter {
   /** The page after its scripts have run, as HTML (scripts still in it). */
   settle(html: string): Promise<string>;
@@ -66,7 +69,7 @@ const allowOnly = (hosts: string[]) => async (r: Route) => {
 export async function snapshotter(): Promise<Snapshotter | null> {
   let chromium: { launch(o?: Record<string, unknown>): Promise<Browser> };
   try {
-    ({ chromium } = await import('playwright') as unknown as { chromium: typeof chromium });
+    ({ chromium } = await import(PLAYWRIGHT) as unknown as { chromium: typeof chromium });
   } catch {
     return null;
   }

@@ -81,6 +81,9 @@ import {
 import { imageInfo, sha256Hex } from '../supabase/functions/_shared/template-images.ts';
 import { EXCLUDED_INDUSTRIES, categoryLabel } from '../supabase/functions/_shared/site-template.ts';
 
+
+/** Optional: not a dependency, so it is imported by name (TypeScript does not resolve it; CI has no Playwright). */
+const PLAYWRIGHT = 'playwright';
 export const MODEL = 'gpt-image-1';
 export const API_URL = 'https://api.openai.com/v1/images/generations';
 export const ORIGIN = 'AI-generated (OpenAI gpt-image-1)';
@@ -429,7 +432,7 @@ type Pw = { newPage(o: Record<string, unknown>): Promise<Img>; close(): Promise<
 /** A local browser (Playwright, optional) for the hero crop and the contact sheet; nothing is fetched from the network. */
 export async function browser(): Promise<Pw | null> {
   try {
-    const { chromium } = await import('playwright') as unknown as { chromium: { launch(): Promise<Pw> } };
+    const { chromium } = await import(PLAYWRIGHT) as unknown as { chromium: { launch(): Promise<Pw> } };
     return await chromium.launch();
   } catch {
     return null;

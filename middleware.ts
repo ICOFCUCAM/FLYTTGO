@@ -17,7 +17,7 @@
 // Needs VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in the Vercel project
 // (already set for the app; docs/DEPLOYMENT.md §1).
 // ============================================================================
-import { embedSlug, frameAncestors } from './supabase/functions/_shared/widget.ts';
+import { embedSlug, frameAncestors } from './supabase/functions/_shared/widget.js';
 
 export const config = { matcher: '/embed/:path*' };
 
