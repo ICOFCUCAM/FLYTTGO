@@ -1,0 +1,5 @@
+/* What the app adds to the design's styles (design.css is generated):
+ * the real address lookup sits in the booking form's fields, and its pin
+ * icon needs room before the text. */
+.fgp .fgp-address input { padding-left: 2.25rem; width: 100%; }
+.fgp .fgp-address label { display: none; }

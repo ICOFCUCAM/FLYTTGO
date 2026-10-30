@@ -24,5 +24,5 @@ export function isTransportHost(host: string): boolean {
  * keeps the visitor signed in.
  */
 export function transportUrl(): string {
-  return ((import.meta.env.VITE_TRANSPORT_URL as string | undefined) ?? '').replace(/\/+$/, '') || '/transport';
+  return (import.meta.env.VITE_TRANSPORT_URL ?? '').replace(/\/+$/, '') || '/transport';
 }

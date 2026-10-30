@@ -4,7 +4,7 @@ Owner's decision, 2026-10-30.
 
 | Address | Shows |
 |---|---|
-| `flyttgo.no` (and `www.`) | The **platform front page** (`src/components/PlatformHomePage.tsx`): business tools, the marketplace, white-label sites, industries and moving. Built from the owner's "Stage 20" design (`Open FlyttGo Homepage — Stage 20 (HTML)/index.html`, kept as the reference). |
+| `flyttgo.no` (and `www.`) | The **platform front page** (`src/components/PlatformHomePage.tsx`): the owner's premium design, `docs/flyttgo-premium-platform-homepage-stage-20.html`, as designed (layout, text, colours, pictures, its header and interactive panels), with FlyttGo's own footer. |
 | `transport.flyttgo.no` | The **moving and transport front page** (`src/components/HomePage.tsx`), unchanged: price estimate, van types, cities, testimonials, driver and corporate calls to action. |
 | `flyttgo.no/transport` | The same moving and transport front page, on the main site. |
 
@@ -23,8 +23,20 @@ Owner's decision, 2026-10-30.
   - every other page: on `https://flyttgo.no`.
 - **Where its links go:** links from the platform page to the moving page go to `/transport`, which keeps the visitor signed in, until `VITE_TRANSPORT_URL` is set in the Vercel project. After that they go to that address. Sign-in is kept per address by the browser, so a visitor signed in on one address is not signed in on the other.
 - **The subdomain is reserved:** every company's page is also `<slug>.flyttgo.no`. Migration `00027` reserves `transport`, `moving` and `flytting` so no company can take them (none had them; rollback `supabase/rollback/00027_down.sql`).
-- **Colours and text:** the platform page uses the site's existing colours (emerald, grey, the business pages' navy #1A365D) and is in English and Norwegian (`platformHome` in `src/lib/locales/`).
-- **The copy describes only what works today** (owner's decision): quotes are "send a price, the customer accepts"; bookkeeping is vouchers, receipts and MVA codes; year-end documents are SAF-T and næringsspesifikasjon figures for the accountant to check. FlyttGo files nothing for the company.
+- **The design is the source.** `scripts/platform-home/build.py` turns the design file into `src/components/platformHome/`:
+  - `design.html`: the markup, without scripts and without the design's footer;
+  - `design.css`: its styles, scoped under `.fgp` so they change nothing outside the page;
+  - `design-scripts.ts`: its menu, tabs and previews.
+
+  After the design changes, run `python3 -I scripts/platform-home/build.py` and commit the result. Never edit the generated files. `app.css` holds the one style the app adds.
+- **What the app wires in** (`PlatformHomePage.tsx`):
+  - Links that lead to a FlyttGo page carry `data-page` (list in `build.py`): services, booking, business, white label, API, become a driver.
+  - Sign in and Get started open the sign-in dialog, or the dashboard once signed in.
+  - "Looking for a service?" uses the real address lookup (Kartverket) and hands the addresses and date to the booking flow, as the moving page's widget does. Electrician and home services open `/services`; company logistics open `/business`.
+  - In-page links (`#section`) stay as designed.
+- **Header and footer:** the page has the design's own header. FlyttGo's header (language switch, notifications, account menu) is on every other page and on the moving page. The footer is FlyttGo's own (owner, 2026-10-30).
+- **Language:** the design is in English; a Norwegian version of its text is still to be written.
+- **Typefaces:** DM Sans and Manrope load from Google Fonts while this page is shown.
 
 ## Making transport.flyttgo.no live
 
