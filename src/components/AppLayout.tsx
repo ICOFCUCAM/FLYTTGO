@@ -92,10 +92,10 @@ export default function AppLayout() {
   /* The auth callback page is a transient, full-screen landing surface
    * for Supabase email-confirmation / OAuth redirects — chrome would
    * just be visual noise during the ~100 ms session handoff. */
-  /* The platform front page on flyttgo.no has the design's own header
-   * (docs/HOMEPAGES.md); it keeps FlyttGo's footer. */
+  /* flyttgo.no shows the platform front page; transport.flyttgo.no the
+   * moving and transport one (docs/HOMEPAGES.md). Both have FlyttGo's menu bar and footer. */
   const platformHome = currentPage === 'home' && !isTransportHost(window.location.hostname);
-  const showHeader = currentPage !== 'auth-callback' && !embedded && !platformHome;
+  const showHeader = currentPage !== 'auth-callback' && !embedded;
   const showFooter = !embedded && (!['booking', 'driver-portal', 'admin', 'auth-callback'].includes(currentPage) || (currentPage === 'booking' && (ownBooking || shopOnly)));
 
   const renderPage = () => {

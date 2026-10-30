@@ -171,6 +171,97 @@ def scope_css(css: str) -> str:
     return '\n'.join(out)
 
 
+# ── The former homepage's working parts (owner, 2026-10-30) ─────────────────
+# The design's own header and top line give way to FlyttGo's menu bar. These
+# sections of the design are replaced by the former homepage's real
+# sections (src/components/HomePage.tsx), which PlatformHomePage renders into
+# the slot: same id, so the design's links to them still work.
+SLOTS = [
+    ('section', 'id="booking"', 'booking'),            # BookingWidget: address lookup, price estimate
+    ('section', 'id="corporate-benefits"', 'corporate'),  # CorporateCTA
+    ('section', 'id="driver-plans"', 'subscriptions'),  # SubscriptionTeaser
+    ('section', 'id="driver-network"', 'driver'),       # DriverCTA
+    ('section', 'id="moving-services"', 'services'),    # ServicesSection
+    ('section', 'id="how-it-works"', 'how'),            # HowItWorks
+    ('section', 'id="van-types"', 'vans'),              # VanTypesSection
+    ('section', 'id="moving-tools"', 'tools'),          # MovingToolsSection
+    ('section', 'id="cities"', 'cities'),               # CitiesSection
+    ('section', 'class="metrics wrap"', 'stats'),       # TrustBar and StatsSection
+    ('section', 'class="section testimonials"', 'testimonials'),  # TestimonialsSection
+]
+
+
+def element_span(body: str, start: int, tag: str) -> int:
+    """End index of the element opening at start (nested tags of the same name counted)."""
+    depth, i = 0, start
+    pat = re.compile(r'<(/?)%s\b[^>]*>' % tag)
+    for m in pat.finditer(body, start):
+        depth += -1 if m.group(1) else 1
+        if depth == 0:
+            return m.end()
+    raise SystemExit(f'unclosed <{tag}> at {start}')
+
+
+def slot_sections(body: str) -> str:
+    for tag, attr, name in SLOTS:
+        m = re.search(r'<%s\b[^>]*%s[^>]*>' % (tag, re.escape(attr)), body)
+        if not m:
+            raise SystemExit(f'slot {name}: no <{tag} {attr}> in the design')
+        end = element_span(body, m.start(), tag)
+        ident = re.search(r'\bid="([^"]*)"', m.group(0))
+        id_attr = f' id="{ident.group(1)}"' if ident else ''
+        body = body[:m.start()] + f'<section{id_attr} class="fgp-slot" data-slot="{name}"></section>' + body[end:]
+    # FlyttGo's menu bar replaces the design's top line and header.
+    body = re.sub(r'<div class="topline"[^>]*>.*?</div>\s*', '', body, count=1, flags=re.S)
+    body = re.sub(r'<header class="wrap nav">.*?</header>\s*', '', body, count=1, flags=re.S)
+    return body
+
+
+# The former homepage's colours (owner, 2026-10-30): navy #1A365D for dark
+# sections and buttons, emerald for accents and calls to action, white for
+# the light grounds. Each colour of the design moves by its hue family:
+# dark greens to navy, mid greens and golds to emerald, the ivory and
+# green-tinted greys to white and slate. Lightness is kept, so contrast is.
+import colorsys
+
+
+def recolour(r: int, g: int, b: int) -> tuple[int, int, int]:
+    h, l, sat = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+    deg = h * 360
+    if sat < 0.06 and (l > 0.97 or l < 0.08):
+        return r, g, b                                   # white and black stay
+    nl = l
+    if 25 <= deg < 70 and sat > 0.2:                     # golds -> emerald-600 (readable on white); beiges -> emerald-50
+        nh, ns = (160 / 360, 0.90) if l < 0.8 else (152 / 360, 0.55)
+        nl = min(l, 0.34) if l < 0.8 else l
+    elif 70 <= deg < 190 and l < 0.42 and sat > 0.12:    # dark greens -> navy
+        nh, ns = 214 / 360, 0.56
+    elif 70 <= deg < 190 and sat > 0.25:                 # mid greens -> emerald
+        nh, ns = 160 / 360, 0.84
+    elif l > 0.86:                                       # ivory and pale green-greys -> white / slate-50
+        return (255, 255, 255) if l > 0.95 else tuple(round(x * 255) for x in colorsys.hls_to_rgb(214 / 360, l, 0.30))
+    else:                                                # green-tinted greys -> slate
+        nh, ns = 215 / 360, min(sat, 0.20)
+    return tuple(round(x * 255) for x in colorsys.hls_to_rgb(nh, nl, ns))
+
+
+def recolour_css(css: str) -> str:
+    def hexrep(m: re.Match) -> str:
+        v = m.group(1)
+        if len(v) == 3:
+            v = ''.join(c * 2 for c in v)
+        r, g, b = (int(v[i:i + 2], 16) for i in (0, 2, 4))
+        return '#%02x%02x%02x' % recolour(r, g, b)
+
+    def rgbrep(m: re.Match) -> str:
+        r, g, b = (int(x) for x in m.group(2, 3, 4))
+        nr, ng, nb = recolour(r, g, b)
+        return f'{m.group(1)}({nr},{ng},{nb}{m.group(5)})'
+
+    css = re.sub(r'#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', hexrep, css)
+    return re.sub(r'(rgba?)\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(,[^)]*)?\)', lambda m: rgbrep(m) if True else m.group(0), css)
+
+
 # ── Norwegian (owner, 2026-10-30) ───────────────────────────────────────────
 # scripts/platform-home/no.json maps each English text of the page (HTML text,
 # placeholder/aria-label/title/alt, and the scripts' visible strings) to its
@@ -264,6 +355,7 @@ def main() -> int:
     body = re.sub(r'<style\b.*?</style>', '', body, flags=re.S)
     # FlyttGo's own footer replaces the design's (owner, 2026-10-30).
     body = re.sub(r'<footer\b.*?</footer>', '', body, flags=re.S)
+    body = slot_sections(body)
     body, used = wire_links(body)
 
     # The booking form is handled by the app (real address lookup and booking),
@@ -284,10 +376,6 @@ def main() -> int:
         return 0
 
     def write(suffix: str, page: str, scs: list[str], lang: str) -> None:
-        # The language switch FlyttGo's own header has, in the design's header.
-        other = ('no', 'nb', 'Norsk') if lang == 'English' else ('en', 'en', 'English')
-        switch = f'<button type="button" class="login fgp-lang" data-lang="{other[0]}" lang="{other[1]}">{other[2]}</button>'
-        page = page.replace('<div class="navright">', '<div class="navright">' + switch, 1)
         header = f'<!-- Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html ({lang}). Do not edit. -->\n'
         (OUT / f'design{suffix}.html').write_text(header + page + '\n', encoding='utf-8')
         js = ['// Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html (' + lang + ').',
@@ -302,7 +390,7 @@ def main() -> int:
     write('', body, scripts, 'English')
     (OUT / 'design.css').write_text(
         '/* Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html.\n'
-        ' * The design\'s styles, scoped under .fgp. Do not edit. */\n' + scope_css(css) + '\n', encoding='utf-8')
+        ' * The design\'s styles, scoped under .fgp, in FlyttGo\'s navy, emerald and white. Do not edit. */\n' + recolour_css(scope_css(css)) + '\n', encoding='utf-8')
 
     import json
     no = json.loads(NO_JSON.read_text(encoding='utf-8')) if NO_JSON.exists() else {}

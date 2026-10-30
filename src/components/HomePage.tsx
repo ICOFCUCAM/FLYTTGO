@@ -6,6 +6,9 @@ import { HERO_SLIDES, VAN_TYPES, CITIES, HOW_IT_WORKS, SUBSCRIPTION_PLANS, calcu
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { getRouteDistance } from '../lib/routing';
 
+/* The sections below are also rendered on the platform front page
+ * (PlatformHomePage, docs/HOMEPAGES.md). */
+
 /* ── HERO SLIDER ── */
 function HeroSlider() {
   const [idx, setIdx] = useState(0);
@@ -68,7 +71,7 @@ function HeroSlider() {
 
 /* ── BOOKING WIDGET ── */
 
-function BookingWidget() {
+export function BookingWidget() {
   const { setPage, setBookingData } = useApp();
   const { t } = useTranslation();
   /* Structured Norwegian addresses from Kartverket (same component the
@@ -235,7 +238,7 @@ function BookingWidget() {
  * Sits between the booking widget and the stats section. It's the
  * first thing the customer sees after the hero, so it does the heavy
  * lifting on perceived legitimacy. */
-function TrustBar() {
+export function TrustBar() {
   const { t } = useTranslation();
   const items = [
     { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
@@ -276,7 +279,7 @@ function TrustBar() {
 /* ── STATS ──
  * How the service works, not figures: FlyttGo publishes no counts or
  * ratings it cannot back (platform audit 2026-10-30, owner's decision). */
-function StatsSection() {
+export function StatsSection() {
   const { t } = useTranslation();
   return (
     <section className="py-16">
@@ -306,7 +309,7 @@ function StatsSection() {
 }
 
 /* ── SERVICES SECTION ── */
-function ServicesSection() {
+export function ServicesSection() {
   const { setPage } = useApp();
   const { t } = useTranslation();
   const services = [
@@ -345,7 +348,7 @@ function ServicesSection() {
 }
 
 /* ── HOW IT WORKS ── */
-function HowItWorks() {
+export function HowItWorks() {
   const { t } = useTranslation();
   return (
     <section className="py-20">
@@ -369,7 +372,7 @@ function HowItWorks() {
 }
 
 /* ── VAN TYPES ── */
-function VanTypesSection() {
+export function VanTypesSection() {
   const { setPage } = useApp();
   const { t } = useTranslation();
   const vanKey: Record<string, string> = { small_van: 'vanSmall', medium_van: 'vanMedium', large_van: 'vanLarge', luton_van: 'vanLuton' };
@@ -412,7 +415,7 @@ function VanTypesSection() {
 }
 
 /* ── MOVING TOOLS ── */
-function MovingToolsSection() {
+export function MovingToolsSection() {
   const { setPage } = useApp();
   const { t } = useTranslation();
   const tools = [
@@ -450,7 +453,7 @@ function MovingToolsSection() {
 }
 
 /* ── CITIES ── */
-function CitiesSection() {
+export function CitiesSection() {
   const { setPage } = useApp();
   const { t } = useTranslation();
   return (
@@ -483,7 +486,7 @@ function CitiesSection() {
  * This section showed customer reviews; FlyttGo has none to show yet, so
  * it says what every booking includes instead (platform audit 2026-10-30).
  * Real reviews belong here once customers have left them. */
-function TestimonialsSection() {
+export function TestimonialsSection() {
   const { t } = useTranslation();
   return (
     <section className="py-20 bg-gray-50">
@@ -507,7 +510,7 @@ function TestimonialsSection() {
 }
 
 /* ── SUBSCRIPTION TEASER ── */
-function SubscriptionTeaser() {
+export function SubscriptionTeaser() {
   const { setPage, setShowAuthModal, setAuthMode } = useApp();
   const { user, profile } = useAuth();
   const { t } = useTranslation();
@@ -559,7 +562,7 @@ function SubscriptionTeaser() {
 }
 
 /* ── CORPORATE CTA ── */
-function CorporateCTA() {
+export function CorporateCTA() {
   const { setPage, setShowAuthModal, setAuthMode } = useApp();
   const { t } = useTranslation();
   const features = [
@@ -619,7 +622,7 @@ function CorporateCTA() {
 }
 
 /* ── DRIVER CTA ── */
-function DriverCTA() {
+export function DriverCTA() {
   const { setShowAuthModal, setAuthMode } = useApp();
   const { t } = useTranslation();
   const features = [

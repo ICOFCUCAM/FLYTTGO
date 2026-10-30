@@ -3,6 +3,17 @@
  * icon needs room before the text. */
 .fgp .fgp-address input { padding-left: 2.25rem; width: 100%; }
 .fgp .fgp-address label { display: none; }
-/* The language switch added to the design's header (FlyttGo's header has one). */
-.fgp .fgp-lang { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
-@media (max-width: 900px) { .fgp .navright .fgp-lang { display: inline-block; } }
+/* The former homepage's colours, exactly (owner, 2026-10-30): navy for dark
+ * sections and buttons, emerald for accents, white grounds. build.py moves
+ * the design's other colours into the same families. */
+.fgp { --green: #1A365D; --green2: #2D4A7A; --gold: #059669; --paper: #ffffff; --white: #ffffff;
+       --ink: #111827; --muted: #4b5563; --mint: #ecfdf5; --line: #e5e7eb; }
+/* The former homepage's sections render into these slots with their own styles. */
+.fgp .fgp-slot { display: block; font-family: ui-sans-serif, system-ui, sans-serif; }
+/* The slideshow in the hero picture: the former homepage's slides, crossfading. */
+.fgp .hero-visual .fgp-slides { position: absolute; inset: 0; }
+.fgp .hero-visual .fgp-slides img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1s ease; }
+.fgp .hero-visual .fgp-slides img.on { opacity: 1; }
+.fgp .fgp-dots { position: absolute; right: 22px; bottom: 18px; display: flex; gap: 6px; z-index: 3; }
+.fgp .fgp-dots button { width: 8px; height: 8px; border-radius: 9999px; border: 0; padding: 0; background: rgba(255,255,255,.55); }
+.fgp .fgp-dots button.on { background: #fff; width: 22px; }

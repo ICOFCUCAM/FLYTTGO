@@ -4,7 +4,7 @@ Owner's decision, 2026-10-30.
 
 | Address | Shows |
 |---|---|
-| `flyttgo.no` (and `www.`) | The **platform front page** (`src/components/PlatformHomePage.tsx`): the owner's premium design, `docs/flyttgo-premium-platform-homepage-stage-20.html`, as designed (layout, text, colours, pictures, its header and interactive panels), with FlyttGo's own footer. |
+| `flyttgo.no` (and `www.`) | The **platform front page** (`src/components/PlatformHomePage.tsx`): the owner's premium design (`docs/flyttgo-premium-platform-homepage-stage-20.html`) with everything the former homepage had. It keeps FlyttGo's menu bar and footer, the slideshow in the hero picture, the booking widget, and the former sections in their places. It is shown in navy, emerald and white. |
 | `transport.flyttgo.no` | The **moving and transport front page** (`src/components/HomePage.tsx`), unchanged: price estimate, van types, cities, testimonials, driver and corporate calls to action. |
 | `flyttgo.no/transport` | The same moving and transport front page, on the main site. |
 
@@ -24,18 +24,33 @@ Owner's decision, 2026-10-30.
 - **Where its links go:** links from the platform page to the moving page go to `/transport`, which keeps the visitor signed in, until `VITE_TRANSPORT_URL` is set in the Vercel project. After that they go to that address. Sign-in is kept per address by the browser, so a visitor signed in on one address is not signed in on the other.
 - **The subdomain is reserved:** every company's page is also `<slug>.flyttgo.no`. Migration `00027` reserves `transport`, `moving` and `flytting` so no company can take them (none had them; rollback `supabase/rollback/00027_down.sql`).
 - **The design is the source.** `scripts/platform-home/build.py` turns the design file into `src/components/platformHome/`:
-  - `design.html`: the markup, without scripts and without the design's footer;
-  - `design.css`: its styles, scoped under `.fgp` so they change nothing outside the page;
+  - `design.html`: the markup, without scripts, and without the design's top line, header and footer (FlyttGo's are used);
+  - `design.css`: its styles, scoped under `.fgp` so they change nothing outside the page, and recoloured (`recolour()`): dark greens to navy, golds and mid greens to emerald, ivory to white. `app.css` pins the main colours to the site's exact values: navy #1A365D, its hover #2D4A7A, emerald #059669, white;
   - `design-scripts.ts`: its menu, tabs and previews.
 
   After the design changes, run `python3 -I scripts/platform-home/build.py` and commit the result. Never edit the generated files. `app.css` holds the one style the app adds.
+- **The former homepage inside the design** (owner, 2026-10-30): `SLOTS` in `build.py` turns these design sections into empty slots with the same id, and the page renders the former homepage's real sections into them (exported from `HomePage.tsx`). The design's links to those sections still work.
+
+  | Former homepage section | Design slot |
+  |---|---|
+  | Booking widget | `#booking` |
+  | Trust bar and stats | metrics |
+  | Services | `#moving-services` |
+  | How it works | `#how-it-works` |
+  | Van types | `#van-types` |
+  | Moving tools | `#moving-tools` |
+  | Cities | `#cities` |
+  | Testimonials | testimonials |
+  | Driver subscriptions | `#driver-plans` |
+  | Corporate call to action | `#corporate-benefits` |
+  | Driver call to action | `#driver-network` |
+
+  The slideshow (`HERO_SLIDES`) plays in the design's hero picture, after the design's own picture. It changes every 5 seconds, has dots, and stays still under reduced motion.
 - **What the app wires in** (`PlatformHomePage.tsx`):
   - Links that lead to a FlyttGo page carry `data-page` (list in `build.py`): services, booking, business, white label, API, become a driver.
-  - Sign in and Get started open the sign-in dialog, or the dashboard once signed in.
-  - "Looking for a service?" uses the real address lookup (Kartverket) and hands the addresses and date to the booking flow, as the moving page's widget does. Electrician and home services open `/services`; company logistics open `/business`.
   - In-page links (`#section`) stay as designed.
-- **Header and footer:** the page has the design's own header. FlyttGo's header (language switch, notifications, account menu) is on every other page and on the moving page. The footer is FlyttGo's own (owner, 2026-10-30).
-- **Language:** English and Bokmål, following the site's language. A switch (Norsk / English) is added to the design's header, as FlyttGo's own header has one.
+- **Header and footer:** FlyttGo's own menu bar (sign-in, language switch, notifications, account menu, Book Now) and footer, as on every page (owner, 2026-10-30).
+- **Language:** English and Bokmål, following the site's language. The menu bar's EN/NO switch changes it.
   - Every English text of the page maps to its Bokmål in `scripts/platform-home/no.json`. `build.py --strings` lists what to translate (`strings.json`).
   - The build writes `design.no.html` and `design-scripts.no.ts`, and fails while any text lacks a translation.
 - **Finance wording is softened** to what FlyttGo does today (owner, 2026-10-30; `SOFTEN` in `build.py`): vouchers, receipts and MVA codes in a ledger, SAF-T export and næringsspesifikasjon figures for the accountant. FlyttGo gives no tax advice and files no returns. "Tax preparation" reads "Year-end documents". The design file itself is unchanged.
