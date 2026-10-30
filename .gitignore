@@ -43,3 +43,7 @@ pnpm-debug.log*
 # Generated images of the AI photo pilot (scripts/generate-library-images.ts):
 # reviewed and loaded into the image library, never committed.
 ai-images/
+
+# Dry-run output of scripts/dedupe-template-assets.ts and scripts/redraw-thumbnails.ts
+template-asset-dedupe/
+thumbnail-redraw/
