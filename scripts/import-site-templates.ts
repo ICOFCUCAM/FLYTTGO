@@ -18,7 +18,8 @@
 //   node scripts/import-site-templates.ts --from-file site_masters.json --out site-templates-review
 //
 //   # 2. Store in FlyttGo (needs the owner's approval: it writes to the database
-//   #    and to storage). Copies each image into the site-template-assets bucket.
+//   #    and to storage). Copies each image into the site-template-assets bucket
+//   #    once per picture (shared/<sha256>.<ext>, 00025).
 //   FLYTTGO_SUPABASE_URL=https://<ref>.supabase.co FLYTTGO_SERVICE_ROLE_KEY=... \
 //     node scripts/import-site-templates.ts --from-file site_masters.json --to-flyttgo
 //
@@ -291,8 +292,27 @@ async function copyAsset(a: TemplateAsset, templateId: string, url: string, key:
   // What the bytes are, not what the server says they are.
   const info = imageInfo(body);
   if (!info || info.mime !== type) { console.warn(`  image ${a.key}: not a ${type} image by its bytes, skipped`); return null; }
-  return { key: a.key, url: await storeAsset(templateId, a.key, ext, type, body, url, key), sha256: await sha256Hex(body),
-           width: info.width, height: info.height };
+  const sha = await sha256Hex(body);
+  return { key: a.key, url: await storeShared(sha, ext, type, body, url, key), sha256: sha, width: info.width, height: info.height };
+}
+
+/**
+ * Store a source image once for every template that uses it, at
+ * shared/<sha256>.<ext> (migration 00025, scripts/dedupe-template-assets.ts:
+ * the templates mostly carry the same photos); returns the public URL. A
+ * file already there under that name is the same picture and is left as it is.
+ */
+async function storeShared(sha: string, ext: string, type: string, body: Uint8Array, url: string, key: string): Promise<string> {
+  const path = `shared/${sha}.${ext}`;
+  const up = await fetch(`${url}/storage/v1/object/site-template-assets/${path}`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': type, 'x-upsert': 'false' },
+    body: body as unknown as BodyInit,
+  });
+  if (!up.ok && up.status !== 409 && !/exists|duplicate/i.test(await up.clone().text())) {
+    throw new Error(`upload ${path}: ${up.status} ${await up.text()}`);
+  }
+  return `${url}/storage/v1/object/public/site-template-assets/${path}`;
 }
 
 async function toFlyttgo(templates: Imported[], snap: Snapshotter | null) {

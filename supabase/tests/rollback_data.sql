@@ -120,6 +120,12 @@ SELECT public.import_site_template(jsonb_build_object('id', 'rollback-tpl', 'nam
 INSERT INTO storage.objects (bucket_id, name) VALUES ('site-template-assets', 'rollback-tpl/thumbnail-' || repeat('e', 12) || '.jpg');
 SELECT public.record_site_template_thumbnail('rollback-tpl', 'rollback-tpl/thumbnail-' || repeat('e', 12) || '.jpg', repeat('e', 64));
 
+-- 00025: the template's image moved to its shared copy (recorded).
+INSERT INTO storage.objects (bucket_id, name) VALUES ('site-template-assets', 'shared/' || repeat('f', 64) || '.jpg');
+SELECT public.share_site_template_assets(jsonb_build_array(jsonb_build_object('template', 'rollback-tpl', 'key', 'hero', 'sha256', repeat('f', 64),
+  'from', 'https://flyttgo.supabase.co/storage/v1/object/public/site-template-assets/rollback-tpl/hero.jpg',
+  'to', 'https://flyttgo.supabase.co/storage/v1/object/public/site-template-assets/shared/' || repeat('f', 64) || '.jpg')));
+
 -- What exists before the rollback, for the comparison afterwards.
 CREATE TABLE public.zz_rollback_before AS
 SELECT 'bookings' t, count(*) n FROM public.bookings
