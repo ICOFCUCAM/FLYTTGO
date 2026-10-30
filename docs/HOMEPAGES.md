@@ -24,7 +24,7 @@ Owner's decision, 2026-10-30.
 - **Where its links go:** links from the platform page to the moving page go to `/transport`, which keeps the visitor signed in, until `VITE_TRANSPORT_URL` is set in the Vercel project. After that they go to that address. Sign-in is kept per address by the browser, so a visitor signed in on one address is not signed in on the other.
 - **The subdomain is reserved:** every company's page is also `<slug>.flyttgo.no`. Migration `00027` reserves `transport`, `moving` and `flytting` so no company can take them (none had them; rollback `supabase/rollback/00027_down.sql`).
 - **The design is the source.** `scripts/platform-home/build.py` turns the design file into `src/components/platformHome/`:
-  - `design.html`: the markup, without scripts and without the design's footer, with the old site's pictures, a place in the header for the old menus, and the booking card moved between the hero and the first section, holding the old booking widget;
+  - `design.html`: the markup, without scripts and without the design's top line, header and footer (FlyttGo's menu bar and footer are used), with the old site's pictures and the booking card moved between the hero and the first section, holding the old booking widget;
   - `design.css`: its styles, scoped under `.fgp` so they change nothing outside the page, and recoloured (`recolour()`): dark greens to navy, golds and mid greens to emerald, ivory to white. `app.css` pins the main colours to the site's exact values: navy #1A365D, its hover #2D4A7A, emerald #059669, white;
   - `design-scripts.ts`: its menu, tabs and previews.
 
@@ -33,9 +33,9 @@ Owner's decision, 2026-10-30.
 
   | Design element | Old function inside it |
   |---|---|
-  | Header | `HeaderExtras`: the EN/NO switch; once signed in, the notifications bell and the account menu in place of Sign in. "Moving" opens the old Moving Tools menu, and "Companies" (added beside Industries) opens the old Companies menu. |
+  | Header | FlyttGo's own menu bar (the old site's container: top strip with phone and EN/NO, main bar with all the old items, Book Now, Sign In and Sign Up) in place of the design's header. On this page it adds a Platform dropdown with the design's menu items (each scrolls to its section) and its corners are square (`.fg-square`). |
   | Hero picture | The old site's slideshow (`HERO_SLIDES`). |
-  | Booking card (moved between the hero and the first section) | The old booking widget (`BookingCard`) in the design's card classes: pickup and delivery with the Kartverket address lookup, move type, moving date, route distance, Get Estimate (`estimateMovePrice()`, shared with the old widget) and Book Now, which hands everything to the booking flow. It replaces the design's own form. |
+  | Booking card (moved between the hero and the first section) | The old booking widget (`BookingCard`), looking like the old one (navy header, white body, navy Get Estimate, emerald Book Now, its height) at the design's full width with square corners. Pickup and delivery use the Kartverket address lookup; move type, moving date, route distance, Get Estimate (`estimateMovePrice()`, shared with the old widget) and Book Now hand everything to the booking flow. It replaces the design's own form. |
   | Van types, driver plans | Prices from `VAN_TYPES` and `SUBSCRIPTION_PLANS`. Van cards book that van; plans open driver subscriptions. |
   | Services, cities, how it works | Open booking; the fourth step opens tracking. |
   | Moving tools | Open the van size guide and the moving checklist. |
@@ -46,12 +46,12 @@ Owner's decision, 2026-10-30.
 - **What the app wires in** (`PlatformHomePage.tsx`):
   - Links that lead to a FlyttGo page carry `data-page` (list in `build.py`): services, booking, business, white label, API, become a driver.
   - In-page links (`#section`) stay as designed.
-- **Header and footer:** the design's header with the old menus wired into it (above); its Sign in and Get started open the sign-in dialog, or the dashboard and booking once signed in. The footer is FlyttGo's (owner, 2026-10-30).
-- **Language:** English and Bokmål, following the site's language. The EN/NO switch in the header changes it.
+- **Header and footer:** FlyttGo's menu bar with the Platform dropdown (above) and FlyttGo's footer (owner, 2026-10-30).
+- **Language:** English and Bokmål, following the site's language. The menu bar's EN/NO switch changes it.
   - Every English text of the page maps to its Bokmål in `scripts/platform-home/no.json`. `build.py --strings` lists what to translate (`strings.json`).
   - The build writes `design.no.html` and `design-scripts.no.ts`, and fails while any text lacks a translation.
 - **Finance wording is softened** to what FlyttGo does today (owner, 2026-10-30; `SOFTEN` in `build.py`): vouchers, receipts and MVA codes in a ledger, SAF-T export and næringsspesifikasjon figures for the accountant. FlyttGo gives no tax advice and files no returns. "Tax preparation" reads "Year-end documents". The design file itself is unchanged.
-- **Phones:** the design's own file is wider than a phone screen (its business workspace and finance panels). `app.css` lets those panels' tab rows scroll inside their box and their columns stack, so the page fits; nothing is hidden. The header fits the menu button beside the old menus.
+- **Phones:** the design's own file is wider than a phone screen (its business workspace and finance panels). `app.css` lets those panels' tab rows scroll inside their box and their columns stack, so the page fits; nothing is hidden.
 - **The phone layout** keeps the design's floating "Your business. Your brand." card where the design puts it (owner, 2026-10-30).
 - **Typefaces:** DM Sans and Manrope load from Google Fonts while this page is shown.
 

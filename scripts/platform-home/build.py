@@ -177,8 +177,8 @@ def scope_css(css: str) -> str:
 # live van and plan data, every card and button to a real page). Only these
 # changes are made to the markup:
 #   - the design's stock photos give way to the old site's own pictures;
-#   - the header gets a place for the old menus (language, account,
-#     notifications) and a Companies item beside Industries;
+#   - FlyttGo's menu bar replaces the design's top line and header; its
+#     Platform dropdown holds the design's menu items;
 #   - the booking card moves between the hero and the first section and
 #     holds the old booking widget (BookingCard) in place of the design's form.
 OLD = 'https://d64gsuwffb70l.cloudfront.net/'
@@ -210,7 +210,7 @@ def booking_card(body: str) -> str:
         raise SystemExit('the design has no booking section')
     section = m.group(0)
     section, n = re.subn(r'<form class="booking" id="booking-form">.*?</form>',
-                         '<div class="booking" data-slot="booking"></div>', section, count=1, flags=re.S)
+                         '<div class="fgp-booking-slot" data-slot="booking"></div>', section, count=1, flags=re.S)
     if n != 1:
         raise SystemExit('the design booking section has no form')
     body = body[:m.start()] + body[m.end():]
@@ -222,12 +222,13 @@ def booking_card(body: str) -> str:
 
 
 def header_places(body: str) -> str:
-    body, n = re.subn(r'<div class="navright">', '<div class="navright"><span class="fgp-slot fgp-header" data-slot="header"></span>', body, count=1)
-    if n != 1:
-        raise SystemExit('the design header has no navright')
-    body, n = re.subn(r'(<a href="#industry-experiences">Industries</a>)', r'\1<a href="#business" data-menu="companies">Companies</a>', body, count=1)
-    if n != 1:
-        raise SystemExit('the design menu has no Industries item')
+    """FlyttGo's own menu bar replaces the design's top line and header (owner,
+    2026-10-30): it carries the old menus and, as its Platform dropdown, the
+    design's menu items (Header.tsx)."""
+    body, n = re.subn(r'<div class="topline"[^>]*>.*?</div>\s*', '', body, count=1, flags=re.S)
+    body, m = re.subn(r'<header class="wrap nav">.*?</header>\s*', '', body, count=1, flags=re.S)
+    if n != 1 or m != 1:
+        raise SystemExit('the design has no top line or header')
     return body
 
 

@@ -93,10 +93,10 @@ export default function AppLayout() {
    * for Supabase email-confirmation / OAuth redirects — chrome would
    * just be visual noise during the ~100 ms session handoff. */
   /* flyttgo.no shows the platform front page; transport.flyttgo.no the
-   * moving and transport one (docs/HOMEPAGES.md). The platform page has the
-   * design's header, with the old menus wired into it; both keep FlyttGo's footer. */
+   * moving and transport one (docs/HOMEPAGES.md). Both have FlyttGo's menu bar
+   * (on the platform page with its Platform dropdown and square corners) and footer. */
   const platformHome = currentPage === 'home' && !isTransportHost(window.location.hostname);
-  const showHeader = currentPage !== 'auth-callback' && !embedded && !platformHome;
+  const showHeader = currentPage !== 'auth-callback' && !embedded;
   const showFooter = !embedded && (!['booking', 'driver-portal', 'admin', 'auth-callback'].includes(currentPage) || (currentPage === 'booking' && (ownBooking || shopOnly)));
 
   const renderPage = () => {

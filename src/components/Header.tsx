@@ -36,6 +36,7 @@ export default function Header() {
   const [mobileOpen,    setMobileOpen]    = useState(false);
   const [toolsOpen,     setToolsOpen]     = useState(false);
   const [companiesOpen, setCompaniesOpen] = useState(false);
+  const [platformOpen,  setPlatformOpen]  = useState(false);
   const [langOpen,      setLangOpen]      = useState(false);
   const [userMenuOpen,  setUserMenuOpen]  = useState(false);
   const [notifOpen,     setNotifOpen]     = useState(false);
@@ -108,12 +109,13 @@ export default function Header() {
 
   function closeAll() {
     setToolsOpen(false);
-    setCompaniesOpen(false); setUserMenuOpen(false);
+    setCompaniesOpen(false); setUserMenuOpen(false); setPlatformOpen(false);
     setNotifOpen(false);
   }
 
-  function toggle(which: 'tools' | 'companies' | 'user' | 'notif') {
+  function toggle(which: 'tools' | 'companies' | 'user' | 'notif' | 'platform') {
     setToolsOpen(which === 'tools'        ? (s) => !s : false);
+    setPlatformOpen(which === 'platform'  ? (s) => !s : false);
     setCompaniesOpen(which === 'companies'? (s) => !s : false);
     setUserMenuOpen(which === 'user'      ? (s) => !s : false);
     setNotifOpen(which === 'notif'        ? (s) => !s : false);
@@ -160,10 +162,32 @@ export default function Header() {
     >{label}</button>
   );
 
+  /* On the platform front page (flyttgo.no, docs/HOMEPAGES.md) the menu bar
+   * also carries the design's own menu, as a Platform dropdown of the page's
+   * sections, and its corners are square like the design's cards. */
+  const platformHome = currentPage === 'home' && !isTransportHost(window.location.hostname);
+  const PLATFORM_LINKS: [string, string][] = [
+    [t('header.platformLinks.platform'), 'platform'],
+    [t('header.platformLinks.businessTools'), 'business-platform'],
+    [t('header.platformLinks.howItWorks'), 'business-workflow'],
+    [t('header.platformLinks.whiteLabel'), 'white-label'],
+    [t('header.platformLinks.marketplace'), 'marketplace'],
+    [t('header.platformLinks.moving'), 'moving-services'],
+    [t('header.platformLinks.whiteLabelBuild'), 'white-label-blueprint'],
+    [t('header.platformLinks.finance'), 'financial-infrastructure'],
+    [t('header.platformLinks.network'), 'marketplace-network'],
+    [t('header.platformLinks.industries'), 'industry-experiences'],
+  ];
+  const toSection = (id: string) => {
+    closeAll();
+    setMobileOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const dropdown = (
     open: boolean,
     label: string,
-    which: 'tools' | 'companies' | 'user',
+    which: 'tools' | 'companies' | 'user' | 'platform',
     children: React.ReactNode,
     alignRight = false
   ) => (
@@ -192,7 +216,7 @@ export default function Header() {
         aria-hidden="true"
       />
     )}
-    <header ref={headerRef} className="sticky top-0 z-40 shadow-md">
+    <header ref={headerRef} className={`sticky top-0 z-40 shadow-md${platformHome ? ' fg-square' : ''}`}>
 
       {/* Wrapper hosts the top bar AND the language popover as
        * siblings, so the popover escapes the top bar's overflow-hidden
@@ -277,6 +301,14 @@ export default function Header() {
             {/* Desktop nav */}
             <nav className="hidden lg:flex items-center gap-0.5">
               {navBtn(t('header.home'), 'home')}
+              {platformHome && dropdown(platformOpen, t('header.platformMenu'), 'platform', (
+                <div className="w-60 py-2">
+                  {PLATFORM_LINKS.map(([label, id]) => (
+                    <button key={id} onClick={() => toSection(id)}
+                      className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-800 hover:bg-emerald-50 hover:text-emerald-700 transition">{label}</button>
+                  ))}
+                </div>
+              ))}
               {/* The moving and transport front page (docs/HOMEPAGES.md); on its own address it is Home. */}
               {!isTransportHost(window.location.hostname) && navBtn(t('header.transport'), 'transport-home')}
               {navBtn(t('header.services'), 'services')}
@@ -481,6 +513,14 @@ export default function Header() {
                 {label}
               </button>
             ))}
+            {platformHome && (
+              <div className="pt-2 mt-1 border-t border-gray-100">
+                <p className="px-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('header.platformMenu')}</p>
+                {PLATFORM_LINKS.map(([label, id]) => (
+                  <button key={id} onClick={() => toSection(id)} className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{label}</button>
+                ))}
+              </div>
+            )}
             {!user && (
               <>
                 <button

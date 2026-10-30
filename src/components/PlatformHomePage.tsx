@@ -4,7 +4,8 @@
  * ./platformHome by scripts/platform-home/build.py), looking as designed with
  * its own card structure, and the old site's functions wired in beneath it
  * (owner, 2026-10-30):
- *   - header: the old menus inside the design's header (HeaderExtras);
+ *   - FlyttGo's own menu bar (AppLayout) in place of the design's header,
+ *     with the design's items as its Platform dropdown and square corners;
  *   - hero: the old site's pictures as a slideshow;
  *   - between the hero and the first section: the old booking widget in the
  *     design's booking card (BookingCard: address lookup, estimate, Book Now);
@@ -23,7 +24,6 @@ import { useApp, type Page } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { transportUrl } from '../lib/hosts';
 import { HERO_SLIDES, SUBSCRIPTION_PLANS, VAN_TYPES } from '../lib/constants';
-import HeaderExtras from './platformHome/HeaderExtras';
 import BookingCard from './platformHome/BookingCard';
 import designEn from './platformHome/design.html?raw';
 import designNo from './platformHome/design.no.html?raw';
@@ -119,7 +119,7 @@ function useDesignFonts() {
   }, []);
 }
 
-type Places = { root: HTMLElement; hero: { el: HTMLElement; alt: string } | null; booking: HTMLElement | null; header: HTMLElement | null };
+type Places = { root: HTMLElement; hero: { el: HTMLElement; alt: string } | null; booking: HTMLElement | null };
 
 export default function PlatformHomePage() {
   const { setPage, setShowAuthModal, setAuthMode, setBookingData } = useApp();
@@ -144,7 +144,7 @@ export default function PlatformHomePage() {
       picture.replaceWith(holder);
       hero = { el: holder, alt: picture.alt };
     }
-    setPlaces({ root: el, hero, booking: el.querySelector('[data-slot="booking"]'), header: el.querySelector('[data-slot="header"]') });
+    setPlaces({ root: el, hero, booking: el.querySelector('[data-slot="booking"]') });
     version.init();
     wireCards(el);
     liveData(el, version.currency, version.locale);
@@ -187,7 +187,6 @@ export default function PlatformHomePage() {
     <>
       <div key={language} ref={root} className="fgp" lang={language === 'no' ? 'nb' : 'en'} dangerouslySetInnerHTML={{ __html: version.html }} />
       {places?.hero && createPortal(<HeroSlides alt={places.hero.alt} />, places.hero.el)}
-      {places?.header && createPortal(<HeaderExtras root={places.root} />, places.header)}
       {places?.booking && createPortal(<BookingCard />, places.booking)}
     </>
   );
