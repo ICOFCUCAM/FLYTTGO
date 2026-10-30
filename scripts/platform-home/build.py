@@ -49,6 +49,45 @@ CARD_PREFIX = {
 }
 
 
+# Finance wording softened to what FlyttGo does today (owner, 2026-10-30):
+# vouchers, receipts and MVA codes in a ledger, SAF-T export and
+# næringsspesifikasjon figures for the accountant; FlyttGo files nothing.
+# Applied to the design's text before the page is generated; the design file
+# itself is unchanged. Each must be found exactly once.
+SOFTEN = [
+    ('<h3>Tax &amp; financial records</h3><p>Calculate tax estimates and prepare organised financial summaries and tax documentation, subject to local rules and integrations.</p>',
+     '<h3>MVA &amp; financial records</h3><p>Keep vouchers, receipts and MVA codes in one ledger, and export SAF-T and næringsspesifikasjon figures for your accountant to check.</p>'),
+    ('<small>Tax overview</small><strong>—</strong><em>Estimates and reporting periods</em>',
+     '<small>MVA overview</small><strong>—</strong><em>MVA codes and reporting periods</em>'),
+    ('>Tax preparation</button>', '>Year-end documents</button>'),
+    ('<b>Tax preparation support</b><span>Prepare structured records and reports for review by the business or its qualified adviser.</span>',
+     '<b>Year-end documents</b><span>SAF-T export and næringsspesifikasjon figures, for the business or its accountant to check before filing.</span>'),
+    ('<span>04 / TAX &amp; REPORTING</span><h3>Prepare with better records</h3><p>Organise tax-relevant figures and reporting outputs. Final tax treatment and filing remain subject to local rules and appropriate review.</p>',
+     '<span>04 / MVA &amp; YEAR-END</span><h3>Prepare with better records</h3><p>MVA codes on every voucher, SAF-T export and næringsspesifikasjon figures. FlyttGo does not file tax or MVA returns; your accountant checks and files them.</p>'),
+    ('payments, records and tax preparation.</span>', 'payments, records and year-end exports.</span>'),
+    ('reconciliation and tax preparation.</p>', 'reconciliation and the year-end work of your accountant.</p>'),
+    ('Review income, expenses, tax information and performance.', 'Review income, expenses, MVA and performance.'),
+    ("['TAX PREPARATION','Prepare relevant information','Reviewable records and exports']",
+     "['YEAR-END DOCUMENTS','Export for your accountant','SAF-T and næringsspesifikasjon figures']"),
+    ("['TAX READINESS','Configurable tax categories and reporting support'],['IMPORTANT DISTINCTION','Preparation support is not a substitute for approved tax advice or filing']",
+     "['MVA AND YEAR-END','MVA codes on vouchers and exports for your accountant'],['IMPORTANT DISTINCTION','FlyttGo does not give tax advice or file returns']"),
+    ("structured tax-preparation support.'", "SAF-T and year-end exports for your accountant.'"),
+    ("tax:{k:'STRUCTURED INFORMATION FOR REVIEW',t:'Tax preparation',m:[['TAX SETTINGS','Select jurisdiction','Business and tax profile'],['TAX RECORDS','Organise relevant activity','Income and expense categories']",
+     "tax:{k:'STRUCTURED INFORMATION FOR YOUR ACCOUNTANT',t:'Year-end documents',m:[['MVA SETTINGS','MVA registration','Business and MVA profile'],['ACCOUNTS','Vouchers by account','Income and expense accounts']"),
+    ("doc:'Tax preparation summary'", "doc:'Year-end export summary'"),
+    ("['Tax categories','—','Configured treatment']", "['MVA codes','—','Per voucher line']"),
+]
+
+
+def soften(src: str) -> str:
+    for old, new in SOFTEN:
+        n = src.count(old)
+        if n != 1:
+            raise SystemExit(f'soften: expected once, found {n}: {old[:70]}')
+        src = src.replace(old, new)
+    return src
+
+
 def text_of(fragment: str) -> str:
     return htmlmod.unescape(re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', fragment))).strip()
 
@@ -132,12 +171,97 @@ def scope_css(css: str) -> str:
     return '\n'.join(out)
 
 
+# ── Norwegian (owner, 2026-10-30) ───────────────────────────────────────────
+# scripts/platform-home/no.json maps each English text of the page (HTML text,
+# placeholder/aria-label/title/alt, and the scripts' visible strings) to its
+# Bokmål. `build.py --strings` writes the list to translate
+# (scripts/platform-home/strings.json); the build fails while any is missing.
+NO_JSON = Path(__file__).with_name('no.json')
+STRINGS_JSON = Path(__file__).with_name('strings.json')
+LETTER = re.compile(r'[A-Za-zÆØÅæøå]')
+ATTRS = ('placeholder', 'aria-label', 'title', 'alt')
+KEY_NAMES = {'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', 'Escape', 'Home', 'End', 'Tab'}
+JS_LITERAL = re.compile(r"'((?:[^'\\\n]|\\.)*)'|\"((?:[^\"\\\n]|\\.)*)\"")
+
+
+def norm(t: str) -> str:
+    return re.sub(r'\s+', ' ', htmlmod.unescape(t)).strip()
+
+
+def html_strings(body: str):
+    for m in re.finditer(r'>([^<>]+)<', body):
+        t = norm(m.group(1))
+        if LETTER.search(t):
+            yield t
+    for m in re.finditer(r'\b(?:%s)="([^"]*)"' % '|'.join(ATTRS), body):
+        t = norm(m.group(1))
+        if LETTER.search(t):
+            yield t
+
+
+def js_visible(t: str) -> bool:
+    """A string literal a visitor reads (not a selector, key or class name)."""
+    if not LETTER.search(t) or t[:1] in '#.[' or '<' in t or '=' in t or t in KEY_NAMES:
+        return False
+    return ' ' in t or t[:1].isupper() or '·' in t
+
+
+def js_strings(js: str):
+    for m in JS_LITERAL.finditer(js):
+        t = m.group(1) if m.group(1) is not None else m.group(2)
+        if js_visible(t):
+            yield t
+
+
+def translate_html(body: str, no: dict, missing: set) -> str:
+    def tr(t: str) -> str | None:
+        k = norm(t)
+        if not LETTER.search(k):
+            return None
+        if k not in no:
+            missing.add(k)
+            return None
+        return no[k]
+
+    def text(m: re.Match) -> str:
+        raw = m.group(1)
+        v = tr(raw)
+        if v is None:
+            return m.group(0)
+        lead = raw[:len(raw) - len(raw.lstrip())]
+        trail = raw[len(raw.rstrip()):]
+        return '>' + lead + htmlmod.escape(v, quote=False) + trail + '<'
+
+    def attr(m: re.Match) -> str:
+        v = tr(m.group(2))
+        return m.group(0) if v is None else f'{m.group(1)}="{htmlmod.escape(v)}"'
+
+    body = re.sub(r'>([^<>]+)<', text, body)
+    return re.sub(r'\b(%s)="([^"]*)"' % '|'.join(ATTRS), attr, body)
+
+
+def translate_js(js: str, no: dict, missing: set) -> str:
+    def lit(m: re.Match) -> str:
+        single = m.group(1) is not None
+        t = m.group(1) if single else m.group(2)
+        if not js_visible(t):
+            return m.group(0)
+        if t not in no:
+            missing.add(t)
+            return m.group(0)
+        q = "'" if single else '"'
+        return q + no[t].replace('\\', '\\\\').replace(q, '\\' + q) + q
+    return JS_LITERAL.sub(lit, js)
+
+
 def main() -> int:
-    src = SRC.read_text(encoding='utf-8')
+    src = soften(SRC.read_text(encoding='utf-8'))
     css = '\n'.join(re.findall(r'<style[^>]*>(.*?)</style>', src, re.S))
     body = re.search(r'<body[^>]*>(.*)</body>', src, re.S).group(1)
     scripts = re.findall(r'<script[^>]*>(.*?)</script>', src, re.S)
     body = re.sub(r'<script.*?</script>', '', body, flags=re.S).strip()
+    # Style blocks inside the body are already in design.css (scoped).
+    body = re.sub(r'<style\b.*?</style>', '', body, flags=re.S)
     # FlyttGo's own footer replaces the design's (owner, 2026-10-30).
     body = re.sub(r'<footer\b.*?</footer>', '', body, flags=re.S)
     body, used = wire_links(body)
@@ -150,19 +274,45 @@ def main() -> int:
     scripts[0] = first[:start] + first[end:]
 
     OUT.mkdir(parents=True, exist_ok=True)
-    header = '<!-- Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html. Do not edit. -->\n'
-    (OUT / 'design.html').write_text(header + body + '\n', encoding='utf-8')
+    if '--strings' in sys.argv:
+        seen: dict[str, None] = {}
+        for t in list(html_strings(body)) + [t for sc in scripts for t in js_strings(sc)]:
+            seen.setdefault(t, None)
+        import json
+        STRINGS_JSON.write_text(json.dumps(list(seen), ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
+        print(f'{len(seen)} strings written to {STRINGS_JSON.relative_to(ROOT)}')
+        return 0
+
+    def write(suffix: str, page: str, scs: list[str], lang: str) -> None:
+        # The language switch FlyttGo's own header has, in the design's header.
+        other = ('no', 'nb', 'Norsk') if lang == 'English' else ('en', 'en', 'English')
+        switch = f'<button type="button" class="login fgp-lang" data-lang="{other[0]}" lang="{other[1]}">{other[2]}</button>'
+        page = page.replace('<div class="navright">', '<div class="navright">' + switch, 1)
+        header = f'<!-- Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html ({lang}). Do not edit. -->\n'
+        (OUT / f'design{suffix}.html').write_text(header + page + '\n', encoding='utf-8')
+        js = ['// Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html (' + lang + ').',
+              '// The design\'s own scripts (menu, tabs, previews), run once the page is in the document. Do not edit.',
+              '/* eslint-disable */', '// @ts-nocheck', 'export function initDesign() {']
+        for i, sc in enumerate(scs):
+            js.append(f'  /* ── script {i + 1} ── */')
+            js.append('  {' + sc.strip() + '\n  }')
+        js.append('}')
+        (OUT / f'design-scripts{suffix}.ts').write_text('\n'.join(js) + '\n', encoding='utf-8')
+
+    write('', body, scripts, 'English')
     (OUT / 'design.css').write_text(
         '/* Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html.\n'
         ' * The design\'s styles, scoped under .fgp. Do not edit. */\n' + scope_css(css) + '\n', encoding='utf-8')
-    js = ['// Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html.',
-          '// The design\'s own scripts (menu, tabs, previews), run once the page is in the document. Do not edit.',
-          '/* eslint-disable */', '// @ts-nocheck', 'export function initDesign() {']
-    for i, s in enumerate(scripts):
-        js.append(f'  /* ── script {i + 1} ── */')
-        js.append('  {' + s.strip() + '\n  }')
-    js.append('}')
-    (OUT / 'design-scripts.ts').write_text('\n'.join(js) + '\n', encoding='utf-8')
+
+    import json
+    no = json.loads(NO_JSON.read_text(encoding='utf-8')) if NO_JSON.exists() else {}
+    missing: set[str] = set()
+    body_no = translate_html(body, no, missing)
+    scripts_no = [translate_js(sc, no, missing) for sc in scripts]
+    if missing:
+        print(f'no.json lacks {len(missing)} strings, e.g. {sorted(missing)[:5]}; the Norwegian page is not written', file=sys.stderr)
+        return 1
+    write('.no', body_no, scripts_no, 'Norwegian')
     print(f'design.html {len(body)} chars, design.css, design-scripts.ts ({len(scripts)} scripts); links wired:')
     for u in used:
         print('  ' + u)

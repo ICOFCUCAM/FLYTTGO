@@ -8,6 +8,7 @@
  *     the sign-in dialog, or the dashboard once signed in;
  *   - "Looking for a service?" uses the real address lookup and hands the
  *     addresses and date to the booking flow, as the moving page's widget does;
+ *   - English or Bokmål follows the site's language (its switch is in the header);
  *   - the moving and transport front page (HomePage) is kept whole on
  *     transport.flyttgo.no and at /transport.
  * The design's styles are scoped under .fgp, so nothing outside the page changes.
@@ -18,10 +19,27 @@ import { useApp, type Page } from '../lib/store';
 import { useAuth } from '../lib/auth';
 import { transportUrl } from '../lib/hosts';
 import NorwayAddressAutocomplete, { type NorwegianAddress } from './NorwayAddressAutocomplete';
-import designHtml from './platformHome/design.html?raw';
-import { initDesign } from './platformHome/design-scripts';
+import { useTranslation } from 'react-i18next';
+import i18n, { LANG_STORAGE_KEY } from '../lib/i18n';
+import designEn from './platformHome/design.html?raw';
+import designNo from './platformHome/design.no.html?raw';
+import { initDesign as initEn } from './platformHome/design-scripts';
+import { initDesign as initNo } from './platformHome/design-scripts.no';
 import './platformHome/design.css';
 import './platformHome/app.css';
+
+/* The page in the visitor's language: the design's English, or its Bokmål
+ * (scripts/platform-home/no.json). */
+const VERSIONS = {
+  en: { html: designEn, init: initEn, words: {
+    signIn: 'Sign in', dashboard: 'Dashboard', from: 'Enter your location', to: 'Enter destination',
+    noFrom: 'Choose your pick-up address from the list to continue.', noTo: 'Choose the delivery address from the list to continue.',
+    pastDate: 'Choose today or a future date.' } },
+  no: { html: designNo, init: initNo, words: {
+    signIn: 'Logg inn', dashboard: 'Min side', from: 'Skriv inn adressen din', to: 'Skriv inn leveringsadresse',
+    noFrom: 'Velg henteadressen fra listen for å fortsette.', noTo: 'Velg leveringsadressen fra listen for å fortsette.',
+    pastDate: 'Velg i dag eller en senere dato.' } },
+} as const;
 
 const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap';
 
@@ -50,6 +68,8 @@ function addressSlot(root: HTMLElement, id: string): HTMLElement | null {
 export default function PlatformHomePage() {
   const { setPage, setBookingData, setShowAuthModal, setAuthMode } = useApp();
   const { user, profile } = useAuth();
+  const { i18n: { language } } = useTranslation();
+  const version = VERSIONS[language === 'no' ? 'no' : 'en'];
   const root = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState<{ from: HTMLElement | null; to: HTMLElement | null }>({ from: null, to: null });
   const [pickup, setPickup] = useState<NorwegianAddress | null>(null);
@@ -57,14 +77,14 @@ export default function PlatformHomePage() {
   useDesignFonts();
 
   /* The latest values for the handlers attached once to the design's markup. */
-  const live = useRef({ user, profile, pickup, dropoff });
-  live.current = { user, profile, pickup, dropoff };
+  const live = useRef({ user, profile, pickup, dropoff, words: version.words });
+  live.current = { user, profile, pickup, dropoff, words: version.words };
 
   useEffect(() => {
     const el = root.current;
     if (!el) return;
     setSlots({ from: addressSlot(el, 'from'), to: addressSlot(el, 'to') });
-    initDesign();
+    version.init();
 
     const dashboard = (): Page => {
       const role = live.current.profile?.role;
@@ -84,6 +104,14 @@ export default function PlatformHomePage() {
       setPage(target as Page);
     };
     const onClick = (e: MouseEvent) => {
+      /* The language switch, as FlyttGo's header does it. */
+      const lang = (e.target as HTMLElement).closest<HTMLElement>('[data-lang]');
+      if (lang && el.contains(lang)) {
+        const l = lang.dataset.lang === 'no' ? 'no' : 'en';
+        void i18n.changeLanguage(l);
+        try { window.localStorage.setItem(LANG_STORAGE_KEY, l); } catch { /* private mode */ }
+        return;
+      }
       const a = (e.target as HTMLElement).closest<HTMLElement>('[data-page]');
       if (!a || !el.contains(a)) return;
       e.preventDefault();
@@ -104,10 +132,11 @@ export default function PlatformHomePage() {
       if (service === 4) { setPage('corporate'); return; }
       if (service === 5) { el.querySelector('#business-platform')?.scrollIntoView({ behavior: 'smooth' }); return; }
       const { pickup: from, dropoff: to } = live.current;
-      if (!from) { say('Choose your pick-up address from the list to continue.'); return; }
-      if (!to) { say('Choose the delivery address from the list to continue.'); return; }
+      const w = live.current.words;
+      if (!from) { say(w.noFrom); return; }
+      if (!to) { say(w.noTo); return; }
       const min = el.querySelector<HTMLInputElement>('#date')?.min ?? '';
-      if (date && min && date < min) { say('Choose today or a future date.'); return; }
+      if (date && min && date < min) { say(live.current.words.pastDate); return; }
       setBookingData({
         pickupAddress: from.formatted, pickupLat: from.lat ?? null, pickupLng: from.lng ?? null,
         pickupPostcode: from.postcode, pickupCity: from.city, pickupAddressData: from,
@@ -120,22 +149,22 @@ export default function PlatformHomePage() {
     el.addEventListener('click', onClick);
     el.addEventListener('submit', onSubmit);
     return () => { el.removeEventListener('click', onClick); el.removeEventListener('submit', onSubmit); };
-  }, [setPage, setBookingData, setShowAuthModal, setAuthMode]);
+  }, [version, setPage, setBookingData, setShowAuthModal, setAuthMode]);
 
   /* Signed in, the design's Sign in link leads to the dashboard. */
   useEffect(() => {
     const signIn = root.current?.querySelector<HTMLElement>('[data-page="auth:signin"]');
-    if (signIn) signIn.textContent = user ? 'Dashboard' : 'Sign in';
-  }, [user]);
+    if (signIn) signIn.textContent = user ? version.words.dashboard : version.words.signIn;
+  }, [user, version]);
 
   return (
     <>
-      <div ref={root} className="fgp" dangerouslySetInnerHTML={{ __html: designHtml }} />
+      <div key={language} ref={root} className="fgp" lang={language === 'no' ? 'nb' : 'en'} dangerouslySetInnerHTML={{ __html: version.html }} />
       {slots.from && createPortal(
-        <NorwayAddressAutocomplete id="from" value={pickup?.formatted ?? ''} onSelect={setPickup} placeholder="Enter your location" required />,
+        <NorwayAddressAutocomplete id="from" value={pickup?.formatted ?? ''} onSelect={setPickup} placeholder={version.words.from} required />,
         slots.from)}
       {slots.to && createPortal(
-        <NorwayAddressAutocomplete id="to" value={dropoff?.formatted ?? ''} onSelect={setDropoff} placeholder="Enter destination" />,
+        <NorwayAddressAutocomplete id="to" value={dropoff?.formatted ?? ''} onSelect={setDropoff} placeholder={version.words.to} />,
         slots.to)}
     </>
   );

@@ -35,7 +35,11 @@ Owner's decision, 2026-10-30.
   - "Looking for a service?" uses the real address lookup (Kartverket) and hands the addresses and date to the booking flow, as the moving page's widget does. Electrician and home services open `/services`; company logistics open `/business`.
   - In-page links (`#section`) stay as designed.
 - **Header and footer:** the page has the design's own header. FlyttGo's header (language switch, notifications, account menu) is on every other page and on the moving page. The footer is FlyttGo's own (owner, 2026-10-30).
-- **Language:** the design is in English; a Norwegian version of its text is still to be written.
+- **Language:** English and Bokmål, following the site's language. A switch (Norsk / English) is added to the design's header, as FlyttGo's own header has one.
+  - Every English text of the page maps to its Bokmål in `scripts/platform-home/no.json`. `build.py --strings` lists what to translate (`strings.json`).
+  - The build writes `design.no.html` and `design-scripts.no.ts`, and fails while any text lacks a translation.
+- **Finance wording is softened** to what FlyttGo does today (owner, 2026-10-30; `SOFTEN` in `build.py`): vouchers, receipts and MVA codes in a ledger, SAF-T export and næringsspesifikasjon figures for the accountant. FlyttGo gives no tax advice and files no returns. "Tax preparation" reads "Year-end documents". The design file itself is unchanged.
+- **The phone layout** keeps the design's floating "Your business. Your brand." card where the design puts it (owner, 2026-10-30).
 - **Typefaces:** DM Sans and Manrope load from Google Fonts while this page is shown.
 
 ## Making transport.flyttgo.no live

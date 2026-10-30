@@ -3,3 +3,6 @@
  * icon needs room before the text. */
 .fgp .fgp-address input { padding-left: 2.25rem; width: 100%; }
 .fgp .fgp-address label { display: none; }
+/* The language switch added to the design's header (FlyttGo's header has one). */
+.fgp .fgp-lang { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
+@media (max-width: 900px) { .fgp .navright .fgp-lang { display: inline-block; } }
