@@ -85,3 +85,20 @@
 .fgv2 .entry-card .entry-for { font-size: 13px; font-weight: 600; margin-top: 14px; opacity: .9; }
 .fgv2 .entry-card .entry-status { font-size: 12px; margin-top: 6px; color: #6d5a2f; }
 .fgv2 .entry-card a { margin-top: 22px; }
+.fgv2 .entry-card .entry-note { font-size: 13px; line-height: 1.7; margin-top: 10px; opacity: .85; }
+
+/* The two journeys most people take sit side by side; creating a marketplace
+ * of one's own is a specialised offering in a quieter strip below them, never
+ * their equal (owner, 30 October 2026). Type sizes are kept. */
+@media (min-width: 901px) {
+  .fgv2 .entry-grid { grid-template-columns: 1fr 1fr; }
+  .fgv2 .entry-specialised { grid-column: 1 / -1; min-height: 0; display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); column-gap: 48px; align-items: start; }
+  .fgv2 .entry-specialised .entry-side h3 { margin-bottom: 0; }
+}
+.fgv2 .entry-specialised { background: var(--white); color: var(--ink); border: 1px solid var(--line); box-shadow: none; padding-top: 24px; padding-bottom: 24px; }
+.fgv2 .entry-specialised .entry-side > span { font-size: 10px; letter-spacing: .15em; font-weight: 700; color: #6d5a2f; }
+.fgv2 .entry-specialised .entry-body a { display: inline-block; }
+
+/* 1. The hero: two actions, and marketplace creation as a quiet link after them. */
+.fgv2 .hero-actions { flex-wrap: wrap; }
+.fgv2 .hero-actions .hero-more { flex-basis: 100%; font-size: 14px; font-weight: 600; color: var(--green2); margin-top: 6px; text-decoration: underline; text-underline-offset: 3px; }

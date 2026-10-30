@@ -137,6 +137,21 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
 - **On phones**, the design's wide workspace panels fit.
 - **Scripts:** each of the design's scripts runs on its own, so a script for a section left out does no harm.
 
+### The three journeys and the menu (owner, 2026-10-30)
+
+- **Order of the page:** the sections follow the journeys. Find a service comes first: the FlyttGo Marketplace, moving services with the booking widget, how it works and vehicle sizes. My Company comes next: the platform, business workspace, payments and finance, and industries. For Organisations follows: corporate solutions and the provider network. The specialised offering comes last: a marketplace under one's own brand, and the connected network.
+- **The central marketplace and white label are kept apart.** The FlyttGo Marketplace is named as such. The white-label section opens with "Separate from the FlyttGo Marketplace, and not needed to use FlyttGo or its business tools".
+- **No requirement to own a marketplace:** the hero introduction, the entry heading, the My Company card, the business workspace and the menu each say that a company uses the business tools and takes part in the FlyttGo Marketplace without a marketplace of its own.
+- **Hero and entry cards:**
+  - The hero has two buttons, Find a service and Manage my business. Marketplace creation is a quiet text link after them.
+  - In the entry section, Find a Service and My Company sit side by side. Create a Marketplace is a quieter full-width strip below them, labelled "Specialised offering · White label". Type sizes are unchanged.
+- **Menu** (`Header.tsx`, only on `/preview/home`): Explore, My Company, For Organisations, Sign in and Get started.
+  - Explore holds Services, Moving (Book Now), Transport and Local services, plus the Moving Tools group.
+  - My Company holds Business workspace, Business tools and Payments and finance, with the "no marketplace of your own needed" note.
+  - For Organisations holds Corporate solutions and Provider network (Become a Driver), plus the Companies links group. Create a marketplace sits apart at its foot as a specialised offering.
+  - No item of the earlier menu bar is lost. The logo leads home. On every other page the menu bar is unchanged.
+- **The headline is the owner's own words:** "Assisting Companies to Fly High. Own your marketplace."
+
 ## Stage D: content checked against the source
 
 | Content | Where it is |
@@ -163,8 +178,8 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
 | Console | No script errors. Network errors also seen on `/transport`, so not caused by this page: the map library from unpkg, blocked in the test environment, and `flyttgo_public_identity`. |
 | Interactions | Hero scroll, workspace and finance tabs, studio preview and industry selector all work |
 | Links | Ten checked; each opens its real page |
+| Menu | Every item of Explore, My Company and For Organisations opens its page or section |
 
 ## Not done yet
 
-- **Norwegian:** the page is in English for review. Its text sits in the components, ready to move into the locale files for a Norwegian version once the wording is approved.
 - **Recommended pages:** the three recommended pages above (finance, platform architecture, industries) are not built.

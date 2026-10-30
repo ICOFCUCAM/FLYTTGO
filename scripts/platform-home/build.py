@@ -241,22 +241,25 @@ def header_places(body: str) -> str:
 # brief's colours).
 V2_OUT = ROOT / 'src' / 'components' / 'homeV2'
 V2_SECTIONS = [                                   # (attribute in the section's opening tag, topic)
+    # In the order of the three journeys (owner, 30 October 2026): find a
+    # service on the FlyttGo Marketplace, run a company, and last, apart, the
+    # specialised offering of a marketplace under one's own brand.
     ('class="hero wrap"', '1 hero'),
     ('id="entry-points"', '2 journeys'),
-    ('id="unified-platform"', '3 one connected platform: four capabilities'),
-    ('id="business-workspace"', '4 business operating platform'),
-    ('id="financial-administration"', '5 financial management'),
-    ('id="marketplace"', '6 marketplace categories'),
-    ('id="white-label-builder"', '7 build your own marketplace'),
-    ('id="marketplace-network-experience"', '8 connected network'),
-    ('id="industry-experiences"', '9 industry workflows'),
-    ('id="business"', '10 corporate solutions'),
-    ('id="moving-services"', '11 moving services'),
-    ('id="how-it-works"', '11 booking and tracking journey'),
-    ('id="van-types"', '11 vehicle sizes (rates on the van guide)'),
-    ('id="driver-network"', '11 driver network'),
-    ('class="section testimonials"', '11 what every booking includes'),
-    ('class="final-cta"', '12 final call to action'),
+    ('id="marketplace"', 'find a service: the FlyttGo Marketplace'),
+    ('id="moving-services"', 'find a service: moving services'),
+    ('id="how-it-works"', 'find a service: booking and tracking journey'),
+    ('id="van-types"', 'find a service: vehicle sizes (rates on the van guide)'),
+    ('id="unified-platform"', 'my company: one connected platform'),
+    ('id="business-workspace"', 'my company: business workspace'),
+    ('id="financial-administration"', 'my company: payments and finance'),
+    ('id="industry-experiences"', 'my company: industry workflows'),
+    ('id="business"', 'for organisations: corporate solutions'),
+    ('id="driver-network"', 'for organisations: provider network'),
+    ('id="white-label-builder"', 'specialised: a marketplace under your own brand'),
+    ('id="marketplace-network-experience"', 'specialised: connected network'),
+    ('class="section testimonials"', 'what every booking includes'),
+    ('class="final-cta"', 'final call to action'),
 ]
 # Wording the code does not support, corrected (the audit's status table).
 V2_CLAIMS = [
@@ -264,15 +267,37 @@ V2_CLAIMS = [
     ('<h1 class="display">Build your business.<br/>', '<h1 class="display">Assisting Companies to Fly High.<br/>'),
     # The three entry points in the owner's words (30 October 2026): customer,
     # business and specialist, each with who it is for and where it leads.
+    ('<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">One platform. Three ways to get started.</h2><p>Whether you need a service, run a company or want to build a marketplace, start with what matters to you.</p>',
+     '<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">Find a service. Or run your company.</h2><p>Most people come to FlyttGo to book a service or to run their company. A company uses the business tools and takes part in the FlyttGo Marketplace without building a marketplace of its own.</p>'),
     ('<h3>I need a service</h3><p>Explore moving, transport, trades and other services from participating providers.</p><a href="#marketplace">Explore services ↗</a>',
-     '<h3>Find a Service</h3><p>Find moving, transport, home services and professionals.</p><p class="entry-for">For customers who need something done.</p><a href="#marketplace">Explore services →</a>'),
+     '<h3>Find a Service</h3><p>Find moving, transport, home services and professionals.</p><p class="entry-for">For customers who need something done.</p><p class="entry-note">Moving and relocation, transport and delivery, home services, local professionals and other participating services.</p><a href="#marketplace">Explore services →</a>'),
     ('<h3>I run a business</h3><p>Manage services, appointments, customers, quotes, invoices, receipts and payments.</p><a href="#business-workspace">Explore business tools ↗</a>',
-     '<h3>My Company</h3><p>Manage your business, customers, services, bookings, employees, invoices and payments.</p><p class="entry-for">For independent professionals, small businesses and established companies.</p><a href="#business-workspace">Manage my business →</a>'),
+     '<h3>My Company</h3><p>Manage your business, customers, services, bookings, employees, invoices and payments.</p><p class="entry-for">For independent professionals, small businesses and established companies.</p><p class="entry-note">Use the business tools and take part in the FlyttGo Marketplace. No marketplace of your own needed.</p><a href="#business-workspace">Manage my business →</a>'),
     ('<h3>I want my own marketplace</h3><p>Create a branded marketplace with your identity, domain, services and provider network.</p><a href="#white-label-builder">Explore white-label ↗</a>',
-     '<h3>Create a Marketplace</h3><p>Launch your own branded marketplace, manage providers and build your own customer network.</p><p class="entry-for">For entrepreneurs, organisations and marketplace operators.</p><p class="entry-status">Managing your own providers is in development.</p><a href="#white-label-builder">Explore marketplace solutions →</a>'),
+     '<div class="entry-side"><h3>Create a Marketplace</h3></div><div class="entry-body"><p>Launch your own branded marketplace, manage providers and build your own customer network.</p><p class="entry-for">For entrepreneurs, organisations and marketplace operators.</p><p class="entry-status">Managing your own providers is in development.</p><a href="#white-label-builder">Explore marketplace solutions →</a></div>'),
+    # The specialised offering: a strip below the two main journeys, never their equal.
+    ('<article class="entry-card entry-gold"><span>03 / BUILD &amp; OWN</span><div class="entry-side">',
+     '<article class="entry-card entry-gold entry-specialised"><div class="entry-side"><span>SPECIALISED OFFERING · WHITE LABEL</span>'),
     # The brief's three entry points in the hero (the design had two buttons).
     ('<div class="hero-actions"><a class="btn btn-primary" href="#entry-points">Explore your options<span class="arrow">↗</span></a><a class="btn btn-light" href="#unified-platform">See the platform<span class="arrow">↗</span></a></div>',
-     '<div class="hero-actions"><a class="btn btn-primary" href="#marketplace">Find a service<span class="arrow">↗</span></a><a class="btn btn-light" href="#business-workspace">Run a business<span class="arrow">↗</span></a><a class="btn btn-light" href="#white-label-builder">Build a marketplace<span class="arrow">↗</span></a></div>'),
+     '<div class="hero-actions"><a class="btn btn-primary" href="#marketplace">Find a service<span class="arrow">↗</span></a><a class="btn btn-light" href="#business-workspace">Manage my business<span class="arrow">↗</span></a><a class="hero-more" href="#white-label-builder">Want a marketplace under your own brand? Explore marketplace solutions →</a></div>'),
+    # The hero introduces the two main journeys; a marketplace of one's own is not needed for either.
+    ('<p class="hero-lede">Run a service company, manage customers and bookings, collect payments, issue invoices — or launch a marketplace under your own brand. FlyttGo brings business operations and marketplace infrastructure together.</p>',
+     '<p class="hero-lede">Find moving, transport and local services. Or run your service company on FlyttGo: manage customers and bookings, collect payments, issue invoices and take part in the FlyttGo Marketplace, without a marketplace of your own.</p>'),
+    ('<span>For independent professionals, growing companies and marketplace operators.</span>',
+     '<span>For customers, independent professionals and growing companies.</span>'),
+    # The central FlyttGo Marketplace, never confused with a marketplace of one's own.
+    ('<div class="eyebrow">Explore the marketplace</div>', '<div class="eyebrow">The FlyttGo Marketplace</div>'),
+    ('<p>Discover the FlyttGo marketplace: moving and transport, local services, business solutions and opportunities for providers.</p>',
+     '<p>Discover the FlyttGo Marketplace: moving and transport, local services, business solutions and opportunities for providers. No marketplace of your own is needed to take part.</p>'),
+    ('<div class="eyebrow">Marketplace infrastructure for entrepreneurs and organisations</div>',
+     '<div class="eyebrow">Specialised offering for entrepreneurs and organisations</div>'),
+    ('<p>FlyttGo is designed to let an operator build a branded service marketplace',
+     '<p>Separate from the FlyttGo Marketplace, and not needed to use FlyttGo or its business tools. FlyttGo is designed to let an operator build a branded service marketplace'),
+    ('The same foundation can support a small independent operator or a larger organisation with teams.</p>',
+     'The same foundation can support a small independent operator or a larger organisation with teams. You do not need a marketplace of your own to use it.</p>'),
+    ('<p>Find a service, operate your company or create a marketplace under your own brand — on one connected platform.</p>',
+     '<p>Find a service or run your company on FlyttGo. Organisations that want a marketplace under their own brand can build one on the same platform.</p>'),
     ('<p>Own brand, domain, customer proposition, provider network and commercial rules.</p>',
      '<p>Own brand, domain, customer proposition and commercial rules. Own provider networks: in development.</p>'),
     ('<h2 class="display">Connected by design.<br/><span class="serif">Separate by ownership.</span></h2>',
@@ -515,7 +540,7 @@ def main() -> int:
     (V2_OUT / 'design.v2.html').write_text(v2_head.format('English') + v2 + '\n', encoding='utf-8')
     v2_no = translate_html(v2, no, missing)
     if missing:
-        print(f'no.json lacks {len(missing)} strings of the restructured page, e.g. {sorted(missing)[:5]}', file=sys.stderr)
+        print(f'no.json lacks {len(missing)} strings of the restructured page, e.g. {sorted(missing)}', file=sys.stderr)
         return 1
     (V2_OUT / 'design.v2.no.html').write_text(v2_head.format('Norwegian') + v2_no + '\n', encoding='utf-8')
     (V2_OUT / 'design.v2.css').write_text(

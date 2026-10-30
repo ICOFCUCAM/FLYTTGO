@@ -37,6 +37,7 @@ export default function Header() {
   const [toolsOpen,     setToolsOpen]     = useState(false);
   const [companiesOpen, setCompaniesOpen] = useState(false);
   const [platformOpen,  setPlatformOpen]  = useState(false);
+  const [journeyOpen,   setJourneyOpen]   = useState<string | null>(null);
   const [langOpen,      setLangOpen]      = useState(false);
   const [userMenuOpen,  setUserMenuOpen]  = useState(false);
   const [notifOpen,     setNotifOpen]     = useState(false);
@@ -111,6 +112,7 @@ export default function Header() {
     setToolsOpen(false);
     setCompaniesOpen(false); setUserMenuOpen(false); setPlatformOpen(false);
     setNotifOpen(false);
+    setJourneyOpen(null);
   }
 
   function toggle(which: 'tools' | 'companies' | 'user' | 'notif' | 'platform') {
@@ -119,6 +121,13 @@ export default function Header() {
     setCompaniesOpen(which === 'companies'? (s) => !s : false);
     setUserMenuOpen(which === 'user'      ? (s) => !s : false);
     setNotifOpen(which === 'notif'        ? (s) => !s : false);
+    setJourneyOpen(null);
+  }
+
+  function toggleJourney(id: string) {
+    const open = journeyOpen === id;
+    closeAll();
+    setJourneyOpen(open ? null : id);
   }
 
   function handleNav(page: Page) { setPage(page); setMobileOpen(false); closeAll(); }
@@ -183,6 +192,62 @@ export default function Header() {
     setMobileOpen(false);
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+
+  /* On the restructured homepage (/preview/home, docs/HOMEPAGE_RESTRUCTURE.md)
+   * the menu follows the three journeys: Explore, My Company, For
+   * Organisations. Every item of the menu bar is kept inside them (Moving is
+   * Book Now, Provider network is Become a Driver, the Moving Tools and the
+   * Companies links are their groups), and creating a marketplace of one's
+   * own sits apart at the foot of For Organisations as a specialised offering. */
+  const preview = currentPage === 'home-preview';
+  type JourneyItem = { label: string; desc: string; go: () => void };
+  const page = (label: string, desc: string, to: Page): JourneyItem => ({ label, desc, go: () => handleNav(to) });
+  const section = (label: string, desc: string, id: string): JourneyItem => ({ label, desc, go: () => toSection(id) });
+  const JOURNEYS: { id: string; label: string; items: JourneyItem[]; group?: { title: string; items: JourneyItem[] }; note?: string; specialised?: JourneyItem }[] = [
+    { id: 'explore', label: t('header.journeys.explore'), items: [
+        page(t('header.journeys.services'), t('header.journeys.servicesDesc'), 'services'),
+        page(t('header.journeys.moving'), t('header.journeys.movingDesc'), 'booking'),
+        ...(isTransportHost(window.location.hostname) ? [] : [page(t('header.journeys.transport'), t('header.journeys.transportDesc'), 'transport-home')]),
+        section(t('header.journeys.local'), t('header.journeys.localDesc'), 'marketplace'),
+      ],
+      group: { title: t('header.movingTools'), items: MOVING_TOOLS.map((tool) => page(tool.label, tool.desc, tool.page)) } },
+    { id: 'company', label: t('header.journeys.myCompany'), items: [
+        section(t('header.journeys.workspace'), t('header.journeys.workspaceDesc'), 'business-workspace'),
+        section(t('header.journeys.tools'), t('header.journeys.toolsDesc'), 'unified-platform'),
+        section(t('header.journeys.finance'), t('header.journeys.financeDesc'), 'financial-administration'),
+      ],
+      note: t('header.journeys.companyNote') },
+    { id: 'organisations', label: t('header.journeys.organisations'), items: [
+        page(t('header.journeys.corporate'), t('header.journeys.corporateDesc'), 'corporate'),
+        page(t('header.journeys.providers'), t('header.journeys.providersDesc'), 'driver-onboarding'),
+      ],
+      group: { title: t('header.corporate'), items: CORPORATE_LINKS.map((link) => page(link.label, link.desc, link.page)) },
+      specialised: page(t('header.journeys.createMarketplace'), t('header.journeys.createMarketplaceDesc'), 'white-label') },
+  ];
+  const journeyItem = (item: JourneyItem, small = false) => (
+    <button key={item.label} onClick={item.go} className={`w-full text-left px-4 ${small ? 'py-2' : 'py-3'} hover:bg-emerald-50 transition group`}>
+      <div className={`${small ? 'text-[13px]' : 'text-sm'} font-semibold text-gray-800 group-hover:text-emerald-700`}>{item.label}</div>
+      <div className="text-xs text-gray-500 mt-0.5">{item.desc}</div>
+    </button>
+  );
+  const journeyMenu = (j: typeof JOURNEYS[number]) => (
+    <>
+      {j.items.map((item) => journeyItem(item))}
+      {j.note && <p className="mx-4 mt-1 mb-2 px-3 py-2.5 bg-emerald-50 text-xs leading-relaxed text-emerald-800">{j.note}</p>}
+      {j.group && (
+        <div className="mt-1 pt-2 border-t border-gray-100">
+          <p className="px-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{j.group.title}</p>
+          {j.group.items.map((item) => journeyItem(item, true))}
+        </div>
+      )}
+      {j.specialised && (
+        <div className="mt-1 pt-2 border-t border-gray-100">
+          <p className="px-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('header.journeys.specialised')}</p>
+          {journeyItem(j.specialised, true)}
+        </div>
+      )}
+    </>
+  );
 
   const dropdown = (
     open: boolean,
@@ -299,7 +364,24 @@ export default function Header() {
             </button>
 
             {/* Desktop nav */}
-            <nav className="hidden lg:flex items-center gap-0.5">
+            {preview && (
+              <nav className="hidden lg:flex items-center gap-0.5">
+                {JOURNEYS.map((j) => (
+                  <div key={j.id} className="relative">
+                    <button onClick={() => toggleJourney(j.id)} aria-expanded={journeyOpen === j.id}
+                      className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition ${
+                        journeyOpen === j.id ? 'text-emerald-600 bg-emerald-50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      }`}>{j.label}{chevron(journeyOpen === j.id)}</button>
+                    {journeyOpen === j.id && (
+                      <div className="absolute top-full left-0 mt-2 w-80 py-2 max-h-[75vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-100 z-50">
+                        {journeyMenu(j)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </nav>
+            )}
+            <nav className={preview ? 'hidden' : 'hidden lg:flex items-center gap-0.5'}>
               {navBtn(t('header.home'), 'home')}
               {platformHome && dropdown(platformOpen, t('header.platformMenu'), 'platform', (
                 <div className="w-60 py-2">
@@ -359,7 +441,8 @@ export default function Header() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
-              <button onClick={() => handleNav('booking')} className="hidden sm:flex items-center gap-1.5 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition shadow-sm">{t('header.bookNow')}</button>
+              {/* On the restructured homepage Book Now is Explore › Moving. */}
+              <button onClick={() => handleNav('booking')} className={`${preview ? 'hidden' : 'hidden sm:flex'} items-center gap-1.5 px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition shadow-sm`}>{t('header.bookNow')}</button>
 
               {/* Notifications bell — signed-in only. Subscribes to
                * the notifications table over Supabase Realtime; flips
@@ -475,9 +558,11 @@ export default function Header() {
                   </button>
                   <button
                     onClick={openSignUp}
-                    className="hidden sm:flex items-center gap-1.5 px-4 py-2 border border-emerald-600 text-emerald-600 rounded-lg text-sm font-semibold hover:bg-emerald-50 transition shadow-sm"
+                    className={`hidden sm:flex items-center gap-1.5 px-4 py-2 border rounded-lg text-sm font-semibold transition shadow-sm ${
+                      preview ? 'bg-[#203F68] border-[#203F68] text-white hover:bg-[#18324f]' : 'border-emerald-600 text-emerald-600 hover:bg-emerald-50'
+                    }`}
                   >
-                    {t('header.signUp')}
+                    {preview ? t('header.journeys.getStarted') : t('header.signUp')}
                   </button>
                 </>
               )}
@@ -496,11 +581,17 @@ export default function Header() {
         {/* MOBILE MENU — slide down with dim backdrop */}
         <div
           className={`lg:hidden border-t border-gray-100 bg-white overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
-            mobileOpen ? 'max-h-[28rem] opacity-100' : 'max-h-0 opacity-0'
+            mobileOpen ? (preview ? 'max-h-[80vh] overflow-y-auto opacity-100' : 'max-h-[28rem] opacity-100') : 'max-h-0 opacity-0'
           }`}
         >
           <div className="max-w-7xl mx-auto px-4 pt-3 pb-4 space-y-1">
-            {([
+            {preview && JOURNEYS.map((j) => (
+              <div key={j.id} className="pb-2 mb-1 border-b border-gray-100">
+                <p className="px-4 pt-1 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{j.label}</p>
+                {journeyMenu(j)}
+              </div>
+            ))}
+            {!preview && ([
               [t('header.home'),         'home'],
               ...(isTransportHost(window.location.hostname) ? [] : [[t('header.transport'), 'transport-home']]),
               [t('header.services'),     'services'],
@@ -534,7 +625,7 @@ export default function Header() {
                   onClick={openSignUp}
                   className="w-full py-2.5 border border-emerald-600 text-emerald-600 rounded-lg text-sm font-semibold mt-1 hover:bg-emerald-50 transition"
                 >
-                  {t('header.signUp')}
+                  {preview ? t('header.journeys.getStarted') : t('header.signUp')}
                 </button>
               </>
             )}
