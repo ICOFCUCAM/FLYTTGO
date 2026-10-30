@@ -39,3 +39,7 @@ pnpm-debug.log*
 # child of a fully-ignored directory.
 .vercel/*
 !.vercel/project.json
+
+# Generated images of the AI photo pilot (scripts/generate-library-images.ts):
+# reviewed and loaded into the image library, never committed.
+ai-images/
