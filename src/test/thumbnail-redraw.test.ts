@@ -4,7 +4,7 @@ import {
   assetsImageMap, thumbnailImagesHash, thumbnailImagesKey, thumbnailPath, type ImageMap,
 } from '../../supabase/functions/_shared/image-library.ts';
 import { sha256Hex } from '../../supabase/functions/_shared/template-images.ts';
-import { parseArgs, selectTemplates, thumbnailPage, unknownIds, type ThumbnailRow } from '../../scripts/redraw-thumbnails.ts';
+import { bucketPath, oldThumbnails, parseArgs, selectTemplates, thumbnailPage, unknownIds, type ThumbnailRow } from '../../scripts/redraw-thumbnails.ts';
 
 /* The same map and text as supabase/tests/thumbnail_redraw.test.sql ("the
  * picture key"): the script records what the database compares. */
@@ -52,20 +52,39 @@ describe('the redraw script (scripts/redraw-thumbnails.ts)', () => {
   const rows = [row('a', 'stale'), row('b', 'fresh'), row('c', 'missing'), row('d', 'stale', 'transport')];
   const none = { ids: null, category: null, all: false, missing: false, limit: null };
 
-  it('is a dry run by default, writing to a local folder', () => {
-    expect(parseArgs([])).toEqual({ ...none, out: 'thumbnail-redraw', upload: false });
-    expect(parseArgs(['--ids', 'a, b', '--category', 'appointments', '--all', '--missing', '--limit', '3', '--out', 'x', '--upload']))
-      .toEqual({ ids: ['a', 'b'], category: 'appointments', all: true, missing: true, limit: 3, out: 'x', upload: true });
+  const clean = { cleanOld: false, olderThanDays: 7, delete: false };
+  it('is a dry run by default, writing to a local folder, and draws the missing thumbnails too', () => {
+    expect(parseArgs([])).toEqual({ ...none, missing: true, out: 'thumbnail-redraw', upload: false, ...clean });
+    expect(parseArgs(['--ids', 'a, b', '--category', 'appointments', '--all', '--stale-only', '--limit', '3', '--out', 'x', '--upload']))
+      .toEqual({ ids: ['a', 'b'], category: 'appointments', all: true, missing: false, limit: 3, out: 'x', upload: true, ...clean });
+    expect(parseArgs(['--clean-old', '--older-than', '10', '--delete'])).toMatchObject({ cleanOld: true, olderThanDays: 10, delete: true });
+    expect(parseArgs(['--clean-old', '--older-than', '0'])).toMatchObject({ olderThanDays: 7, delete: false });
   });
-  it('draws the stale ones, also the missing ones on request, the named ones or all, in one category, the first N', () => {
+  it('draws the stale and the missing ones (only the stale with --stale-only), the named ones or all, in one category, the first N', () => {
     const ids = (o: Partial<typeof none>) => selectTemplates(rows, { ...none, ...o }).map(r => r.template_id);
     expect(ids({})).toEqual(['a', 'd']);
     expect(ids({ missing: true })).toEqual(['a', 'c', 'd']);
+    expect(ids(parseArgs([]))).toEqual(['a', 'c', 'd']);
     expect(ids({ category: 'appointments' })).toEqual(['a']);
     expect(ids({ ids: ['b', 'c'] })).toEqual(['b', 'c']);                // whatever their state
     expect(ids({ all: true })).toEqual(['a', 'b', 'c', 'd']);
     expect(ids({ all: true, limit: 2 })).toEqual(['a', 'b']);
     expect(unknownIds(rows, ['a', 'zz'])).toEqual(['zz']);
+  });
+  it('removes only a template\'s earlier thumbnail files, older than the days given, never the current one', () => {
+    const now = new Date('2026-11-10T12:00:00Z');
+    const files = [
+      { name: 'thumbnail.jpg', created_at: '2026-10-30T01:00:00Z' },                 // imported, replaced since: old
+      { name: 'thumbnail-0123456789ab.jpg', created_at: '2026-11-01T00:00:00Z' },     // earlier redraw: old
+      { name: 'thumbnail-abcdefabcdef.jpg', created_at: '2026-11-08T00:00:00Z' },     // earlier redraw, 2 days: kept
+      { name: 'thumbnail-fedcbafedcba.jpg', created_at: '2026-10-01T00:00:00Z' },     // current: kept
+      { name: 'hero-1.jpg', created_at: '2026-10-01T00:00:00Z' },                     // not a thumbnail: kept
+    ];
+    expect(oldThumbnails('t1', files, 't1/thumbnail-fedcbafedcba.jpg', now, 7)).toEqual(['t1/thumbnail.jpg', 't1/thumbnail-0123456789ab.jpg']);
+    expect(oldThumbnails('t1', files, null, now, 7)).toEqual([]);                   // no current thumbnail: keep all
+    expect(bucketPath('https://x.supabase.co/storage/v1/object/public/site-template-assets/t1/thumbnail-fedcbafedcba.jpg?v=2'))
+      .toBe('t1/thumbnail-fedcbafedcba.jpg');
+    expect(bucketPath('https://x.supabase.co/storage/v1/object/public/other/t1/thumbnail.jpg')).toBeNull();
   });
   it('renders the home page as the template\'s own demo with the resolved images, never the imported photos', () => {
     const t = { name: 'Verve Hair Salon', assets: [{ key: 'hero', url: 'https://old.test/storage/v1/object/public/site-template-assets/shared/containers.jpg' }],

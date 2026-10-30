@@ -20,7 +20,7 @@
 // With --upload each picture is stored at
 //   site-template-assets/<id>/thumbnail-<first 12 hex of the images>.jpg
 // (a new name for new images, so no browser shows the old picture from its
-// cache; the earlier file stays) and recorded with
+// cache; the earlier file stays until --clean-old removes it) and recorded with
 // record_site_template_thumbnail() (server only) with the SHA-256 of the
 // images it was drawn with. --upload writes to FlyttGo's storage and
 // database and needs the owner's approval, like the importer's --to-flyttgo.
@@ -37,14 +37,22 @@
 //   ... node scripts/redraw-thumbnails.ts --category appointments --upload
 //
 // Options:
-//   (none)               the stale thumbnails
-//   --missing            also the templates without a thumbnail
+//   (none)               the stale thumbnails and the templates without one
+//                        (owner's decision 2026-10-30)
+//   --stale-only         only the stale thumbnails, not the missing ones
 //   --category ID        only one catalogue category
 //   --ids a,b            these templates, whatever their state
 //   --all                every template (not retired), whatever its state
 //   --limit N            only the first N
 //   --out <dir>          where the dry run writes (default thumbnail-redraw)
 //   --upload             store and record them in FlyttGo (otherwise a dry run)
+//
+// Earlier thumbnail files (owner's decision 2026-10-30: removed after a few
+// days, so one can still be restored meanwhile):
+//   --clean-old          list each template's thumbnail files that are no
+//                        longer its current one and older than --older-than
+//                        days (default 7); with --delete they are removed
+//                        from storage. Nothing else in the bucket is touched.
 // ============================================================================
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -65,6 +73,8 @@ export interface ThumbnailRow {
 export interface RedrawOptions {
   ids: string[] | null; category: string | null; all: boolean; missing: boolean; limit: number | null;
   out: string; upload: boolean;
+  /** --clean-old: old thumbnail files instead of drawing; removed only with --delete. */
+  cleanOld: boolean; olderThanDays: number; delete: boolean;
 }
 
 /** The command line, read. */
@@ -77,15 +87,17 @@ export function parseArgs(argv: readonly string[]): RedrawOptions {
   };
   const ids = arg('ids')?.split(',').map(s => s.trim()).filter(Boolean) ?? null;
   const limit = Number(arg('limit'));
+  const days = Number(arg('older-than'));
   return {
-    ids: ids?.length ? ids : null, category: arg('category') || null, all: argv.includes('--all'), missing: argv.includes('--missing'),
+    ids: ids?.length ? ids : null, category: arg('category') || null, all: argv.includes('--all'), missing: !argv.includes('--stale-only'),
     limit: Number.isFinite(limit) && limit > 0 ? limit : null, out: arg('out') || 'thumbnail-redraw', upload: argv.includes('--upload'),
+    cleanOld: argv.includes('--clean-old'), olderThanDays: Number.isFinite(days) && days >= 1 ? days : 7, delete: argv.includes('--delete'),
   };
 }
 
 /**
- * Which templates to draw: the stale ones (and the missing ones with
- * --missing), or every one named with --ids, or all with --all; in one
+ * Which templates to draw: the stale ones and the missing ones (not with
+ * --stale-only), or every one named with --ids, or all with --all; in one
  * category with --category; the first N with --limit.
  */
 export function selectTemplates(rows: readonly ThumbnailRow[], o: Pick<RedrawOptions, 'ids' | 'category' | 'all' | 'missing' | 'limit'>): ThumbnailRow[] {
@@ -93,6 +105,30 @@ export function selectTemplates(rows: readonly ThumbnailRow[], o: Pick<RedrawOpt
     && (o.ids ? o.ids.includes(r.template_id) : o.all || r.state === 'stale' || (o.missing && r.state === 'missing')));
   if (o.limit) out = out.slice(0, o.limit);
   return out;
+}
+
+/** A stored file of a template's folder, as the Storage API lists it. */
+export interface StoredFile { name: string; created_at: string | null; updated_at?: string | null }
+
+/** The path of a thumbnail inside the bucket, from its public address (null for another bucket or none). */
+export function bucketPath(url: string | null | undefined, bucket = 'site-template-assets'): string | null {
+  const m = /\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/([^?#]+)/.exec(String(url ?? ''));
+  return m && m[1] === bucket ? decodeURIComponent(m[2]) : null;
+}
+
+/**
+ * A template's thumbnail files that may go: named like a thumbnail
+ * (thumbnail.jpg from the importer, thumbnail-<hex>.jpg from a redraw), not
+ * the one it uses now, and older than the given days. A template without a
+ * current thumbnail keeps everything.
+ */
+export function oldThumbnails(templateId: string, files: readonly StoredFile[], current: string | null, now: Date, days: number): string[] {
+  if (!current) return [];
+  const cutoff = now.getTime() - days * 86_400_000;
+  return files
+    .map(f => ({ path: `${templateId}/${f.name}`, at: Date.parse(f.updated_at ?? f.created_at ?? '') }))
+    .filter(f => /^[^/]+\/thumbnail(-[0-9a-f]{12})?\.jpg$/.test(f.path) && f.path !== current && Number.isFinite(f.at) && f.at < cutoff)
+    .map(f => f.path);
 }
 
 /** The ids asked for with --ids that FlyttGo does not have (or that are retired). */
@@ -134,6 +170,7 @@ async function main() {
   };
 
   const rows = await rpc<ThumbnailRow[]>('admin_site_template_thumbnails', { p_category: o.category });
+  if (o.cleanOld) return cleanOld(rows, o, url, headers);
   const counts = (s: ThumbnailRow['state']) => rows.filter(r => r.state === s).length;
   console.log(`${rows.length} template(s)${o.category ? ` in ${o.category}` : ''}: ${counts('stale')} stale, ${counts('missing')} without a thumbnail, ${counts('fresh')} fresh`);
   const missingIds = unknownIds(rows, o.ids);
@@ -183,6 +220,31 @@ async function main() {
   } else {
     console.log(`stored ${plan.length} thumbnail(s)`);
   }
+}
+
+/** --clean-old: each template's earlier thumbnail files, listed (dry run) or removed (--delete). */
+async function cleanOld(rows: readonly ThumbnailRow[], o: RedrawOptions, url: string, headers: Record<string, string>) {
+  const gone: string[] = [];
+  for (const r of rows.filter(x => !o.ids || o.ids.includes(x.template_id))) {
+    const res = await fetch(`${url}/storage/v1/object/list/site-template-assets`, {
+      method: 'POST', headers, body: JSON.stringify({ prefix: `${r.template_id}/`, limit: 1000 }),
+    });
+    if (!res.ok) throw new Error(`list ${r.template_id}: ${res.status} ${await res.text()}`);
+    gone.push(...oldThumbnails(r.template_id, await res.json() as StoredFile[], bucketPath(r.thumbnail_url), new Date(), o.olderThanDays));
+  }
+  if (!gone.length) { console.log(`no thumbnail file older than ${o.olderThanDays} day(s) to remove`); return; }
+  if (!o.delete) {
+    for (const p of gone) console.log(`would remove site-template-assets/${p}`);
+    console.log(`dry run: ${gone.length} earlier thumbnail file(s); add --delete to remove them`);
+    return;
+  }
+  for (let i = 0; i < gone.length; i += 100) {
+    const res = await fetch(`${url}/storage/v1/object/site-template-assets`, {
+      method: 'DELETE', headers, body: JSON.stringify({ prefixes: gone.slice(i, i + 100) }),
+    });
+    if (!res.ok) throw new Error(`remove: ${res.status} ${await res.text()}`);
+  }
+  console.log(`removed ${gone.length} earlier thumbnail file(s)`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main().catch((e) => { console.error(e.message ?? e); process.exit(1); });

@@ -253,7 +253,8 @@ export function ThumbnailsView({ counts }: { counts: { category: string; templat
         <p className="text-gray-700">Thumbnails are pictures of a page taken in a browser. The server cannot run a browser, so they are drawn by a script on a computer with Playwright and Chromium
           (<code>npm i -D playwright</code>, <code>npx playwright install chromium</code>), with the service key. By default it is a dry run: the pictures go to a local folder for review and nothing is written.
           With <code>--upload</code> it stores them in FlyttGo under a new name and records the photos they were drawn with; that writes to FlyttGo&apos;s storage and database and needs the owner&apos;s approval.
-          Add <code>--missing</code> to also draw templates without a thumbnail.</p>
+          It also draws templates without a thumbnail (add <code>--stale-only</code> to skip them). Earlier thumbnail files stay for a while so one can be restored;
+          <code>--clean-old</code> lists those older than 7 days (<code>--older-than N</code>) and <code>--clean-old --delete</code> removes them.</p>
         <pre className="bg-gray-50 border rounded p-2 overflow-x-auto whitespace-pre text-[11px]">{redrawCommand(only)}</pre>
         <pre className="bg-gray-50 border rounded p-2 overflow-x-auto whitespace-pre text-[11px]">{redrawCommand(only, true)}</pre>
       </div>
