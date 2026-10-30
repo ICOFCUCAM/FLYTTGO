@@ -443,30 +443,38 @@ def build_v2(base: str) -> str:
 import colorsys
 
 
-# The restructured page takes a blue accent instead of emerald (owner, 30
-# October 2026: "the green that runs all over the sites is not professional");
-# emerald stays only on the booking actions, which keep their own colours.
-EMERALD, BLUE = 160, 221
+# The restructured page takes near-black, white and neutral greys with one
+# violet accent (owner, 30 October 2026, after gold, green all over, navy and
+# blue, and architectpro.co's indigo and lavender). The platform page keeps
+# emerald. Each entry is (hue, saturation).
+PALETTES = {
+    'emerald': {'accent': (160, 0.90), 'mid': (160, 0.84), 'beige': (152, 0.55), 'dark': (214, 0.56), 'tint': (214, 0.30), 'grey': (215, 0.20)},
+    'violet': {'accent': (246, 0.86), 'mid': (246, 0.80), 'beige': (246, 0.45), 'dark': (246, 0.38), 'tint': (246, 0.22), 'grey': (246, 0.12)},
+    # Near-black and neutral greys with a single violet accent (owner, 30 October 2026: "is black also good?").
+    'ink': {'accent': (246, 0.86), 'mid': (246, 0.80), 'beige': (240, 0.10), 'dark': (240, 0.10), 'tint': (240, 0.08), 'grey': (240, 0.06)},
+}
+EMERALD, VIOLET, INK = 'emerald', 'violet', 'ink'
 
 
-def recolour(r: int, g: int, b: int, accent: int = EMERALD) -> tuple[int, int, int]:
+def recolour(r: int, g: int, b: int, palette: str = EMERALD) -> tuple[int, int, int]:
+    pal = PALETTES[palette]
     h, l, sat = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
     deg = h * 360
     if sat < 0.06 and (l > 0.97 or l < 0.08):
         return r, g, b                                   # white and black stay
     nl = l
-    if 25 <= deg < 70 and sat > 0.2:                     # golds -> emerald-600 (readable on white); beiges -> emerald-50
-        nh, ns = (accent / 360, 0.90 if accent == EMERALD else 0.72) if l < 0.8 else ((accent - 8) / 360, 0.55)
-        nl = min(l, 0.34) if l < 0.8 else l
-    elif 70 <= deg < 190 and l < 0.42 and sat > 0.12:    # dark greens -> navy
-        nh, ns = 214 / 360, 0.56
-    elif 70 <= deg < 190 and sat > 0.25:                 # mid greens -> emerald (or the accent)
-        nh, ns = accent / 360, 0.84 if accent == EMERALD else 0.70
-    elif l > 0.86:                                       # ivory and pale green-greys -> white / slate-50
-        return (255, 255, 255) if l > 0.95 else tuple(round(x * 255) for x in colorsys.hls_to_rgb(214 / 360, l, 0.30))
-    else:                                                # green-tinted greys -> slate
-        nh, ns = 215 / 360, min(sat, 0.20)
-    return tuple(round(x * 255) for x in colorsys.hls_to_rgb(nh, nl, ns))
+    if 25 <= deg < 70 and sat > 0.2:                     # golds -> the accent (readable on white); beiges -> its palest tint
+        (nh, ns), nl = (pal['accent'], min(l, 0.34)) if l < 0.8 else (pal['beige'], l)
+    elif 70 <= deg < 190 and l < 0.42 and sat > 0.12:    # dark greens -> navy or indigo
+        nh, ns = pal['dark']
+    elif 70 <= deg < 190 and sat > 0.25:                 # mid greens -> the accent
+        nh, ns = pal['mid']
+    elif l > 0.86:                                       # ivory and pale green-greys -> white / a pale tint
+        th, ts = pal['tint']
+        return (255, 255, 255) if l > 0.95 else tuple(round(x * 255) for x in colorsys.hls_to_rgb(th / 360, l, ts))
+    else:                                                # green-tinted greys -> cool greys
+        nh, ns = pal['grey'][0], min(sat, pal['grey'][1])
+    return tuple(round(x * 255) for x in colorsys.hls_to_rgb(nh / 360, nl, ns))
 
 
 # Readability on the restructured page (owner, 30 October 2026: "letters cannot
@@ -475,7 +483,7 @@ def recolour(r: int, g: int, b: int, accent: int = EMERALD) -> tuple[int, int, i
 # grounds are darkened in their own hue until they reach 7:1, for crisp dark text
 # like the owner's reference; light colours made for dark grounds are left alone.
 # Text below 11px is raised to 11px.
-READABLE_GROUND = (225, 231, 239)                    # the darkest light ground on the page (slate, after recolouring)
+READABLE_GROUND = (228, 228, 232)                    # the darkest light ground on the page (lavender, after recolouring)
 
 
 def _lum(c: tuple) -> float:
@@ -523,17 +531,17 @@ def readable_css(css: str) -> str:
     return re.sub(r'(font:\s*(?:\d{3}\s+|italic\s+|normal\s+)*)(\d+(?:\.\d+)?)px', size, css)
 
 
-def recolour_css(css: str, accent: int = EMERALD) -> str:
+def recolour_css(css: str, palette: str = EMERALD) -> str:
     def hexrep(m: re.Match) -> str:
         v = m.group(1)
         if len(v) == 3:
             v = ''.join(c * 2 for c in v)
         r, g, b = (int(v[i:i + 2], 16) for i in (0, 2, 4))
-        return '#%02x%02x%02x' % recolour(r, g, b, accent)
+        return '#%02x%02x%02x' % recolour(r, g, b, palette)
 
     def rgbrep(m: re.Match) -> str:
         r, g, b = (int(x) for x in m.group(2, 3, 4))
-        nr, ng, nb = recolour(r, g, b, accent)
+        nr, ng, nb = recolour(r, g, b, palette)
         return f'{m.group(1)}({nr},{ng},{nb}{m.group(5)})'
 
     css = re.sub(r'#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', hexrep, css)
@@ -692,9 +700,9 @@ def main() -> int:
     (V2_OUT / 'design.v2.no.html').write_text(v2_head.format('Norwegian') + v2_no + '\n', encoding='utf-8')
     (V2_OUT / 'design.v2.css').write_text(
         '/* Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html.\n'
-        ' * The design\'s styles, scoped under .fgv2, in FlyttGo\'s navy and white with a blue accent (owner,\n'
-        ' * 30 October 2026: no gold, no green all over), then made readable. Do not edit. */\n'
-        + readable_css(recolour_css(scope_css(css, '.fgv2'), BLUE)) + '\n', encoding='utf-8')
+        ' * The design\'s styles, scoped under .fgv2, in near-black, white and neutral greys with one violet accent\n'
+        ' * (owner, 30 October 2026), then made readable. Do not edit. */\n'
+        + readable_css(recolour_css(scope_css(css, '.fgv2'), INK)) + '\n', encoding='utf-8')
     print(f'design.html {len(body)} chars, design.css, design-scripts.ts ({len(scripts)} scripts); links wired:')
     for u in used:
         print('  ' + u)

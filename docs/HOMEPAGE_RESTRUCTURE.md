@@ -167,7 +167,13 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
 
 ### Integrated platform experience (owner, 2026-10-30)
 
-**Colours.** The owner rejected the brief's gold and then emerald all over the page. The page is now navy and white with a blue accent: `build.py` recolours the design with `BLUE`, and the platform page keeps `EMERALD`. Emerald stays only on the booking actions. Text on light grounds is darkened to 7:1, after the owner's reference of crisp, dark type; the minimum is 4.5:1.
+**Colours.** In order, the owner rejected the brief's gold, emerald all over the page, navy with blue, and then architectpro.co's indigo and lavender. Asked about black, the page now uses near-black, white and neutral greys with one violet accent:
+- `build.py` (`PALETTES['ink']`) recolours the design. The platform page keeps `PALETTES['emerald']` and is unchanged.
+- **Near-black** `#111116` is for headings, dark panels, the top strip, Get started and the booking widget's header.
+- **Soft grey** `#F6F6F8` and white are the grounds.
+- **Violet** `#5B4CF0` is the single accent: main actions, Book Now (the bar and the widget), links and small labels. Labels use the deeper `#4335C9`.
+- Text on light grounds is darkened to 7:1, after the owner's reference of crisp, dark type; the minimum is 4.5:1.
+- The FlyttGo logo keeps its emerald, as the brand mark.
 
 **What changed on the page:**
 - **Hero:**
