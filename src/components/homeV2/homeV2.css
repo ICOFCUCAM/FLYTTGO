@@ -229,6 +229,7 @@
 .fgv2 .v2-booking-inner { max-width: 1180px; }
 .fgv2 .v2-booking-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 32px; margin-bottom: 18px; }
 .fgv2 .v2-booking-head p { margin: 0; font-size: 15px; color: var(--muted); }
+.fgv2[data-booking="b"] .v2-booking-head p:after { content: ""; display: block; width: 48px; height: 2px; margin-top: 22px; background: var(--gold); }
 .fgv2 .fgp-oldcard, .fgv2 .fgp-oldcard * { border-radius: 0 !important; }
 .fgv2 .fgp-oldcard { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; box-shadow: var(--lift); border: 1px solid var(--line); }
 .fgv2 .fgp-oldcard :is(input, select, button) { font-family: inherit; }
@@ -711,7 +712,7 @@
 @media (min-width: 1000px) {
   .fgv2[data-booking="b"] .v2-booking-inner { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 2fr); gap: 48px; align-items: center; max-width: var(--wrap-max); }
   .fgv2[data-booking="b"] .v2-booking-head { display: block; margin: 0; }
-  .fgv2[data-booking="b"] .v2-booking-head p { margin-top: 16px; font: var(--head-weight) clamp(22px, 2vw, 30px)/1.2 var(--font-display); letter-spacing: -.03em; color: var(--ink); }
+  .fgv2[data-booking="b"] .v2-booking-head p { margin-top: 16px; font: var(--head-weight) clamp(24px, 2.3vw, 34px)/1.16 var(--font-display); letter-spacing: -.035em; color: var(--ink); max-width: 15ch; text-wrap: balance; }
 }
 /* Booking C · deep-blue band: the widget lifted on the brand ground between hero and journeys. */
 .fgv2[data-booking="c"] main > .v2-booking { background: var(--blue); }
