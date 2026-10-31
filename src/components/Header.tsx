@@ -216,7 +216,7 @@ export default function Header() {
     <button onClick={openMoving}
       className={`px-1.5 xl:px-2 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-semibold transition ${
         currentPage === 'transport-home' ? 'text-[#24513B] bg-[#F5F3EB]' : 'text-[#24513B] hover:bg-gray-50'
-      }`}>{t('header.transport')}</button>
+      }`}>{t('header.journeys.logistics')}</button>
   );
   /* The new homepage's address: `/` once it is the front page, else the preview path. */
   const homeOfDesign: Page = newDesign() ? 'home' : 'home-preview';
@@ -663,7 +663,7 @@ export default function Header() {
               </div>
             ))}
             {preview && !isTransportHost(window.location.hostname) && (
-              <button onClick={() => openMoving()} className="block w-full text-left px-4 py-2.5 text-sm font-semibold rounded-lg text-[#24513B] hover:bg-gray-50">{t('header.transport')}</button>
+              <button onClick={() => openMoving()} className="block w-full text-left px-4 py-2.5 text-sm font-semibold rounded-lg text-[#24513B] hover:bg-gray-50">{t('header.journeys.logistics')}</button>
             )}
             {preview && (
               <button onClick={() => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page'))} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.journeys.howItWorks')}</button>

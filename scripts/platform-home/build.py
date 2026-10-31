@@ -412,15 +412,15 @@ V2_ECO_NOTE = ('<p class="v2-eco-note">Every business and marketplace keeps its 
 # without a website of their own (the Free plan: jobs up to 500 NOK at 0% commission, SUBSCRIPTION_PLANS).
 # No free branded page is offered or implied.
 V2_BOOKING = ('<div class="v2-booking v2-move-band" id="booking"><div class="wrap v2-booking-inner">'
-              '<div class="v2-move-top"><div><span class="eyebrow">FlyttGo Moving &amp; Transport</span>'
-              '<h2>Moving and transport platform across Norway.</h2></div>'
-              '<p>For people who need something moved, and for the drivers and transport companies who move it. One platform, two sides.</p></div>'
+              '<div class="v2-move-top"><div><span class="eyebrow">One of FlyttGo\'s marketplaces</span>'
+              '<h2>Our Logistics and Transport Marketplace.</h2></div>'
+              '<p>Across Norway: for people who need something moved, and for the drivers and transport companies who move it. Two sides, one marketplace.</p></div>'
               '<div class="v2-move-sides">'
               '<div class="v2-move-card v2-move-users"><small>For users</small><h3>Book a move</h3>'
               '<ul class="v2-move-proof"><li>Approved, document-checked drivers</li><li>Upfront price with 25% MVA included</li>'
               '<li>Live tracking on the day</li><li>Pay by card or Vipps</li></ul>'
               '<div class="v2-move-actions"><a href="/book" data-page="booking" data-anchor>Get a moving price →</a>'
-              '<a href="/transport" data-page="transport-home" data-anchor>Go to FlyttGo Moving &amp; Transport</a></div>'
+              '<a href="/transport" data-page="transport-home" data-anchor>Open the marketplace</a></div>'
               '<div data-slot="booking"></div></div>'
               '<div class="v2-move-card v2-move-drivers"><small>For drivers and companies</small><h3>Earn with FlyttGo</h3>'
               '<ul class="v2-move-proof"><li>Take jobs in the app, near you</li><li>See what you earn before you accept</li>'
@@ -543,7 +543,7 @@ V2_VOICE = [
      '<span class="hl hl-b"><span class="h1-line">Book services.</span> <span class="h1-line">Run your company.</span> <span class="h1-line">Grow with FlyttGo.</span></span>'
      '<span class="hl hl-c"><span class="h1-line">The platform behind</span> <span class="h1-line">every service business.</span></span><br/>'),
     ('<div class="eyebrow">Services · Business tools · Network</div>',
-     '<a class="hero-move" href="#booking" data-anchor><i aria-hidden="true"></i>Moving &amp; transport across Norway — get a price in a minute →</a>'
+     '<a class="hero-move" href="#booking" data-anchor><i aria-hidden="true"></i>Our logistics and transport marketplace — get a moving price in a minute →</a>'
      '<div class="eyebrow"><span class="hl-sig-a">Services · Business tools · Network</span><span class="hl-sig">Assisting companies to fly high</span></div>'),
     # What the studio shows that exists, what is being connected and what is in development
     # (docs/PLATFORM_AUDIT_2026-10-30.md, white label rows).

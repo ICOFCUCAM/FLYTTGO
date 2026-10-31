@@ -58,6 +58,7 @@ export const no: PartialTranslationKeys = {
       payments: 'Betalinger og regnskap',
       expenses: 'Utgifter og rapporter',
       participation: 'Delta som leverandør',
+      logistics: 'Logistikk og transport',
       companyNote: 'Driv bedriften din med FlyttGos forretningsverktøy. Ingen egen markedsplass nødvendig.',
       openMyCompany: 'Alt om Min bedrift',
       openMyCompanyDesc: 'Hele bedriftsarbeidsflaten',

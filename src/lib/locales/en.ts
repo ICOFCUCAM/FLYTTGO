@@ -56,6 +56,7 @@ export const en = {
       payments: 'Payments and financial records',
       expenses: 'Expenses and reporting',
       participation: 'Provider participation',
+      logistics: 'Logistics & transport',
       companyNote: 'Run your company with FlyttGo\'s business tools. No marketplace of your own needed.',
       openMyCompany: 'All of My Company',
       openMyCompanyDesc: 'The full business workspace',
