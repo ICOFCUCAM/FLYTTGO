@@ -25,6 +25,11 @@ import { initDesign as initEn } from '../platformHome/design-scripts';
 import { initDesign as initNo } from '../platformHome/design-scripts.no';
 import { installDemoRecords } from './demoRecords';
 import { installStudio } from './studioPreview';
+import { installServiceScroll } from './serviceScroll';
+import { PENDING_SECTION, takePendingSection } from './pendingSection';
+import { SECTION_PAGE, sectionKey } from './sitePages';
+import { LIVE_NEW_DESIGN, newDesign } from '../../lib/siteDesign';
+import { pageTitle, pageToPath } from '../../lib/pageRoutes';
 import { applyDesign, DEFAULT_TOKENS, DEFAULT_VARIANTS, googleFontsHref } from './design.config';
 import './design.v2.css';
 import './homeV2.css';
@@ -72,8 +77,13 @@ function installMotion(el: HTMLElement) {
 /* The selected typefaces (design.config.ts). */
 const FONTS = googleFontsHref([DEFAULT_TOKENS.fontDisplay, DEFAULT_TOKENS.fontBody, DEFAULT_TOKENS.fontAccent]);
 
-export default function HomeV2Page() {
-  const { setPage, setShowAuthModal, setAuthMode } = useApp();
+/**
+ * keep: the sections this page shows (sitePages.ts), by key; every other section is left out before the
+ * design's scripts run. Without it, the full design (/preview/home, the studio's canvas) without the
+ * homepage-only "Go further" band.
+ */
+export default function HomeV2Page({ keep }: { keep?: string[] } = {}) {
+  const { setPage, setShowAuthModal, setAuthMode, currentPage } = useApp();
   const { user, profile } = useAuth();
   const { i18n: { language } } = useTranslation();
   const version = VERSIONS[language === 'no' ? 'no' : 'en'];
@@ -83,12 +93,12 @@ export default function HomeV2Page() {
   const live = useRef({ user, profile });
   live.current = { user, profile };
 
-  /* A page under review: not for search engines. The design's typefaces. */
+  /* Not for search engines until the new design is live (and the full design canvas never). The design's typefaces. */
   useEffect(() => {
     let meta = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
     const before = meta?.content ?? null;
     if (!meta) { meta = document.createElement('meta'); meta.name = 'robots'; document.head.appendChild(meta); }
-    meta.content = 'noindex, nofollow';
+    if (!LIVE_NEW_DESIGN || !keep) meta.content = 'noindex, nofollow';
     if (!document.querySelector(`link[href="${FONTS}"]`)) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
@@ -101,6 +111,19 @@ export default function HomeV2Page() {
   useEffect(() => {
     const el = root.current;
     if (!el) return;
+    el.querySelectorAll<HTMLElement>('main > section, main > .v2-booking').forEach(sec => {
+      const key = sectionKey(sec);
+      if (keep ? !keep.includes(key) : key === 'explore-more') sec.remove();
+    });
+    /* A link to a section this page left out goes to the page that holds it, and opens there. */
+    el.querySelectorAll<HTMLAnchorElement>('a[href^="#"]').forEach(a => {
+      const id = a.getAttribute('href')!.slice(1);
+      if (!id || el.querySelector(`#${CSS.escape(id)}`)) return;
+      const page = SECTION_PAGE[id] ?? (newDesign() ? 'home' : 'home-preview');
+      a.dataset.page = page;
+      a.dataset.section = id;
+      a.setAttribute('href', pageToPath(page));
+    });
     setBooking(el.querySelector<HTMLElement>('[data-slot="booking"]'));
     /* The hero picture becomes the former homepage's slideshow, as on the platform page. */
     const picture = el.querySelector<HTMLImageElement>('.hero-visual > img');
@@ -116,7 +139,14 @@ export default function HomeV2Page() {
     const removeRecords = installDemoRecords(el, lang);
     const removeStudio = installStudio(el, lang);
     const removeMotion = installMotion(el);
+    const removeServiceScroll = installServiceScroll(el);
     wireCards(el);
+    /* A section asked for from another page's menu: open there once the page has rendered. */
+    const pending = takePendingSection();
+    const pendingTimer = pending ? window.setTimeout(() => {
+      el.querySelector(`#${pending.id}`)?.scrollIntoView({ block: 'start' });
+      if (pending.tab) el.querySelector<HTMLButtonElement>(`#${pending.id} ${pending.tab}`)?.click();
+    }, 60) : 0;
 
     /* Framed by the Design Refinement Studio: its probe (lab/probe.ts) is loaded only then. */
     let removeProbe = () => {};
@@ -141,6 +171,7 @@ export default function HomeV2Page() {
       const a = (e.target as HTMLElement).closest<HTMLElement>('[data-page]');
       if (!a || !el.contains(a)) return;
       e.preventDefault();
+      if (a.dataset.section) { try { sessionStorage.setItem(PENDING_SECTION, JSON.stringify({ id: a.dataset.section })); } catch { /* private mode */ } }
       open(a.dataset.page!);
     };
     const onKey = (e: KeyboardEvent) => {
@@ -149,12 +180,14 @@ export default function HomeV2Page() {
     };
     el.addEventListener('click', onClick);
     el.addEventListener('keydown', onKey);
-    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); removeRecords(); removeStudio(); removeMotion(); mounted = false; removeProbe(); };
-  }, [version, language, setPage, setShowAuthModal, setAuthMode]);
+    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); removeRecords(); removeStudio(); removeMotion(); removeServiceScroll(); mounted = false; removeProbe(); window.clearTimeout(pendingTimer); };
+  }, [version, language, setPage, setShowAuthModal, setAuthMode, keep]);
 
   return (
     <>
-      <div key={language} ref={root} className="fgv2" lang={language === 'no' ? 'nb' : 'en'} dangerouslySetInnerHTML={{ __html: version.html }} />
+      {/* A page of the new design without the hero still has one page heading. */}
+      {keep && !keep.includes('hero') && <h1 className="sr-only">{pageTitle(currentPage).split(' · ')[0]}</h1>}
+      <div key={`${language}|${keep?.join(",") ?? "full"}`} ref={root} className="fgv2" lang={language === 'no' ? 'nb' : 'en'} dangerouslySetInnerHTML={{ __html: version.html }} />
       {hero && createPortal(<HeroSlides alt={hero.alt} />, hero.el)}
       {booking && createPortal(<BookingCard />, booking)}
     </>

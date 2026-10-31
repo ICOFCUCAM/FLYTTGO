@@ -248,9 +248,9 @@ V2_SECTIONS = [                                   # (attribute in the section's 
     # industries; only then the connected platform, organisations, providers, the optional white-label
     # infrastructure and network independence.
     ('class="hero wrap"', '1 understand FlyttGo'),
-    ('id="entry-points"', '2 find your journey'),
-    ('id="marketplace"', '3 discover the marketplace'),
-    ('id="moving-services"', '4 the service offering'),
+    ('id="moving-services"', '2 moving and transport, the core service, straight after its booking band'),
+    ('id="entry-points"', '3 find your journey'),
+    ('id="marketplace"', '4 discover the marketplace'),
     ('id="how-it-works"', '5 the booking experience'),
     ('id="van-types"', '5 vehicle sizes (rates on the van guide)'),
     ('class="section testimonials"', '5 what every booking includes'),
@@ -404,10 +404,33 @@ V2_ANCHORS = {'#platform': '#unified-platform', '#business-platform': '#business
               '#top': '#main-content'}
 V2_ECO_NOTE = ('<p class="v2-eco-note">Every business and marketplace keeps its own customers, records and permissions '
                'on the shared foundation. Customers, businesses and operators move between the capabilities as one experience.</p>')
-V2_BOOKING = ('<div class="v2-booking" id="booking"><div class="wrap v2-booking-inner">'
-              '<div class="v2-booking-head"><span class="eyebrow">Start with a service</span>'
-              '<p>Get a moving price in a minute, or explore every service below.</p></div>'
-              '<div data-slot="booking"></div></div></div>')
+# Moving and transport, FlyttGo's core service, as a bold band straight after the hero (owner, 31 October
+# 2026): the transport site's own photograph, its proof points (all built: approved drivers, MVA-inclusive
+# prices, tracking, card and Vipps), the real booking widget and a way to the full transport site.
+# Moving and transport, FlyttGo's core service, straight after the hero, as a platform with two sides
+# (owner, 31 October 2026): users book a move with the real widget; drivers and transport companies earn
+# without a website of their own (the Free plan: jobs up to 500 NOK at 0% commission, SUBSCRIPTION_PLANS).
+# No free branded page is offered or implied.
+V2_BOOKING = ('<div class="v2-booking v2-move-band" id="booking"><div class="wrap v2-booking-inner">'
+              '<div class="v2-move-top"><div><span class="eyebrow">One of FlyttGo\'s marketplaces</span>'
+              '<h2>Our Logistics and Transport Marketplace.</h2></div>'
+              '<p>Across Norway: for people who need something moved, and for the drivers and transport companies who move it. Two sides, one marketplace.</p></div>'
+              '<div class="v2-move-sides">'
+              '<div class="v2-move-card v2-move-users"><small>For users</small><h3>Book a move</h3>'
+              '<ul class="v2-move-proof"><li>Approved, document-checked drivers</li><li>Upfront price with 25% MVA included</li>'
+              '<li>Live tracking on the day</li><li>Pay by card or Vipps</li></ul>'
+              '<div class="v2-move-actions"><a href="/book" data-page="booking" data-anchor>Get a moving price →</a>'
+              '<a href="/transport" data-page="transport-home" data-anchor>Open the marketplace</a></div>'
+              '<div data-slot="booking"></div></div>'
+              '<div class="v2-move-card v2-move-drivers"><small>For drivers and companies</small><h3>Earn with FlyttGo</h3>'
+              '<ul class="v2-move-proof"><li>Take jobs in the app, near you</li><li>See what you earn before you accept</li>'
+              '<li>Request payouts from your wallet</li></ul>'
+              '<p class="v2-move-free"><b>No website needed.</b> Start free: jobs up to 500 NOK at 0% commission. '
+              'Upgrade any time for all jobs and lower commission.</p>'
+              '<div class="v2-move-actions"><a href="/become-a-driver" data-page="driver-onboarding" data-anchor>Become a driver →</a>'
+              '<a href="/driver-subscriptions" data-page="subscriptions" data-anchor>See plans</a></div>'
+              '<p class="v2-move-plans"><b>Plans from 0 NOK</b>Free · Basic · Pro Mini · Pro · Unlimited</p></div>'
+              '</div></div></div>')
 V2_LIFECYCLE = ('<ol class="v2-lifecycle" aria-label="From booking to financial record">'
                 + ''.join(f'<li><b>0{i + 1}</b>{t}</li>' for i, t in enumerate(
                     ['Booking', 'Quote', 'Job completed', 'Invoice', 'Payment', 'Financial record'])) + '</ol>')
@@ -491,8 +514,10 @@ def element_span(body: str, start: int, tag: str) -> int:
 # the hero; every other heading says what its own section is for. Applied last, to the finished page.
 V2_VOICE = [
     ('<div class="eyebrow">One connected platform</div>', '<div class="eyebrow">Services · Business tools · Network</div>'),
-    ('<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">Three journeys. One platform.</h2>',
-     '<span class="eyebrow">Choose your way in</span><h2 class="display">Book a service. Run your company. Build with us.</h2>'),
+    # The journeys follow the logistics and transport marketplace, so they open by moving on from it (owner).
+    ('<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">Three journeys. One platform.</h2><p>Most people come to FlyttGo to book a service or to run their company. Organisations add corporate services, a provider network or, as one option, a marketplace of their own.</p>',
+     '<span class="eyebrow">Beyond logistics and transport</span><h2 class="display">Book a service. Run your company. Build with us.</h2>'
+     '<p>Logistics and transport is one of FlyttGo\'s marketplaces. The same platform lets you book other services, run your company, or build with us as an organisation, whichever brings you here.</p>'),
     ('<div class="eyebrow">One platform. Workflows for different industries.</div>', '<div class="eyebrow">Industries</div>'),
     ('<div class="eyebrow">One platform · Four connected capabilities</div><h2 class="display">Not four separate products.<br/><span class="serif">One business ecosystem.</span></h2>',
      '<div class="eyebrow">What connects underneath</div><h2 class="display">Bookings, work and money.<br/><span class="serif">Recorded once.</span></h2>'),
@@ -520,6 +545,7 @@ V2_VOICE = [
      '<span class="hl hl-b"><span class="h1-line">Book services.</span> <span class="h1-line">Run your company.</span> <span class="h1-line">Grow with FlyttGo.</span></span>'
      '<span class="hl hl-c"><span class="h1-line">The platform behind</span> <span class="h1-line">every service business.</span></span><br/>'),
     ('<div class="eyebrow">Services · Business tools · Network</div>',
+     '<a class="hero-move" href="#booking" data-anchor><i aria-hidden="true"></i>Our logistics and transport marketplace — get a moving price in a minute →</a>'
      '<div class="eyebrow"><span class="hl-sig-a">Services · Business tools · Network</span><span class="hl-sig">Assisting companies to fly high</span></div>'),
     # What the studio shows that exists, what is being connected and what is in development
     # (docs/PLATFORM_AUDIT_2026-10-30.md, white label rows).
@@ -548,6 +574,22 @@ V2_POLISH = [
       '<a class="btn btn-light" href="#business-workspace" data-anchor>My Company<small class="final-note">Run bookings, jobs and invoices</small></a>'),
      ('<a class="btn btn-light" href="#business" data-anchor>For Organisations</a>',
       '<a class="btn btn-light" href="#business" data-anchor>For Organisations<small class="final-note">Corporate services, providers, marketplaces</small></a>')],
+    [('<section class="section testimonials">', '<section class="section testimonials" id="booking-guarantees">')],
+    # "Go further": on the homepage only, the products that have their own page (sitePages.ts).
+    [('<section class="finance-section" id="financial-administration">',
+      '<section class="v2-explore" id="explore-more"><div class="wrap">'
+      '<div class="section-head"><div><div class="eyebrow">Go further</div><h2 class="display">Everything else<br/><span class="serif">FlyttGo does.</span></h2></div>'
+      '<p>Each part of the platform has its own page, with the full demonstration and example data.</p></div>'
+      '<div class="v2-explore-grid">'
+      '<a href="/my-company" data-page="my-company" data-anchor><small>My Company</small><b>The business workspace</b><span>Customers, services, bookings, quotes, invoices and team.</span></a>'
+      '<a href="/my-company/finance" data-page="my-company-finance" data-anchor><small>Finance</small><b>Financial administration</b><span>Follow one job from invoice to voucher, ledger and report.</span></a>'
+      '<a href="/industries" data-page="industries" data-anchor><small>Industries</small><b>Built around your work</b><span>Plumbing, electrical, cleaning, moving and consulting.</span></a>'
+      '<a href="/how-it-works" data-page="how-it-works-page" data-anchor><small>How it works</small><b>What connects underneath</b><span>One record, one lifecycle, separated data.</span></a>'
+      '<a href="/moving" data-page="moving-hub" data-anchor><small>Moving and transport</small><b>Steps, vans and guarantees</b><span>What every booking includes.</span></a>'
+      '<a href="/business" data-page="corporate" data-anchor><small>For organisations</small><b>Corporate services</b><span>Accounts, approvals, monthly invoicing and reporting.</span></a>'
+      '<a href="/business/white-label" data-page="white-label" data-anchor><small>Your own marketplace</small><b>Marketplace Studio</b><span>Name, colours, domain and storefront, as an illustration.</span></a>'
+      '</div></div></section>'
+      '<section class="finance-section" id="financial-administration">')],
 ]
 
 def type_vars(css: str) -> str:

@@ -478,6 +478,42 @@ A visual refinement of every section in 60 focused commits; plan and results in 
 
 No new section, claim or data was added.
 
+### One site, one header (owner, 31 October 2026)
+
+**Where the new design shows (`lib/siteDesign.ts`).**
+- **Preview and development addresses:** always. The whole new site can be reviewed there.
+- **flyttgo.no:** only after the owner's switch (`LIVE_NEW_DESIGN`, step 4). Until then the live site keeps its header and homepage.
+- **Company domains:** never; they keep their branded header.
+
+**One header.**
+- With the new design, every page carries the journeys menu (Explore, My Company, For Organisations, How it works).
+- A menu item or link that points to a section opens the page that holds it, scrolled to that section (`homeV2/pendingSection.ts`).
+
+**Pages instead of one long page (`homeV2/sitePages.ts`).**
+- `/preview/home` stays the full design, every section, as the design studio's canvas.
+- `/` is the homepage, nine sections: hero, booking, journeys, marketplace, moving, business workspace, "Go further", providers, closing. "Go further" links to the pages below.
+
+| Page | Sections |
+|---|---|
+| `/my-company` | Business workspace, financial workspace |
+| `/my-company/finance` | Financial workspace |
+| `/industries` | Industries |
+| `/how-it-works` | What connects underneath, How FlyttGo works, Trust |
+| `/moving` | Moving, booking, steps, vans, guarantees |
+| `/business` | Corporate section above the existing page |
+| `/business/white-label` | Marketplace Studio above the existing page |
+
+Every page is the same component with a list of sections, so nothing is built twice. Each page without the hero has its own page heading.
+
+**Existing pages in the new design (`homeV2/siteTheme.css`).**
+- **Scope:** about twenty-five public pages (transport, services, van guide, driver pages, business pages, white label, legal and help pages).
+- **What changes:** AppLayout wraps them in `.fg-site` while the new design shows. The layer maps their earlier colours (emerald, `#1A365D`, `#0B2E59`, the yellow actions, near-black bands) onto the approved palette, and sets Manrope and DM Sans and squarer corners.
+- **What stays:** no content or behaviour changes.
+- **Not wrapped:** dashboards, admin and the booking flow.
+- **Remaining:** emoji icons on some business pages are page content and change only when those pages are rewritten.
+
+**Header fix:** the Companies menu listed "Analytics Dashboard" twice; the second entry is the Corporate Dashboard again (`header.corpDashboard`).
+
 ## Stage D: content checked against the source
 
 | Content | Where it is |

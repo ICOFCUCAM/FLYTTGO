@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { Fragment, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { LANG_STORAGE_KEY } from '../lib/i18n';
 import { useAuth } from '../lib/auth';
@@ -7,7 +7,10 @@ import { LogIn, Bell, User as UserIcon } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import type { Page as PageType } from '../lib/store';
 import { displayPhone, useCompanyIdentity } from '../lib/companyIdentity';
-import { isTransportHost } from '../lib/hosts';
+import { isTransportHost, transportUrl } from '../lib/hosts';
+import { newDesign } from '../lib/siteDesign';
+import { PENDING_SECTION } from './homeV2/pendingSection';
+import { SECTION_PAGE } from './homeV2/sitePages';
 
 type Lang = 'en' | 'no';
 
@@ -66,7 +69,7 @@ export default function Header() {
     { label: t('home.corpAnalytics', 'Company Dashboard Info'),    desc: t('home.corpAnalyticsDesc', 'Track spending & delivery performance'), page: 'company-dashboard-info' as Page },
     { label: t('home.corpInvoice', 'Invoice & Billing'),           desc: t('home.corpInvoiceDesc', 'Consolidated monthly invoices'),         page: 'invoice-billing' as Page },
     { label: t('home.corpApi', 'Corporate API Access'),            desc: t('home.corpApiDesc', 'Integrate FlyttGo into your systems'),       page: 'corporate-api-access' as Page },
-    { label: t('home.corpAnalytics', 'Corporate Dashboard'),       desc: t('header.corpDashDesc', 'Enterprise logistics command center'),    page: 'corporate-dashboard' as Page },
+    { label: t('header.corpDashboard', 'Corporate Dashboard'),       desc: t('header.corpDashDesc', 'Enterprise logistics command center'),    page: 'corporate-dashboard' as Page },
   ];
 
   /* Real-time notifications for the bell icon. Returns an empty list
@@ -174,7 +177,7 @@ export default function Header() {
   /* On the platform front page (flyttgo.no, docs/HOMEPAGES.md) the menu bar
    * also carries the design's own menu, as a Platform dropdown of the page's
    * sections, and its corners are square like the design's cards. */
-  const platformHome = currentPage === 'home' && !isTransportHost(window.location.hostname);
+  const platformHome = currentPage === 'home' && !isTransportHost(window.location.hostname) && !newDesign();
   const PLATFORM_LINKS: [string, string][] = [
     [t('header.platformLinks.platform'), 'platform'],
     [t('header.platformLinks.businessTools'), 'business-platform'],
@@ -199,19 +202,55 @@ export default function Header() {
    * Book Now on the bar as before. Every earlier item is kept inside them (the
    * Moving Tools and the Companies links). My Company's items open the matching
    * tab of the page's business or finance workspace; creating a marketplace
-   * is the last, optional group of For Organisations. */
-  const preview = currentPage === 'home-preview';
+   * is the last, optional group of For Organisations.
+   * One audience per menu (owner, 31 October 2026): My Company is labelled "Run your business" (companies
+   * that sell; it also holds the provider network), For Organisations "For business customers" (companies
+   * that buy, and building a marketplace). No item was removed. */
+  /* One site, one header: with the new design (lib/siteDesign.ts) every page carries this menu, except the
+   * moving and transport front page on its own address, which keeps its own. */
+  const preview = currentPage === 'home-preview' || (newDesign() && !(currentPage === 'home' && isTransportHost(window.location.hostname)));
+  /* Moving and transport on the bar: the transport front page (its own address once set, else /transport). */
+  const openMoving = () => {
+    const url = transportUrl();
+    if (!url.startsWith('/')) { window.location.href = url; return; }
+    handleNav('transport-home');
+  };
+  /* The new homepage's address: `/` once it is the front page, else the preview path. */
+  const homeOfDesign: Page = newDesign() ? 'home' : 'home-preview';
   type JourneyItem = { label: string; desc?: string; go: () => void };
   type JourneyColumn = { title?: string; tag?: string; items: JourneyItem[]; note?: string };
   const page = (label: string, to: Page, desc?: string): JourneyItem => ({ label, desc, go: () => handleNav(to) });
+  /* A section of the new homepage: scrolled to on that page; from any other page, the homepage opens
+   * at that section (HomeV2Page reads the request after it renders). */
   const section = (label: string, id: string, tab?: string, desc?: string): JourneyItem => ({
     label, desc, go: () => {
-      toSection(id);
-      if (tab) document.querySelector<HTMLButtonElement>(`#${id} ${tab}`)?.click();
+      if (document.getElementById(id)) {
+        toSection(id);
+        if (tab) document.querySelector<HTMLButtonElement>(`#${id} ${tab}`)?.click();
+        return;
+      }
+      try { sessionStorage.setItem(PENDING_SECTION, JSON.stringify({ id, tab })); } catch { /* private mode */ }
+      handleNav(newDesign() ? (SECTION_PAGE[id] ?? homeOfDesign) : homeOfDesign);
     },
   });
   const jt = (key: string) => t(`header.journeys.${key}`);
-  const JOURNEYS: { id: string; label: string; width: string; columns: JourneyColumn[] }[] = [
+  type Journey = { id: string; label: string; short?: string; strong?: boolean; list?: boolean; width: string; columns: JourneyColumn[] };
+  /* Logistics & transport, FlyttGo's core service (owner, 31 October 2026): a menu of its own between
+   * Explore and Run your business, in one list. Its first item is the transport front page, which the
+   * button opened before it became a menu. Not shown on the transport front page's own address. */
+  const logisticsJourney: Journey = {
+    id: 'logistics', label: jt('logistics'), strong: true, list: true,
+    width: 'w-[min(360px,calc(100vw-32px))]', columns: [
+      { items: [
+        { label: jt('logistics'), desc: jt('logisticsDesc'), go: openMoving },
+        page(jt('ourServices'), 'services', jt('ourServicesDesc')),
+        page(jt('howMovingWorks'), 'moving-hub', jt('howMovingWorksDesc')),
+      ] },
+      { title: jt('freeTools'), items: MOVING_TOOLS.filter((tool) => tool.page !== 'subscriptions').map((tool) => page(tool.label, tool.page, tool.desc)) },
+      { items: [page(jt('driverPlans'), 'subscriptions', jt('driverPlansDesc'))] },
+    ],
+  };
+  const JOURNEYS: Journey[] = [
     { id: 'explore', label: jt('explore'), width: 'w-[min(600px,calc(100vw-32px))]', columns: [
       { title: jt('exploreTitle'), items: [
         page(jt('moving'), 'booking', jt('movingDesc')),
@@ -220,11 +259,19 @@ export default function Header() {
         section(jt('professional'), 'industry-experiences', undefined, jt('professionalDesc')),
         section(jt('hospitality'), 'marketplace', undefined, jt('hospitalityDesc')),
         page(jt('services'), 'services', jt('servicesDesc')),
+        page(jt('industriesPage'), 'industries', jt('industriesPageDesc')),
+        page(jt('movingPage'), 'moving-hub', jt('movingPageDesc')),
+        /* How FlyttGo works was a button of its own on the bar; it moved here (owner, 31 October 2026) so the
+         * bar has room for Logistics & transport in full. Same behaviour: the section when it is on the page,
+         * else the page. */
+        { label: jt('howFlyttGoWorks'), desc: jt('howFlyttGoWorksDesc'), go: () => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page')) },
       ] },
       { title: t('header.movingTools'), items: MOVING_TOOLS.map((tool) => page(tool.label, tool.page, tool.desc)) },
     ] },
-    { id: 'company', label: jt('myCompany'), width: 'w-[min(620px,calc(100vw-32px))]', columns: [
+    ...(isTransportHost(window.location.hostname) ? [] : [logisticsJourney]),
+    { id: 'company', label: jt('myCompany'), short: jt('myCompanyShort'), width: 'w-[min(900px,calc(100vw-32px))]', columns: [
       { title: jt('runTitle'), items: [
+        page(jt('openMyCompany'), 'my-company', jt('openMyCompanyDesc')),
         section(jt('overview'), 'business-workspace', '[data-bw="overview"]'),
         section(jt('servicesPricing'), 'business-workspace', '[data-bw="services"]'),
         section(jt('customers'), 'business-workspace', '[data-bw="customers"]'),
@@ -232,14 +279,21 @@ export default function Header() {
         section(jt('quotes'), 'business-workspace', '[data-bw="quotes"]'),
       ] },
       { title: jt('moneyTitle'), items: [
+        page(jt('openFinance'), 'my-company-finance', jt('openFinanceDesc')),
         section(jt('employees'), 'business-workspace', '[data-bw="team"]'),
         section(jt('invoices'), 'financial-administration', '[data-finance="invoices"]'),
         section(jt('payments'), 'financial-administration', '[data-finance="payments"]'),
         section(jt('expenses'), 'financial-administration', '[data-finance="expenses"]'),
         section(jt('participation'), 'how-flyttgo-works'),
       ], note: jt('companyNote') },
+      { title: jt('providers'), items: [
+        page(jt('drivers'), 'driver-onboarding'),
+        section(jt('serviceProviders'), 'business-workspace'),
+        page(jt('plans'), 'subscriptions'),
+        section(jt('opportunities'), 'driver-network'),
+      ] },
     ] },
-    { id: 'organisations', label: jt('organisations'), width: 'w-[min(900px,calc(100vw-32px))]', columns: [
+    { id: 'organisations', label: jt('organisations'), short: jt('organisationsShort'), width: 'w-[min(620px,calc(100vw-32px))]', columns: [
       { title: jt('corporate'), items: [
         page(jt('bulk'), 'bulk-booking'),
         page(jt('users'), 'company-dashboard-info'),
@@ -248,12 +302,6 @@ export default function Header() {
         page(jt('recurring'), 'recurring-deliveries'),
         page(jt('reporting'), 'corporate-api-access'),
         page(jt('corpDashboard'), 'corporate-dashboard'),
-      ] },
-      { title: jt('providers'), items: [
-        page(jt('drivers'), 'driver-onboarding'),
-        section(jt('serviceProviders'), 'business-workspace'),
-        page(jt('plans'), 'subscriptions'),
-        section(jt('opportunities'), 'driver-network'),
       ] },
       { title: jt('infrastructure'), tag: jt('optional'), items: [
         page(jt('createMarketplace'), 'white-label', jt('createMarketplaceDesc')),
@@ -269,9 +317,9 @@ export default function Header() {
     </button>
   );
   const journeyMenu = (j: typeof JOURNEYS[number], stacked = false) => (
-    <div className={stacked ? '' : `grid gap-2 ${j.columns.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-      {j.columns.map((c) => (
-        <div key={c.title} className={stacked ? 'pt-1' : ''}>
+    <div className={stacked || j.list ? '' : `grid gap-2 ${j.columns.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+      {j.columns.map((c, ci) => (
+        <div key={c.title ?? ci} className={stacked ? 'pt-1' : j.list && ci > 0 ? 'mt-1 pt-1 border-t border-gray-100' : ''}>
           {c.title && (
             <p className="px-3 pt-1 pb-1 text-xs font-semibold text-gray-600 uppercase tracking-wide">
               {c.title}{c.tag && <span className="ms-2 normal-case tracking-normal font-normal text-gray-500">({c.tag})</span>}
@@ -316,7 +364,7 @@ export default function Header() {
         aria-hidden="true"
       />
     )}
-    <header ref={headerRef} className={`sticky top-0 z-40 shadow-md${platformHome ? ' fg-square' : ''}`}>
+    <header ref={headerRef} className={`sticky top-0 z-50 shadow-md${platformHome ? ' fg-square' : ''}`}>
 
       {/* Wrapper hosts the top bar AND the language popover as
        * siblings, so the popover escapes the top bar's overflow-hidden
@@ -400,13 +448,17 @@ export default function Header() {
 
             {/* Desktop nav */}
             {preview && (
-              <nav className="hidden lg:flex items-center gap-0.5">
+              <nav className="hidden lg:flex items-center gap-0 xl:gap-0.5 text-[13px] xl:text-sm">
                 {JOURNEYS.map((j) => (
-                  <div key={j.id}>
+                  <Fragment key={j.id}>
+                  <div>
+                    {/* Short labels below 1280 px; Logistics & transport always shows in full. */}
                     <button onClick={() => toggleJourney(j.id)} aria-expanded={journeyOpen === j.id}
-                      className={`flex items-center gap-1 px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium transition ${
-                        journeyOpen === j.id ? 'text-[#203F68] bg-[#F5F3EB]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                      }`}>{j.label}{chevron(journeyOpen === j.id)}</button>
+                      className={`flex items-center gap-1 px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm ${j.strong ? 'font-semibold' : 'font-medium'} transition ${
+                        j.strong
+                          ? (journeyOpen === j.id || currentPage === 'transport-home' ? 'text-[#24513B] bg-[#F5F3EB]' : 'text-[#24513B] hover:bg-gray-50')
+                          : journeyOpen === j.id ? 'text-[#203F68] bg-[#F5F3EB]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                      }`}>{j.short ? <><span className="xl:hidden">{j.short}</span><span className="hidden xl:inline">{j.label}</span></> : j.label}{chevron(journeyOpen === j.id)}</button>
                     {/* Under the bar, centred on it: the menus are wide (columns). */}
                     {journeyOpen === j.id && (
                       <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 ${j.width} p-3 max-h-[75vh] overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-200 z-50`}>
@@ -414,9 +466,9 @@ export default function Header() {
                       </div>
                     )}
                   </div>
+                  </Fragment>
                 ))}
-                <button onClick={() => toSection('how-flyttgo-works')} className="px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.journeys.howItWorks')}</button>
-                <button onClick={() => handleNav('driver-onboarding')} className="px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.becomeDriver')}</button>
+                <button onClick={() => handleNav('driver-onboarding')} className="hidden xl:block px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.becomeDriver')}</button>
               </nav>
             )}
             <nav className={preview ? 'hidden' : 'hidden lg:flex items-center gap-0.5'}>
@@ -479,7 +531,7 @@ export default function Header() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
-              <button onClick={() => handleNav('booking')} className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-2.5 xl:px-5 whitespace-nowrap' : 'px-5'} py-2 ${preview ? 'bg-[#24513B] hover:bg-[#20352B]' : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded-lg text-sm font-semibold transition shadow-sm`}>{t('header.bookNow')}</button>
+              <button onClick={() => handleNav('booking')} className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-2.5 xl:px-4 2xl:px-5 whitespace-nowrap' : 'px-5'} py-2 ${preview ? 'bg-[#24513B] hover:bg-[#20352B]' : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded-lg text-sm font-semibold transition shadow-sm`}>{t('header.bookNow')}</button>
 
               {/* Notifications bell — signed-in only. Subscribes to
                * the notifications table over Supabase Realtime; flips
@@ -588,14 +640,14 @@ export default function Header() {
                 <>
                   <button
                     onClick={openSignIn}
-                    className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm`}
+                    className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 2xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm`}
                   >
                     <LogIn className={`w-4 h-4${preview ? ' hidden xl:block' : ''}`} />
                     {t('header.signIn')}
                   </button>
                   <button
                     onClick={openSignUp}
-                    className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border rounded-lg text-sm font-semibold transition shadow-sm ${
+                    className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 2xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border rounded-lg text-sm font-semibold transition shadow-sm ${
                       preview ? 'bg-[#203F68] border-[#203F68] text-white hover:bg-[#18304f]' : 'border-emerald-600 text-emerald-600 hover:bg-emerald-50'
                     }`}
                   >
@@ -628,9 +680,6 @@ export default function Header() {
                 {journeyMenu(j, true)}
               </div>
             ))}
-            {preview && (
-              <button onClick={() => toSection('how-flyttgo-works')} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.journeys.howItWorks')}</button>
-            )}
             {preview && (
               <button onClick={() => handleNav('driver-onboarding')} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.becomeDriver')}</button>
             )}

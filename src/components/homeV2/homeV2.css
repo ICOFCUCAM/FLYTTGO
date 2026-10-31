@@ -249,6 +249,57 @@
 .fgv2 .fgp-oldcard .text-emerald-400 { color: var(--gold); }
 .fgv2 .fgp-oldcard .bg-emerald-50 { background: var(--paper); color: var(--blue); }
 
+/* Moving and transport band: FlyttGo's core service straight after the hero, as a platform with two sides:
+ * users book with the real widget, drivers and companies earn without a website of their own. */
+.fgv2 main > .v2-booking.v2-move-band { position: relative; padding: 88px 0 96px; border-top: 3px solid var(--forest);
+  background: linear-gradient(90deg, rgb(245 243 235 / .98) 0%, rgb(245 243 235 / .94) 34%, rgb(245 243 235 / .6) 62%, rgb(245 243 235 / .3) 100%),
+    url(https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766787761_26698bc2.jpg) center / cover; }
+.fgv2[data-booking] .v2-move-band .v2-booking-inner { display: grid; grid-template-columns: 1fr; gap: 36px; max-width: var(--wrap-max); }
+.fgv2 .v2-move-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 56px; align-items: end; }
+.fgv2 .v2-move-top h2 { font: var(--head-weight) clamp(36px, 3.8vw, 56px)/1.03 var(--font-display); letter-spacing: -.045em; color: var(--ink); margin: 14px 0 0; max-width: 16ch; text-wrap: balance; }
+.fgv2 .v2-move-top > p { margin: 0; max-width: 46ch; font-size: 17px; line-height: 1.7; color: var(--muted); }
+.fgv2 .v2-move-sides { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: stretch; }
+.fgv2 .v2-move-card { display: flex; flex-direction: column; padding: 28px; background: rgb(255 254 250 / .96); border: 1px solid var(--line); box-shadow: 0 30px 60px -40px rgb(32 63 104 / .35); }
+.fgv2 .v2-move-card > small { display: block; margin-bottom: 8px; font: 700 var(--label-size) var(--font-display); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--forest); }
+.fgv2 .v2-move-card h3 { margin: 0 0 14px; font: var(--head-weight) 26px/1.15 var(--font-display); letter-spacing: -.03em; color: var(--ink); }
+.fgv2 .v2-move-card .fgp-oldcard { margin-top: 20px; box-shadow: none; }
+.fgv2 .v2-move-proof { list-style: none; padding: 0; margin: 0 0 22px; display: grid; gap: 9px; }
+.fgv2 .v2-move-proof li { display: flex; gap: 10px; align-items: center; font: 600 15px var(--font-body); color: var(--ink); }
+.fgv2 .v2-move-proof li:before { content: "✓"; flex: none; width: 20px; height: 20px; display: inline-grid; place-items: center; background: var(--forest); color: #fff; border-radius: 50%; font-size: 11px; }
+.fgv2 .v2-move-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.fgv2 .v2-move-actions a { display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; font: 700 14px var(--font-body); border-radius: var(--radius); transition: background .2s, border-color .2s; }
+.fgv2 .v2-move-users .v2-move-actions a:first-child { background: var(--forest); color: #fff; }
+.fgv2 .v2-move-users .v2-move-actions a:first-child:hover { background: var(--evergreen); }
+.fgv2 .v2-move-users .v2-move-actions a:last-child { border: 1px solid var(--blue); color: var(--blue); background: rgb(255 254 250 / .85); }
+/* The drivers' side: deep blue, champagne accents. */
+.fgv2 .v2-move-drivers { background: var(--blue); border-color: var(--blue); color: #fff; }
+.fgv2 .v2-move-drivers > small { color: var(--gold-text); }
+.fgv2 .v2-move-drivers h3, .fgv2 .v2-move-drivers .v2-move-proof li { color: #fff; }
+.fgv2 .v2-move-drivers .v2-move-proof li:before { background: var(--gold-text); color: var(--blue); }
+.fgv2 .v2-move-free { margin: 0 0 22px; padding: 14px 16px; border-left: 3px solid var(--gold); background: rgb(255 255 255 / .08); font: 500 15px/1.55 var(--font-body); color: #fff; }
+.fgv2 .v2-move-free b { color: var(--gold-text); }
+.fgv2 .v2-move-drivers .v2-move-actions a:first-child { background: var(--gold); color: var(--ink); }
+.fgv2 .v2-move-drivers .v2-move-actions a:first-child:hover { background: #b3955a; }
+.fgv2 .v2-move-drivers .v2-move-actions a:last-child { border: 1px solid rgb(255 255 255 / .55); color: #fff; }
+.fgv2 .v2-move-drivers .v2-move-actions a:last-child:hover { background: rgb(255 255 255 / .08); }
+.fgv2 .v2-move-plans { margin: auto 0 0; padding-top: 24px; border-top: 1px solid rgb(195 166 108 / .35); font-size: 14px; color: #d9e0ea; }
+.fgv2 .v2-move-plans b { display: block; margin-bottom: 4px; font: var(--head-weight) 22px var(--font-display); letter-spacing: -.02em; color: #fff; }
+.fgv2 .v2-move-drivers .v2-move-actions { margin-bottom: 28px; }
+.fgv2 .v2-move-drivers :is(a, button):focus-visible { outline-color: var(--gold); }
+@media (max-width: 999px) {
+  .fgv2 .v2-move-top, .fgv2 .v2-move-sides { grid-template-columns: 1fr; gap: 20px; }
+  .fgv2 main > .v2-booking.v2-move-band { padding: 64px 0 72px; background: linear-gradient(180deg, rgb(245 243 235 / .97), rgb(245 243 235 / .9)), url(https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766787761_26698bc2.jpg) center / cover; }
+}
+@media (max-width: 600px) {
+  .fgv2 .v2-move-card { padding: 22px 18px; }
+  .fgv2 .v2-move-actions a { width: 100%; justify-content: center; }
+}
+/* The hero's line for moving: the core service is visible in the first second. */
+.fgv2 .hero-move { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 22px; padding: 8px 14px 8px 10px; background: var(--forest); color: #fff; font: 600 14px/1.35 var(--font-body); border-radius: var(--radius); transition: background .2s; }
+.fgv2 .hero-move:hover { background: var(--evergreen); }
+.fgv2 .hero-move i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--gold-text); }
+@media (min-width: 761px) { .fgv2[data-hero="c"] .hero-move { grid-column: 1 / -1; justify-self: start; } }
+
 /* ── 5. Journeys: two main routes, For Organisations a refined panel beneath ── */
 .fgv2 .entry-head { margin-bottom: 52px; }
 .fgv2 .entry-head h2 { max-width: 20ch; margin-left: auto; margin-right: auto; }
@@ -649,6 +700,27 @@
 .fgv2 .network-detail :is(strong, p) { font-size: 14px; }
 @media (max-width: 700px) { .fgv2 .network-column { grid-template-columns: 1fr; } }
 
+/* ── Go further: the homepage's index of the products that have their own page ── */
+.fgv2 .v2-explore-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 2px solid var(--ink); }
+.fgv2 .v2-explore-grid a { position: relative; display: grid; align-content: start; gap: 8px; min-height: 180px; padding: 24px 28px 28px 0; border-bottom: 1px solid var(--line); color: var(--ink); transition: background .2s, padding .25s; }
+.fgv2 .v2-explore-grid a + a { padding-left: 28px; border-left: 1px solid var(--line); }
+.fgv2 .v2-explore-grid a:nth-child(4n + 1) { padding-left: 0; border-left: 0; }
+.fgv2 .v2-explore-grid small { font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; font-weight: 700; color: var(--blue); }
+.fgv2 .v2-explore-grid b { font: var(--head-weight) 21px/1.2 var(--font-display); letter-spacing: -.02em; }
+.fgv2 .v2-explore-grid span { font-size: 15px; line-height: 1.6; color: var(--muted); }
+.fgv2 .v2-explore-grid a:after { content: "→"; position: absolute; right: 24px; top: 24px; color: var(--gold); transition: transform .25s, color .2s; }
+.fgv2 .v2-explore-grid a:hover { background: var(--paper); }
+.fgv2 .v2-explore-grid a:hover:after { transform: translateX(4px); color: var(--blue); }
+@media (max-width: 1000px) {
+  .fgv2 .v2-explore-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fgv2 .v2-explore-grid a:nth-child(n) { padding-left: 24px; border-left: 1px solid var(--line); }
+  .fgv2 .v2-explore-grid a:nth-child(2n + 1) { padding-left: 0; border-left: 0; }
+}
+@media (max-width: 600px) {
+  .fgv2 .v2-explore-grid { grid-template-columns: 1fr; }
+  .fgv2 .v2-explore-grid a:nth-child(n) { padding: 20px 40px 20px 0; border-left: 0; min-height: 0; }
+}
+
 /* ── 17. Related links and the closing section ─────────────────────────── */
 .fgv2 .v2-related { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 26px; margin-top: 44px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; }
 .fgv2 .v2-related span { font-size: var(--label-size); letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
@@ -689,7 +761,7 @@
   .fgv2[data-hero="b"] .hero-grid { grid-template-columns: 1fr; max-width: none; min-height: 0; }
   .fgv2[data-hero="b"] .hero-grid > * { grid-area: 1 / 1; }
   /* The card always ends above the bands, so they are never covered. */
-  .fgv2[data-hero="b"] .hero-visual { min-height: calc(clamp(660px, 54vw, 820px) * var(--hero-height)); border-radius: 0 0 0 var(--corner); align-self: stretch; }
+  .fgv2[data-hero="b"] .hero-visual { min-height: calc(clamp(660px, 54vw, 820px) * var(--hero-height)); border-radius: 0; align-self: stretch; } /* square: no curved corner on the journeys band (owner) */
   .fgv2[data-hero="b"] .hero-photo { position: absolute; inset: 0; }
   .fgv2[data-hero="b"] .hero-copy { z-index: 3; align-self: start; width: min(600px, 46%); margin: 56px 0 184px max(40px, calc((100% - var(--wrap-max)) / 2)); padding: 44px 44px 40px; background: rgb(255 254 250 / .96); box-shadow: var(--lift); }
   .fgv2[data-hero="b"] .hero h1 { font-size: calc(11cqi * var(--hero-scale) * var(--hl-fit)); }
@@ -856,6 +928,39 @@
   .fgv2[data-moving="b"] .service-card:not(:first-child) .body { padding: 16px 0; }
   .fgv2[data-moving="b"] .service-card:not(:first-child):after { content: "→"; color: var(--blue); }
   .fgv2[data-moving="b"] .service-card:first-child { margin-bottom: 8px; }
+}
+/* Moving B · the picture follows the list (serviceScroll.ts): it stays in place while the services scroll
+   past and shows the one crossing a line a third of the way down, with its name as the caption. */
+@media (min-width: 901px) {
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:first-child { position: sticky; top: 104px; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:first-child .photo { position: relative; aspect-ratio: auto; height: min(calc(100vh - 140px), 760px); min-height: 420px; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .v2-svc-layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .45s ease; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .v2-svc-layer.is-on { opacity: 1; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:first-child .body { transition: opacity .3s; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card.is-swapped .body { opacity: 0; }
+  .fgv2[data-moving="b"] .v2-svc-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 120px 32px 30px; background: linear-gradient(180deg, rgba(20,38,64,0), rgba(20,38,64,.88) 62%); color: #fff; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .fgv2[data-moving="b"] .is-swapped .v2-svc-caption { opacity: 1; }
+  .fgv2[data-moving="b"] .v2-svc-caption span:first-child { display: block; font: 600 13px var(--font-display); letter-spacing: .08em; color: #DCC9A0; margin-bottom: 6px; }
+  .fgv2[data-moving="b"] .v2-svc-caption b { display: block; font: var(--head-weight) clamp(24px, 2.2vw, 32px)/1.1 var(--font-display); letter-spacing: -.03em; margin-bottom: 8px; }
+  .fgv2[data-moving="b"] .v2-svc-caption span:last-child { display: block; font-size: 15px; color: #eef1f5; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:not(:first-child) { padding-top: 14px; padding-bottom: 14px; }
+  /* Room under the list, so the picture stays on screen until the last service has reached the line. */
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:first-child { grid-row: 1 / span 8; }
+  .fgv2[data-moving="b"] .v2-svc-spacer { grid-column: 2; height: 46vh; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card.is-active { background: var(--white); padding-left: 10px; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card.is-active:before { color: var(--blue); }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card.is-active h3 { color: var(--blue); }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card.is-active:after { transform: translateX(4px); }
+}
+/* Phones: each service shows its own small photo in the list. */
+@media (max-width: 900px) {
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:not(:first-child) { grid-template-columns: 72px 1fr auto; gap: 14px; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:not(:first-child) .photo { display: block; width: 72px; height: 56px; border-radius: 0; overflow: hidden; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:not(:first-child) .photo img { width: 100%; height: 100%; object-fit: cover; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .v2-svc-layer:not(:first-child), .fgv2[data-moving="b"] .v2-svc-caption, .fgv2 .v2-svc-spacer { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fgv2 .v2-svc-layer, .fgv2 .v2-svc-caption, .fgv2 .v2-svc-scroll .service-card .body { transition: none !important; }
 }
 /* Moving C · picture-led pairs: two columns, each service a picture beside its words. */
 @media (min-width: 901px) {

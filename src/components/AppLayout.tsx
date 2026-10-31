@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { useApp } from '../lib/store';
+import { useApp, type Page } from '../lib/store';
 import Header from './Header';
 import { useWhiteLabel } from '../lib/whiteLabelContext';
 import { ownBooking as ownCompanyBooking } from '../lib/whiteLabel';
@@ -7,9 +7,18 @@ import { BrandFooter, BrandHeader } from './whiteLabel/BrandFrame';
 import AuthModal from './AuthModal';
 import { isEmbedded, useEmbedResize } from '../lib/embed';
 import { isTransportHost } from '../lib/hosts';
+import { newDesign } from '../lib/siteDesign';
+import { HOME_SECTIONS, PAGE_SECTIONS } from './homeV2/sitePages';
+import './homeV2/siteTheme.css';
+
+const THEMED_PAGES: Page[] = ['transport-home', 'services', 'van-guide', 'checklist', 'subscriptions', 'driver-onboarding', 'corporate',
+  'bulk-booking', 'recurring-deliveries', 'company-dashboard-info', 'invoice-billing', 'corporate-api-access', 'white-label', 'white-label-dpa',
+  'about', 'contact', 'faq', 'help', 'safety', 'careers', 'press', 'sustainability', 'terms', 'privacy', 'liability', 'driver-terms', 'not-found'];
+const SITE_FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap';
 
 const HomePage           = lazy(() => import('./HomePage'));
 const PlatformHomePage   = lazy(() => import('./PlatformHomePage'));
+const DriverLanding       = lazy(() => import('./DriverLanding'));
 const HomeV2Page         = lazy(() => import('./homeV2/HomeV2Page'));
 const DesignLab          = lazy(() => import('./homeV2/lab/DesignLab'));
 const BookingFlow        = lazy(() => import('./BookingFlow'));
@@ -101,11 +110,29 @@ export default function AppLayout() {
   const showHeader = currentPage !== 'auth-callback' && currentPage !== 'home-lab' && !embedded;
   const showFooter = !embedded && (!['booking', 'driver-portal', 'admin', 'auth-callback', 'home-lab'].includes(currentPage) || (currentPage === 'booking' && (ownBooking || shopOnly)));
 
+  /* The new design on the existing public pages (homeV2/siteTheme.css): not dashboards, admin or booking. */
+  const themed = newDesign() && THEMED_PAGES.includes(currentPage);
+  useEffect(() => {
+    if (!themed || document.querySelector(`link[href="${SITE_FONTS}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = SITE_FONTS;
+    document.head.appendChild(link);
+  }, [themed]);
+
   const renderPage = () => {
     switch (currentPage) {
       /* flyttgo.no: the platform's front page; transport.flyttgo.no and
        * /transport: the moving and transport front page (docs/HOMEPAGES.md). */
-      case 'home':             return platformHome ? <PlatformHomePage /> : <HomePage />;
+      /* With the new design (preview addresses now, flyttgo.no after the switch; lib/siteDesign.ts) the
+       * front page is the new homepage. */
+      case 'home':             return platformHome ? (newDesign() ? <HomeV2Page key="home" keep={HOME_SECTIONS} /> : <PlatformHomePage />) : <HomePage />;
+      /* The new design's own pages, each holding its sections (homeV2/sitePages.ts). */
+      case 'my-company':
+      case 'my-company-finance':
+      case 'industries':
+      case 'how-it-works-page':
+      case 'moving-hub':        return <HomeV2Page key={currentPage} keep={PAGE_SECTIONS[currentPage]} />;
       case 'transport-home':   return <HomePage />;
       /* The restructured homepage under review (docs/HOMEPAGE_RESTRUCTURE.md). */
       case 'home-preview':     return <HomeV2Page />;
@@ -113,7 +140,9 @@ export default function AppLayout() {
       case 'home-lab':         return <DesignLab />;
       case 'booking':          return ownBooking ? <ServiceBookingPage /> : shopOnly ? <ShopPage /> : <BookingFlow />;
       case 'driver-portal':    return <DriverPortal />;
-      case 'driver-onboarding':return <DriverOnboarding />;
+      /* With the new design, an introduction (plans, steps, what we check) comes before the application. */
+      /* With the new design the whole page, application included, is DriverLanding (owner, 31 October 2026). */
+      case 'driver-onboarding':return newDesign() ? <DriverLanding /> : <DriverOnboarding />;
       case 'checklist':        return <MovingChecklist />;
       case 'subscriptions':    return <SubscriptionPlans />;
       case 'van-guide':           return <VanGuide />;
@@ -125,7 +154,7 @@ export default function AppLayout() {
       case 'liability':        return <LiabilityPage />;
       case 'driver-terms':     return <DriverTermsPage />;
       case 'services':          return <ServicesPage />;
-      case 'corporate':              return <CorporatePage />;
+      case 'corporate':              return newDesign() ? <><HomeV2Page keep={PAGE_SECTIONS.corporate} /><CorporatePage /></> : <CorporatePage />;
       case 'corporate-dashboard':    return <CorporateDashboard />;
       case 'bulk-booking':           return <CorporateBulkBookingPage />;
       case 'recurring-deliveries':   return <RecurringDeliveriesPage />;
@@ -146,7 +175,7 @@ export default function AppLayout() {
       case 'auth-callback':          return <AuthCallbackPage />;
       case 'driver-application-status': return <DriverApplicationStatusPage />;
       case 'accept-invitation':      return <AcceptInvitationPage />;
-      case 'white-label':            return <WhiteLabelPlansPage />;
+      case 'white-label':            return newDesign() ? <><HomeV2Page keep={PAGE_SECTIONS['white-label']} /><WhiteLabelPlansPage /></> : <WhiteLabelPlansPage />;
       case 'white-label-dpa':        return <WhiteLabelDpaPage />;
       case 'brand-site':             return <BrandSitePage />;
       case 'embed':                  return <EmbedPage />;
@@ -163,7 +192,7 @@ export default function AppLayout() {
       {showHeader && (branded && site ? <BrandHeader site={site} /> : <Header />)}
       <AuthModal />
       <Suspense fallback={<Loading />}>
-        {renderPage()}
+        {themed ? <div className="fg-site">{renderPage()}</div> : renderPage()}
       </Suspense>
       {showFooter && currentPage !== 'brand-site' && (branded && site ? <BrandFooter site={site} /> : (
         <Suspense fallback={null}>
