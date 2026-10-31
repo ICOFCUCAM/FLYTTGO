@@ -88,8 +88,15 @@ async function diff(page, a, b) {
   {
     const { page } = await open(browser, 1440, 900);
     const ws = page.locator('#business-workspace');
+    (await page.locator('.hero h1').textContent()).includes('Book services') ? ok('selected headline shown') : fail('headline');
     await ws.scrollIntoViewIfNeeded();
     (await page.locator('.v2-trail').count()) ? ok('job trail under the workspace records') : fail('job trail missing');
+    (await page.locator('.v2-activity li').count()) === 5 ? ok('team activity on the overview') : fail('team activity missing');
+    await page.fill('.v2-bw-tools input', 'Strand');
+    (await page.locator('#bw-panel-content .v2-records tbody tr:visible').count()) === 1 ? ok('workspace search filters the records') : fail('workspace search');
+    await page.locator('.v2-bw-new').click();
+    (await page.locator('#bw-panel-content').textContent()).match(/New booking · draft|Ny bestilling/) ? ok('“New booking” adds a draft booking') : fail('new booking');
+    (await page.locator('#bw-panel-content').textContent()).match(/Project|Prosjekt/) && (await page.locator('#bw-panel-content').textContent()).match(/Appointment|Avtale/) ? ok('bookings tell appointments, jobs and projects apart') : fail('booking types');
     await page.locator('[data-v2-trail-go]').first().click();
     await page.waitForTimeout(600);
     const pressed = await page.locator('.v2-explorer [aria-pressed="true"]').textContent().catch(() => '');
@@ -123,13 +130,23 @@ async function diff(page, a, b) {
   console.log('\nDesign lab');
   {
     const { page, errors } = await open(browser, 1600, 1000, '/preview/lab');
-    (await page.locator('h1').textContent()).includes('design lab') ? ok('lab opens on a preview host') : fail('lab did not open');
+    (await page.locator('h1').textContent()).includes('Design Refinement Studio') ? ok('studio opens on a preview host') : fail('studio did not open');
     (await page.locator('meta[name="robots"][content*="noindex"]').count()) ? ok('lab is noindex') : fail('lab indexable');
-    await page.waitForSelector('text=/Fits|Viewport harmed/', { timeout: 30000 }).then(() => ok('frame measured and reported back'), () => fail('frame did not report'));
+    await page.waitForSelector('text=/Clean|Findings|Harmed/', { timeout: 30000 }).then(() => ok('frame inspected in the browser and reported back'), () => fail('frame did not report'));
+    await page.getByRole('button', { name: 'Inspect A' }).click();
+    await page.getByRole('button', { name: 'Inspect the rendered page' }).click();
+    await page.waitForSelector('text=/No findings|serious|medium|low/', { timeout: 30000 }).then(() => ok('inspection report rendered'), () => fail('inspection report missing'));
+    await page.getByRole('button', { name: 'Run the interaction check' }).click();
+    await page.waitForSelector('text=/controls respond/', { timeout: 90000 }).then(async () => {
+      const t = await page.locator('text=/controls respond/').textContent(); ok(`interaction check: ${t.replace('Interaction check · ', '')}`);
+    }, () => fail('interaction check did not finish'));
+    await page.getByRole('button', { name: 'Compare A/B/C' }).click();
     await page.getByRole('button', { name: 'Add frame' }).click();
     (await page.locator('iframe').count()) === 2 ? ok('two frames compared') : fail('add frame');
     await page.getByRole('button', { name: 'Components' }).click();
     (await page.locator('.fgv2 .btn-primary').count()) ? ok('component library renders') : fail('component library');
+    await page.getByRole('button', { name: 'Versions' }).click();
+    (await page.locator('text=APPROVED').count()) ? ok('versions list with the approved version') : fail('versions');
     errors.length ? fail(`lab console errors: ${errors.slice(0, 3).join(' | ')}`) : ok('no lab console errors');
     await page.close();
   }

@@ -521,6 +521,14 @@ V2_VOICE = [
      '<span class="hl hl-c"><span class="h1-line">The platform behind</span> <span class="h1-line">every service business.</span></span><br/>'),
     ('<div class="eyebrow">Services · Business tools · Network</div>',
      '<div class="eyebrow"><span class="hl-sig-a">Services · Business tools · Network</span><span class="hl-sig">Assisting companies to fly high</span></div>'),
+    # What the studio shows that exists, what is being connected and what is in development
+    # (docs/PLATFORM_AUDIT_2026-10-30.md, white label rows).
+    ('<dd><span class="v2-chip v2-chip-wait">In development</span></dd></div></dl></div>',
+     '<dd><span class="v2-chip v2-chip-wait">In development</span></dd></div></dl>'
+     '<ul class="wl-status"><li><span class="v2-chip v2-chip-ok">Available</span>Your branded page and flyttgo.no address; FlyttGo sells and invoices (moving and delivery)</li>'
+     '<li><span class="v2-chip v2-chip-info">Being connected</span>Your own domain; selling under your own terms (Stripe Connect)</li>'
+     '<li><span class="v2-chip v2-chip-wait">In development</span>Your own provider network</li>'
+     '<li><span class="v2-chip v2-chip-neutral">Illustration</span>This preview creates, connects and charges nothing</li></ul></div>'),
 ]
 
 

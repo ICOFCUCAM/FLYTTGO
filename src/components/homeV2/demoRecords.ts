@@ -60,10 +60,12 @@ function workspace(lang: Lang): Record<string, { m: Metric[]; table: Table }> {
       m: [[no ? 'NYE' : 'NEW', no ? '2 forespørsler' : '2 requests', no ? 'Sjekk omfang' : 'Check the scope'],
           [no ? 'DENNE UKEN' : 'THIS WEEK', no ? '9 jobber' : '9 jobs', no ? 'Fordelt på 3 teknikere' : 'Across 3 technicians'],
           [no ? 'FULLFØRT' : 'COMPLETED', no ? 'Klar til faktura' : 'Ready to invoice', no ? 'Fra jobben, uten ny registrering' : 'From the job, no retyping']],
-      table: { title: no ? 'Jobber' : 'Jobs', meta: ex, head: [no ? 'Jobb' : 'Job', no ? 'Når' : 'When', no ? 'Tildelt' : 'Assigned', 'Status'],
-        rows: [{ cells: [no ? 'Lekkasje · kjøkken · A. Berg' : 'Leak repair · kitchen · A. Berg', no ? 'I går 10:00' : 'Yesterday 10:00', 'Jonas'], status: ['ok', S.done], trail: true },
-               { cells: [no ? 'Kjeleinspeksjon · O. Strand' : 'Boiler inspection · O. Strand', no ? 'I dag 08:00' : 'Today 08:00', 'Sara'], status: ['info', S.progress] },
-               { cells: [no ? 'Befaring · bad' : 'Site visit · bathroom', no ? 'I dag 14:00' : 'Today 14:00', 'Jonas'], status: ['wait', S.scheduled] }] },
+      table: { title: no ? 'Bestillinger, avtaler og jobber' : 'Bookings, appointments and jobs', meta: ex,
+        head: [no ? 'Jobb' : 'Job', 'Type', no ? 'Når' : 'When', no ? 'Tildelt' : 'Assigned', 'Status'],
+        rows: [{ cells: [no ? 'Lekkasje · kjøkken · A. Berg' : 'Leak repair · kitchen · A. Berg', no ? 'Jobb' : 'Job', no ? 'I går 10:00' : 'Yesterday 10:00', 'Jonas'], status: ['ok', S.done], trail: true },
+               { cells: [no ? 'Kjeleinspeksjon · O. Strand' : 'Boiler inspection · O. Strand', no ? 'Avtale' : 'Appointment', no ? 'I dag 08:00' : 'Today 08:00', 'Sara'], status: ['info', S.progress] },
+               { cells: [no ? 'Befaring · bad · M. Nilsen' : 'Site visit · bathroom · M. Nilsen', no ? 'Avtale' : 'Appointment', no ? 'I dag 14:00' : 'Today 14:00', 'Jonas'], status: ['wait', S.scheduled] },
+               { cells: [no ? 'Baderomsrenovering · M. Nilsen' : 'Bathroom renovation · M. Nilsen', no ? 'Prosjekt' : 'Project', no ? 'Fra mandag · 3 dager' : 'From Monday · 3 days', 'Jonas, Sara'], status: ['wait', no ? 'Tilbud sendt' : 'Quote sent'] }] },
     },
     quotes: {
       m: [[no ? 'UTKAST' : 'DRAFTS', no ? '1 tilbud' : '1 quote', no ? 'Fra befaring' : 'From a site visit'],
@@ -233,6 +235,18 @@ function explorer(lang: Lang): { labels: Record<Step, string>; docs: Record<Step
   };
 }
 
+/* Team activity on the overview: who did what today, all example data. */
+function activity(lang: Lang): [string, string, string][] {
+  const no = lang === 'no';
+  return [
+    ['08:04', 'Sara', no ? 'startet kjeleinspeksjon hos O. Strand' : 'started the boiler inspection for O. Strand'],
+    ['07:52', 'Ingrid', no ? 'sendte påminnelse om faktura 1039' : 'sent a reminder for invoice 1039'],
+    [no ? 'I går 16:20' : 'Yesterday 16:20', 'Ingrid', no ? 'sendte faktura 1042 til A. Berg' : 'sent invoice 1042 to A. Berg'],
+    [no ? 'I går 12:10' : 'Yesterday 12:10', 'Jonas', no ? 'fullførte lekkasjereparasjon · 2 t, deler' : 'completed the leak repair · 2 h, parts'],
+    [no ? 'I går 09:30' : 'Yesterday 09:30', 'Hansen Eiendom AS', no ? 'godtok tilbud 316' : 'accepted quote 316'],
+  ];
+}
+
 /* ── Rendering into the design's panels ─────────────────────────────────── */
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string) {
   const e = document.createElement(tag);
@@ -272,14 +286,47 @@ export function installDemoRecords(root: HTMLElement, lang: Lang): () => void {
   const bw = workspace(lang), fin = finance(lang);
   const q = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel);
 
+  const no = lang === 'no';
+  let current = 'overview', draft = false;
+  const draftRow = (): Row => ({ cells: [no ? 'Ny bestilling · utkast' : 'New booking · draft', no ? 'Avtale' : 'Appointment', no ? 'Velg tid' : 'Choose a time', '—'], status: ['info', no ? 'Utkast' : 'Draft'] });
+  const activityNode = () => {
+    const box = el('div', 'v2-activity');
+    box.append(el('b', undefined, no ? 'Teamaktivitet' : 'Team activity'));
+    const ol = el('ol');
+    activity(lang).forEach(([when, who, what]) => { const li = el('li'); li.append(el('time', undefined, when), el('strong', undefined, who), el('span', undefined, what)); ol.append(li); });
+    box.append(ol);
+    return box;
+  };
+  /* The workspace toolbar: a search that filters the records shown, and a button that starts a booking. */
+  const head = q('.bw-main-head');
+  const tools = el('div', 'v2-bw-tools');
+  const search = el('input') as HTMLInputElement;
+  search.type = 'search'; search.placeholder = no ? 'Søk i postene' : 'Search records';
+  search.setAttribute('aria-label', no ? 'Søk i postene som vises' : 'Search the records shown');
+  const add = el('button', 'v2-bw-new', no ? '+ Ny bestilling' : '+ New booking') as HTMLButtonElement;
+  add.type = 'button';
+  tools.append(search, add);
+  head?.querySelector(':scope > span')?.before(tools);
+  const onSearch = () => {
+    const term = search.value.trim().toLowerCase();
+    q('#bw-panel-content')?.querySelectorAll<HTMLTableRowElement>('.v2-records tbody tr').forEach(tr => { tr.hidden = !!term && !tr.textContent!.toLowerCase().includes(term); });
+  };
+  const onAdd = () => { draft = true; q<HTMLButtonElement>('[data-bw="bookings"]')?.click(); if (current !== 'bookings') renderBw('bookings'); };
+  search.addEventListener('input', onSearch);
+  add.addEventListener('click', onAdd);
+
   const renderBw = (key: string) => {
     const d = bw[key]; if (!d) return;
     metrics(q('#bw-metrics'), d.m);
     const title = q('#bw-panel-title'), meta = q('#bw-panel-meta'), content = q('#bw-panel-content');
     if (title) title.textContent = d.table.title;
     if (meta) meta.textContent = d.table.meta;
-    const nodes: HTMLElement[] = [table(d.table.head, d.table.rows)];
+    const rows = key === 'bookings' && draft ? [draftRow(), ...d.table.rows] : d.table.rows;
+    const nodes: HTMLElement[] = [table(d.table.head, rows)];
     if (['overview', 'customers', 'bookings', 'invoices'].includes(key)) nodes.push(trailNode());
+    if (key === 'overview') nodes.push(activityNode());
+    current = key;
+    if (search) search.value = '';
     content?.replaceChildren(...nodes);
     content?.classList.remove('v2-fade'); void content?.offsetWidth; content?.classList.add('v2-fade');
   };
@@ -357,5 +404,5 @@ export function installDemoRecords(root: HTMLElement, lang: Lang): () => void {
   root.addEventListener('keydown', onKey);
   renderBw(q<HTMLElement>('[data-bw][aria-pressed="true"]')?.dataset.bw ?? 'overview');
   renderFin(q<HTMLElement>('[data-finance][aria-pressed="true"]')?.dataset.finance ?? 'overview');
-  return () => { root.removeEventListener('click', onClick); root.removeEventListener('keydown', onKey); };
+  return () => { root.removeEventListener('click', onClick); root.removeEventListener('keydown', onKey); search.removeEventListener('input', onSearch); add.removeEventListener('click', onAdd); tools.remove(); };
 }

@@ -95,10 +95,13 @@ function PreviewFrame({ fkey, tokens, variants, viewport, height, registry, onMe
     return () => ro.disconnect();
   }, [viewport]);
 
+  /* Sent only when the design actually changes (a new object with the same values is not a change). */
+  const design = JSON.stringify([tokens, variants]);
   const send = useCallback(() => {
-    const msg: LabMessage = { type: 'flyttgo-design', tokens, variants };
+    const [t, v] = JSON.parse(design) as [DesignTokens, DesignVariants];
+    const msg: LabMessage = { type: 'flyttgo-design', tokens: t, variants: v };
     ref.current?.contentWindow?.postMessage(msg, window.location.origin);
-  }, [tokens, variants]);
+  }, [design]);
 
   useEffect(() => {
     const reg = registry.current;
@@ -278,15 +281,21 @@ export default function DesignLab() {
     Object.entries(registry.current).forEach(([k, w]) => { if (w && k !== except && (!prefix || k.startsWith(prefix))) w.postMessage(msg, window.location.origin); });
   }, []);
   const onFrameMessage = useCallback((key: string, d: { type: string } & Record<string, unknown>) => {
+    if (d.type === 'flyttgo-ready') {
+      const w = registry.current[key];
+      w?.postMessage({ type: 'flyttgo-goto', id: placeRef.current.section }, window.location.origin);
+      if (placeRef.current.isolate) w?.postMessage({ type: 'flyttgo-isolate', id: placeRef.current.section }, window.location.origin);
+    }
     if (d.type === 'flyttgo-metrics') setMetrics(p => ({ ...p, [key]: d as unknown as Metrics }));
     if (d.type === 'flyttgo-report') setReports(p => ({ ...p, [key]: d as unknown as Report }));
     if (d.type === 'flyttgo-interact') setInteractions(d.results as { label: string; section: string; ok: boolean }[]);
     if (d.type === 'flyttgo-scrolled' && syncRef.current) broadcast({ type: 'flyttgo-scroll', id: d.id, frac: d.frac }, key, key[0] === 'r' ? 'r' : 'f');
   }, [broadcast]);
   const syncRef = useRef(sync); syncRef.current = sync;
+  const placeRef = useRef({ section, isolate }); placeRef.current = { section, isolate };
 
   useEffect(() => { broadcast({ type: 'flyttgo-goto', id: section }); }, [section, broadcast, view]);
-  useEffect(() => { broadcast({ type: 'flyttgo-isolate', id: isolate ? section : null }); }, [isolate, section, broadcast, view, metrics]);
+  useEffect(() => { broadcast({ type: 'flyttgo-isolate', id: isolate ? section : null }); }, [isolate, section, broadcast, view]);
 
   if (blocked) {
     return <main className="mx-auto max-w-xl p-12 text-slate-800"><h1 className="text-2xl font-bold">Not available here</h1><p className="mt-3">The design studio opens only on preview and development hosts.</p></main>;

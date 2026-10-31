@@ -79,7 +79,8 @@ export function inspect(root: HTMLElement): Report {
     if ((s.overflow === 'hidden' || s.overflowX === 'hidden' || s.overflowY === 'hidden' || s.textOverflow === 'ellipsis') && textual
         && (el.scrollWidth > el.clientWidth + 2 || el.scrollHeight > el.clientHeight + 4)) add(el, 'Clipped content', `“${el.textContent!.trim().slice(0, 40)}” is cut off`, 'high');
     if (!textual) continue;
-    const size = parseFloat(s.fontSize), upper = s.textTransform === 'uppercase';
+    const own = (el.textContent ?? '').trim();
+    const size = parseFloat(s.fontSize), upper = s.textTransform === 'uppercase' || (own.length > 2 && own === own.toUpperCase() && /[A-ZÆØÅ]/.test(own));
     if (size < (upper ? 11 : 12)) add(el, 'Readability', `${size}px text: “${el.textContent!.trim().slice(0, 36)}”`, 'medium');
     if (el.tagName === 'P' && r.width / (size * 0.5) > 90) add(el, 'Readability', `line of about ${Math.round(r.width / (size * 0.5))} characters`, 'low');
     const fg = rgb(s.color), bg = groundOf(el);
@@ -172,9 +173,15 @@ async function interact(root: HTMLElement) {
   const controls = [...root.querySelectorAll<HTMLElement>('button, select, [role="tab"]')]
     .filter(c => visible(c) && !c.closest('[data-slot="booking"], header') && !c.dataset.page && (c as HTMLButtonElement).type !== 'submit');
   const results: { label: string; section: string; ok: boolean }[] = [];
-  for (const c of controls) {
+  const fingerprint = (c: HTMLElement) => `${c.tagName}|${c.className}|${(c.textContent ?? '').trim()}|${c.id}`;
+  for (const original of controls) {
+    /* A control a previous click re-rendered is clicked in its current form, found by its fingerprint. */
+    const key = fingerprint(original);
+    const c = original.isConnected ? original
+      : [...root.querySelectorAll<HTMLElement>(original.tagName)].find(n => fingerprint(n) === key);
+    if (!c) continue;
     let changes = 0;
-    const scope = c.closest('main > section') ?? root;
+    const scope = root;  /* a control may change another section (“See it in finance”) */
     const mo = new MutationObserver(m => { changes += m.length; });
     mo.observe(scope, { subtree: true, childList: true, attributes: true, characterData: true });
     const y = scrollY;
