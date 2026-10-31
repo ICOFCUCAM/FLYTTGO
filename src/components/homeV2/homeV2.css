@@ -544,6 +544,13 @@
 .fgv2 .industry-workflow { font-size: 14px; }
 .fgv2 .industry-workflow b { font-size: 14px; color: var(--ink); }
 .fgv2 .industry-workflow span { font-size: 14px; color: var(--muted); }
+/* The example booking form: fields that look like fields, the booking flow as connected chips. */
+.fgv2 .industry-form { border: 1px solid var(--line); background: var(--white); box-shadow: 0 24px 50px -36px rgb(32 63 104 / .35); border-radius: var(--radius); }
+.fgv2 .industry-input { background: var(--white) !important; border: 1px solid var(--line) !important; border-radius: var(--radius); padding: 10px 12px !important; color: var(--ink); }
+.fgv2 .industry-workflow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fgv2 .industry-workflow span { padding: 6px 10px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+.fgv2 .industry-workflow i { color: var(--gold); font-style: normal; }
+.fgv2 .industry-workflow b { flex-basis: 100%; }
 .fgv2 .industry-workflow i { color: var(--gold); }
 
 /* ── 13. Corporate: approvals, roles and invoicing, not figures ────────── */
