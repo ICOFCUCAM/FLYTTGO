@@ -7,6 +7,7 @@ import { BrandFooter, BrandHeader } from './whiteLabel/BrandFrame';
 import AuthModal from './AuthModal';
 import { isEmbedded, useEmbedResize } from '../lib/embed';
 import { isTransportHost } from '../lib/hosts';
+import { newDesign } from '../lib/siteDesign';
 
 const HomePage           = lazy(() => import('./HomePage'));
 const PlatformHomePage   = lazy(() => import('./PlatformHomePage'));
@@ -105,7 +106,9 @@ export default function AppLayout() {
     switch (currentPage) {
       /* flyttgo.no: the platform's front page; transport.flyttgo.no and
        * /transport: the moving and transport front page (docs/HOMEPAGES.md). */
-      case 'home':             return platformHome ? <PlatformHomePage /> : <HomePage />;
+      /* With the new design (preview addresses now, flyttgo.no after the switch; lib/siteDesign.ts) the
+       * front page is the new homepage. */
+      case 'home':             return platformHome ? (newDesign() ? <HomeV2Page /> : <PlatformHomePage />) : <HomePage />;
       case 'transport-home':   return <HomePage />;
       /* The restructured homepage under review (docs/HOMEPAGE_RESTRUCTURE.md). */
       case 'home-preview':     return <HomeV2Page />;

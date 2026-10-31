@@ -25,6 +25,7 @@ import { initDesign as initEn } from '../platformHome/design-scripts';
 import { initDesign as initNo } from '../platformHome/design-scripts.no';
 import { installDemoRecords } from './demoRecords';
 import { installStudio } from './studioPreview';
+import { takePendingSection } from './pendingSection';
 import { applyDesign, DEFAULT_TOKENS, DEFAULT_VARIANTS, googleFontsHref } from './design.config';
 import './design.v2.css';
 import './homeV2.css';
@@ -117,6 +118,12 @@ export default function HomeV2Page() {
     const removeStudio = installStudio(el, lang);
     const removeMotion = installMotion(el);
     wireCards(el);
+    /* A section asked for from another page's menu: open there once the page has rendered. */
+    const pending = takePendingSection();
+    const pendingTimer = pending ? window.setTimeout(() => {
+      el.querySelector(`#${pending.id}`)?.scrollIntoView({ block: 'start' });
+      if (pending.tab) el.querySelector<HTMLButtonElement>(`#${pending.id} ${pending.tab}`)?.click();
+    }, 60) : 0;
 
     /* Framed by the Design Refinement Studio: its probe (lab/probe.ts) is loaded only then. */
     let removeProbe = () => {};
@@ -149,7 +156,7 @@ export default function HomeV2Page() {
     };
     el.addEventListener('click', onClick);
     el.addEventListener('keydown', onKey);
-    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); removeRecords(); removeStudio(); removeMotion(); mounted = false; removeProbe(); };
+    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); removeRecords(); removeStudio(); removeMotion(); mounted = false; removeProbe(); window.clearTimeout(pendingTimer); };
   }, [version, language, setPage, setShowAuthModal, setAuthMode]);
 
   return (

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { isFlyttgoHost, isProductionHost, isTransportHost, transportUrl, TRANSPORT_HOST } from '../lib/hosts';
 import { pageToPath, pageTitle, pathToPage } from '../lib/pageRoutes';
+import { LIVE_NEW_DESIGN, newDesign } from '../lib/siteDesign';
 
 /* docs/HOMEPAGES.md: flyttgo.no shows the platform's front page, and the
  * moving and transport front page is transport.flyttgo.no and /transport. */
@@ -38,6 +39,16 @@ describe('the two front pages', () => {
     expect(isProductionHost('transport.flyttgo.no')).toBe(true);
     expect(isProductionHost('flyttgo-git-preview.vercel.app')).toBe(false);
     expect(isProductionHost('localhost')).toBe(false);
+  });
+
+  it('the new design shows on preview addresses, on flyttgo.no only after the switch, never on company domains', () => {
+    expect(newDesign('flyttgo-git-preview.vercel.app')).toBe(true);
+    expect(newDesign('localhost')).toBe(true);
+    expect(newDesign('flyttgo.no')).toBe(LIVE_NEW_DESIGN);
+    expect(newDesign('www.flyttgo.no')).toBe(LIVE_NEW_DESIGN);
+    expect(newDesign('transport.flyttgo.no')).toBe(LIVE_NEW_DESIGN);
+    expect(newDesign('acme-ror.no')).toBe(false);
+    expect(newDesign('acme.flyttgo.no')).toBe(false);
   });
 
   it('the selected design uses only variants the lab offers', async () => {

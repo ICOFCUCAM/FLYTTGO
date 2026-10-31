@@ -8,6 +8,8 @@ import { useNotifications } from '../hooks/useNotifications';
 import type { Page as PageType } from '../lib/store';
 import { displayPhone, useCompanyIdentity } from '../lib/companyIdentity';
 import { isTransportHost } from '../lib/hosts';
+import { newDesign } from '../lib/siteDesign';
+import { PENDING_SECTION } from './homeV2/pendingSection';
 
 type Lang = 'en' | 'no';
 
@@ -174,7 +176,7 @@ export default function Header() {
   /* On the platform front page (flyttgo.no, docs/HOMEPAGES.md) the menu bar
    * also carries the design's own menu, as a Platform dropdown of the page's
    * sections, and its corners are square like the design's cards. */
-  const platformHome = currentPage === 'home' && !isTransportHost(window.location.hostname);
+  const platformHome = currentPage === 'home' && !isTransportHost(window.location.hostname) && !newDesign();
   const PLATFORM_LINKS: [string, string][] = [
     [t('header.platformLinks.platform'), 'platform'],
     [t('header.platformLinks.businessTools'), 'business-platform'],
@@ -200,14 +202,25 @@ export default function Header() {
    * Moving Tools and the Companies links). My Company's items open the matching
    * tab of the page's business or finance workspace; creating a marketplace
    * is the last, optional group of For Organisations. */
-  const preview = currentPage === 'home-preview';
+  /* One site, one header: with the new design (lib/siteDesign.ts) every page carries this menu, except the
+   * moving and transport front page on its own address, which keeps its own. */
+  const preview = currentPage === 'home-preview' || (newDesign() && !(currentPage === 'home' && isTransportHost(window.location.hostname)));
+  /* The new homepage's address: `/` once it is the front page, else the preview path. */
+  const homeOfDesign: Page = newDesign() ? 'home' : 'home-preview';
   type JourneyItem = { label: string; desc?: string; go: () => void };
   type JourneyColumn = { title?: string; tag?: string; items: JourneyItem[]; note?: string };
   const page = (label: string, to: Page, desc?: string): JourneyItem => ({ label, desc, go: () => handleNav(to) });
+  /* A section of the new homepage: scrolled to on that page; from any other page, the homepage opens
+   * at that section (HomeV2Page reads the request after it renders). */
   const section = (label: string, id: string, tab?: string, desc?: string): JourneyItem => ({
     label, desc, go: () => {
-      toSection(id);
-      if (tab) document.querySelector<HTMLButtonElement>(`#${id} ${tab}`)?.click();
+      if (document.getElementById(id)) {
+        toSection(id);
+        if (tab) document.querySelector<HTMLButtonElement>(`#${id} ${tab}`)?.click();
+        return;
+      }
+      try { sessionStorage.setItem(PENDING_SECTION, JSON.stringify({ id, tab })); } catch { /* private mode */ }
+      handleNav(homeOfDesign);
     },
   });
   const jt = (key: string) => t(`header.journeys.${key}`);
