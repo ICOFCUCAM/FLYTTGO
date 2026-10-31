@@ -487,6 +487,60 @@ def element_span(body: str, start: int, tag: str) -> int:
     raise SystemExit(f'unclosed <{tag}> at {start}')
 
 
+# One job per section (owner's 2036 evaluation, 31 October 2026): the page says "one platform" once, in
+# the hero; every other heading says what its own section is for. Applied last, to the finished page.
+V2_VOICE = [
+    ('<div class="eyebrow">One connected platform</div>', '<div class="eyebrow">Services · Business tools · Network</div>'),
+    ('<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">Three journeys. One platform.</h2>',
+     '<span class="eyebrow">Choose your way in</span><h2 class="display">Book a service. Run your company. Build with us.</h2>'),
+    ('<div class="eyebrow">One platform. Workflows for different industries.</div>', '<div class="eyebrow">Industries</div>'),
+    ('<div class="eyebrow">One platform · Four connected capabilities</div><h2 class="display">Not four separate products.<br/><span class="serif">One business ecosystem.</span></h2>',
+     '<div class="eyebrow">What connects underneath</div><h2 class="display">Bookings, work and money.<br/><span class="serif">Recorded once.</span></h2>'),
+    ('<h2 class="display">Different journeys.<br/><span class="serif">One connected platform.</span></h2>',
+     '<h2 class="display">From the first search<br/><span class="serif">to the final record.</span></h2>'),
+    ('<div class="eyebrow">One infrastructure · Independent marketplace businesses</div>', '<div class="eyebrow">Trust and data boundaries</div>'),
+    ('<div class="eyebrow">One platform. Many possibilities.</div>', '<div class="eyebrow">Start today</div>'),
+    # Hero directions (design.config.ts): the participants band (B, the connected business) and the
+    # flight-line motif (C, the signature statement); each is hidden in the other directions.
+    ('<strong>Scale with FlyttGo</strong></a></nav>',
+     '<strong>Scale with FlyttGo</strong></a></nav>'
+     '<ul class="hero-actors"><li><b>Customers</b><span>find and book services</span></li>'
+     '<li><b>Professionals</b><span>deliver the work</span></li>'
+     '<li><b>Companies</b><span>run bookings, jobs and invoices</span></li>'
+     '<li><b>Organisations</b><span>buy, approve and scale</span></li></ul>'),
+    ('<div class="hero-copy">',
+     '<div class="hero-copy"><svg class="hero-motif" viewBox="0 0 600 320" aria-hidden="true" focusable="false">'
+     '<path d="M8 304 C 180 300, 330 250, 430 150 S 560 30, 592 12" fill="none" stroke="currentColor" stroke-width="1.5"/>'
+     '<path d="M8 304 C 180 300, 330 250, 430 150 S 560 30, 592 12" fill="none" stroke="currentColor" stroke-width="14" opacity=".06"/>'
+     '<circle cx="592" cy="12" r="6" fill="currentColor"/></svg>'),
+    # Headline candidates (design.config.ts `headline`): the owner's slogan and two that say what FlyttGo
+    # does. One shows at a time; the slogan becomes the signature line above the others.
+    ('<span class="h1-line">Assisting Companies</span> <span class="h1-line">to Fly High.</span><br/>',
+     '<span class="hl hl-a"><span class="h1-line">Assisting Companies</span> <span class="h1-line">to Fly High.</span></span>'
+     '<span class="hl hl-b"><span class="h1-line">Book services.</span> <span class="h1-line">Run your company.</span> <span class="h1-line">Grow with FlyttGo.</span></span>'
+     '<span class="hl hl-c"><span class="h1-line">The platform behind</span> <span class="h1-line">every service business.</span></span><br/>'),
+    ('<div class="eyebrow">Services · Business tools · Network</div>',
+     '<div class="eyebrow"><span class="hl-sig-a">Services · Business tools · Network</span><span class="hl-sig">Assisting companies to fly high</span></div>'),
+    # What the studio shows that exists, what is being connected and what is in development
+    # (docs/PLATFORM_AUDIT_2026-10-30.md, white label rows).
+    ('<dd><span class="v2-chip v2-chip-wait">In development</span></dd></div></dl></div>',
+     '<dd><span class="v2-chip v2-chip-wait">In development</span></dd></div></dl>'
+     '<ul class="wl-status"><li><span class="v2-chip v2-chip-ok">Available</span>Your branded page and flyttgo.no address; FlyttGo sells and invoices (moving and delivery)</li>'
+     '<li><span class="v2-chip v2-chip-info">Being connected</span>Your own domain; selling under your own terms (Stripe Connect)</li>'
+     '<li><span class="v2-chip v2-chip-wait">In development</span>Your own provider network</li>'
+     '<li><span class="v2-chip v2-chip-neutral">Illustration</span>This preview creates, connects and charges nothing</li></ul></div>'),
+]
+
+
+def type_vars(css: str) -> str:
+    """The restructured page's typefaces as variables (design.config.ts sets them; the design lab
+    changes them): Manrope is the display face, DM Sans the text face, Georgia the accent serif."""
+    css = re.sub(r'"DM Sans"(,\s*sans-serif)?', 'var(--font-body)', css)
+    css = re.sub(r'\bManrope(,\s*sans-serif)?', 'var(--font-display)', css)
+    css = css.replace('--serif:Georgia,"Times New Roman",serif', '--serif:var(--font-accent)')
+    return re.sub(r'\bGeorgia(,\s*serif)?', 'var(--font-accent)', css)
+
+
 def build_v2(base: str) -> str:
     main = []
     for attr, topic in V2_SECTIONS:
@@ -527,6 +581,10 @@ def build_v2(base: str) -> str:
     m = re.search(r'<section\b[^>]*class="hero wrap"', page)
     end = element_span(page, m.start(), 'section')
     page = page[:end] + V2_BOOKING + page[end:]
+    for old, new in V2_VOICE:
+        if page.count(old) != 1:
+            raise SystemExit(f'v2 voice: expected once: {old[:60]}')
+        page = page.replace(old, new)
     return page
 
 
@@ -887,7 +945,7 @@ def main() -> int:
         '/* Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html.\n'
         ' * The design\'s styles, scoped under .fgv2, in the FlyttGo palette with disciplined roles (deep blue,\n'
         ' * forest, gold hairlines, ivory; owner, 30 October 2026), then made readable. Do not edit. */\n'
-        + dedupe_css(readable_css(recolour_css(scope_css(css, '.fgv2'), BRAND))) + '\n', encoding='utf-8')
+        + type_vars(dedupe_css(readable_css(recolour_css(scope_css(css, '.fgv2'), BRAND)))) + '\n', encoding='utf-8')
     print(f'design.html {len(body)} chars, design.css, design-scripts.ts ({len(scripts)} scripts); links wired:')
     for u in used:
         print('  ' + u)

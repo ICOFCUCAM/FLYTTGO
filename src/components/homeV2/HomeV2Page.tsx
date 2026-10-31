@@ -25,7 +25,7 @@ import { initDesign as initEn } from '../platformHome/design-scripts';
 import { initDesign as initNo } from '../platformHome/design-scripts.no';
 import { installDemoRecords } from './demoRecords';
 import { installStudio } from './studioPreview';
-import { applyDesign, DEFAULT_TOKENS, DEFAULT_VARIANTS, isLabMessage } from './design.config';
+import { applyDesign, DEFAULT_TOKENS, DEFAULT_VARIANTS, googleFontsHref } from './design.config';
 import './design.v2.css';
 import './homeV2.css';
 
@@ -58,31 +58,6 @@ function wireCards(el: HTMLElement) {
 const labFrame = () => typeof window !== 'undefined' && window.parent !== window
   && new URLSearchParams(window.location.search).get('lab') === '1' && !isProductionHost(window.location.hostname);
 
-/* Inside a scroller or clipped box that itself fits, an element past the edge harms nothing. */
-function clipped(n: HTMLElement, vw: number) {
-  if (getComputedStyle(n).position === 'fixed') return true;
-  for (let p = n.parentElement; p && !p.classList.contains('fgv2'); p = p.parentElement) {
-    const o = getComputedStyle(p).overflowX;
-    if (o !== 'visible' && p.getBoundingClientRect().right <= vw + 1) return true;
-  }
-  return false;
-}
-
-/* What the lab shows beside each frame: anything wider than the viewport and the smallest text. */
-function measure(el: HTMLElement) {
-  const vw = document.documentElement.clientWidth;
-  let overflow = 0, minFont = 99;
-  el.querySelectorAll<HTMLElement>('*').forEach(n => {
-    const r = n.getBoundingClientRect();
-    if (!r.width || !r.height) return;
-    if (r.right > vw + 1 && !clipped(n, vw)) overflow++;
-    if (n.childNodes.length && [...n.childNodes].some(c => c.nodeType === 3 && c.textContent!.trim())) {
-      minFont = Math.min(minFont, parseFloat(getComputedStyle(n).fontSize));
-    }
-  });
-  return { overflow, minFont, height: el.scrollHeight, width: vw, pageOverflow: document.documentElement.scrollWidth > vw };
-}
-
 /* Section entrances: added once, only when motion is on and the visitor has not asked for less. */
 function installMotion(el: HTMLElement) {
   if (!('IntersectionObserver' in window)) return () => {};
@@ -94,7 +69,8 @@ function installMotion(el: HTMLElement) {
   return () => io.disconnect();
 }
 
-const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap';
+/* The selected typefaces (design.config.ts). */
+const FONTS = googleFontsHref([DEFAULT_TOKENS.fontDisplay, DEFAULT_TOKENS.fontBody, DEFAULT_TOKENS.fontAccent]);
 
 export default function HomeV2Page() {
   const { setPage, setShowAuthModal, setAuthMode } = useApp();
@@ -130,6 +106,7 @@ export default function HomeV2Page() {
     const picture = el.querySelector<HTMLImageElement>('.hero-visual > img');
     if (picture) {
       const holder = document.createElement('div');
+      holder.className = 'hero-photo';
       picture.replaceWith(holder);
       setHero({ el: holder, alt: picture.alt });
     }
@@ -141,18 +118,10 @@ export default function HomeV2Page() {
     const removeMotion = installMotion(el);
     wireCards(el);
 
-    let report = () => {};
-    const onMessage = (e: MessageEvent) => {
-      if (e.origin !== window.location.origin || !isLabMessage(e.data)) return;
-      applyDesign(el, e.data.tokens, e.data.variants);
-      if (e.data.variants.motion === 'off') el.querySelectorAll('.v2-reveal').forEach(n => n.classList.add('v2-in'));
-      requestAnimationFrame(() => requestAnimationFrame(report));
-    };
-    if (labFrame()) {
-      report = () => window.parent.postMessage({ type: 'flyttgo-metrics', ...measure(el) }, window.location.origin);
-      window.addEventListener('message', onMessage);
-      window.parent.postMessage({ type: 'flyttgo-ready' }, window.location.origin);
-    }
+    /* Framed by the Design Refinement Studio: its probe (lab/probe.ts) is loaded only then. */
+    let removeProbe = () => {};
+    let mounted = true;
+    if (labFrame()) void import('./lab/probe').then(m => { if (mounted) removeProbe = m.installProbe(el); });
 
     const open = (target: string) => {
       if (target === 'auth:signin' || target === 'auth:signup') {
@@ -180,7 +149,7 @@ export default function HomeV2Page() {
     };
     el.addEventListener('click', onClick);
     el.addEventListener('keydown', onKey);
-    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); removeRecords(); removeStudio(); removeMotion(); window.removeEventListener('message', onMessage); };
+    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); removeRecords(); removeStudio(); removeMotion(); mounted = false; removeProbe(); };
   }, [version, language, setPage, setShowAuthModal, setAuthMode]);
 
   return (

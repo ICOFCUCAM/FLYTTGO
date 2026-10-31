@@ -32,7 +32,8 @@
   --white: #FFFEFA;
   --ink: #17212e;
   --muted: #4a5260;
-  --line: #e3ddcf;
+  /* hairlines: one warm line colour, its strength a token */
+  --line: color-mix(in srgb, #cfc5ad min(100%, calc(var(--hairline, 1) * 60%)), transparent);
   --blue: #203F68;
   --forest: #24513B;
   --evergreen: #20352B;
@@ -40,6 +41,13 @@
   /* Scales the design lab adjusts (design.config.ts holds the defaults). */
   --type-scale: 1; --hero-scale: 1; --space-scale: 1; --wrap-max: 1320px;
   --radius: 2px; --depth: 1; --img-sat: .86; --img-warm: .05;
+  --font-display: Manrope, sans-serif; --font-body: "DM Sans", sans-serif; --font-accent: Georgia, serif;
+  --hero-weight: 650; --hero-leading: .98; --hero-tracking: -.045em;
+  --head-weight: 650; --head-leading: 1.04; --head-tracking: -.045em; --body-size: 16px;
+  --inner-scale: 1; --split: 46%; --img-contrast: 1.03; --img-pos-x: 50%; --img-pos-y: 50%; --hero-height: 1;
+  --hairline: 1; --density: 1; --motion-distance: 28px; --motion-duration: .9s;
+  --hl-fit: 1;      /* the selected headline's width relative to the slogan (section 3) */
+  --photo-filter: ;  /* the photography direction (section 18) */
   --section: calc(clamp(88px, 9vw, 136px) * var(--space-scale));
   --lift: 0 40px 80px -48px rgb(32 63 104 / calc(.35 * var(--depth)));
   overflow-x: clip;
@@ -49,14 +57,14 @@
 
 /* ── 2. Base: type, rhythm, labels, buttons, focus, surfaces, pictures ─── */
 .fgv2 h2.display, .fgv2 .section-head h2, .fgv2 .entry-head h2, .fgv2 .legacy-suite h2 {
-  font-family: Manrope, sans-serif; font-weight: 650; line-height: 1.04; letter-spacing: -.045em; color: var(--ink);
+  font-family: var(--font-display); font-weight: var(--head-weight); line-height: var(--head-leading); letter-spacing: var(--head-tracking); color: var(--ink);
 }
 .fgv2 h2.display, .fgv2 .section-head h2, .fgv2 .entry-head h2 { font-size: calc(clamp(36px, 4.6vw, 62px) * var(--type-scale)); }
 .fgv2 .legacy-suite h2 { font-size: calc(clamp(32px, 3.8vw, 50px) * var(--type-scale)); line-height: 1.06; letter-spacing: -.04em; }
 @media (min-width: 761px) { .fgv2 .wrap { width: min(var(--wrap-max), calc(100% - 80px)); } }
 .fgv2 :is(.section-head, .ecosystem-intro, .workspace-intro, .finance-intro, .industry-intro, .wl-intro, .network-intro, .entry-head) > p,
 .fgv2 .legacy-suite .section-head p, .fgv2 .corp-copy > p {
-  font-size: 16px; line-height: 1.75; color: var(--muted);
+  font-size: var(--body-size); line-height: 1.75; color: var(--muted);
 }
 .fgv2 .eyebrow { color: var(--blue); font-size: 11px; letter-spacing: .2em; }
 .fgv2 .eyebrow:before { background: var(--gold); width: 28px; }
@@ -98,15 +106,42 @@
 .fgv2 .v2-chip-due { color: #7a2e22; background: #fbeeeb; border-color: #e7c2b9; }
 .fgv2 .v2-chip-info { color: var(--blue); background: #edf1f7; border-color: #c3d0e2; }
 
+/* Readable small text: descriptions and specifications never below 12px unless they are uppercase labels. */
+.fgv2 :is(.market-card p, .service-card p, .fleet-card p, .spec-row, .spec-row *, .bestfor, .industry-form label, .industry-input, .finance-side button, .bw-nav button) { font-size: max(13px, 1em); }
+.fgv2 :is(.market-card p, .service-card p) { font-size: 13px; line-height: 1.55; }
+.fgv2 :is(.spec-row, .spec-row *, .bestfor) { font-size: 13px; }
+.fgv2 :is(.industry-form label, .industry-input) { font-size: 12px; }
+.fgv2 .finance-side button { font-size: 13px; }
+.fgv2 .service-card p { max-width: 62ch; }
+.fgv2 .service-card .body p, .fgv2[data-moving] .service-card .body p { font-size: 13px; }
+.fgv2 :is(.v2-chip, .bw-lower strong, .bw-mini strong, .wl-store-nav, .wl-store-nav *, .finance-foot, .finance-foot *, .industry-form-foot, .industry-form-foot *, .industry-panel-visual small, .bw-lower span, .bw-lower small) { font-size: max(12px, 1em); }
+.fgv2 :is(.v2-legend, .driver-panel p, .ecosystem-intro p, .network-intro p, .pricing-note, .v2-eco-note) { max-width: 72ch; }
+
 /* Pictures: one collection. The same grade on every photograph, restrained veils, slow hover. */
-.fgv2 :is(.market-card, .service-card, .fleet-card, .hero-visual, .driver-panel) img { filter: saturate(var(--img-sat)) contrast(1.03) sepia(var(--img-warm)); }
+.fgv2 :is(.market-card, .service-card, .fleet-card, .hero-visual, .driver-panel) img {
+  filter: saturate(var(--img-sat)) contrast(var(--img-contrast)) sepia(var(--img-warm)) var(--photo-filter);
+  object-position: var(--img-pos-x) var(--img-pos-y);
+}
+/* Space inside components and card density follow their tokens. */
+.fgv2 :is(.section-head, .entry-head, .workspace-intro, .finance-intro, .industry-intro, .wl-intro, .network-intro, .ecosystem-intro) { margin-bottom: calc(44px * var(--inner-scale)); }
+.fgv2 :is(.entry-grid, .service-grid, .fleet-grid, .market-grid, .feature-list) { gap: calc(16px * var(--inner-scale)); }
+.fgv2 :is(.service-card .body, .fleet-info, .legacy-suite .step-card, .feature, .industry-panel-copy, .wl-config, .corp-copy) { padding: calc(28px * var(--density)); }
 
 /* ── 3. Hero ───────────────────────────────────────────────────────────── */
 .fgv2 main > section.hero { padding-top: 64px; padding-bottom: 0; border-top: 0; }
-.fgv2 .hero h1 { color: var(--ink); }
+.fgv2 .hero h1 { color: var(--ink); font-weight: var(--hero-weight); line-height: var(--hero-leading); letter-spacing: var(--hero-tracking); }
+/* Headline candidates (design.config.ts `headline`): one shows; the slogan signs the others. */
+.fgv2 .hero h1 .hl, .fgv2 .hero .hl-sig { display: none; }
+.fgv2[data-headline="a"] .hero h1 .hl-a, .fgv2[data-headline="b"] .hero h1 .hl-b, .fgv2[data-headline="c"] .hero h1 .hl-c { display: inline; }
+.fgv2:not([data-headline="a"]) .hero .hl-sig { display: inline; }
+.fgv2:not([data-headline="a"]) .hero .hl-sig-a { display: none; }
+.fgv2[data-headline="b"] { --hl-fit: .98; }
+.fgv2[data-headline="c"] { --hl-fit: .8; }
+.fgv2 .hero-photo { position: static; } /* the slides fill .hero-visual, except where a direction places the photo itself */
+.fgv2 .hero-actors, .fgv2 .hero-motif { display: none; }
 .fgv2 .hero h1 .serif { display: block; color: var(--blue); letter-spacing: -.02em; }
 /* Three levels: the brand phrase, the proposition (a quieter sans line), then the actions. */
-.fgv2 .hero h1 .serif { font-family: "DM Sans", Manrope, sans-serif; font-style: normal; font-weight: 500; letter-spacing: -.025em; }
+.fgv2 .hero h1 .serif { font-family: var(--font-body); font-style: normal; font-weight: 500; letter-spacing: -.025em; }
 .fgv2 .hero-lede { font-size: 17px; line-height: 1.75; color: var(--muted); max-width: 470px; }
 .fgv2 .hero-actions { flex-wrap: wrap; align-items: center; gap: 12px; }
 .fgv2 .hero-actions .hero-link { font-size: 15px; font-weight: 700; color: var(--blue); padding: 0 8px; border-bottom: 1px solid var(--gold); line-height: 1.8; }
@@ -126,22 +161,26 @@
 .fgv2 .hero-ledger a:first-child { border-left: 0; }
 .fgv2 .hero-ledger a:hover { background: rgba(255,255,255,.07); }
 .fgv2 .hero-ledger small { display: block; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--gold-text); }
-.fgv2 .hero-ledger strong { display: block; font: 600 17px/1.3 Manrope, sans-serif; margin-top: 6px; letter-spacing: -.01em; }
+.fgv2 .hero-ledger strong { display: block; font: 600 17px/1.3 var(--font-display); margin-top: 6px; letter-spacing: -.01em; }
 /* The design stacks the hero below 760px (its own later rule wins over its 900px one); these follow it. */
 @media (min-width: 761px) {
   .fgv2 .hero-grid { align-items: stretch; column-gap: clamp(32px, 4.5vw, 64px); }
   .fgv2 .hero-copy { align-self: center; container-type: inline-size; padding-bottom: 56px; }
   /* The owner's headline sized to its column: "Assisting Companies" runs the full width. */
-  .fgv2 .hero h1 { max-width: none; font-size: calc(11.2cqi * var(--hero-scale)); }
+  .fgv2 .hero h1 { max-width: none; font-size: calc(11.2cqi * var(--hero-scale) * var(--hl-fit)); }
   .fgv2 .hero h1 .h1-line { display: block; white-space: nowrap; }
   .fgv2 .hero h1 br { display: none; }
   /* The product statement under the signature phrase: smaller, so the phrase can breathe. */
   .fgv2 .hero h1 .serif { font-size: max(.4em, 18px); line-height: 1.25; margin-top: .6em; max-width: 30ch; }
-  .fgv2 .hero-visual { height: auto; min-height: clamp(520px, 44vw, 640px); }
+  .fgv2 .hero-visual { height: auto; min-height: calc(clamp(520px, 44vw, 640px) * var(--hero-height)); }
 }
 @media (max-width: 760px) {
-  .fgv2 .hero h1 .serif { font-size: .52em; line-height: 1.2; margin-top: .4em; }
-  .fgv2 .hero-visual { display: flex; flex-direction: column; justify-content: flex-end; height: auto; min-height: 460px; }
+  /* Each headline line on its own line, sized so the longest fits a 390px screen. */
+  .fgv2 .hero h1 { font-size: calc(clamp(30px, 9vw, 52px) * var(--hero-scale) * var(--hl-fit)); }
+  .fgv2 .hero h1 .h1-line { display: block; }
+  .fgv2 .hero h1 br { display: none; }
+  .fgv2 .hero h1 .serif { font-size: max(.5em, 18px); line-height: 1.25; margin-top: .55em; }
+  .fgv2 .hero-visual { display: flex; flex-direction: column; justify-content: flex-end; height: auto; min-height: calc(540px * var(--hero-height)); }
   .fgv2 .hero-ledger { position: relative; grid-template-columns: 1fr; }
   .fgv2 .hero-ledger a { border-left: 0; border-top: 1px solid rgba(195,166,108,.35); padding: 14px 18px; }
   .fgv2 .hero-ledger a:first-child { border-top: 0; }
@@ -168,7 +207,7 @@
 .fgv2 .entry-card { min-height: 300px; padding: 40px; justify-content: flex-start; border-radius: var(--radius); }
 .fgv2 .entry-card:hover { transform: none; box-shadow: none; }
 .fgv2 :is(.entry-card > span, .entry-side > span) { font-size: 11px; letter-spacing: .18em; font-weight: 700; text-transform: uppercase; }
-.fgv2 .entry-card h3 { font: 650 clamp(28px, 2.8vw, 38px)/1.08 Manrope, sans-serif; letter-spacing: -.04em; margin: 26px 0 12px; }
+.fgv2 .entry-card h3 { font: 650 clamp(28px, 2.8vw, 38px)/1.08 var(--font-display); letter-spacing: -.04em; margin: 26px 0 12px; }
 .fgv2 .entry-card p { margin: 0; font-size: 16px; line-height: 1.65; max-width: 440px; }
 .fgv2 .entry-card .entry-for { font-size: 14px; font-weight: 600; margin-top: 14px; opacity: .85; }
 .fgv2 :is(.entry-card > a, .entry-body > a) { margin-top: auto; padding-top: 28px; font-size: 15px; font-weight: 700; border-bottom: 0; }
@@ -233,26 +272,26 @@
 .fgv2 .v2-lifecycle li::before { content: ""; position: absolute; left: 0; right: 0; top: 6px; height: 1px; background: var(--gold); }
 .fgv2 .v2-lifecycle li::after { content: ""; position: absolute; left: 0; top: 2px; width: 9px; height: 9px; border-radius: 50%; background: var(--blue); }
 .fgv2 .v2-lifecycle li:last-child::before { right: auto; width: 9px; }
-.fgv2 .v2-lifecycle b { display: block; font-family: Georgia, serif; font-weight: 400; color: var(--blue); font-size: 14px; margin-bottom: 4px; }
+.fgv2 .v2-lifecycle b { display: block; font-family: var(--font-accent); font-weight: 400; color: var(--blue); font-size: 14px; margin-bottom: 4px; }
 .fgv2 .v2-steps { grid-template-columns: repeat(8, 1fr); margin-bottom: 64px; }
 .fgv2 .v2-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px 48px; }
 .fgv2 .v2-links article { display: flex; flex-direction: column; padding-top: 22px; border-top: 1px solid var(--ink); }
 .fgv2 .v2-links small { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: var(--blue); }
-.fgv2 .v2-links h3 { font: 650 24px/1.2 Manrope, sans-serif; letter-spacing: -.02em; margin: 8px 0 10px; color: var(--ink); }
+.fgv2 .v2-links h3 { font: 650 24px/1.2 var(--font-display); letter-spacing: -.02em; margin: 8px 0 10px; color: var(--ink); }
 .fgv2 .v2-links p { font-size: 15px; line-height: 1.7; color: var(--muted); margin: 0 0 14px; }
 .fgv2 .v2-links ul { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 8px; }
 .fgv2 .v2-links a { margin-top: auto; font-size: 14px; font-weight: 700; color: var(--blue); border-bottom: 1px solid var(--gold); align-self: flex-start; padding-bottom: 3px; }
 .fgv2 .v2-status { font-size: 14px; line-height: 1.5; color: var(--ink); }
-.fgv2 .v2-status > span { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em; padding: 2px 8px; margin-right: 8px; border: 1px solid; }
+.fgv2 .v2-status > span { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .04em; padding: 2px 8px; margin-right: 8px; border: 1px solid; }
 .fgv2 .v2-ok > span { color: #1f4a33; background: #eaf2ec; border-color: #bcd3c4; }
 .fgv2 .v2-dev > span { color: #5a4517; background: #f8f2e4; border-color: #e2d2a6; }
 .fgv2 .v2-plan > span { color: var(--blue); background: #edf1f7; border-color: #c3d0e2; }
 .fgv2 .v2-path { margin-top: 72px; padding: 40px; background: var(--white); border: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 48px; align-items: start; }
-.fgv2 .v2-path h3 { font: 650 clamp(24px, 2.4vw, 32px)/1.15 Manrope, sans-serif; letter-spacing: -.03em; margin: 14px 0 12px; color: var(--ink); }
+.fgv2 .v2-path h3 { font: 650 clamp(24px, 2.4vw, 32px)/1.15 var(--font-display); letter-spacing: -.03em; margin: 14px 0 12px; color: var(--ink); }
 .fgv2 .v2-path p { font-size: 15px; line-height: 1.8; color: var(--muted); margin: 0; }
 .fgv2 .v2-path ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
 .fgv2 .v2-path li { background: var(--white); padding: 15px 18px; font-size: 15px; font-weight: 600; color: var(--ink); display: flex; gap: 12px; align-items: baseline; }
-.fgv2 .v2-path li b { color: var(--blue); font-family: Georgia, serif; font-weight: 400; }
+.fgv2 .v2-path li b { color: var(--blue); font-family: var(--font-accent); font-weight: 400; }
 .fgv2 .v2-legend { margin: 32px 0 0; font-size: 13px; line-height: 2.2; color: var(--muted); }
 .fgv2 .v2-legend .v2-status { margin-left: 10px; }
 .fgv2 .v2-legend .v2-status:first-child { margin-left: 0; }
@@ -284,14 +323,24 @@
 .fgv2 .service-card, .fgv2 .fleet-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); box-shadow: none; }
 .fgv2 .fleet-card:hover { transform: none; box-shadow: var(--lift); }
 .fgv2 :is(.steps-grid, .fleet-grid, .tool-grid, .plan-grid) { background: transparent; border: 0; gap: 16px; }
-.fgv2 .steps-grid { gap: 0; border: 1px solid var(--line); }
-.fgv2 .legacy-suite .step-card { padding: 28px 28px 30px; border: 0; border-right: 1px solid var(--line); background: var(--white); }
+/* The four booking steps as a timeline: numbers on one gold line, no boxes. */
+.fgv2 .steps-grid { gap: 0 32px; border: 0; border-top: 2px solid var(--gold); background: transparent; }
+.fgv2 .legacy-suite .step-card { position: relative; padding: 30px 0 0; border: 0; background: transparent; box-shadow: none; }
+.fgv2 .legacy-suite .step-card:before { content: ""; position: absolute; top: -7px; left: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--white); border: 2px solid var(--blue); }
+@media (max-width: 900px) {
+  .fgv2 .steps-grid { grid-template-columns: 1fr; border-top: 0; border-left: 2px solid var(--gold); padding-left: 24px; gap: 24px; }
+  .fgv2 .legacy-suite .step-card { padding-top: 0; }
+  .fgv2 .legacy-suite .step-card:before { top: 10px; left: -32px; }
+}
 .fgv2 .legacy-suite .step-card p { font-size: 15px; }
 /* Step numbers on a light ground: deep-blue serif (gold is for dark grounds only). */
-.fgv2 .legacy-suite .step-no { width: auto; height: auto; background: transparent; border-radius: 0; color: var(--blue); font-family: Georgia, serif; font-size: 34px; display: block; margin-bottom: 14px; }
+.fgv2 .legacy-suite .step-no { width: auto; height: auto; background: transparent; border-radius: 0; color: var(--blue); font-family: var(--font-accent); font-size: 34px; display: block; margin-bottom: 14px; }
 .fgv2 #van-types .price-from { display: none; } /* rates live on the van guide (linked) */
-.fgv2 .testimonial-grid .quote { background: var(--white); padding: 30px 28px; }
+/* "What every booking includes": a ruled two-column list, not a third row of boxes. */
+.fgv2 .testimonial-grid { background: transparent; border: 0; gap: 0 56px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fgv2 .testimonial-grid .quote { background: transparent; padding: 22px 0 24px; border: 0; border-top: 1px solid var(--ink); box-shadow: none; }
 .fgv2 .testimonial-grid .quote small { color: var(--blue); }
+@media (max-width: 700px) { .fgv2 .testimonial-grid { grid-template-columns: 1fr; } }
 @media (min-width: 901px) {
   .fgv2 .legacy-suite .section-head { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); grid-template-areas: "label label" "title text"; column-gap: 64px; row-gap: 18px; }
   .fgv2 .legacy-suite .section-head .eyebrow { grid-area: label; padding-top: 0; }
@@ -303,7 +352,7 @@
 /* ── 10. Business workspace: the flagship product demonstration ────────── */
 .fgv2 .bw-sidebar { background: var(--paper); }
 .fgv2 .bw-company { display: flex; gap: 12px; align-items: center; padding: 4px 4px 18px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
-.fgv2 .bw-company i { flex: none; width: 36px; height: 36px; display: grid; place-items: center; background: var(--blue); color: #fff; font: 700 13px Manrope, sans-serif; font-style: normal; }
+.fgv2 .bw-company i { flex: none; width: 36px; height: 36px; display: grid; place-items: center; background: var(--blue); color: #fff; font: 700 13px var(--font-display); font-style: normal; }
 .fgv2 .bw-company span { font-size: 12px; line-height: 1.4; color: var(--muted); }
 .fgv2 .bw-company b { display: block; font-size: 14px; color: var(--ink); }
 .fgv2 .bw-nav button { font-size: 14px; }
@@ -347,7 +396,7 @@
 .fgv2 .v2-totals div { display: flex; justify-content: space-between; gap: 24px; }
 .fgv2 .v2-totals b { color: var(--ink); font-weight: 600; }
 .fgv2 .v2-total-final { padding-top: 8px; margin-top: 4px; border-top: 2px solid var(--evergreen); color: var(--ink); font-weight: 700; }
-.fgv2 .v2-total-final b { font: 700 20px Manrope, sans-serif; color: var(--evergreen); }
+.fgv2 .v2-total-final b { font: 700 20px var(--font-display); color: var(--evergreen); }
 @media (max-width: 900px) {
   .fgv2 :is(.finance-body > *, .finance-main, .finance-side) { min-width: 0; }
   .fgv2 .finance-body { grid-template-columns: 1fr; }
@@ -438,35 +487,68 @@
 .fgv2 .final-cta .btn-light:hover { background: rgba(255,255,255,.08); }
 
 /* ── 18. Composition variants: data attributes on .fgv2 (design.config.ts) ── */
-/* Hero B · full-bleed photograph: the picture spans the page; the copy sits on an ivory card over it. */
+/* Hero A · Editorial platform: the copy and one composed photograph side by side, the journeys as an
+ * index under the copy; the photograph matted by a gold rule. Restraint, typography first. */
+@media (min-width: 761px) {
+  .fgv2[data-hero="a"] .hero-grid { grid-template-columns: minmax(0, var(--split)) minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: clamp(40px, 5vw, 88px); row-gap: 0; min-height: 0; }
+  .fgv2[data-hero="a"] .hero-visual { display: contents; }
+  .fgv2:is([data-hero="a"], [data-hero="c"]) .hero-visual:after { display: none; } /* the veil belongs to the photo, not the hero */
+  .fgv2:is([data-hero="a"], [data-hero="c"]) .hero-photo:after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgba(20,38,64,.06), rgba(20,38,64,0) 50%, rgba(20,38,64,.16)); }
+  .fgv2[data-hero="a"] .hero-copy { grid-column: 1; grid-row: 1; padding: 24px 0 36px; }
+  .fgv2[data-hero="a"] .hero-photo { position: relative; overflow: hidden; grid-column: 2; grid-row: 1 / 3; min-height: calc(clamp(560px, 46vw, 720px) * var(--hero-height)); border-radius: var(--radius) var(--corner) var(--radius) var(--radius); outline: 1px solid var(--gold); outline-offset: 12px; margin: 12px 12px 12px 0; }
+  .fgv2[data-hero="a"] .hero-ledger { position: static; grid-column: 1; grid-row: 2; align-self: end; grid-template-columns: 1fr; background: none; border-top: 1px solid var(--ink); margin-bottom: 12px; }
+  .fgv2[data-hero="a"] .hero-ledger a { color: var(--ink); border-left: 0; border-bottom: 1px solid var(--line); padding: 16px 0; display: grid; grid-template-columns: minmax(150px, 40%) 1fr auto; column-gap: 16px; align-items: baseline; }
+  .fgv2[data-hero="a"] .hero-ledger a:after { content: "→"; color: var(--blue); transition: transform .3s; }
+  .fgv2[data-hero="a"] .hero-ledger a:hover { background: none; }
+  .fgv2[data-hero="a"] .hero-ledger a:hover:after { transform: translateX(4px); }
+  .fgv2[data-hero="a"] .hero-ledger small { color: var(--blue); }
+  .fgv2[data-hero="a"] .hero-ledger strong { margin: 0; font-size: 18px; }
+  .fgv2[data-hero="a"] .hero-note { display: none; }
+}
+
+/* Hero B · Connected business: the photograph spans the page; the copy on an ivory card; who takes part
+ * runs as a band above the three journeys. */
 @media (min-width: 761px) {
   .fgv2[data-hero="b"] main > section.hero { width: 100%; padding: 0; }
   .fgv2[data-hero="b"] .hero-grid { grid-template-columns: 1fr; max-width: none; min-height: 0; }
   .fgv2[data-hero="b"] .hero-grid > * { grid-area: 1 / 1; }
-  /* The card always ends above the journeys band, so the band is never covered. */
-  .fgv2[data-hero="b"] .hero-visual { min-height: clamp(640px, 52vw, 780px); border-radius: 0 0 0 var(--corner); }
-  .fgv2[data-hero="b"] .hero-copy { z-index: 3; align-self: start; width: min(600px, 46%); margin: 56px 0 128px max(40px, calc((100% - var(--wrap-max)) / 2)); padding: 44px 44px 40px; background: rgb(255 254 250 / .96); box-shadow: var(--lift); }
-  .fgv2[data-hero="b"] .hero h1 { font-size: calc(11cqi * var(--hero-scale)); }
-  .fgv2[data-hero="b"] .hero-visual { align-self: stretch; }
-}
-/* Hero C · typographic statement: the phrase across the page, the photographs as a wide band below. */
-@media (min-width: 761px) {
-  .fgv2[data-hero="c"] .hero-grid { grid-template-columns: 1fr; min-height: 0; row-gap: 40px; }
-  .fgv2[data-hero="c"] .hero-copy { padding-bottom: 0; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr); column-gap: 64px; align-items: end; }
-  .fgv2[data-hero="c"] .hero-copy > .eyebrow, .fgv2[data-hero="c"] .hero h1 { grid-column: 1 / -1; }
-  .fgv2[data-hero="c"] .hero h1 { font-size: calc(8.4cqi * var(--hero-scale)); margin-bottom: 8px; }
-  .fgv2[data-hero="c"] .hero h1 .h1-line { display: inline; }
-  .fgv2[data-hero="c"] .hero h1 .h1-line + .h1-line { color: var(--blue); }
-  .fgv2[data-hero="c"] .hero h1 .serif { font-size: max(.3em, 20px); max-width: 34ch; margin-top: .7em; }
-  .fgv2[data-hero="c"] .hero-lede { grid-column: 2; grid-row: 3; margin: 0; }
-  .fgv2[data-hero="c"] .hero-actions { grid-column: 1; grid-row: 3; margin: 0; }
-  .fgv2[data-hero="c"] .hero-note { grid-column: 1 / -1; }
-  .fgv2[data-hero="c"] .hero-visual { min-height: clamp(380px, 32vw, 500px); }
+  /* The card always ends above the bands, so they are never covered. */
+  .fgv2[data-hero="b"] .hero-visual { min-height: calc(clamp(660px, 54vw, 820px) * var(--hero-height)); border-radius: 0 0 0 var(--corner); align-self: stretch; }
+  .fgv2[data-hero="b"] .hero-photo { position: absolute; inset: 0; }
+  .fgv2[data-hero="b"] .hero-copy { z-index: 3; align-self: start; width: min(600px, 46%); margin: 56px 0 184px max(40px, calc((100% - var(--wrap-max)) / 2)); padding: 44px 44px 40px; background: rgb(255 254 250 / .96); box-shadow: var(--lift); }
+  .fgv2[data-hero="b"] .hero h1 { font-size: calc(11cqi * var(--hero-scale) * var(--hl-fit)); }
+  .fgv2[data-hero="b"] .hero-actors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); position: absolute; z-index: 2; left: 0; right: 0; bottom: 88px; margin: 0; padding: 0 0 0 max(40px, calc((100% - var(--wrap-max)) / 2)); list-style: none; background: var(--white); border-top: 1px solid var(--gold); }
+  .fgv2[data-hero="b"] .hero-actors li { padding: 12px 18px 12px 0; display: flex; gap: 8px; align-items: baseline; font-size: 14px; color: var(--muted); }
+  .fgv2[data-hero="b"] .hero-actors b { color: var(--blue); font: 700 14px var(--font-display); }
 }
 @media (min-width: 761px) and (max-width: 1100px) {
+  .fgv2[data-hero="b"] .hero-copy { width: min(560px, 66%); margin-top: 40px; margin-bottom: 236px; }
+  .fgv2[data-hero="b"] .hero-actors { grid-template-columns: repeat(2, minmax(0, 1fr)); bottom: 120px; }
+}
+
+/* Hero C · Signature statement: the headline across the page over the rising flight line (the motif),
+ * one small photograph beside the actions, the three journeys as large numbered links beneath. */
+@media (min-width: 761px) {
+  .fgv2[data-hero="c"] .hero-grid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); grid-template-rows: auto auto auto 1fr auto; column-gap: clamp(40px, 5vw, 96px); min-height: 0; }
+  .fgv2[data-hero="c"] :is(.hero-copy, .hero-visual) { display: contents; }
+  .fgv2[data-hero="c"] .hero-copy > .eyebrow { grid-column: 1 / -1; grid-row: 1; margin-top: 24px; }
+  .fgv2[data-hero="c"] .hero h1 { grid-column: 1 / -1; grid-row: 2; position: relative; z-index: 1; font-size: calc(clamp(48px, 6.3vw, 112px) * var(--hero-scale) * var(--hl-fit)); margin: 14px 0 28px; }
   .fgv2[data-hero="c"] .hero h1 .h1-line { display: block; }
-  .fgv2[data-hero="c"] .hero h1 { font-size: calc(11cqi * var(--hero-scale)); }
-  .fgv2[data-hero="b"] .hero-copy { width: min(560px, 66%); margin-top: 40px; margin-bottom: 156px; }
+  .fgv2[data-hero="c"] .hero h1 .serif { font-size: max(.24em, 19px); max-width: 36ch; margin-top: .9em; }
+  .fgv2[data-hero="c"] .hero-motif { display: block; grid-column: 1 / -1; grid-row: 2; justify-self: end; align-self: start; width: min(64%, 760px); height: auto; color: var(--gold); margin-top: -12px; pointer-events: none; }
+  .fgv2[data-hero="c"] .hero-lede { grid-column: 1; grid-row: 3; margin: 0 0 24px; }
+  .fgv2[data-hero="c"] .hero-actions { grid-column: 1; grid-row: 4; align-self: start; margin: 0; }
+  .fgv2[data-hero="c"] .hero-note { display: none; }
+  .fgv2[data-hero="c"] .hero-photo { position: relative; overflow: hidden; grid-column: 2; grid-row: 3 / 5; min-height: calc(280px * var(--hero-height)); border-radius: var(--radius) var(--corner) var(--radius) var(--radius); }
+  .fgv2[data-hero="c"] .hero-ledger { position: static; grid-column: 1 / -1; grid-row: 5; margin-top: 36px; background: none; border-top: 2px solid var(--ink); }
+  .fgv2[data-hero="c"] .hero-ledger a { color: var(--ink); border-left: 1px solid var(--line); padding: 22px 24px 4px; }
+  .fgv2[data-hero="c"] .hero-ledger a:first-child { padding-left: 0; }
+  .fgv2[data-hero="c"] .hero-ledger a:hover { background: none; color: var(--blue); }
+  .fgv2[data-hero="c"] .hero-ledger small { color: var(--blue); }
+  .fgv2[data-hero="c"] .hero-ledger strong { font: var(--head-weight) clamp(22px, 2.2vw, 32px)/1.15 var(--font-display); letter-spacing: -.03em; margin-top: 10px; }
+}
+@media (max-width: 760px) {
+  .fgv2[data-hero="c"] .hero-motif { display: block; width: 72%; margin: 0 0 -24px auto; color: var(--gold); }
 }
 
 /* Journeys B · editorial index: one ruled list, each route a row with its own colour. */
@@ -561,6 +643,121 @@
   .fgv2[data-studio="c"] .wl-more { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 24px; }
 }
 
+
+/* Moving B · feature and list: the first service as a large picture, the rest as a ruled list. */
+@media (min-width: 901px) {
+  .fgv2[data-moving="b"] .service-grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-auto-rows: auto; gap: 0 48px; }
+  .fgv2[data-moving="b"] .service-card { border: 0; border-bottom: 1px solid var(--line); background: transparent; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child) .photo { display: none; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child) .body { padding: 18px 0; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child):after { content: "→"; color: var(--blue); font-size: 18px; transition: transform .3s; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child):hover:after { transform: translateX(4px); }
+  .fgv2[data-moving="b"] .service-card:not(:first-child) h3 { font-size: 18px; }
+  .fgv2[data-moving="b"] .service-card:first-child { grid-row: 1 / span 7; grid-template-columns: 1fr; border: 1px solid var(--line); background: var(--white); align-self: start; }
+  .fgv2[data-moving="b"] .service-card:first-child .photo { aspect-ratio: 4 / 3; height: auto; }
+}
+/* Moving C · picture-led pairs: two columns, each service a picture beside its words. */
+@media (min-width: 901px) {
+  .fgv2[data-moving="c"] .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fgv2[data-moving="c"] .service-card { display: grid; grid-template-columns: 42% 1fr; align-items: stretch; }
+  .fgv2[data-moving="c"] .service-card .photo { height: 100%; min-height: 180px; }
+}
+
+/* Booking B · split with promise: the introduction as a column beside the widget. */
+@media (min-width: 1000px) {
+  .fgv2[data-booking="b"] .v2-booking-inner { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 2fr); gap: 48px; align-items: center; max-width: var(--wrap-max); }
+  .fgv2[data-booking="b"] .v2-booking-head { display: block; margin: 0; }
+  .fgv2[data-booking="b"] .v2-booking-head p { margin-top: 16px; font: var(--head-weight) clamp(22px, 2vw, 30px)/1.2 var(--font-display); letter-spacing: -.03em; color: var(--ink); }
+}
+/* Booking C · deep-blue band: the widget lifted on the brand ground between hero and journeys. */
+.fgv2[data-booking="c"] main > .v2-booking { background: var(--blue); }
+.fgv2[data-booking="c"] .v2-booking-head :is(.eyebrow, p) { color: #fff; }
+.fgv2[data-booking="c"] .v2-booking-head .eyebrow { color: var(--gold-text); }
+.fgv2[data-booking="c"] .fgp-oldcard { box-shadow: 0 40px 80px -40px rgb(0 0 0 / .5); border-color: transparent; }
+
+/* Industries B · vertical index: the industries as a list beside the panel. */
+@media (min-width: 1000px) {
+  .fgv2[data-industries="b"] .industry-switcher { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; align-items: start; }
+  .fgv2[data-industries="b"] .industry-tabs { display: grid; grid-template-columns: 1fr; gap: 0; border-top: 1px solid var(--ink); }
+  .fgv2[data-industries="b"] .industry-tab { text-align: left; border: 0 !important; border-bottom: 1px solid var(--line) !important; background: transparent !important; color: var(--ink) !important; padding: 16px 0 !important; font: var(--head-weight) 20px var(--font-display) !important; letter-spacing: -.02em; border-radius: 0 !important; }
+  .fgv2[data-industries="b"] .industry-tab.active { color: var(--blue) !important; box-shadow: inset 3px 0 var(--blue); padding-left: 14px !important; }
+}
+/* Industries C · full-width demonstration: the panel at the full content width on ivory, the selector
+ * as large underlined words. */
+.fgv2[data-industries="c"] .industry-tabs { justify-content: flex-start; gap: 4px 28px; border-bottom: 1px solid var(--line); }
+.fgv2[data-industries="c"] .industry-tab { background: transparent !important; border: 0 !important; color: var(--muted) !important; font: var(--head-weight) clamp(18px, 1.8vw, 26px) var(--font-display) !important; padding: 10px 0 14px !important; border-radius: 0 !important; }
+.fgv2[data-industries="c"] .industry-tab.active { color: var(--ink) !important; box-shadow: inset 0 -3px var(--blue); }
+.fgv2[data-industries="c"] .industry-panel { background: var(--paper); border: 0; box-shadow: none; padding: clamp(28px, 4vw, 56px); }
+
+/* Corporate B · dashboard first: the workflow demonstration leads at full width, the copy follows. */
+@media (min-width: 901px) {
+  .fgv2[data-corporate="b"] .corp-grid { grid-template-columns: 1fr; }
+  .fgv2[data-corporate="b"] .dashboard { order: -1; }
+  .fgv2[data-corporate="b"] .corp-copy { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); column-gap: 56px; padding: 40px 0 0; }
+  .fgv2[data-corporate="b"] .corp-copy > :is(.eyebrow, h2) { grid-column: 1; }
+  .fgv2[data-corporate="b"] .corp-copy > :not(.eyebrow, h2) { grid-column: 2; }
+}
+/* Corporate C · ivory ledger: features as a ruled list, no cards. */
+.fgv2[data-corporate="c"] main > section.corporate { background: var(--paper); }
+.fgv2[data-corporate="c"] .feature { background: transparent; border: 0; border-top: 1px solid var(--ink); border-radius: 0; box-shadow: none; padding: 14px 0 10px; font-size: 14px; line-height: 1.55; color: var(--ink); }
+.fgv2[data-corporate="c"] .feature-list { grid-template-columns: 1fr 1fr; column-gap: 28px; row-gap: 4px; }
+@media (max-width: 700px) { .fgv2[data-corporate="c"] .feature-list { grid-template-columns: 1fr; } }
+
+/* Providers B · typographic band: no picture, the invitation set large across the page. */
+.fgv2[data-providers="b"] .driver-panel { grid-template-columns: 1fr; background: transparent; color: var(--ink); padding: 0; border-radius: 0; border-top: 2px solid var(--ink); padding-top: 40px; }
+.fgv2[data-providers="b"] .driver-panel > div:last-child { display: none; }
+.fgv2[data-providers="b"] .driver-panel h2 { color: var(--ink); font-size: calc(clamp(36px, 5vw, 72px) * var(--type-scale)); max-width: 16ch; }
+.fgv2[data-providers="b"] .driver-panel :is(p, li) { color: var(--muted); }
+.fgv2[data-providers="b"] .driver-panel li:before { color: var(--forest); }
+.fgv2[data-providers="b"] .driver-panel .eyebrow { color: var(--blue) !important; }
+.fgv2[data-providers="b"] .driver-panel ul { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.fgv2[data-providers="b"] .driver-panel .btn { color: var(--blue); border-color: var(--blue); }
+/* Providers C · evergreen card: the provider offer in the network's own colour. */
+.fgv2[data-providers="c"] .driver-panel { background: var(--evergreen); }
+.fgv2[data-providers="c"] .driver-panel li:before { color: #d9c9a2; }
+
+/* Trust B · copy beside the diagram. */
+@media (min-width: 1000px) {
+  .fgv2[data-trust="b"] .network-section > .wrap { display: grid; grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: 56px; align-items: start; }
+  .fgv2[data-trust="b"] .network-intro { display: block; position: sticky; top: 120px; }
+  .fgv2[data-trust="b"] .network-intro > * { max-width: none; }
+}
+/* Trust C · three tiers as columns: operators, the shared core and providers side by side. */
+@media (min-width: 1000px) {
+  .fgv2[data-trust="c"] .network-canvas { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+  .fgv2[data-trust="c"] .network-column { grid-template-columns: 1fr; }
+  .fgv2[data-trust="c"] .network-column:has(.core) { order: 0; }
+}
+
+/* Closing B · ivory with the three journeys as large links. */
+.fgv2[data-closing="b"] main > section.final-cta { background: var(--paper); color: var(--ink); }
+.fgv2[data-closing="b"] .final-cta :is(h2) { color: var(--ink); }
+.fgv2[data-closing="b"] .final-cta p { color: var(--muted); }
+.fgv2[data-closing="b"] .final-cta .eyebrow { color: var(--blue); }
+.fgv2[data-closing="b"] .final-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; max-width: 980px; margin: 40px auto 0; border-top: 2px solid var(--ink); }
+.fgv2[data-closing="b"] .final-actions .btn { background: transparent !important; color: var(--blue) !important; border: 0; border-right: 1px solid var(--line); min-height: 96px; justify-content: center; font: var(--head-weight) clamp(18px, 1.8vw, 24px) var(--font-display); letter-spacing: -.02em; }
+.fgv2[data-closing="b"] .final-actions .btn:last-child { border-right: 0; }
+.fgv2[data-closing="b"] .final-actions .btn:hover { background: var(--white) !important; }
+@media (max-width: 700px) { .fgv2[data-closing="b"] .final-actions { grid-template-columns: 1fr; } .fgv2[data-closing="b"] .final-actions .btn { border-right: 0; border-bottom: 1px solid var(--line); min-height: 64px; } }
+/* Closing C · split statement: the heading on the left, the words and actions on the right. */
+@media (min-width: 901px) {
+  .fgv2[data-closing="c"] .final-cta > .wrap { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); column-gap: 64px; text-align: left; align-items: end; }
+  .fgv2[data-closing="c"] .final-cta .eyebrow { grid-column: 1 / -1; }
+  .fgv2[data-closing="c"] .final-cta h2 { grid-column: 1; grid-row: 2 / 4; margin: 16px 0 0; }
+  .fgv2[data-closing="c"] .final-cta p { grid-column: 2; margin: 0 0 24px; }
+  .fgv2[data-closing="c"] .final-actions { grid-column: 2; justify-content: flex-start; }
+}
+
+/* Background treatment: how the page's grounds create emphasis. */
+.fgv2[data-grounds="quiet"] main > section { background: var(--white); --section-ground: var(--white); }
+.fgv2[data-grounds="banded"] main > section { background: var(--white); --section-ground: var(--white); }
+.fgv2[data-grounds="banded"] main > section:is([id="entry-points"], [id="moving-services"], [id="industry-experiences"], [id="business"], [id="marketplace-network-experience"]) { background: var(--paper); --section-ground: var(--paper); }
+/* Specificity stays below the compositions, so a section with its own ground (workspace B …) keeps it. */
+
+/* Photography direction: one grade for every photograph, on top of the picture tokens. */
+.fgv2[data-photo="editorial"] { --photo-filter: brightness(1.05) contrast(.94) sepia(.08); }
+.fgv2[data-photo="documentary"] { --photo-filter: saturate(.7) contrast(1.1) brightness(.98); }
+
 /* ── 19. Demonstrations ─────────────────────────────────────────────────── */
 /* One job across the workspace: the trail under the records, rows that lead to it. */
 .fgv2 .v2-trail-row { cursor: pointer; }
@@ -568,15 +765,15 @@
 .fgv2 .v2-trail-row:hover td, .fgv2 .v2-trail-row:focus-visible td { background: #e6edf6; }
 .fgv2 .v2-trail-row:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
 .fgv2 .v2-trail { margin: 0; padding: 20px 16px 18px; border-top: 1px solid var(--line); background: var(--white); display: grid; gap: 14px; }
-.fgv2 .v2-trail > b { font: 650 15px Manrope, sans-serif; color: var(--ink); }
+.fgv2 .v2-trail > b { font: 650 15px var(--font-display); color: var(--ink); }
 .fgv2 .v2-trail ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); counter-reset: t; }
 .fgv2 .v2-trail li { position: relative; padding: 18px 8px 0 0; counter-increment: t; border-top: 2px solid var(--forest); }
 .fgv2 .v2-trail li.v2-trail-wait { border-top: 2px dashed var(--gold); }
-.fgv2 .v2-trail li:before { content: counter(t); position: absolute; top: -11px; left: 0; width: 20px; height: 20px; display: grid; place-items: center; font: 700 11px Manrope, sans-serif; color: #fff; background: var(--forest); }
+.fgv2 .v2-trail li:before { content: counter(t); position: absolute; top: -11px; left: 0; width: 20px; height: 20px; display: grid; place-items: center; font: 700 11px var(--font-display); color: #fff; background: var(--forest); }
 .fgv2 .v2-trail li.v2-trail-wait:before { background: var(--white); color: #5a4517; border: 1px solid var(--gold); }
 .fgv2 .v2-trail li span { display: block; font-size: 13px; font-weight: 700; color: var(--ink); }
 .fgv2 .v2-trail li small { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
-.fgv2 .v2-trail-go { justify-self: start; min-height: 44px; padding: 0 18px; border: 1px solid var(--evergreen); background: var(--evergreen); color: #fff; font: 700 14px "DM Sans", sans-serif; cursor: pointer; border-radius: var(--radius); }
+.fgv2 .v2-trail-go { justify-self: start; min-height: 44px; padding: 0 18px; border: 1px solid var(--evergreen); background: var(--evergreen); color: #fff; font: 700 14px var(--font-body); cursor: pointer; border-radius: var(--radius); }
 .fgv2 .v2-trail-go:hover { background: var(--forest); }
 .fgv2 .v2-trail-flash { animation: v2-flash 1.2s ease; }
 @keyframes v2-flash { 0% { background: #f8f2e4; } 100% { background: var(--white); } }
@@ -585,11 +782,30 @@
   .fgv2 .v2-trail li { border-top: 0 !important; padding: 0 0 14px 22px; }
   .fgv2 .v2-trail li:before { top: 0; left: -11px; }
 }
+/* The workspace toolbar and team activity: the details that make it read as working software. */
+.fgv2 .bw-main-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.fgv2 .v2-bw-tools { display: flex; gap: 8px; margin-left: auto; }
+.fgv2 .v2-bw-tools input { min-height: 36px; width: 200px; padding: 0 12px; border: 1px solid var(--line); background: var(--white); font: 14px var(--font-body); color: var(--ink); border-radius: var(--radius); }
+.fgv2 .v2-bw-new { min-height: 36px; padding: 0 14px; border: 1px solid var(--blue); background: var(--blue); color: #fff; font: 700 13px var(--font-body); cursor: pointer; border-radius: var(--radius); transition: background .2s, transform .15s; }
+.fgv2 .v2-bw-new:hover { background: #18304f; }
+.fgv2 .v2-bw-new:active { transform: translateY(1px); }
+.fgv2 .v2-activity { padding: 18px 16px; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.fgv2 .v2-activity > b { font: 650 15px var(--font-display); color: var(--ink); }
+.fgv2 .v2-activity ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fgv2 .v2-activity li { display: grid; grid-template-columns: 112px auto 1fr; gap: 10px; font-size: 14px; color: var(--muted); align-items: baseline; }
+.fgv2 .v2-activity time { font-variant-numeric: tabular-nums; font-size: 13px; }
+.fgv2 .v2-activity strong { color: var(--ink); font-weight: 600; }
+@media (max-width: 600px) {
+  .fgv2 .v2-bw-tools { width: 100%; margin-left: 0; }
+  .fgv2 .v2-bw-tools input { flex: 1; width: auto; min-height: 44px; }
+  .fgv2 .v2-bw-new { min-height: 44px; }
+  .fgv2 .v2-activity li { grid-template-columns: 1fr; gap: 0; }
+}
 /* The transaction explorer: six steps of the same job, each opening its own document. */
 .fgv2 .v2-explorer { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: -24px -24px 22px; border-bottom: 1px solid var(--line); background: #f4f5f1; }
-.fgv2 .v2-explorer button { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px 12px 12px; min-height: 64px; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--muted); font: 600 13px/1.25 "DM Sans", sans-serif; text-align: left; cursor: pointer; transition: background .2s, color .2s; }
+.fgv2 .v2-explorer button { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px 12px 12px; min-height: 64px; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--muted); font: 600 13px/1.25 var(--font-body); text-align: left; cursor: pointer; transition: background .2s, color .2s; }
 .fgv2 .v2-explorer button:last-child { border-right: 0; }
-.fgv2 .v2-explorer button i { font: 700 11px Manrope, sans-serif; font-style: normal; color: var(--evergreen); letter-spacing: .08em; }
+.fgv2 .v2-explorer button i { font: 700 11px var(--font-display); font-style: normal; color: var(--evergreen); letter-spacing: .08em; }
 .fgv2 .v2-explorer button:hover { background: var(--white); color: var(--ink); }
 .fgv2 .v2-explorer button[aria-pressed="true"] { background: var(--white); color: var(--evergreen); box-shadow: inset 0 -3px var(--evergreen); }
 @media (max-width: 700px) {
@@ -612,7 +828,7 @@
 .fgv2 .wl-address { font: 600 13px ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); padding: 6px 12px; background: var(--white); border: 1px solid var(--line); min-width: 0; overflow-wrap: anywhere; }
 .fgv2 .wl-address:before { content: "🔒 "; font-size: 11px; }
 .fgv2 .wl-storefront .wl-mark-el, .fgv2 .wl-mark-el { color: #fff; }
-.fgv2 .wl-mark-el { display: inline-grid; place-items: center; width: 34px; height: 34px; margin-right: 10px; vertical-align: middle; font: 800 13px Manrope, sans-serif; background: var(--wl-accent, var(--blue)); box-shadow: inset 0 -3px var(--wl-accent2, var(--gold)); }
+.fgv2 .wl-mark-el { display: inline-grid; place-items: center; width: 34px; height: 34px; margin-right: 10px; vertical-align: middle; font: 800 13px var(--font-display); background: var(--wl-accent, var(--blue)); box-shadow: inset 0 -3px var(--wl-accent2, var(--gold)); }
 .fgv2 .wl-mark-el[data-style="circle"] { border-radius: 9999px; box-shadow: 0 0 0 2px var(--wl-accent2, var(--gold)); }
 .fgv2 .wl-mark-el[data-style="none"] { display: none; }
 .fgv2 .wl-pay-line { margin: 16px 0 0; padding: 12px 14px; border-left: 3px solid var(--wl-accent2, var(--gold)); background: var(--paper); font-size: 13px; line-height: 1.55; color: var(--ink); }
@@ -624,17 +840,21 @@
 .fgv2 .wl-storefront[data-style="compact"] .wl-category-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .fgv2 .wl-storefront[data-style="compact"] .wl-category-grid article { padding: 12px; }
 .fgv2 .wl-category-grid article[hidden] { display: none; }
+.fgv2 .wl-status { list-style: none; margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.fgv2 .wl-status li { display: grid; grid-template-columns: auto; gap: 4px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.fgv2 .wl-status .v2-chip { justify-self: start; font-size: 12px; padding: 2px 8px; }
+.fgv2 .v2-chip-neutral { color: var(--muted); background: var(--white); border-color: var(--line); }
 /* Corporate: the reporting and API line. */
 .fgv2 .corp-api { margin-top: 14px; padding: 16px 18px; border: 1px dashed var(--line); font-size: 14px; color: var(--muted); }
 .fgv2 .corp-api b { display: block; color: var(--ink); margin-bottom: 4px; }
 
 /* ── 20. Motion: entrances, picture reveals, panel changes; nothing moves for reduced motion ── */
 @media (prefers-reduced-motion: no-preference) {
-  .fgv2[data-motion="on"] .v2-reveal { opacity: 0; transform: translateY(28px); transition: opacity .9s cubic-bezier(.2,.7,.2,1), transform .9s cubic-bezier(.2,.7,.2,1); }
+  .fgv2[data-motion="on"] .v2-reveal { opacity: 0; transform: translateY(var(--motion-distance)); transition: opacity var(--motion-duration) cubic-bezier(.2,.7,.2,1), transform var(--motion-duration) cubic-bezier(.2,.7,.2,1); }
   .fgv2[data-motion="on"] .v2-reveal.v2-in { opacity: 1; transform: none; }
-  .fgv2[data-motion="on"] .v2-reveal :is(.market-card, .service-card, .fleet-card) img { clip-path: inset(0 0 100% 0); transition: clip-path 1.1s cubic-bezier(.6,0,.2,1) .15s, transform .9s ease; }
+  .fgv2[data-motion="on"] .v2-reveal :is(.market-card, .service-card, .fleet-card) img { clip-path: inset(0 0 100% 0); transition: clip-path calc(var(--motion-duration) * 1.2) cubic-bezier(.6,0,.2,1) .15s, transform .9s ease; }
   .fgv2[data-motion="on"] .v2-reveal.v2-in :is(.market-card, .service-card, .fleet-card) img { clip-path: inset(0); }
-  .fgv2[data-motion="on"] .hero-copy > * { animation: v2-rise .9s cubic-bezier(.2,.7,.2,1) both; }
+  .fgv2[data-motion="on"] .hero-copy > * { animation: v2-rise var(--motion-duration) cubic-bezier(.2,.7,.2,1) both; }
   .fgv2[data-motion="on"] .hero-copy > :nth-child(2) { animation-delay: .08s; }
   .fgv2[data-motion="on"] .hero-copy > :nth-child(3) { animation-delay: .16s; }
   .fgv2[data-motion="on"] .hero-copy > :nth-child(n+4) { animation-delay: .24s; }
@@ -646,6 +866,14 @@
   .fgv2[data-motion="on"] .v2-trail li:nth-child(5) { animation-delay: .32s; }
   .fgv2[data-motion="on"] :is(.entry-card, .service-card, .fleet-card) { transition: transform .35s ease, box-shadow .35s ease, background .2s; }
   .fgv2[data-motion="on"] :is(.service-card, .fleet-card):hover { transform: translateY(-3px); box-shadow: var(--lift); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Button feedback, and the storefront answering each studio change without a jump. */
+  .fgv2[data-motion="on"] :is(.btn, .v2-bw-new, .v2-trail-go, .v2-explorer button, .industry-tab) { transition: background-color .2s, border-color .2s, color .2s, transform .15s; }
+  .fgv2[data-motion="on"] :is(.btn, .v2-bw-new, .v2-trail-go):active { transform: translateY(1px); }
+  .fgv2[data-motion="on"] :is(.wl-hero, .wl-storefront, .wl-mark-el, .wl-cta, .wl-category-grid article) { transition: background-color var(--motion-duration), color var(--motion-duration), border-color var(--motion-duration), padding .4s, box-shadow .4s; }
+  .fgv2[data-motion="on"] .hero-ledger a:after, .fgv2[data-motion="on"] .market-card .card-arrow { transition: transform .3s; }
+  .fgv2[data-motion="on"] .market-card:hover .card-arrow { transform: translate(3px, -3px); }
 }
 @keyframes v2-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @keyframes v2-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
