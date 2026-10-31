@@ -249,30 +249,51 @@
 .fgv2 .fgp-oldcard .text-emerald-400 { color: var(--gold); }
 .fgv2 .fgp-oldcard .bg-emerald-50 { background: var(--paper); color: var(--blue); }
 
-/* Moving and transport band: FlyttGo's core service straight after the hero, on the transport site's own
- * photograph, with its proof points, two actions and the real booking widget. */
-.fgv2 main > .v2-booking.v2-move-band { position: relative; padding: 96px 0 104px; border-top: 3px solid var(--forest);
-  background: linear-gradient(90deg, rgb(245 243 235 / .98) 0%, rgb(245 243 235 / .94) 34%, rgb(245 243 235 / .55) 62%, rgb(245 243 235 / .2) 100%),
+/* Moving and transport band: FlyttGo's core service straight after the hero, as a platform with two sides:
+ * users book with the real widget, drivers and companies earn without a website of their own. */
+.fgv2 main > .v2-booking.v2-move-band { position: relative; padding: 88px 0 96px; border-top: 3px solid var(--forest);
+  background: linear-gradient(90deg, rgb(245 243 235 / .98) 0%, rgb(245 243 235 / .94) 34%, rgb(245 243 235 / .6) 62%, rgb(245 243 235 / .3) 100%),
     url(https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766787761_26698bc2.jpg) center / cover; }
-.fgv2[data-booking] .v2-move-band .v2-booking-inner { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 64px; align-items: center; max-width: var(--wrap-max); }
-.fgv2 .v2-move-band .v2-booking-head { display: block; margin: 0; }
-.fgv2 .v2-move-band .v2-booking-head h2 { font: var(--head-weight) clamp(34px, 3.6vw, 52px)/1.04 var(--font-display); letter-spacing: -.04em; color: var(--ink); margin: 14px 0; text-wrap: balance; }
-.fgv2[data-booking] .v2-move-band .v2-booking-head > p { font: 400 16px/1.7 var(--font-body); letter-spacing: 0; color: var(--muted); max-width: 38ch; margin: 0 0 22px; }
-.fgv2[data-booking] .v2-move-band .v2-booking-head > p:after { display: none; }
-.fgv2 .v2-move-proof { list-style: none; padding: 0; margin: 0 0 26px; display: grid; gap: 10px; }
+.fgv2[data-booking] .v2-move-band .v2-booking-inner { display: grid; grid-template-columns: 1fr; gap: 36px; max-width: var(--wrap-max); }
+.fgv2 .v2-move-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 56px; align-items: end; }
+.fgv2 .v2-move-top h2 { font: var(--head-weight) clamp(36px, 3.8vw, 56px)/1.03 var(--font-display); letter-spacing: -.045em; color: var(--ink); margin: 14px 0 0; max-width: 16ch; text-wrap: balance; }
+.fgv2 .v2-move-top > p { margin: 0; max-width: 46ch; font-size: 17px; line-height: 1.7; color: var(--muted); }
+.fgv2 .v2-move-sides { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 20px; align-items: stretch; }
+.fgv2 .v2-move-card { display: flex; flex-direction: column; padding: 28px; background: rgb(255 254 250 / .96); border: 1px solid var(--line); box-shadow: 0 30px 60px -40px rgb(32 63 104 / .35); }
+.fgv2 .v2-move-card > small { display: block; margin-bottom: 8px; font: 700 var(--label-size) var(--font-display); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--forest); }
+.fgv2 .v2-move-card h3 { margin: 0 0 14px; font: var(--head-weight) 26px/1.15 var(--font-display); letter-spacing: -.03em; color: var(--ink); }
+.fgv2 .v2-move-card .fgp-oldcard { margin-top: 20px; box-shadow: none; }
+.fgv2 .v2-move-proof { list-style: none; padding: 0; margin: 0 0 22px; display: grid; gap: 9px; }
 .fgv2 .v2-move-proof li { display: flex; gap: 10px; align-items: center; font: 600 15px var(--font-body); color: var(--ink); }
-.fgv2 .v2-move-proof li:before { content: "✓"; flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; background: var(--forest); color: #fff; border-radius: 50%; font-size: 12px; }
-.fgv2 .v2-move-actions { display: flex; flex-wrap: wrap; gap: 12px; }
-.fgv2 .v2-move-actions a { display: inline-flex; align-items: center; min-height: 50px; padding: 0 22px; font: 700 14px var(--font-body); border-radius: var(--radius); transition: background .2s, border-color .2s; }
-.fgv2 .v2-move-actions a:first-child { background: var(--forest); color: #fff; }
-.fgv2 .v2-move-actions a:first-child:hover { background: var(--evergreen); }
-.fgv2 .v2-move-actions a:last-child { border: 1px solid var(--blue); color: var(--blue); background: rgb(255 254 250 / .85); }
-.fgv2 .v2-move-actions a:last-child:hover { background: var(--white); }
+.fgv2 .v2-move-proof li:before { content: "✓"; flex: none; width: 20px; height: 20px; display: inline-grid; place-items: center; background: var(--forest); color: #fff; border-radius: 50%; font-size: 11px; }
+.fgv2 .v2-move-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.fgv2 .v2-move-actions a { display: inline-flex; align-items: center; min-height: 48px; padding: 0 20px; font: 700 14px var(--font-body); border-radius: var(--radius); transition: background .2s, border-color .2s; }
+.fgv2 .v2-move-users .v2-move-actions a:first-child { background: var(--forest); color: #fff; }
+.fgv2 .v2-move-users .v2-move-actions a:first-child:hover { background: var(--evergreen); }
+.fgv2 .v2-move-users .v2-move-actions a:last-child { border: 1px solid var(--blue); color: var(--blue); background: rgb(255 254 250 / .85); }
+/* The drivers' side: deep blue, champagne accents. */
+.fgv2 .v2-move-drivers { background: var(--blue); border-color: var(--blue); color: #fff; }
+.fgv2 .v2-move-drivers > small { color: var(--gold-text); }
+.fgv2 .v2-move-drivers h3, .fgv2 .v2-move-drivers .v2-move-proof li { color: #fff; }
+.fgv2 .v2-move-drivers .v2-move-proof li:before { background: var(--gold-text); color: var(--blue); }
+.fgv2 .v2-move-free { margin: 0 0 22px; padding: 14px 16px; border-left: 3px solid var(--gold); background: rgb(255 255 255 / .08); font: 500 15px/1.55 var(--font-body); color: #fff; }
+.fgv2 .v2-move-free b { color: var(--gold-text); }
+.fgv2 .v2-move-drivers .v2-move-actions a:first-child { background: var(--gold); color: var(--ink); }
+.fgv2 .v2-move-drivers .v2-move-actions a:first-child:hover { background: #b3955a; }
+.fgv2 .v2-move-drivers .v2-move-actions a:last-child { border: 1px solid rgb(255 255 255 / .55); color: #fff; }
+.fgv2 .v2-move-drivers .v2-move-actions a:last-child:hover { background: rgb(255 255 255 / .08); }
+.fgv2 .v2-move-plans { margin: auto 0 0; padding-top: 24px; border-top: 1px solid rgb(195 166 108 / .35); font-size: 14px; color: #d9e0ea; }
+.fgv2 .v2-move-plans b { display: block; margin-bottom: 4px; font: var(--head-weight) 22px var(--font-display); letter-spacing: -.02em; color: #fff; }
+.fgv2 .v2-move-drivers .v2-move-actions { margin-bottom: 28px; }
+.fgv2 .v2-move-drivers :is(a, button):focus-visible { outline-color: var(--gold); }
 @media (max-width: 999px) {
-  .fgv2[data-booking] .v2-move-band .v2-booking-inner { grid-template-columns: 1fr; gap: 36px; }
+  .fgv2 .v2-move-top, .fgv2 .v2-move-sides { grid-template-columns: 1fr; gap: 20px; }
   .fgv2 main > .v2-booking.v2-move-band { padding: 64px 0 72px; background: linear-gradient(180deg, rgb(245 243 235 / .97), rgb(245 243 235 / .9)), url(https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766787761_26698bc2.jpg) center / cover; }
 }
-@media (max-width: 600px) { .fgv2 .v2-move-actions a { width: 100%; justify-content: center; } }
+@media (max-width: 600px) {
+  .fgv2 .v2-move-card { padding: 22px 18px; }
+  .fgv2 .v2-move-actions a { width: 100%; justify-content: center; }
+}
 /* The hero's line for moving: the core service is visible in the first second. */
 .fgv2 .hero-move { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 22px; padding: 8px 14px 8px 10px; background: var(--forest); color: #fff; font: 600 14px/1.35 var(--font-body); border-radius: var(--radius); transition: background .2s; }
 .fgv2 .hero-move:hover { background: var(--evergreen); }

@@ -407,15 +407,30 @@ V2_ECO_NOTE = ('<p class="v2-eco-note">Every business and marketplace keeps its 
 # Moving and transport, FlyttGo's core service, as a bold band straight after the hero (owner, 31 October
 # 2026): the transport site's own photograph, its proof points (all built: approved drivers, MVA-inclusive
 # prices, tracking, card and Vipps), the real booking widget and a way to the full transport site.
+# Moving and transport, FlyttGo's core service, straight after the hero, as a platform with two sides
+# (owner, 31 October 2026): users book a move with the real widget; drivers and transport companies earn
+# without a website of their own (the Free plan: jobs up to 500 NOK at 0% commission, SUBSCRIPTION_PLANS).
+# No free branded page is offered or implied.
 V2_BOOKING = ('<div class="v2-booking v2-move-band" id="booking"><div class="wrap v2-booking-inner">'
-              '<div class="v2-booking-head"><span class="eyebrow">FlyttGo Moving &amp; Transport</span>'
-              '<h2>Moving and transport across Norway.</h2>'
-              '<p>Book approved movers and cargo drivers in a minute. Upfront price, live tracking and secure payment.</p>'
+              '<div class="v2-move-top"><div><span class="eyebrow">FlyttGo Moving &amp; Transport</span>'
+              '<h2>Moving and transport platform across Norway.</h2></div>'
+              '<p>For people who need something moved, and for the drivers and transport companies who move it. One platform, two sides.</p></div>'
+              '<div class="v2-move-sides">'
+              '<div class="v2-move-card v2-move-users"><small>For users</small><h3>Book a move</h3>'
               '<ul class="v2-move-proof"><li>Approved, document-checked drivers</li><li>Upfront price with 25% MVA included</li>'
               '<li>Live tracking on the day</li><li>Pay by card or Vipps</li></ul>'
               '<div class="v2-move-actions"><a href="/book" data-page="booking" data-anchor>Get a moving price →</a>'
-              '<a href="/transport" data-page="transport-home" data-anchor>Go to FlyttGo Moving &amp; Transport</a></div></div>'
-              '<div data-slot="booking"></div></div></div>')
+              '<a href="/transport" data-page="transport-home" data-anchor>Go to FlyttGo Moving &amp; Transport</a></div>'
+              '<div data-slot="booking"></div></div>'
+              '<div class="v2-move-card v2-move-drivers"><small>For drivers and companies</small><h3>Earn with FlyttGo</h3>'
+              '<ul class="v2-move-proof"><li>Take jobs in the app, near you</li><li>See what you earn before you accept</li>'
+              '<li>Request payouts from your wallet</li></ul>'
+              '<p class="v2-move-free"><b>No website needed.</b> Start free: jobs up to 500 NOK at 0% commission. '
+              'Upgrade any time for all jobs and lower commission.</p>'
+              '<div class="v2-move-actions"><a href="/become-a-driver" data-page="driver-onboarding" data-anchor>Become a driver →</a>'
+              '<a href="/driver-subscriptions" data-page="subscriptions" data-anchor>See plans</a></div>'
+              '<p class="v2-move-plans"><b>Plans from 0 NOK</b>Free · Basic · Pro Mini · Pro · Unlimited</p></div>'
+              '</div></div></div>')
 V2_LIFECYCLE = ('<ol class="v2-lifecycle" aria-label="From booking to financial record">'
                 + ''.join(f'<li><b>0{i + 1}</b>{t}</li>' for i, t in enumerate(
                     ['Booking', 'Quote', 'Job completed', 'Invoice', 'Payment', 'Financial record'])) + '</ol>')

@@ -34,7 +34,9 @@ function extensionOf(name: string): string {
   return m ? m[1].toLowerCase() : 'bin';
 }
 
-export default function DriverOnboarding() {
+/* introduced: the page's introduction (DriverLanding) holds the page heading, so the form's title is a section heading. */
+export default function DriverOnboarding({ introduced = false }: { introduced?: boolean } = {}) {
+  const Title = introduced ? 'h2' : 'h1';
   const { user, profile } = useAuth();
   const { setPage } = useApp();
   const { t } = useTranslation();
@@ -229,7 +231,7 @@ export default function DriverOnboarding() {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#1A365D] to-[#2D4A7A] text-white py-10">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <h1 className="text-3xl font-bold mb-2">{t('driverOnboarding.heroTitle')}</h1>
+          <Title className="text-3xl font-bold mb-2">{t('driverOnboarding.heroTitle')}</Title>
           <p className="text-white/70">{t('driverOnboarding.heroSubtitle')}</p>
         </div>
       </div>

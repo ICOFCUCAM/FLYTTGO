@@ -18,6 +18,7 @@ const SITE_FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;50
 
 const HomePage           = lazy(() => import('./HomePage'));
 const PlatformHomePage   = lazy(() => import('./PlatformHomePage'));
+const DriverLanding       = lazy(() => import('./DriverLanding'));
 const HomeV2Page         = lazy(() => import('./homeV2/HomeV2Page'));
 const DesignLab          = lazy(() => import('./homeV2/lab/DesignLab'));
 const BookingFlow        = lazy(() => import('./BookingFlow'));
@@ -139,7 +140,8 @@ export default function AppLayout() {
       case 'home-lab':         return <DesignLab />;
       case 'booking':          return ownBooking ? <ServiceBookingPage /> : shopOnly ? <ShopPage /> : <BookingFlow />;
       case 'driver-portal':    return <DriverPortal />;
-      case 'driver-onboarding':return <DriverOnboarding />;
+      /* With the new design, an introduction (plans, steps, what we check) comes before the application. */
+      case 'driver-onboarding':return newDesign() ? <><DriverLanding /><div id="driver-application" className="scroll-mt-20"><DriverOnboarding introduced /></div></> : <DriverOnboarding />;
       case 'checklist':        return <MovingChecklist />;
       case 'subscriptions':    return <SubscriptionPlans />;
       case 'van-guide':           return <VanGuide />;
