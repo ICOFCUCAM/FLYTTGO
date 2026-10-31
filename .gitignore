@@ -47,3 +47,4 @@ ai-images/
 # Dry-run output of scripts/dedupe-template-assets.ts and scripts/redraw-thumbnails.ts
 template-asset-dedupe/
 thumbnail-redraw/
+.visual-check/

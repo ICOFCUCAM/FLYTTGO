@@ -1,0 +1,145 @@
+/**
+ * Visual and interaction check for the restructured homepage (/preview/home) and its design lab
+ * (/preview/lab). Run against a served build:
+ *
+ *   node scripts/platform-home/visual-check.cjs [baseUrl] [--baseline]
+ *
+ * For 1440, 1280, 820 and 390 px it takes a full-page screenshot into .visual-check/current,
+ * reports anything wider than the viewport, the smallest text and console errors, and compares
+ * each screenshot with .visual-check/baseline (pixel difference in the browser; --baseline saves
+ * the current run as the new baseline). It then follows the example job through the business
+ * and financial workspaces, steps the transaction explorer, changes every Marketplace Studio
+ * control and opens the lab. It exits non-zero on a failed check. Uses the pre-installed
+ * Playwright; nothing is installed.
+ */
+const { chromium } = require('playwright');
+const fs = require('fs');
+const path = require('path');
+
+const base = process.argv.find(a => a.startsWith('http')) || 'http://localhost:4173';
+const saveBaseline = process.argv.includes('--baseline');
+const out = path.resolve('.visual-check');
+const VIEWPORTS = [[1440, 900], [1280, 800], [820, 1180], [390, 844]];
+const failures = [];
+const fail = m => { failures.push(m); console.log('  ✗', m); };
+const ok = m => console.log('  ✓', m);
+
+async function open(browser, w, h, url = '/preview/home') {
+  const page = await browser.newPage({ viewport: { width: w, height: h } });
+  const errors = [];
+  page.on('pageerror', e => errors.push(String(e)));
+  page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource|ERR_TUNNEL|net::/.test(m.text())) errors.push(m.text()); });
+  await page.addInitScript(() => {
+    try { localStorage.setItem('flyttgo_cookie_consent', JSON.stringify({ necessary: true, analytics: false })); } catch { /* */ }
+  });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(base + url, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(800);
+  return { page, errors };
+}
+
+async function diff(page, a, b) {
+  const [x, y] = [a, b].map(f => 'data:image/png;base64,' + fs.readFileSync(f).toString('base64'));
+  return page.evaluate(async ([x, y]) => {
+    const load = src => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = src; });
+    const [i, j] = await Promise.all([load(x), load(y)]);
+    if (i.width !== j.width || Math.abs(i.height - j.height) > 2) return { size: true, ratio: 1, h: [i.height, j.height] };
+    const c = document.createElement('canvas'); c.width = i.width; c.height = Math.min(i.height, j.height);
+    const g = c.getContext('2d');
+    g.drawImage(i, 0, 0); const p = g.getImageData(0, 0, c.width, c.height).data;
+    g.clearRect(0, 0, c.width, c.height); g.drawImage(j, 0, 0); const q = g.getImageData(0, 0, c.width, c.height).data;
+    let n = 0; for (let k = 0; k < p.length; k += 4) if (Math.abs(p[k] - q[k]) + Math.abs(p[k + 1] - q[k + 1]) + Math.abs(p[k + 2] - q[k + 2]) > 48) n++;
+    return { size: false, ratio: n / (p.length / 4) };
+  }, [x, y]);
+}
+
+(async () => {
+  const browser = await chromium.launch();
+  fs.mkdirSync(path.join(out, 'current'), { recursive: true });
+
+  for (const [w, h] of VIEWPORTS) {
+    console.log(`\n${w} × ${h}`);
+    const { page, errors } = await open(browser, w, h);
+    const m = await page.evaluate(() => {
+      const vw = document.documentElement.clientWidth, root = document.querySelector('.fgv2');
+      let minFont = 99;
+      root.querySelectorAll('*').forEach(n => {
+        if ([...n.childNodes].some(c => c.nodeType === 3 && c.textContent.trim()) && n.getBoundingClientRect().width) minFont = Math.min(minFont, parseFloat(getComputedStyle(n).fontSize));
+      });
+      return { pageOverflow: document.documentElement.scrollWidth > vw, minFont, slides: root.querySelectorAll('.fgp-slides img').length,
+        booking: !!root.querySelector('[data-slot="booking"] *'), hero: root.dataset.hero };
+    });
+    m.pageOverflow ? fail('page wider than the viewport') : ok('no horizontal overflow');
+    m.minFont >= 11 ? ok(`smallest text ${m.minFont}px`) : fail(`text at ${m.minFont}px`);
+    m.slides > 1 ? ok(`hero slideshow (${m.slides} pictures)`) : fail('hero slideshow missing');
+    m.booking ? ok('booking widget rendered') : fail('booking widget missing');
+    const shot = path.join(out, 'current', `home-${w}.png`);
+    await page.screenshot({ path: shot, fullPage: true });
+    const baseShot = path.join(out, 'baseline', `home-${w}.png`);
+    if (fs.existsSync(baseShot) && !saveBaseline) {
+      const d = await diff(page, shot, baseShot);
+      d.size ? console.log(`  • page height changed from the baseline (${d.h.join(' → ')})`) : console.log(`  • ${(d.ratio * 100).toFixed(2)}% of pixels differ from the baseline`);
+    }
+    errors.length ? fail(`console errors: ${errors.slice(0, 3).join(' | ')}`) : ok('no console errors');
+    await page.close();
+  }
+
+  console.log('\nInteractions (1440)');
+  {
+    const { page } = await open(browser, 1440, 900);
+    const ws = page.locator('#business-workspace');
+    await ws.scrollIntoViewIfNeeded();
+    (await page.locator('.v2-trail').count()) ? ok('job trail under the workspace records') : fail('job trail missing');
+    await page.locator('[data-v2-trail-go]').first().click();
+    await page.waitForTimeout(600);
+    const pressed = await page.locator('.v2-explorer [aria-pressed="true"]').textContent().catch(() => '');
+    /Invoice|Faktura/.test(pressed || '') ? ok('“See it in finance” opens the explorer at the invoice') : fail('trail did not reach the finance explorer');
+    const steps = await page.locator('.v2-explorer button').count();
+    const titles = [];
+    for (let i = 0; i < steps; i++) { await page.locator('.v2-explorer button').nth(i).click(); titles.push(await page.locator('#finance-doc-title').textContent()); }
+    new Set(titles).size === 6 ? ok('explorer: six steps, six documents') : fail(`explorer documents: ${titles.join(' / ')}`);
+    const voucher = await (async () => { await page.locator('.v2-explorer button').nth(3).click(); return page.locator('#finance-doc-content').textContent(); })();
+    /1500/.test(voucher) && /3000/.test(voucher) && /2700/.test(voucher) ? ok('voucher posts 1500 / 3000 / 2700') : fail('voucher accounts missing');
+
+    const studio = page.locator('#white-label-builder');
+    await studio.scrollIntoViewIfNeeded();
+    await page.fill('#wl-name', 'Fjord Hjelp');
+    const mark = await page.locator('#wl-mark-el').textContent();
+    const addr = await page.locator('#wl-address').textContent();
+    mark === 'FH' && addr === 'fjord-hjelp.flyttgo.no' ? ok('studio: name drives the mark and the address') : fail(`studio mark/address: ${mark} ${addr}`);
+    await page.selectOption('#wl-domain-mode', 'own');
+    (await page.locator('#wl-address').textContent()) === 'fjord-hjelp.no' ? ok('studio: own domain') : fail('studio domain mode');
+    await page.selectOption('#wl-style', 'editorial');
+    (await page.locator('.wl-storefront').getAttribute('data-style')) === 'editorial' ? ok('studio: storefront style') : fail('studio style');
+    const before = await page.locator('#wl-category-grid article:visible').count();
+    await page.locator('#wl-cat-toggles input').first().uncheck();
+    (await page.locator('#wl-category-grid article:visible').count()) === before - 1 ? ok('studio: category toggle hides a category') : fail('studio categories');
+    const pay0 = await page.locator('#wl-pay-line').textContent();
+    await page.selectOption('#wl-payments', 'a');
+    (await page.locator('#wl-pay-line').textContent()) !== pay0 ? ok('studio: booking and payment model') : fail('studio payments');
+    await page.close();
+  }
+
+  console.log('\nDesign lab');
+  {
+    const { page, errors } = await open(browser, 1600, 1000, '/preview/lab');
+    (await page.locator('h1').textContent()).includes('design lab') ? ok('lab opens on a preview host') : fail('lab did not open');
+    (await page.locator('meta[name="robots"][content*="noindex"]').count()) ? ok('lab is noindex') : fail('lab indexable');
+    await page.waitForSelector('text=/Fits|Viewport harmed/', { timeout: 30000 }).then(() => ok('frame measured and reported back'), () => fail('frame did not report'));
+    await page.getByRole('button', { name: 'Add frame' }).click();
+    (await page.locator('iframe').count()) === 2 ? ok('two frames compared') : fail('add frame');
+    await page.getByRole('button', { name: 'Components' }).click();
+    (await page.locator('.fgv2 .btn-primary').count()) ? ok('component library renders') : fail('component library');
+    errors.length ? fail(`lab console errors: ${errors.slice(0, 3).join(' | ')}`) : ok('no lab console errors');
+    await page.close();
+  }
+
+  if (saveBaseline) {
+    fs.rmSync(path.join(out, 'baseline'), { recursive: true, force: true });
+    fs.cpSync(path.join(out, 'current'), path.join(out, 'baseline'), { recursive: true });
+    console.log('\nBaseline saved.');
+  }
+  await browser.close();
+  console.log(failures.length ? `\n${failures.length} check(s) failed` : '\nAll checks passed');
+  process.exit(failures.length ? 1 : 0);
+})();

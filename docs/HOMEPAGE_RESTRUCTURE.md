@@ -266,6 +266,77 @@ A refinement of the existing page, not a redesign. The structure, journeys, inte
 - `build.py` gained `dedupe_css`. In the generated `design.v2.css` it removes declarations that a later rule for the same selector, in the same scope, overrides. That takes the file from 4,322 to 3,830 declarations and from 1,562 to 1,441 rules; hero rules go from 69 to 47.
 - Rules stay in place, so the page is pixel-identical before and after at 1440, 820 and 390 px. Checked with full-page screenshots.
 
+### 2036 mandate: design lab, competing directions, signature demonstrations (owner, 2026-10-30)
+
+**Design settings in one place.** `src/components/homeV2/design.config.ts` holds the tokens (six palette colours, heading, hero and spacing scales, content width, corner radius, signature corner, shadow depth, photo saturation and warmth) and the composition variant of each key section. `applyDesign()` writes tokens as custom properties and variants as data attributes on `.fgv2`; `homeV2.css` reads nothing else. `HomeV2Page` applies the selected defaults.
+
+**Design Refinement Lab** at `/preview/lab` (`homeV2/lab/DesignLab.tsx`):
+- **Isolation:** private to preview and development hosts. It refuses to open on `flyttgo.no`, `www.flyttgo.no` and `transport.flyttgo.no` (`isProductionHost()`), carries `noindex`, is linked from nowhere, and shows no menu bar or footer.
+- **What it frames:** the real `/preview/home?lab=1`, one to three times at an identical viewport (1440, 1280, 820 or 390). Each frame has its own section variants; the colour pickers and sliders apply to every frame. The preview accepts settings only from a framing page of the same origin, and never on a production host.
+- **Inspection:** each frame reports back anything wider than the viewport and its smallest text. The Responsive check shows frame A at all four viewports and marks a harmed one in red. "Show section" scrolls every frame to the same section.
+- **Components tab:** the shared pieces (contrast table, type, buttons, status chips, job trail, transaction explorer, related links) drawn with the page's stylesheets and the trial tokens.
+- **Decisions tab:** records a choice with its reason from the open frames. Settings are kept in this browser; Export JSON downloads them with the reviewed record in `lab/decisions.ts`.
+
+**Competition.** The hero and five sections each have three materially different directions, compared at 1440 × 900 and 390 × 844. The reasons are in `lab/decisions.ts`:
+
+| Section | Directions | Selected |
+|---|---|---|
+| Hero | Editorial split, full-bleed photograph, typographic statement | **B, full-bleed photograph** |
+| Journeys | Two routes and a panel, editorial index, three equal columns | **A** |
+| Marketplace | One dominant picture, film strip, catalogue rows | **A** |
+| Business workspace | Framed on ivory, deep-blue stage, centred and wider | **B, deep-blue stage** |
+| Financial workspace | Evergreen title bar, paper ledger, evergreen ground | **A** |
+| Marketplace Studio | Settings beside, storefront first, settings as toolbar | **A** |
+
+The losing directions stay selectable in the lab. The defects the comparison found in them were fixed: unreadable text in catalogue rows and in the editorial index, and a light note on the evergreen ground.
+
+**Hero.** Three typographic levels: the brand phrase; the proposition as a quieter sans line; then the actions. The photograph runs edge to edge with the slideshow. The ivory card always ends above the journeys band, which runs under the picture into the booking widget.
+
+**One example job across both workspaces.** All of the example company's records now tell one story: A. Berg's leak repair.
+- **Business workspace:** the repair was finished yesterday and invoice 1042 has been sent. Its rows are highlighted and focusable. A trail under the records shows Enquiry → Booked → Completed → Invoice 1042 → Payment (awaiting, KID). "See it in finance →" moves to the financial workspace.
+- **Financial workspace, Overview:** a transaction explorer follows the same job through Work completed → Invoice → Payment → Voucher → Financial record → Reporting.
+  - The voucher posts debit 1500 receivables NOK 3 412,50, credit 3000 sales NOK 2 730,00 and credit 2700 output MVA NOK 682,50 (NS 4102).
+  - The record keeps "Subject to your accountant's review".
+  - Everything is marked example, in English and Norwegian.
+
+**Marketplace Studio.** The storefront now also follows:
+- the secondary colour;
+- the brand mark (initials, monogram or name only);
+- the domain (`name.flyttgo.no` or an own `.no`), which follows the name until it is edited;
+- which categories show;
+- the storefront style (classic, editorial or compact);
+- the booking and payment model (you sell, or FlyttGo sells moving and delivery).
+
+Provider networks stay "In development". Nothing is created, connected or charged.
+
+**Corporate:** roles, departments and locations; booking within a limit; and reporting with the API as a paid add-on. No figures are shown.
+
+**Order:** follows the commercial order:
+1. Hero and booking
+2. Journeys
+3. Marketplace
+4. Moving
+5. My Company
+6. Finance
+7. Industries
+8. Connected platform and how it works
+9. Corporate
+10. Providers
+11. White-label
+12. Network
+13. Closing, with the three journeys
+
+**Motion:** sections rise in once as they enter, photographs reveal top to bottom, the hero copy staggers, workspace and finance panels fade between tabs, the trail steps in order, and cards lift on hover. Motion is off under `prefers-reduced-motion` and when the lab's Motion is Off. Everything stays keyboard operable.
+
+**Build:**
+- Images below the hero load lazily.
+- Norwegian text inputs now start translated (the studio copies them into its preview). This applies to the restructured page only, so the platform page's output is unchanged.
+
+**Check script:** `scripts/platform-home/visual-check.cjs` runs against a served build:
+- full-page screenshots at 1440, 1280, 820 and 390, compared with a local baseline (`.visual-check/`, not committed);
+- overflow, smallest text, slideshow, booking widget and console errors at each width;
+- the job trail into finance, all six explorer documents, the voucher's accounts, every studio control, and the lab.
+
 ## Stage D: content checked against the source
 
 | Content | Where it is |
@@ -285,7 +356,7 @@ A refinement of the existing page, not a redesign. The structure, journeys, inte
 
 | Check | Result |
 |---|---|
-| Widths 1440, 820 and 390 px | The page fits; no horizontal scroll |
+| Widths 1440, 1280, 1024, 820 and 390 px | The page fits; no horizontal scroll (`visual-check.cjs`) |
 | Headings | One h1 |
 | Search engines | Robots tag reads `noindex, nofollow` |
 | Pictures | No broken images |
@@ -294,7 +365,9 @@ A refinement of the existing page, not a redesign. The structure, journeys, inte
 | Links | Ten checked; each opens its real page |
 | Menu | Every item of Explore, My Company and For Organisations opens its page, section or workspace tab (34 items checked); the bar fits from 1024 px |
 | Contrast | Every text at 4.5:1 (3:1 large) on its ground; smallest text 11 px; words on photographs on a veil |
-| Slideshow and booking widget | Six slides advance; the widget sits under the hero at 1440, 820 and 390 px |
+| Slideshow and booking widget | Six slides advance; the widget sits under the hero at 1440, 1280, 820 and 390 px |
+| Demonstrations | Trail to finance, six explorer documents, voucher accounts and every studio control (`visual-check.cjs`) |
+| Design lab | Opens on preview hosts, refuses production hosts (unit test), `noindex`, frames report back, compare and components work |
 
 ## Not done yet
 

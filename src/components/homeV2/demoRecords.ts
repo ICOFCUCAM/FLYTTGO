@@ -9,7 +9,7 @@
  */
 
 type Tone = 'ok' | 'wait' | 'due' | 'info';
-type Row = { cells: string[]; status?: [Tone, string] };
+type Row = { cells: string[]; status?: [Tone, string]; trail?: boolean };
 type Table = { title: string; meta: string; head: string[]; rows: Row[] };
 type Metric = [string, string, string];
 type Lang = 'en' | 'no';
@@ -34,7 +34,7 @@ function workspace(lang: Lang): Record<string, { m: Metric[]; table: Table }> {
           [no ? 'HENVENDELSER' : 'ENQUIRIES', no ? '2 venter på svar' : '2 awaiting a reply', no ? 'Eldste: 3 timer' : 'Oldest: 3 hours'],
           [no ? 'FAKTURAER' : 'INVOICES', no ? '1 forfalt' : '1 overdue', no ? 'Purring klar til sending' : 'Reminder ready to send']],
       table: { title: no ? 'Dagens plan' : "Today's schedule", meta: ex, head: [no ? 'Tid' : 'Time', no ? 'Jobb' : 'Job', no ? 'Kunde' : 'Customer', 'Status'],
-        rows: [{ cells: ['08:00', no ? 'Lekkasje · kjøkken' : 'Leak repair · kitchen', 'A. Berg'], status: ['info', S.progress] },
+        rows: [{ cells: ['08:00', no ? 'Kjeleinspeksjon' : 'Boiler inspection', 'O. Strand'], status: ['info', S.progress] },
                { cells: ['11:30', no ? 'Service på varmtvannsbereder' : 'Water heater service', 'Hansen Eiendom AS'], status: ['wait', S.scheduled] },
                { cells: ['14:00', no ? 'Befaring · bad' : 'Site visit · bathroom', 'M. Nilsen'], status: ['wait', S.scheduled] }] },
     },
@@ -43,7 +43,7 @@ function workspace(lang: Lang): Record<string, { m: Metric[]; table: Table }> {
           [no ? 'AVTALEKUNDER' : 'CONTRACT CUSTOMERS', no ? 'Månedlig faktura' : 'Monthly invoice', no ? 'Faste vilkår' : 'Agreed terms'],
           [no ? 'MELDINGER' : 'MESSAGES', no ? 'Samlet på kunden' : 'Kept with the customer', no ? 'Ingen tråder å lete etter' : 'No threads to search']],
       table: { title: no ? 'Kunder' : 'Customers', meta: ex, head: [no ? 'Kunde' : 'Customer', 'Type', no ? 'Siste jobb' : 'Last job', 'Status'],
-        rows: [{ cells: ['A. Berg', no ? 'Privat' : 'Private', no ? 'Lekkasje · i dag' : 'Leak repair · today'], status: ['info', S.progress] },
+        rows: [{ cells: ['A. Berg', no ? 'Privat' : 'Private', no ? 'Lekkasje · i går' : 'Leak repair · yesterday'], status: ['wait', no ? 'Faktura sendt' : 'Invoice sent'], trail: true },
                { cells: ['Hansen Eiendom AS', no ? 'Bedrift · 4 bygg' : 'Company · 4 buildings', no ? 'Service · i dag' : 'Service · today'], status: ['ok', S.active] },
                { cells: ['M. Nilsen', no ? 'Privat' : 'Private', no ? 'Befaring · bad' : 'Site visit · bathroom'], status: ['wait', no ? 'Tilbud å sende' : 'Quote to send'] }] },
     },
@@ -61,8 +61,8 @@ function workspace(lang: Lang): Record<string, { m: Metric[]; table: Table }> {
           [no ? 'DENNE UKEN' : 'THIS WEEK', no ? '9 jobber' : '9 jobs', no ? 'Fordelt på 3 teknikere' : 'Across 3 technicians'],
           [no ? 'FULLFØRT' : 'COMPLETED', no ? 'Klar til faktura' : 'Ready to invoice', no ? 'Fra jobben, uten ny registrering' : 'From the job, no retyping']],
       table: { title: no ? 'Jobber' : 'Jobs', meta: ex, head: [no ? 'Jobb' : 'Job', no ? 'Når' : 'When', no ? 'Tildelt' : 'Assigned', 'Status'],
-        rows: [{ cells: [no ? 'Lekkasje · kjøkken' : 'Leak repair · kitchen', no ? 'I dag 08:00' : 'Today 08:00', 'Jonas'], status: ['info', S.progress] },
-               { cells: [no ? 'Ny blandebatteri' : 'New mixer tap', no ? 'I går' : 'Yesterday', 'Sara'], status: ['ok', S.done] },
+        rows: [{ cells: [no ? 'Lekkasje · kjøkken · A. Berg' : 'Leak repair · kitchen · A. Berg', no ? 'I går 10:00' : 'Yesterday 10:00', 'Jonas'], status: ['ok', S.done], trail: true },
+               { cells: [no ? 'Kjeleinspeksjon · O. Strand' : 'Boiler inspection · O. Strand', no ? 'I dag 08:00' : 'Today 08:00', 'Sara'], status: ['info', S.progress] },
                { cells: [no ? 'Befaring · bad' : 'Site visit · bathroom', no ? 'I dag 14:00' : 'Today 14:00', 'Jonas'], status: ['wait', S.scheduled] }] },
     },
     quotes: {
@@ -79,7 +79,7 @@ function workspace(lang: Lang): Record<string, { m: Metric[]; table: Table }> {
           [no ? 'FORFALT' : 'OVERDUE', no ? '1 faktura' : '1 invoice', no ? 'Purring klar' : 'Reminder ready'],
           [no ? 'BETALT' : 'PAID', no ? 'Avstemt' : 'Matched', no ? 'Mot KID og betaling' : 'By KID and payment']],
       table: { title: no ? 'Fakturaer' : 'Invoices', meta: ex, head: [no ? 'Faktura' : 'Invoice', no ? 'Kunde' : 'Customer', no ? 'Beløp' : 'Amount', 'Status'],
-        rows: [{ cells: ['1042', 'A. Berg', kr(3412.5)], status: ['wait', S.sent] },
+        rows: [{ cells: ['1042', 'A. Berg', kr(3412.5)], status: ['wait', S.sent], trail: true },
                { cells: ['1041', 'Hansen Eiendom AS', kr(2150)], status: ['ok', S.paid] },
                { cells: ['1036', 'P. Dahl', kr(1875)], status: ['due', S.overdue] }] },
     },
@@ -182,6 +182,57 @@ function finance(lang: Lang): Record<string, { m: Metric[]; doc: Doc }> {
   };
 }
 
+/* ── One example job across both workspaces ─────────────────────────────── */
+function trail(lang: Lang) {
+  const no = lang === 'no';
+  return {
+    title: no ? 'Følg én jobb: lekkasjereparasjon for A. Berg' : 'Follow one job: leak repair for A. Berg',
+    steps: [[no ? 'Henvendelse' : 'Enquiry', no ? 'I går 07:40' : 'Yesterday 07:40', 'ok'],
+            [no ? 'Bestilt' : 'Booked', no ? 'Til kl. 10:00' : 'For 10:00', 'ok'],
+            [no ? 'Fullført' : 'Completed', no ? 'I går 12:10' : 'Yesterday 12:10', 'ok'],
+            [no ? 'Faktura 1042' : 'Invoice 1042', no ? 'Sendt' : 'Sent', 'ok'],
+            [no ? 'Betaling' : 'Payment', no ? 'Venter · KID' : 'Awaiting · KID', 'wait']] as [string, string, Tone][],
+    go: no ? 'Se den i økonomi →' : 'See it in finance →',
+  };
+}
+
+type Step = 'work' | 'invoice' | 'payment' | 'voucher' | 'record' | 'report';
+function explorer(lang: Lang): { labels: Record<Step, string>; docs: Record<Step, Doc> } {
+  const no = lang === 'no';
+  const kr = (n: number) => money(lang, n);
+  const fin = finance(lang);
+  const company: [string, string] = [no ? 'Eksempel Service AS' : 'Example Services AS', no ? 'Org.nr. og kontonummer vises her' : 'Organisation and account numbers appear here'];
+  const lines = fin.invoices.doc.rows;
+  return {
+    labels: { work: no ? 'Arbeid utført' : 'Work completed', invoice: no ? 'Faktura' : 'Invoice', payment: no ? 'Betaling' : 'Payment',
+              voucher: no ? 'Bilag' : 'Voucher', record: no ? 'Regnskap' : 'Financial record', report: no ? 'Rapport' : 'Reporting' },
+    docs: {
+      work: { title: no ? 'Jobb · lekkasjereparasjon' : 'Job · leak repair', status: no ? 'FULLFØRT · EKSEMPEL' : 'COMPLETED · EXAMPLE', left: company,
+              right: [no ? 'Fullført i går 12:10' : 'Completed yesterday 12:10', 'A. Berg · Jonas'], head: fin.invoices.doc.head, rows: lines,
+              totals: [[no ? 'Klar til faktura, eks. MVA' : 'Ready to invoice, excl. MVA', kr(2730)]] },
+      invoice: fin.invoices.doc,
+      payment: { title: no ? 'Betaling · faktura 1042' : 'Payment · invoice 1042', status: no ? 'VENTER · EKSEMPEL' : 'AWAITING · EXAMPLE', left: company,
+                 right: ['KID 0001042', no ? 'Forfall om 14 dager' : 'Due in 14 days'], head: no ? ['KANAL', 'AVSTEMMING', 'BELØP'] : ['CHANNEL', 'MATCHING', 'AMOUNT'],
+                 rows: [[no ? 'Vipps, kort eller bank' : 'Vipps, card or bank', no ? 'Automatisk med KID' : 'Automatically by KID', kr(3412.5)]],
+                 totals: [[no ? 'Utestående' : 'Outstanding', kr(3412.5)]] },
+      voucher: { title: no ? 'Salgsbilag · faktura 1042' : 'Sales voucher · invoice 1042', status: no ? 'BOKFØRT · EKSEMPEL' : 'POSTED · EXAMPLE', left: company,
+                 right: ['NS 4102', no ? 'Standard kontoplan' : 'Standard chart of accounts'], head: no ? ['KONTO', 'DEBET', 'KREDIT'] : ['ACCOUNT', 'DEBIT', 'CREDIT'],
+                 rows: [[no ? '1500 Kundefordringer' : '1500 Accounts receivable', kr(3412.5), ''],
+                        [no ? '3000 Salgsinntekt' : '3000 Sales revenue', '', kr(2730)],
+                        [no ? '2700 Utgående MVA' : '2700 Output MVA', '', kr(682.5)]],
+                 totals: [[no ? 'Debet = kredit' : 'Debit = credit', kr(3412.5)]] },
+      record: { title: no ? 'Hovedbok · denne perioden' : 'Ledger · this period', status: no ? 'EKSEMPEL' : 'EXAMPLE', left: company,
+                right: [no ? 'Inkluderer faktura 1042' : 'Includes invoice 1042', no ? 'For regnskapsføreren' : 'For your accountant'],
+                head: no ? ['KONTO', 'BEVEGELSE', 'SALDO'] : ['ACCOUNT', 'MOVEMENT', 'BALANCE'],
+                rows: [[no ? '1500 Kundefordringer' : '1500 Accounts receivable', `+ ${kr(3412.5)}`, kr(6875)],
+                       [no ? '3000 Salgsinntekt' : '3000 Sales revenue', `+ ${kr(2730)}`, kr(25000)],
+                       [no ? '2700 Utgående MVA' : '2700 Output MVA', `+ ${kr(682.5)}`, kr(6250)]],
+                totals: [[no ? 'Må gjennomgås av regnskapsfører' : 'Subject to your accountant\u2019s review', '']] },
+      report: fin.reports.doc,
+    },
+  };
+}
+
 /* ── Rendering into the design's panels ─────────────────────────────────── */
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string) {
   const e = document.createElement(tag);
@@ -198,6 +249,7 @@ function table(head: string[], rows: Row[]) {
   t.tHead!.append(hr);
   rows.forEach(r => {
     const tr = el('tr');
+    if (r.trail) { tr.className = 'v2-trail-row'; tr.tabIndex = 0; tr.dataset.v2Trail = 'leak'; }
     r.cells.forEach(c => tr.append(el('td', undefined, c)));
     const td = el('td');
     if (r.status) td.append(el('span', `v2-chip v2-chip-${r.status[0]}`, r.status[1]));
@@ -226,33 +278,84 @@ export function installDemoRecords(root: HTMLElement, lang: Lang): () => void {
     const title = q('#bw-panel-title'), meta = q('#bw-panel-meta'), content = q('#bw-panel-content');
     if (title) title.textContent = d.table.title;
     if (meta) meta.textContent = d.table.meta;
-    content?.replaceChildren(table(d.table.head, d.table.rows));
+    const nodes: HTMLElement[] = [table(d.table.head, d.table.rows)];
+    if (['overview', 'customers', 'bookings', 'invoices'].includes(key)) nodes.push(trailNode());
+    content?.replaceChildren(...nodes);
+    content?.classList.remove('v2-fade'); void content?.offsetWidth; content?.classList.add('v2-fade');
   };
+  const tr = trail(lang), ex = explorer(lang);
+  let step: Step = 'invoice';
+
+  const docNodes = (doc: Doc) => {
+    const meta = el('div', 'finance-doc-meta');
+    [doc.left, doc.right].forEach(([b, small]) => { const x = el('div'); x.append(el('b', undefined, b), el('small', undefined, small)); meta.append(x); });
+    const lines = el('table', 'finance-lines');
+    const hr = el('tr'); doc.head.forEach(h => hr.append(el('th', undefined, h)));
+    lines.append(el('thead'), el('tbody')); lines.tHead!.append(hr);
+    doc.rows.forEach(r => { const row = el('tr'); r.forEach(v => row.append(el('td', undefined, v))); lines.tBodies[0].append(row); });
+    const totals = el('div', 'v2-totals');
+    doc.totals.forEach(([k, v], i) => { const row = el('div', i === doc.totals.length - 1 ? 'v2-total-final' : undefined); row.append(el('span', undefined, k), el('b', undefined, v)); totals.append(row); });
+    return [meta, lines, totals];
+  };
+  const showDoc = (doc: Doc, lead: HTMLElement[] = []) => {
+    const t = q('#finance-doc-title'), s = q('#finance-doc-status'), c = q('#finance-doc-content');
+    if (t) t.textContent = doc.title;
+    if (s) s.textContent = doc.status;
+    c?.replaceChildren(...lead, ...docNodes(doc));
+    c?.classList.remove('v2-fade'); void c?.offsetWidth; c?.classList.add('v2-fade');
+  };
+  /* The transaction explorer: one job through work, invoice, payment, voucher, record and report. */
+  const explorerNav = () => {
+    const nav = el('nav', 'v2-explorer');
+    nav.setAttribute('aria-label', lang === 'no' ? 'Følg transaksjonen' : 'Follow the transaction');
+    (Object.keys(ex.labels) as Step[]).forEach((k, i) => {
+      const b = el('button', undefined);
+      b.type = 'button'; b.dataset.explore = k; b.setAttribute('aria-pressed', String(k === step));
+      b.append(el('i', undefined, String(i + 1)), document.createTextNode(ex.labels[k]));
+      nav.append(b);
+    });
+    return nav;
+  };
+  const renderExplorer = () => showDoc(ex.docs[step], [explorerNav()]);
   const renderFin = (key: string) => {
     const d = fin[key]; if (!d) return;
     metrics(q('#finance-metrics'), d.m);
-    const t = q('#finance-doc-title'), s = q('#finance-doc-status'), c = q('#finance-doc-content');
-    if (t) t.textContent = d.doc.title;
-    if (s) s.textContent = d.doc.status;
-    const meta = el('div', 'finance-doc-meta');
-    [d.doc.left, d.doc.right].forEach(([b, small]) => { const x = el('div'); x.append(el('b', undefined, b), el('small', undefined, small)); meta.append(x); });
-    const lines = el('table', 'finance-lines');
-    const hr = el('tr'); d.doc.head.forEach(h => hr.append(el('th', undefined, h)));
-    lines.append(el('thead'), el('tbody')); lines.tHead!.append(hr);
-    d.doc.rows.forEach(r => { const tr = el('tr'); r.forEach(v => tr.append(el('td', undefined, v))); lines.tBodies[0].append(tr); });
-    const totals = el('div', 'v2-totals');
-    d.doc.totals.forEach(([k, v], i) => { const row = el('div', i === d.doc.totals.length - 1 ? 'v2-total-final' : undefined); row.append(el('span', undefined, k), el('b', undefined, v)); totals.append(row); });
-    c?.replaceChildren(meta, lines, totals);
+    if (key === 'overview') renderExplorer(); else showDoc(d.doc);
+  };
+  const trailNode = () => {
+    const box = el('div', 'v2-trail');
+    box.append(el('b', undefined, tr.title));
+    const ol = el('ol');
+    tr.steps.forEach(([label, when, tone]) => { const li = el('li', `v2-trail-${tone}`); li.append(el('span', undefined, label), el('small', undefined, when)); ol.append(li); });
+    const go = el('button', 'v2-trail-go', tr.go); go.type = 'button'; go.dataset.v2TrailGo = 'leak';
+    box.append(ol, go);
+    return box;
   };
 
   /* After the design's own handler on the same tab (it was added first). */
+  const followToFinance = () => {
+    const section = q('#financial-administration');
+    q<HTMLButtonElement>('[data-finance="overview"]')?.click();
+    step = 'invoice'; renderExplorer();
+    section?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  };
+  const onKey = (e: KeyboardEvent) => {
+    const row = (e.target as HTMLElement).closest<HTMLElement>('.v2-trail-row');
+    if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); }
+  };
   const onClick = (e: MouseEvent) => {
     const t = e.target as HTMLElement;
+    const ex2 = t.closest<HTMLElement>('[data-explore]');
+    if (ex2 && root.contains(ex2)) { step = ex2.dataset.explore as Step; renderExplorer(); return; }
+    if (t.closest('[data-v2-trail-go]')) { followToFinance(); return; }
+    const row = t.closest<HTMLElement>('.v2-trail-row');
+    if (row && root.contains(row)) { root.querySelector('.v2-trail')?.classList.add('v2-trail-flash'); root.querySelector<HTMLElement>('.v2-trail .v2-trail-go')?.focus(); return; }
     const b = t.closest<HTMLElement>('[data-bw]'); if (b && root.contains(b)) renderBw(b.dataset.bw!);
     const f = t.closest<HTMLElement>('[data-finance]'); if (f && root.contains(f)) renderFin(f.dataset.finance!);
   };
   root.addEventListener('click', onClick);
+  root.addEventListener('keydown', onKey);
   renderBw(q<HTMLElement>('[data-bw][aria-pressed="true"]')?.dataset.bw ?? 'overview');
   renderFin(q<HTMLElement>('[data-finance][aria-pressed="true"]')?.dataset.finance ?? 'overview');
-  return () => root.removeEventListener('click', onClick);
+  return () => { root.removeEventListener('click', onClick); root.removeEventListener('keydown', onKey); };
 }

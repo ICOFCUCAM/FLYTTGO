@@ -22,6 +22,7 @@ const PAGE_TO_PATH: Record<Page, string> = {
   'transport-home':          '/transport',
   /* The restructured homepage under review (docs/HOMEPAGE_RESTRUCTURE.md); noindex, in no menu. */
   'home-preview':            '/preview/home',
+  'home-lab':                '/preview/lab',
   'booking':                 '/book',
   'payment':                 '/payment',
   'tracking':                '/track',
@@ -106,6 +107,7 @@ const PAGE_TITLES: Record<Page, string> = {
   'home':                    'FlyttGo — Business and Marketplace Platform',
   'transport-home':          'FlyttGo — Moving & Transport Marketplace in Norway',
   'home-preview':            'FlyttGo — Homepage preview',
+  'home-lab':                'FlyttGo — Design refinement lab',
   'booking':                 'Book a Move · FlyttGo',
   'payment':                 'Secure Payment · FlyttGo',
   'tracking':                'Track Your Delivery · FlyttGo',
@@ -161,6 +163,8 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     'Run a service company, take bookings and payments, send invoices, or launch a marketplace under your own brand. Moving and transport across Norway included.',
   'home-preview':
     'Preview of the restructured FlyttGo homepage, for review. Not indexed.',
+  'home-lab':
+    'Private design refinement lab for the FlyttGo homepage preview. Not indexed, not on production.',
   'transport-home':
     "Book approved movers and cargo drivers across Norway. Upfront prices incl. MVA, tracking during the job and secure card payment through Stripe.",
   'booking':

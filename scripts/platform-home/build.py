@@ -243,25 +243,26 @@ def header_places(body: str) -> str:
 # brief's colours, since replaced by the platform page's navy, emerald and white).
 V2_OUT = ROOT / 'src' / 'components' / 'homeV2'
 V2_SECTIONS = [                                   # (attribute in the section's opening tag, topic)
-    # In the order of the three journeys (owner, 30 October 2026): find a
-    # service on the FlyttGo Marketplace, run a company, and last, apart, the
-    # specialised offering of a marketplace under one's own brand.
-    ('class="hero wrap"', '1 hero'),
-    ('id="entry-points"', '2 journeys'),
-    ('id="unified-platform"', 'one connected platform (how it works follows it)'),
-    ('id="marketplace"', 'find a service: the FlyttGo Marketplace'),
-    ('id="moving-services"', 'find a service: moving services'),
-    ('id="how-it-works"', 'find a service: booking and tracking journey'),
-    ('id="van-types"', 'find a service: vehicle sizes (rates on the van guide)'),
-    ('class="section testimonials"', 'find a service: what every booking includes'),
-    ('id="business-workspace"', 'my company: business workspace'),
-    ('id="financial-administration"', 'my company: payments and finance'),
-    ('id="industry-experiences"', 'my company: industry workflows'),
-    ('id="business"', 'for organisations: corporate solutions'),
-    ('id="driver-network"', 'for organisations: provider network'),
-    ('id="white-label-builder"', 'specialised: a marketplace under your own brand'),
-    ('id="marketplace-network-experience"', 'specialised: connected network'),
-    ('class="final-cta"', 'final call to action'),
+    # The commercial story (owner's 2036 mandate, 30 October 2026): understand FlyttGo, find your
+    # journey, discover the marketplace, experience the transaction, then My Company, finance,
+    # industries; only then the connected platform, organisations, providers, the optional white-label
+    # infrastructure and network independence.
+    ('class="hero wrap"', '1 understand FlyttGo'),
+    ('id="entry-points"', '2 find your journey'),
+    ('id="marketplace"', '3 discover the marketplace'),
+    ('id="moving-services"', '4 the service offering'),
+    ('id="how-it-works"', '5 the booking experience'),
+    ('id="van-types"', '5 vehicle sizes (rates on the van guide)'),
+    ('class="section testimonials"', '5 what every booking includes'),
+    ('id="business-workspace"', '6 My Company'),
+    ('id="financial-administration"', '7 financial administration'),
+    ('id="industry-experiences"', '8 industry workflows'),
+    ('id="unified-platform"', '9 the connected platform'),
+    ('id="business"', '10 corporate solutions'),
+    ('id="driver-network"', '11 provider network'),
+    ('id="white-label-builder"', '12 white-label infrastructure (optional)'),
+    ('id="marketplace-network-experience"', '13 network independence'),
+    ('class="final-cta"', '14 take action'),
 ]
 # Wording the code does not support, corrected (the audit's status table).
 V2_CLAIMS = [
@@ -347,6 +348,36 @@ V2_CLAIMS = [
     ('<label>BRAND COLOUR</label>', '<span class="wl-setting-label">BRAND COLOUR</span>'),
     ('</div>\n      </aside>\n      <div class="wl-preview">',
      '</div>\n        <dl class="wl-settings"><div><dt>DOMAIN</dt><dd>Your own domain or a FlyttGo address</dd></div><div><dt>PROVIDER NETWORK</dt><dd><span class="v2-chip v2-chip-wait">In development</span></dd></div><div><dt>PAYMENTS</dt><dd>FlyttGo sells, or you sell under your own terms</dd></div></dl>\n      </aside>\n      <div class="wl-preview">'),
+    # 2036 mandate (owner, 30 October 2026).
+    # The closing section ends with the three journeys.
+    ('<div class="final-actions"><a class="btn btn-primary" href="#booking">Find what you need <span class="arrow">↗</span></a><a class="btn btn-light" href="#providers">Join the ecosystem</a></div>',
+     '<div class="final-actions"><a class="btn btn-primary" href="#marketplace" data-anchor>Explore services <span class="arrow">↗</span></a><a class="btn btn-light" href="#business-workspace" data-anchor>My Company</a><a class="btn btn-light" href="#business" data-anchor>For Organisations</a></div>'),
+    # Corporate: locations and API access shown in the workflow, not as figures.
+    ('<div class="corp-roles"><b>Roles and permissions</b>',
+     '<div class="corp-roles"><b>Roles, departments and locations</b>'),
+    ('<span><i>Booker</i>Book within a limit</span></div></div>',
+     '<span><i>Booker</i>Book within a limit · Oslo or Bergen office</span></div></div>'),
+    ('<em>Issued by FlyttGo</em></div>',
+     '<em>Issued by FlyttGo</em></div><div class="corp-api"><span><b>Reporting and API</b>Monthly reports by department; bookings from your own systems through the API (paid add-on)</span></div>'),
+    # Marketplace Studio: a working storefront preview with the operator's own choices.
+    ('<span class="wl-setting-label">BRAND COLOUR</span>', '<span class="wl-setting-label">PRIMARY COLOUR</span>'),
+    ('<dl class="wl-settings"><div><dt>DOMAIN</dt><dd>Your own domain or a FlyttGo address</dd></div><div><dt>PROVIDER NETWORK</dt><dd><span class="v2-chip v2-chip-wait">In development</span></dd></div><div><dt>PAYMENTS</dt><dd>FlyttGo sells, or you sell under your own terms</dd></div></dl>',
+     '<div class="wl-more">'
+     '<label for="wl-color2">SECONDARY COLOUR</label><input id="wl-color2" type="color" value="#C3A66C"/>'
+     '<label for="wl-mark">BRAND MARK</label><select id="wl-mark"><option value="initials">Initials</option><option value="circle">Monogram</option><option value="none">Name only</option></select>'
+     '<label for="wl-domain">DOMAIN</label><div class="wl-domain-row"><input id="wl-domain" value="northside"/><select id="wl-domain-mode" aria-label="Domain type"><option value="flyttgo">.flyttgo.no</option><option value="own">own domain (.no)</option></select></div>'
+     '<span class="wl-setting-label">CATEGORIES</span><div class="wl-cat-toggles" id="wl-cat-toggles"></div>'
+     '<label for="wl-style">STOREFRONT</label><select id="wl-style"><option value="classic">Classic</option><option value="editorial">Editorial</option><option value="compact">Compact</option></select>'
+     '<label for="wl-payments">BOOKING AND PAYMENTS</label><select id="wl-payments"><option value="b">You sell, on your own terms</option><option value="a">FlyttGo sells (moving and delivery only)</option></select>'
+     '<dl class="wl-settings"><div><dt>PROVIDER NETWORK</dt><dd><span class="v2-chip v2-chip-wait">In development</span></dd></div></dl>'
+     '</div>'),
+    ('<div class="wl-preview-bar"><div class="wl-preview-brand" id="wl-preview-brand">NORTHSIDE SERVICES</div><span>YOUR MARKETPLACE PREVIEW</span></div>',
+     '<div class="wl-preview-bar"><div class="wl-address" id="wl-address">northside.flyttgo.no</div><span>YOUR MARKETPLACE PREVIEW · ILLUSTRATION</span></div>'
+     '<div class="wl-preview-brand" id="wl-preview-brand" hidden>NORTHSIDE SERVICES</div>'),
+    ('<div class="wl-store-nav"><strong id="wl-store-name">NORTHSIDE SERVICES</strong>',
+     '<div class="wl-store-nav"><span class="wl-mark-el" id="wl-mark-el" aria-hidden="true">NS</span><strong id="wl-store-name">NORTHSIDE SERVICES</strong>'),
+    ('</div>\n          </div>\n        </div>\n      </div>\n    </div>\n    <div class="wl-builder-foot">',
+     '</div>\n          </div>\n          <div class="wl-pay-line" id="wl-pay-line">Bookings and payments: you sell, under your own terms and VAT · Stripe Connect</div>\n        </div>\n      </div>\n    </div>\n    <div class="wl-builder-foot">'),
     # The central FlyttGo Marketplace, never confused with a marketplace of one's own.
     ('<div class="eyebrow">Explore the marketplace</div>', '<div class="eyebrow">The FlyttGo Marketplace</div>'),
     ('<p>Discover the FlyttGo marketplace: moving and transport, local services, business solutions and opportunities for providers.</p>',
@@ -492,6 +523,7 @@ def build_v2(base: str) -> str:
             raise SystemExit(f'v2: no {cls}')
         page = page[:m.start()] + (V2_ECO_NOTE if cls == 'ecosystem-principles' else '') + page[element_span(page, m.start(), 'div'):]
     page = related(page)
+    page = re.sub(r'<img(?![^>]*\bloading=)', '<img loading="lazy" decoding="async"', page)
     m = re.search(r'<section\b[^>]*class="hero wrap"', page)
     end = element_span(page, m.start(), 'section')
     page = page[:end] + V2_BOOKING + page[end:]
@@ -843,6 +875,10 @@ def main() -> int:
     v2_head = '<!-- Generated by scripts/platform-home/build.py (restructured homepage, {}). Do not edit. -->\n'
     (V2_OUT / 'design.v2.html').write_text(v2_head.format('English') + v2 + '\n', encoding='utf-8')
     v2_no = translate_html(v2, no, missing)
+    # Text inputs' starting values are visible too (the studio copies them into its preview);
+    # restructured page only, so the platform page's output is unchanged.
+    v2_no = re.sub(r'(<input\b[^>]*type="text"[^>]*\bvalue=")([^"]*)"',
+                   lambda m: m.group(1) + htmlmod.escape(no.get(norm(m.group(2)), m.group(2))) + '"', v2_no)
     if missing:
         print(f'no.json lacks {len(missing)} strings of the restructured page, e.g. {sorted(missing)}', file=sys.stderr)
         return 1

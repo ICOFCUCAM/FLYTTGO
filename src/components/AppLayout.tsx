@@ -11,6 +11,7 @@ import { isTransportHost } from '../lib/hosts';
 const HomePage           = lazy(() => import('./HomePage'));
 const PlatformHomePage   = lazy(() => import('./PlatformHomePage'));
 const HomeV2Page         = lazy(() => import('./homeV2/HomeV2Page'));
+const DesignLab          = lazy(() => import('./homeV2/lab/DesignLab'));
 const BookingFlow        = lazy(() => import('./BookingFlow'));
 const DriverPortal       = lazy(() => import('./DriverPortal'));
 const DriverOnboarding   = lazy(() => import('./DriverOnboarding'));
@@ -97,8 +98,8 @@ export default function AppLayout() {
    * moving and transport one (docs/HOMEPAGES.md). Both have FlyttGo's menu bar
    * (on the platform page with its Platform dropdown and square corners) and footer. */
   const platformHome = currentPage === 'home' && !isTransportHost(window.location.hostname);
-  const showHeader = currentPage !== 'auth-callback' && !embedded;
-  const showFooter = !embedded && (!['booking', 'driver-portal', 'admin', 'auth-callback'].includes(currentPage) || (currentPage === 'booking' && (ownBooking || shopOnly)));
+  const showHeader = currentPage !== 'auth-callback' && currentPage !== 'home-lab' && !embedded;
+  const showFooter = !embedded && (!['booking', 'driver-portal', 'admin', 'auth-callback', 'home-lab'].includes(currentPage) || (currentPage === 'booking' && (ownBooking || shopOnly)));
 
   const renderPage = () => {
     switch (currentPage) {
@@ -108,6 +109,8 @@ export default function AppLayout() {
       case 'transport-home':   return <HomePage />;
       /* The restructured homepage under review (docs/HOMEPAGE_RESTRUCTURE.md). */
       case 'home-preview':     return <HomeV2Page />;
+      /* The private design lab for the preview (never on production hosts; docs/HOMEPAGE_RESTRUCTURE.md). */
+      case 'home-lab':         return <DesignLab />;
       case 'booking':          return ownBooking ? <ServiceBookingPage /> : shopOnly ? <ShopPage /> : <BookingFlow />;
       case 'driver-portal':    return <DriverPortal />;
       case 'driver-onboarding':return <DriverOnboarding />;
