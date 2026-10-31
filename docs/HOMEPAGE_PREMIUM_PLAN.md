@@ -38,10 +38,10 @@ This plan comes from a full-page visual review of `/preview/home` after #22: eve
 10. Participants band: readable size, separators.
 11. Journey band: numerals and hover.
 12. Slideshow: segmented progress instead of dots.
-13. Hero on phones: spacing and picture height.
+13. Hero on phones: spacing, full-width actions and picture height.
 14. Booking promise: display line with the accent serif.
 15. Booking frame: border, shadow, header.
-16. Hero to booking: the booking card rises into the hero's lower edge on wide screens.
+16. Hero to booking: the booking promise starts on the hero card's edge and the widget takes the rest of the width. Overlapping the hero was rejected: the widget would cover the journeys band.
 
 ## C · Journeys and marketplace (17–24)
 17. Journeys heading measure.

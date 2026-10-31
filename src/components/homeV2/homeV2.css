@@ -226,6 +226,12 @@
 
 /* ── 4. Booking: one opening with the hero, framed and introduced ──────── */
 .fgv2 main > .v2-booking { background: var(--white); padding: 56px 0 88px; }
+/* Hero to booking: the booking promise starts on the hero card's edge and the widget takes the rest of
+ * the width, so the two blocks read as one opening without squeezing the form. */
+@media (min-width: 1000px) {
+  .fgv2[data-hero="b"][data-booking="b"] main > .v2-booking { padding: 72px 0 96px; }
+  .fgv2[data-hero="b"][data-booking="b"] .v2-booking-inner { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 64px; }
+}
 .fgv2 .v2-booking-inner { max-width: 1180px; }
 .fgv2 .v2-booking-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 32px; margin-bottom: 18px; }
 .fgv2 .v2-booking-head p { margin: 0; font-size: 15px; color: var(--muted); }
