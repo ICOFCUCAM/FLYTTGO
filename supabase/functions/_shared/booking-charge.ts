@@ -4,10 +4,14 @@
 //
 // create-checkout-session (Stripe) and create-vipps-session both call
 // chargeForBooking(): it checks the caller owns the booking, that the
-// booking still awaits payment, re-routes pickup → drop-off on the
-// server and prices it with the shared formula. When the server price
-// differs from what the browser stored at booking time, the booking and
-// its escrow row are corrected so every screen shows what is charged.
+// booking still awaits payment, checks the stored pickup and drop-off
+// points against the addresses (address-check.ts: Kartverket's register,
+// corrected when far off), re-routes between them on the server and prices
+// it with the shared formula: the distance never shorter than the straight
+// line, the hours never fewer than the drive takes. The server's distance,
+// duration and location check are always written to the booking; when the
+// price differs from what the browser stored at booking time, the booking
+// and its escrow row are corrected so every screen shows what is charged.
 //
 // A booking made on a company's page under Model B (the company sells,
 // docs/WHITE_LABEL.md) is paid by card into the company's Stripe account:
@@ -24,7 +28,8 @@
 // ============================================================================
 
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { bookingChargeNok, bookingCoordinates, routeDistance } from './pricing.ts';
+import { bookingChargeNok, bookingCoordinates, flooredDistanceKm, routeDistance } from './pricing.ts';
+import { checkBookingLocations } from './address-check.ts';
 import { sellerSplit } from './white-label.ts';
 import { interpretCheck, type ApprovalHold, type CheckResult } from './spending.ts';
 
@@ -93,24 +98,37 @@ export async function chargeForBooking(
     };
   }
 
-  const coords = bookingCoordinates(booking);
-  if (!coords) return { ok: false, status: 422, error: 'booking has no valid pickup/drop-off coordinates' };
+  const stored_coords = bookingCoordinates(booking);
+  if (!stored_coords) return { ok: false, status: 422, error: 'booking has no valid pickup/drop-off coordinates' };
 
-  const route     = await routeDistance(...coords);
-  const amountNok = bookingChargeNok(booking, route);
+  /* The points the browser stored, checked against the addresses: a point far from its address is
+   * replaced by the register's; one that cannot be checked is used and recorded as unconfirmed. */
+  const location = await checkBookingLocations(booking, stored_coords);
+  const coords   = location.coords;
+  if (location.corrected) console.warn(`booking ${bookingId}: stored coordinates corrected to the addresses (${JSON.stringify(location.record)})`);
+
+  const routed     = await routeDistance(...coords);
+  const route      = { ...routed, distance_km: flooredDistanceKm(routed, coords) };
+  const amountNok  = bookingChargeNok(booking, route);
   if (!Number.isFinite(amountNok) || amountNok <= 0) {
     return { ok: false, status: 422, error: 'could not price booking' };
   }
 
   const stored       = Number(booking.price_estimate);
   const priceChanged = !Number.isFinite(stored) || Math.round(stored) !== amountNok;
+  if (priceChanged) console.warn(`booking ${bookingId}: stored price ${booking.price_estimate} → server price ${amountNok}`);
+  /* Always: the server's distance (later charges, such as overtime, read it), the points priced on, and the check. */
+  const { error: updErr } = await db
+    .from('bookings')
+    .update({
+      distance_km: route.distance_km,
+      location_check: location.record,
+      ...(location.corrected ? { pickup_lat: coords[0], pickup_lng: coords[1], dropoff_lat: coords[2], dropoff_lng: coords[3] } : {}),
+      ...(priceChanged ? { price_estimate: amountNok, original_price: amountNok } : {}),
+    })
+    .eq('id', bookingId);
+  if (updErr) return { ok: false, status: 500, error: 'booking price update failed' };
   if (priceChanged) {
-    console.warn(`booking ${bookingId}: stored price ${booking.price_estimate} → server price ${amountNok}`);
-    const { error: updErr } = await db
-      .from('bookings')
-      .update({ price_estimate: amountNok, original_price: amountNok, distance_km: route.distance_km })
-      .eq('id', bookingId);
-    if (updErr) return { ok: false, status: 500, error: 'booking price update failed' };
     await db.from('escrow_payments')
       .update({ amount: amountNok, original_amount: amountNok })
       .eq('booking_id', bookingId);

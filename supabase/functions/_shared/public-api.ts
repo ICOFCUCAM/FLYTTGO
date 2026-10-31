@@ -368,12 +368,13 @@ export function quoteFor(input: Pick<QuoteInput, 'van_type' | 'helpers' | 'estim
                          route: RouteResult) {
   const b = calculateServerPrice({
     vanType: input.van_type, hours: input.estimated_hours, distanceKm: route.distance_km,
-    helpers: input.helpers, extras: input.additional_services,
+    helpers: input.helpers, extras: input.additional_services, routeMinutes: route.duration_minutes,
   });
   return {
     object: 'quote', currency: 'NOK',
     distance_km: route.distance_km, duration_minutes: route.duration_minutes, routing_provider: route.provider,
     price_subtotal: Math.round(b.subtotal), vat_amount: Math.round(b.vat), price_total: Math.round(b.total),
+    billed_hours: b.billed_hours, route_hours_applied: b.route_hours_applied,
     breakdown: {
       base_price: Math.round(b.base_price), distance_charge: Math.round(b.distance_charge),
       helpers_charge: Math.round(b.helpers_charge), extras_charge: Math.round(b.extras_charge),

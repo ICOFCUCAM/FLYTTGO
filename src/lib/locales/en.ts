@@ -829,6 +829,8 @@ export const en = {
     priceBase:      'Base',
     priceDistance:  'Distance charge',
     priceHelpers:   'Helpers',
+    priceExtras:    'Extra services',
+    priceDriveHours: 'Billed {{hours}} h: the drive alone takes longer than the {{chosen}} h you chose.',
     priceVat:       'VAT (25% MVA)',
     priceTotal:     'Total (incl. VAT)',
     legalTitle:     'Legal Agreements',

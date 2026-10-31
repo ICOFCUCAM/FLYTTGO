@@ -138,6 +138,7 @@ export default function BookingFlow() {
         clientRoute.distanceKm,
         helpers,
         additionalServices,
+        clientRoute.durationMinutes,
       )
     : null;
 
@@ -158,6 +159,10 @@ export default function BookingFlow() {
   const basePrice      = serverPrice?.breakdown?.base_price      ?? clientPricing?.basePrice      ?? 0;
   const distanceCharge = serverPrice?.breakdown?.distance_charge ?? clientPricing?.distanceCharge ?? 0;
   const helpersCharge  = serverPrice?.breakdown?.helpers_charge  ?? clientPricing?.helpersCharge  ?? 0;
+  const extrasCharge   = serverPrice?.breakdown?.extras_charge   ?? clientPricing?.extrasCharge   ?? 0;
+  /* Hours billed: the hours chosen, or the drive time when it is longer (same rule as the payment functions). */
+  const billedHoursShown = serverPrice?.billed_hours ?? clientPricing?.billedHours ?? Math.max(estimatedHours, 2);
+  const routeHoursApplied = serverPrice?.route_hours_applied ?? clientPricing?.routeHoursApplied ?? false;
 
   /* Ready-to-submit means we have AT LEAST a client-side number
    * set. The submit button stays disabled until this is true so a
@@ -965,9 +970,12 @@ export default function BookingFlow() {
                   ) : (
                     <>
                       <div className="flex justify-between text-sm text-gray-600">
-                        <span>{t('booking.priceBase')} ({estimatedHours}h × {VAN_TYPES.find(v => v.id === vanType)?.pricePerHour || 850} NOK/h)</span>
+                        <span>{t('booking.priceBase')} ({billedHoursShown}h × {VAN_TYPES.find(v => v.id === vanType)?.pricePerHour || 850} NOK/h)</span>
                         <span>{basePrice.toFixed(0)} NOK</span>
                       </div>
+                      {routeHoursApplied && (
+                        <p className="text-xs text-amber-700 -mt-1">{t('booking.priceDriveHours', { hours: billedHoursShown, chosen: estimatedHours })}</p>
+                      )}
                       {distanceCharge > 0 && (
                         <div className="flex justify-between text-sm text-gray-600">
                           <span>{t('booking.priceDistance')}</span>
@@ -978,6 +986,12 @@ export default function BookingFlow() {
                         <div className="flex justify-between text-sm text-gray-600">
                           <span>{t('booking.priceHelpers')} ({helpers})</span>
                           <span>{helpersCharge.toFixed(0)} NOK</span>
+                        </div>
+                      )}
+                      {extrasCharge > 0 && (
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>{t('booking.priceExtras')}</span>
+                          <span>{extrasCharge.toFixed(0)} NOK</span>
                         </div>
                       )}
                       <div className="flex justify-between text-sm text-gray-600">

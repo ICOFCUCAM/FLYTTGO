@@ -826,6 +826,8 @@ export const no: PartialTranslationKeys = {
     priceBase:      'Grunnpris',
     priceDistance:  'Avstandsgebyr',
     priceHelpers:   'Hjelpere',
+    priceExtras:    'Tilleggstjenester',
+    priceDriveHours: 'Fakturert {{hours}} t: kjøreturen alene tar lengre tid enn de {{chosen}} t du valgte.',
     priceVat:       'MVA (25 %)',
     priceTotal:     'Totalt (inkl. MVA)',
     legalTitle:     'Juridiske avtaler',

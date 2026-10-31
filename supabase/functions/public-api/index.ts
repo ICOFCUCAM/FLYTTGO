@@ -32,7 +32,7 @@
 // ============================================================================
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
 import { serviceClient } from '../_shared/auth.ts';
-import { bookingChargeNok, routeDistance } from '../_shared/pricing.ts';
+import { bookingChargeNok, flooredDistanceKm, routeDistance } from '../_shared/pricing.ts';
 import {
   apiPath, bearerKey, dbError, errorBody, idempotencyKey, isApiKey, matchRoute, quoteFor, requestHash, sha256Hex,
   validateAppointment, validateBooking, validateJob, validateListQuery, validateQuote, validateSlotsQuery,
@@ -119,8 +119,10 @@ serve(async (req: Request) => {
     case 'quotes.create': {
       const v = validateQuote(body);
       if (!v.ok) return invalid(v.errors, limitHeaders);
-      const r = await routeDistance(v.value.pickup.lat, v.value.pickup.lng, v.value.dropoff.lat, v.value.dropoff.lng);
-      return json(quoteFor(v.value, r), 200, limitHeaders);
+      const q = v.value;
+      const routed = await routeDistance(q.pickup.lat, q.pickup.lng, q.dropoff.lat, q.dropoff.lng);
+      const r = { ...routed, distance_km: flooredDistanceKm(routed, [q.pickup.lat, q.pickup.lng, q.dropoff.lat, q.dropoff.lng]) };
+      return json(quoteFor(q, r), 200, limitHeaders);
     }
     case 'bookings.list':   return list('bookings.list');
     case 'bookings.get':    return read('bookings.get', { id });
@@ -130,7 +132,8 @@ serve(async (req: Request) => {
       const b = v.value;
       /* The server's price, as chargeForBooking computes it for card, Vipps
        * and book-on-invoice: route on the server, the shared formula. */
-      const r = await routeDistance(b.pickup.lat, b.pickup.lng, b.dropoff.lat, b.dropoff.lng);
+      const routed = await routeDistance(b.pickup.lat, b.pickup.lng, b.dropoff.lat, b.dropoff.lng);
+      const r = { ...routed, distance_km: flooredDistanceKm(routed, [b.pickup.lat, b.pickup.lng, b.dropoff.lat, b.dropoff.lng]) };
       const price = bookingChargeNok({ van_type: b.van_type, estimated_hours: b.estimated_hours, helpers: b.helpers,
                                        additional_services: b.additional_services }, r);
       if (!Number.isFinite(price) || price <= 0) return json(errorBody('invalid_request', 'The move could not be priced.'), 422, limitHeaders);
