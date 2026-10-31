@@ -547,8 +547,9 @@
   .fgv2[data-hero="b"] .hero-lede { font-size: 16px; max-width: 46ch; }
   .fgv2[data-hero="b"] .hero-note { font-size: 13px; }
   .fgv2[data-hero="b"] .hero-actors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); position: absolute; z-index: 2; left: 0; right: 0; bottom: 88px; margin: 0; padding: 0 0 0 max(40px, calc((100% - var(--wrap-max)) / 2)); list-style: none; background: var(--white); border-top: 1px solid var(--gold); }
-  .fgv2[data-hero="b"] .hero-actors li { padding: 12px 18px 12px 0; display: flex; gap: 8px; align-items: baseline; font-size: 14px; color: var(--muted); }
-  .fgv2[data-hero="b"] .hero-actors b { color: var(--blue); font: 700 14px var(--font-display); }
+  .fgv2[data-hero="b"] .hero-actors li { padding: 15px 20px 15px 0; display: flex; gap: 10px; align-items: baseline; font-size: 15px; line-height: 1.35; color: var(--muted); }
+  .fgv2[data-hero="b"] .hero-actors li + li { padding-left: 20px; border-left: 1px solid var(--line); }
+  .fgv2[data-hero="b"] .hero-actors b { color: var(--blue); font: 700 15px var(--font-display); white-space: nowrap; }
 }
 @media (min-width: 761px) and (max-width: 1100px) {
   .fgv2[data-hero="b"] .hero-copy { width: min(560px, 66%); margin-top: 40px; margin-bottom: 236px; }
