@@ -430,7 +430,11 @@
 /* "What every booking includes": a ruled two-column list, not a third row of boxes. */
 .fgv2 .testimonial-grid { background: transparent; border: 0; gap: 0 56px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .fgv2 .testimonial-grid .quote { background: transparent; padding: 22px 0 24px; border: 0; border-top: 1px solid var(--ink); box-shadow: none; }
-.fgv2 .testimonial-grid .quote small { color: var(--blue); }
+.fgv2 .testimonial-grid .quote small { color: var(--blue); display: block; margin-bottom: 12px; font-weight: 700; letter-spacing: var(--label-track); }
+.fgv2 .testimonial-grid .quote b { display: block; font: var(--head-weight) 19px/1.25 var(--font-display); letter-spacing: -.02em; color: var(--ink); margin: 2px 0 8px; order: -1; }
+.fgv2 .testimonial-grid .quote { display: flex; flex-direction: column; }
+.fgv2 .testimonial-grid .quote small { order: -2; }
+.fgv2 .testimonial-grid .quote-text { font-size: 15px; line-height: 1.65; color: var(--muted); margin: 0; }
 @media (max-width: 700px) { .fgv2 .testimonial-grid { grid-template-columns: 1fr; } }
 @media (min-width: 901px) {
   .fgv2 .legacy-suite .section-head { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); grid-template-areas: "label label" "title text"; column-gap: 64px; row-gap: 18px; }
