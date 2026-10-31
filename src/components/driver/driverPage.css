@@ -1,0 +1,23 @@
+/* /become-a-driver motion (owner, 31 October 2026). Everything here is off under reduced motion. */
+@keyframes fg-kenburns { from { transform: scale(1.02) translate3d(0, 0, 0); } to { transform: scale(1.12) translate3d(-1.5%, -1%, 0); } }
+@keyframes fg-rise { from { opacity: 0; transform: translate3d(0, .45em, 0); } to { opacity: 1; transform: none; } }
+@keyframes fg-line { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.fg-hero-photo { animation: fg-kenburns 24s ease-in-out infinite alternate; transform-origin: 60% 40%; will-change: transform; }
+.fg-word { display: inline-block; opacity: 0; animation: fg-rise .7s cubic-bezier(.2,.7,.2,1) forwards; }
+
+.fg-reveal { opacity: 0; transform: translate3d(0, 28px, 0); transition: opacity .8s ease, transform .8s cubic-bezier(.2,.7,.2,1); }
+.fg-reveal.fg-in { opacity: 1; transform: none; }
+
+.fg-escrow-line > span { transform-origin: left; transform: scaleX(0); }
+[dir="rtl"] .fg-escrow-line > span { transform-origin: right; }
+.fg-in .fg-escrow-line > span { animation: fg-line 1.6s .2s ease forwards; }
+
+.fg-driver-page details > summary::-webkit-details-marker { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fg-hero-photo { animation: none; }
+  .fg-word { opacity: 1; animation: none; }
+  .fg-reveal { opacity: 1; transform: none; transition: none; }
+  .fg-escrow-line > span, .fg-in .fg-escrow-line > span { transform: none; animation: none; }
+}

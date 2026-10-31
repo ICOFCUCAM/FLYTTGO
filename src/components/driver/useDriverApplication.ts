@@ -21,28 +21,43 @@ export type Field = 'firstName' | 'lastName' | 'phone' | 'city' | 'vehicleType' 
 
 export interface ExistingApplication { status: string; created_at: string | null }
 
-export function useDriverApplication() {
+/* Save and continue later (owner, 31 October 2026): the typed fields, on this device only, for 14 days. Files
+ * cannot be kept by the browser, so a restored application asks for its documents again. */
+const SAVE_KEY = 'flyttgo_driver_application_v1';
+const SAVE_DAYS = 14;
+interface Saved { savedAt: number; step: number; fields: Record<string, string> }
+function readSaved(): Saved | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(SAVE_KEY) ?? 'null') as Saved | null;
+    if (!v || typeof v.savedAt !== 'number' || Date.now() - v.savedAt > SAVE_DAYS * 86_400_000) return null;
+    return v;
+  } catch { return null; }
+}
+
+export function useDriverApplication({ persist = false }: { persist?: boolean } = {}) {
   const { user, profile } = useAuth();
   const { t } = useTranslation();
 
-  const [step, setStep] = useState(1);
+  const [saved] = useState<Saved | null>(() => (persist ? readSaved() : null));
+  const sf = (k: string) => saved?.fields?.[k] ?? '';
+  const [step, setStep] = useState(() => (saved ? Math.min(3, Math.max(1, saved.step)) : 1));
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Field[]>([]);
 
   // Step 1 — Personal
-  const [firstName, setFirstName] = useState(profile?.first_name || '');
-  const [lastName, setLastName] = useState(profile?.last_name || '');
-  const [phone, setPhone] = useState(profile?.phone || '');
-  const [city, setCity] = useState('');
+  const [firstName, setFirstName] = useState(sf('firstName') || profile?.first_name || '');
+  const [lastName, setLastName] = useState(sf('lastName') || profile?.last_name || '');
+  const [phone, setPhone] = useState(sf('phone') || profile?.phone || '');
+  const [city, setCity] = useState(sf('city'));
 
   // Step 2 — Vehicle
-  const [vehicleType, setVehicleType] = useState('');
-  const [vehicleMake, setVehicleMake] = useState('');
-  const [vehicleModel, setVehicleModel] = useState('');
-  const [vehicleYear, setVehicleYear] = useState('');
-  const [licensePlate, setLicensePlate] = useState('');
+  const [vehicleType, setVehicleType] = useState(sf('vehicleType'));
+  const [vehicleMake, setVehicleMake] = useState(sf('vehicleMake'));
+  const [vehicleModel, setVehicleModel] = useState(sf('vehicleModel'));
+  const [vehicleYear, setVehicleYear] = useState(sf('vehicleYear'));
+  const [licensePlate, setLicensePlate] = useState(sf('licensePlate'));
 
   // Step 3 — Documents (real file uploads, one per required type)
   const [docFiles, setDocFiles] = useState<Record<DocumentType, File | null>>({
@@ -54,6 +69,21 @@ export function useDriverApplication() {
 
   // Step 4 — Terms
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  /* Keep what is typed (persist only). */
+  const restored = !!saved;
+  useEffect(() => {
+    if (!persist || submitted) return;
+    const fields = { firstName, lastName, phone, city, vehicleType, vehicleMake, vehicleModel, vehicleYear, licensePlate };
+    if (!Object.values(fields).some(v => v.trim())) return;
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ savedAt: Date.now(), step, fields })); } catch { /* storage blocked */ }
+  }, [persist, submitted, step, firstName, lastName, phone, city, vehicleType, vehicleMake, vehicleModel, vehicleYear, licensePlate]);
+  function clearSaved() {
+    try { localStorage.removeItem(SAVE_KEY); } catch { /* storage blocked */ }
+    setFirstName(profile?.first_name || ''); setLastName(profile?.last_name || ''); setPhone(profile?.phone || ''); setCity('');
+    setVehicleType(''); setVehicleMake(''); setVehicleModel(''); setVehicleYear(''); setLicensePlate(''); setStep(1);
+    setError(''); setFieldErrors([]);
+  }
 
   /* Fill the name and phone from the profile once it arrives, without overwriting what was typed. */
   useEffect(() => {
@@ -218,6 +248,7 @@ export function useDriverApplication() {
        *    driver_profiles now handles it automatically the moment
        *    the admin approves the application. No more best-effort
        *    client-side role update that silently fails under RLS. */
+      if (persist) { try { localStorage.removeItem(SAVE_KEY); } catch { /* storage blocked */ } }
       setSubmitted(true);
     } catch (e: unknown) {
       setError((e as { message?: string })?.message || t('driverApplication.errSubmit'));
@@ -226,7 +257,7 @@ export function useDriverApplication() {
   }
 
   return {
-    user, step, loading, submitted, error, fieldErrors, existing,
+    user, step, loading, submitted, error, fieldErrors, existing, restored, clearSaved,
     firstName, setFirstName, lastName, setLastName, phone, setPhone, city, setCity,
     vehicleType, setVehicleType, vehicleMake, setVehicleMake, vehicleModel, setVehicleModel,
     vehicleYear, setVehicleYear, licensePlate, setLicensePlate,
