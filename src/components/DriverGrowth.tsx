@@ -6,6 +6,8 @@
  * their status (proposed, pilot or confirmed; accounting provisional) and never typed here. Only
  * if a list cannot be read does a card fall back to the shipped proposal (migrations 00009, 00010,
  * 00015), labelled as a sample price. The price checker adds them up and says it is an estimate.
+ * Presentation (owner, 31 October 2026): the steps as one ruled ladder, the price checker as a planning
+ * tool on paper with the totals in forest green; intro: the company lead-in shown beside the heading.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +34,7 @@ const SAMPLE_TIERS: Tier[] = [
   { name: 'Enterprise', up_to: null, monthly_fee: null },
 ];
 
-export default function DriverGrowth() {
+export default function DriverGrowth({ intro }: { intro?: { title: string; text: string } } = {}) {
   const { t, i18n } = useTranslation();
   const { setPage } = useApp();
   const no = i18n.language === 'no';
@@ -76,30 +78,33 @@ export default function DriverGrowth() {
     return { setup: p?.setup ?? 0, monthly, fee, acct, year: (p?.setup ?? 0) + monthly * 12, quote: !!tier && tier.monthly_fee == null };
   }, [plan, tierIx, bookings, avg, prices, tiers]);
 
+  /* One rung of the ladder: its step, what it gives, and its price with the price's status. */
   const step = (key: string, code: Code | 'free' | 'accounting') => {
-    const price = code === 'free' ? null : code === 'accounting' ? null : prices[code];
+    const price = code === 'free' || code === 'accounting' ? null : prices[code];
     return (
-      <li key={key} className={`flex flex-col p-6 border border-[#e3ddcf] ${code === 'free' ? 'bg-[#eaf2ec] border-[#bcd3c4]' : 'bg-white'}`}>
-        <span className="text-xs font-bold tracking-[.12em] uppercase text-[#7a6436]">{t(`driverLanding.grow.${key}.tag`)}</span>
-        <h3 className="text-xl font-bold tracking-tight mt-1.5 mb-2">{t(`driverLanding.grow.${key}.title`)}</h3>
-        <p className="text-[15px] leading-relaxed text-[#4a5260] m-0 mb-4 flex-1">{t(`driverLanding.grow.${key}.text`)}</p>
-        <div className="border-t border-[#e3ddcf] pt-3">
-          {code === 'free' && <p className="m-0 text-lg font-bold">{nok(0)}</p>}
+      <li key={key} className={`grid md:grid-cols-[150px_minmax(0,1fr)_230px] gap-x-8 gap-y-2 py-7 px-4 md:px-6 border-b border-[#E2DACA] ${code === 'free' ? 'bg-[#EEF3EF]' : ''}`}>
+        <span className="text-xs font-bold tracking-[.12em] uppercase text-[#7A6436] md:pt-1.5">{t(`driverLanding.grow.${key}.tag`)}</span>
+        <div className="min-w-0">
+          <h3 className="text-[21px] font-bold tracking-tight mb-1.5">{t(`driverLanding.grow.${key}.title`)}</h3>
+          <p className="text-[15px] leading-relaxed text-[#4A5260] m-0 max-w-[62ch]">{t(`driverLanding.grow.${key}.text`)}</p>
+        </div>
+        <div className="md:text-end">
+          {code === 'free' && <p className="m-0 text-2xl leading-tight" style={{ fontFamily: 'Georgia, serif' }}>{nok(0)}</p>}
           {price && (
             <>
-              <p className="m-0 text-lg font-bold">{nok(price.monthly)} <span className="text-sm font-semibold text-[#4a5260]">{t('driverLanding.perMonth')}</span></p>
-              <p className="m-0 text-sm text-[#4a5260]">
+              <p className="m-0 text-2xl leading-tight" style={{ fontFamily: 'Georgia, serif' }}>{nok(price.monthly)} <span className="text-sm font-semibold text-[#4A5260]" style={{ fontFamily: '"DM Sans", ui-sans-serif, sans-serif' }}>{t('driverLanding.perMonth')}</span></p>
+              <p className="m-0 mt-1 text-sm text-[#4A5260]">
                 {t('driverLanding.grow.setup', { amount: nok(price.setup) })}
-                {price.feePct > 0 && ` · ${t('driverLanding.grow.fee', { pct: fmt(price.feePct), min: nok(price.feeMin) })}`}
+                {price.feePct > 0 && <><br />{t('driverLanding.grow.fee', { pct: fmt(price.feePct), min: nok(price.feeMin) })}</>}
               </p>
             </>
           )}
           {code === 'accounting' && (
-            <p className="m-0 text-lg font-bold">{lowest != null ? t('driverLanding.grow.from', { amount: nok(lowest) }) : t('driverLanding.grow.byQuote')}
-              {lowest != null && <span className="text-sm font-semibold text-[#4a5260]"> {t('driverLanding.perMonth')}</span>}</p>
+            <p className="m-0 text-2xl leading-tight" style={{ fontFamily: 'Georgia, serif' }}>{lowest != null ? t('driverLanding.grow.from', { amount: nok(lowest) }) : t('driverLanding.grow.byQuote')}
+              {lowest != null && <span className="text-sm font-semibold text-[#4A5260]" style={{ fontFamily: '"DM Sans", ui-sans-serif, sans-serif' }}> {t('driverLanding.perMonth')}</span>}</p>
           )}
           {code !== 'free' && (
-            <p className="m-0 mt-1 text-xs font-semibold text-[#7a6436]">
+            <p className="m-0 mt-1.5 text-xs font-semibold text-[#7A6436]">
               {statusLabel(code === 'accounting' ? tiers.status : price!.status)} · {t('driverLanding.grow.exMva')}
             </p>
           )}
@@ -108,14 +113,24 @@ export default function DriverGrowth() {
     );
   };
 
-  const input = 'min-h-[44px] w-full border border-[#cfc8b8] bg-white px-3 text-[15px] text-[#17212E]';
+  const input = `min-h-[48px] w-full border border-[#CFC7B5] bg-white px-3 text-[15px] text-[#17212E] outline-none focus:border-[#24513B] focus:ring-2 focus:ring-[#24513B]/25`;
   return (
-    <section aria-labelledby="grow-title" className="mt-20">
-      <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7a6436] mb-2">{t('driverLanding.grow.eyebrow')}</p>
-      <h2 id="grow-title" className="text-3xl md:text-[44px] font-bold tracking-tight leading-tight mb-2">{t('driverLanding.grow.title')}</h2>
-      <p className="text-[#4a5260] mb-8 max-w-[80ch]">{t('driverLanding.grow.lede')}</p>
+    <div aria-labelledby="grow-title" role="region">
+      <div className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] gap-8 lg:gap-16 items-end mb-12">
+        <div>
+          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.grow.eyebrow')}</p>
+          <h2 id="grow-title" className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] mb-4">{t('driverLanding.grow.title')}</h2>
+          <p className="text-lg text-[#4A5260] leading-relaxed m-0 max-w-[60ch]">{t('driverLanding.grow.lede')}</p>
+        </div>
+        {intro && (
+          <div className="border-s-2 border-[#C3A66C] ps-6">
+            <h3 className="text-[19px] font-bold tracking-tight mb-1.5">{intro.title}</h3>
+            <p className="text-[15px] leading-relaxed text-[#4A5260] m-0">{intro.text}</p>
+          </div>
+        )}
+      </div>
 
-      <ol className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 list-none p-0 m-0">
+      <ol className="list-none p-0 m-0 border-t-2 border-[#17212E]">
         {step('free', 'free')}
         {step('page', 'branded')}
         {step('domain', 'branded_domain')}
@@ -123,13 +138,14 @@ export default function DriverGrowth() {
         {step('accounting', 'accounting')}
         {step('seller', 'own_seller')}
       </ol>
-      <p className="text-sm text-[#4a5260] mt-4 max-w-[90ch]">{t('driverLanding.grow.note')}</p>
+      <p className="text-[13px] text-[#4A5260] mt-4 max-w-[90ch]">{t('driverLanding.grow.note')}</p>
 
-      <div className="mt-10 grid lg:grid-cols-[1.2fr_1fr] gap-8 p-7 md:p-9 bg-[#17212E] text-white">
-        <div>
-          <h3 className="text-2xl font-bold tracking-tight mb-1">{t('driverLanding.grow.checker.title')}</h3>
-          <p className="text-[#c9d1dc] text-[15px] mb-5">{t('driverLanding.grow.checker.lede')}</p>
-          <div className="grid sm:grid-cols-2 gap-4">
+      <div className="mt-16 grid lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] border border-[#E2DACA]">
+        <div className="bg-[#F3EEE2] p-7 md:p-10">
+          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-2">{t('driverLanding.grow.checker.eyebrow')}</p>
+          <h3 className="text-[28px] md:text-[34px] font-bold tracking-tight leading-tight mb-2">{t('driverLanding.grow.checker.title')}</h3>
+          <p className="text-[#4A5260] text-[15px] mb-7 max-w-[52ch]">{t('driverLanding.grow.checker.lede')}</p>
+          <div className="grid sm:grid-cols-2 gap-5">
             <label className="block text-sm font-semibold">{t('driverLanding.grow.checker.plan')}
               <select className={`${input} mt-1.5`} value={plan} onChange={e => setPlan(e.target.value as Code | 'free')}>
                 <option value="free">{t('driverLanding.grow.free.title')}</option>
@@ -164,21 +180,22 @@ export default function DriverGrowth() {
             )}
           </div>
         </div>
-        <div aria-live="polite" className="border-t lg:border-t-0 lg:border-s border-white/20 pt-6 lg:pt-0 lg:ps-8">
-          <dl className="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-[15px]">
-            <dt className="text-[#c9d1dc]">{t('driverLanding.grow.checker.setupFee')}</dt><dd className="m-0 font-semibold text-end">{nok(est.setup)}</dd>
-            <dt className="text-[#c9d1dc]">{t('driverLanding.grow.checker.monthly')}</dt><dd className="m-0 font-semibold text-end">{nok(est.monthly)}</dd>
-            {est.fee > 0 && <><dt className="text-[#c9d1dc] ps-3">{t('driverLanding.grow.checker.ofWhichFee')}</dt><dd className="m-0 text-end text-[#c9d1dc]">{nok(est.fee)}</dd></>}
-            {est.acct > 0 && <><dt className="text-[#c9d1dc] ps-3">{t('driverLanding.grow.checker.ofWhichAccounting')}</dt><dd className="m-0 text-end text-[#c9d1dc]">{nok(est.acct)}</dd></>}
+        <div aria-live="polite" className="bg-[#24513B] text-white p-7 md:p-10 flex flex-col">
+          <dl className="m-0 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2.5 text-[15px]">
+            <dt className="text-[#D5E2D8]">{t('driverLanding.grow.checker.setupFee')}</dt><dd className="m-0 font-semibold text-end">{nok(est.setup)}</dd>
+            <dt className="text-[#D5E2D8]">{t('driverLanding.grow.checker.monthly')}</dt><dd className="m-0 font-semibold text-end">{nok(est.monthly)}</dd>
+            {est.fee > 0 && <><dt className="text-[#D5E2D8] ps-3">{t('driverLanding.grow.checker.ofWhichFee')}</dt><dd className="m-0 text-end text-[#D5E2D8]">{nok(est.fee)}</dd></>}
+            {est.acct > 0 && <><dt className="text-[#D5E2D8] ps-3">{t('driverLanding.grow.checker.ofWhichAccounting')}</dt><dd className="m-0 text-end text-[#D5E2D8]">{nok(est.acct)}</dd></>}
           </dl>
-          <p className="m-0 mt-4 pt-4 border-t border-white/20 text-sm text-[#c9d1dc]">{t('driverLanding.grow.checker.year')}</p>
-          <p className="m-0 text-4xl font-bold tracking-tight">{nok(est.year)}</p>
-          {est.quote && <p className="m-0 mt-2 text-sm text-[#DCC9A0]">{t('driverLanding.grow.checker.quote')}</p>}
-          <p className="m-0 mt-3 text-xs text-[#c9d1dc]">{t('driverLanding.grow.checker.disclaimer')}</p>
+          <p className="m-0 mt-6 pt-5 border-t border-white/25 text-sm text-[#D5E2D8]">{t('driverLanding.grow.checker.year')}</p>
+          <p className="m-0 text-[44px] leading-none tracking-tight mt-1" style={{ fontFamily: 'Georgia, serif' }}>{nok(est.year)}</p>
+          {est.quote && <p className="m-0 mt-3 text-sm text-[#EBDDBA]">{t('driverLanding.grow.checker.quote')}</p>}
+          <p className="m-0 mt-3 text-xs text-[#D5E2D8]">{t('driverLanding.grow.checker.disclaimer')}</p>
+          <span className="flex-1" />
           <button type="button" onClick={() => setPage('white-label')}
-                  className="mt-5 min-h-[48px] px-5 bg-[#C3A66C] hover:bg-[#b3955a] text-[#17212E] font-bold">{t('driverLanding.grow.seePlans')} →</button>
+                  className="mt-7 self-start min-h-[50px] px-6 bg-[#C3A66C] hover:bg-[#D2B87F] text-[#17212E] font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{t('driverLanding.grow.seePlans')} →</button>
         </div>
       </div>
-    </section>
+    </div>
   );
 }

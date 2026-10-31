@@ -141,7 +141,8 @@ export default function AppLayout() {
       case 'booking':          return ownBooking ? <ServiceBookingPage /> : shopOnly ? <ShopPage /> : <BookingFlow />;
       case 'driver-portal':    return <DriverPortal />;
       /* With the new design, an introduction (plans, steps, what we check) comes before the application. */
-      case 'driver-onboarding':return newDesign() ? <><DriverLanding /><div id="driver-application" className="scroll-mt-20"><DriverOnboarding introduced /></div></> : <DriverOnboarding />;
+      /* With the new design the whole page, application included, is DriverLanding (owner, 31 October 2026). */
+      case 'driver-onboarding':return newDesign() ? <DriverLanding /> : <DriverOnboarding />;
       case 'checklist':        return <MovingChecklist />;
       case 'subscriptions':    return <SubscriptionPlans />;
       case 'van-guide':           return <VanGuide />;
