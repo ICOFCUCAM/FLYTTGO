@@ -541,6 +541,11 @@
   .fgv2[data-hero="b"] .hero-photo { position: absolute; inset: 0; }
   .fgv2[data-hero="b"] .hero-copy { z-index: 3; align-self: start; width: min(600px, 46%); margin: 56px 0 184px max(40px, calc((100% - var(--wrap-max)) / 2)); padding: 44px 44px 40px; background: rgb(255 254 250 / .96); box-shadow: var(--lift); }
   .fgv2[data-hero="b"] .hero h1 { font-size: calc(11cqi * var(--hero-scale) * var(--hl-fit)); }
+  /* The card: a champagne rule along its top, the proposition held to a measure, a readable note. */
+  .fgv2[data-hero="b"] .hero-copy { box-shadow: var(--lift), inset 0 3px var(--gold); padding: 48px 48px 40px; }
+  .fgv2[data-hero="b"] .hero h1 .serif { max-width: 28ch; }
+  .fgv2[data-hero="b"] .hero-lede { font-size: 16px; max-width: 46ch; }
+  .fgv2[data-hero="b"] .hero-note { font-size: 13px; }
   .fgv2[data-hero="b"] .hero-actors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); position: absolute; z-index: 2; left: 0; right: 0; bottom: 88px; margin: 0; padding: 0 0 0 max(40px, calc((100% - var(--wrap-max)) / 2)); list-style: none; background: var(--white); border-top: 1px solid var(--gold); }
   .fgv2[data-hero="b"] .hero-actors li { padding: 12px 18px 12px 0; display: flex; gap: 8px; align-items: baseline; font-size: 14px; color: var(--muted); }
   .fgv2[data-hero="b"] .hero-actors b { color: var(--blue); font: 700 14px var(--font-display); }
