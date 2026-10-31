@@ -212,7 +212,13 @@
   .fgv2 .hero h1 .h1-line { display: block; }
   .fgv2 .hero h1 br { display: none; }
   .fgv2 .hero h1 .serif { font-size: max(.5em, 18px); line-height: 1.25; margin-top: .55em; }
-  .fgv2 .hero-visual { display: flex; flex-direction: column; justify-content: flex-end; height: auto; min-height: calc(540px * var(--hero-height)); }
+  .fgv2 .hero-visual { display: flex; flex-direction: column; justify-content: flex-end; height: auto; min-height: calc(560px * var(--hero-height)); margin-left: 0; }
+  /* Phones: a calmer top, the actions full width, the picture clear of the journeys band for longer. */
+  .fgv2 main > section.hero { padding-top: 32px; }
+  .fgv2 .hero-actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .fgv2 .hero-actions .btn { width: 100%; padding: 0 18px; justify-content: space-between; }
+  .fgv2 .hero-actions .hero-link { grid-column: 1 / -1; justify-self: start; }
+  .fgv2 .hero-note { font-size: 13px; }
   .fgv2 .hero-ledger { position: relative; grid-template-columns: 1fr; }
   .fgv2 .hero-ledger a { border-left: 0; border-top: 1px solid rgba(195,166,108,.35); padding: 14px 18px; }
   .fgv2 .hero-ledger a:first-child { border-top: 0; }
