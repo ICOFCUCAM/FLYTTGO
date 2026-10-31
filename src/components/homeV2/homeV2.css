@@ -370,6 +370,13 @@
 .fgv2 .v2-categories a { padding: 10px 16px; border: 1px solid var(--line); background: var(--white); font-size: 14px; font-weight: 600; color: var(--blue); transition: background .2s, color .2s; }
 .fgv2 .v2-categories a:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
 .fgv2 .v2-categories em { margin-left: auto; font-style: normal; font-size: 13px; color: var(--muted); }
+/* Phones: the categories become one row that scrolls sideways, its far edge fading as a cue. */
+@media (max-width: 760px) {
+  .fgv2 .v2-categories { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; mask-image: linear-gradient(90deg, #000 85%, transparent); padding-right: 32px; }
+  .fgv2 .v2-categories::-webkit-scrollbar { display: none; }
+  .fgv2 .v2-categories a { flex: none; scroll-snap-align: start; min-height: 44px; display: inline-flex; align-items: center; }
+  .fgv2 .v2-categories em { display: none; }
+}
 .fgv2 .market-card { border-radius: var(--radius); }
 .fgv2 .market-card img { transition: transform .9s ease; }
 .fgv2 .market-card:hover img { transform: scale(1.03); }
