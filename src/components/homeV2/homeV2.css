@@ -250,7 +250,9 @@
 .fgv2 .fgp-oldcard .bg-emerald-50 { background: var(--paper); color: var(--blue); }
 
 /* ── 5. Journeys: two main routes, For Organisations a refined panel beneath ── */
-.fgv2 .entry-head { margin-bottom: 44px; }
+.fgv2 .entry-head { margin-bottom: 52px; }
+.fgv2 .entry-head h2 { max-width: 20ch; margin-left: auto; margin-right: auto; }
+.fgv2 .entry-head > p { max-width: 58ch; margin-left: auto; margin-right: auto; }
 .fgv2 .entry-grid { gap: 16px; }
 .fgv2 .entry-card { min-height: 300px; padding: 40px; justify-content: flex-start; border-radius: var(--radius); }
 .fgv2 .entry-card:hover { transform: none; box-shadow: none; }
