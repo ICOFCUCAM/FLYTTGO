@@ -608,6 +608,11 @@
 /* ── 15. Marketplace Studio: an infrastructure product, a convincing storefront ── */
 .fgv2 .wl-layout { grid-template-columns: 290px 1fr; min-height: 560px; }
 .fgv2 .wl-config { background: var(--paper); padding: 26px 22px; }
+/* The storefront stays in view while the longer settings column scrolls past it. */
+@media (min-width: 901px) {
+  .fgv2[data-studio="a"] .wl-layout { align-items: start; }
+  .fgv2[data-studio="a"] .wl-preview { position: sticky; top: 96px; }
+}
 .fgv2 .wl-config :is(label, .wl-setting-label) { display: block; color: var(--blue); letter-spacing: .14em; font-size: var(--label-size); font-weight: 700; margin: 0 0 8px; }
 .fgv2 .wl-config :is(input, select) { border-radius: 0; border: 1px solid var(--line); background: var(--white); min-height: 44px; font-size: 14px; }
 .fgv2 .wl-settings { margin: 22px 0 0; padding: 18px 0 0; border-top: 1px solid var(--line); display: grid; gap: 14px; }
