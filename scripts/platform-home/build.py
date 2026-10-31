@@ -514,8 +514,10 @@ def element_span(body: str, start: int, tag: str) -> int:
 # the hero; every other heading says what its own section is for. Applied last, to the finished page.
 V2_VOICE = [
     ('<div class="eyebrow">One connected platform</div>', '<div class="eyebrow">Services · Business tools · Network</div>'),
-    ('<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">Three journeys. One platform.</h2>',
-     '<span class="eyebrow">Choose your way in</span><h2 class="display">Book a service. Run your company. Build with us.</h2>'),
+    # The journeys follow the logistics and transport marketplace, so they open by moving on from it (owner).
+    ('<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">Three journeys. One platform.</h2><p>Most people come to FlyttGo to book a service or to run their company. Organisations add corporate services, a provider network or, as one option, a marketplace of their own.</p>',
+     '<span class="eyebrow">Beyond logistics and transport</span><h2 class="display">Book a service. Run your company. Build with us.</h2>'
+     '<p>Logistics and transport is one of FlyttGo\'s marketplaces. The same platform lets you book other services, run your company, or build with us as an organisation, whichever brings you here.</p>'),
     ('<div class="eyebrow">One platform. Workflows for different industries.</div>', '<div class="eyebrow">Industries</div>'),
     ('<div class="eyebrow">One platform · Four connected capabilities</div><h2 class="display">Not four separate products.<br/><span class="serif">One business ecosystem.</span></h2>',
      '<div class="eyebrow">What connects underneath</div><h2 class="display">Bookings, work and money.<br/><span class="serif">Recorded once.</span></h2>'),
