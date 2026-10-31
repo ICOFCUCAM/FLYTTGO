@@ -69,7 +69,7 @@ export const BASELINE_VARIANTS: DesignVariants = {
 /* The selected design (lab/decisions.ts gives the alternatives and reasons for each value). */
 export const DEFAULT_TOKENS: DesignTokens = { ...BASELINE_TOKENS, heroTracking: -0.04, headTracking: -0.035 };
 export const DEFAULT_VARIANTS: DesignVariants = {
-  ...BASELINE_VARIANTS, hero: 'a', headline: 'b', photo: 'natural',
+  ...BASELINE_VARIANTS, hero: 'b', headline: 'b', photo: 'natural',
   moving: 'b', booking: 'b', industries: 'b', corporate: 'c', providers: 'b', trust: 'c', closing: 'b',
 };
 

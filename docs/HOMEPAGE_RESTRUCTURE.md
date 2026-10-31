@@ -354,7 +354,7 @@ Work followed the owner's order: the studio first, then the hero competition, th
 
 | Choice | Selected |
 |---|---|
-| Hero | A, editorial: the copy beside one photograph matted by a gold rule, the journeys as a ruled index. The owner compared it with B and kept A. |
+| Hero | B, connected business: the full-bleed photograph with the copy on an ivory card, the participants band and the three journeys under it. The owner compared all three in the studio and chose B. |
 | Headline | "Book services. Run your company. Grow with FlyttGo." The owner's slogan "Assisting companies to fly high" signs it above. |
 | Type | Manrope, DM Sans and Georgia (owner), with heading tracking eased to −0.035em. |
 | Photography | Natural (owner) |
