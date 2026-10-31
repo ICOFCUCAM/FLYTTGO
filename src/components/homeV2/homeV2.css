@@ -1072,6 +1072,12 @@
 @media (prefers-reduced-motion: no-preference) {
   .fgv2[data-motion="on"] .v2-reveal { opacity: 0; transform: translateY(var(--motion-distance)); transition: opacity var(--motion-duration) cubic-bezier(.2,.7,.2,1), transform var(--motion-duration) cubic-bezier(.2,.7,.2,1); }
   .fgv2[data-motion="on"] .v2-reveal.v2-in { opacity: 1; transform: none; }
+  /* Cards inside a section enter one after another, briefly, after the section itself. */
+  .fgv2[data-motion="on"] .v2-reveal :is(.entry-grid, .market-grid, .service-grid, .fleet-grid, .steps-grid, .testimonial-grid, .feature-list, .ecosystem-pillars) > * { opacity: 0; transform: translateY(calc(var(--motion-distance) * .5)); transition: opacity calc(var(--motion-duration) * .7) ease, transform calc(var(--motion-duration) * .7) ease; }
+  .fgv2[data-motion="on"] .v2-reveal.v2-in :is(.entry-grid, .market-grid, .service-grid, .fleet-grid, .steps-grid, .testimonial-grid, .feature-list, .ecosystem-pillars) > * { opacity: 1; transform: none; }
+  .fgv2[data-motion="on"] .v2-reveal.v2-in :is(.entry-grid, .market-grid, .service-grid, .fleet-grid, .steps-grid, .testimonial-grid, .feature-list, .ecosystem-pillars) > :nth-child(2) { transition-delay: .08s; }
+  .fgv2[data-motion="on"] .v2-reveal.v2-in :is(.entry-grid, .market-grid, .service-grid, .fleet-grid, .steps-grid, .testimonial-grid, .feature-list, .ecosystem-pillars) > :nth-child(3) { transition-delay: .16s; }
+  .fgv2[data-motion="on"] .v2-reveal.v2-in :is(.entry-grid, .market-grid, .service-grid, .fleet-grid, .steps-grid, .testimonial-grid, .feature-list, .ecosystem-pillars) > :nth-child(n+4) { transition-delay: .24s; }
   .fgv2[data-motion="on"] .v2-reveal :is(.market-card, .service-card, .fleet-card) img { clip-path: inset(0 0 100% 0); transition: clip-path calc(var(--motion-duration) * 1.2) cubic-bezier(.6,0,.2,1) .15s, transform .9s ease; }
   .fgv2[data-motion="on"] .v2-reveal.v2-in :is(.market-card, .service-card, .fleet-card) img { clip-path: inset(0); }
   .fgv2[data-motion="on"] .hero-copy > * { animation: v2-rise var(--motion-duration) cubic-bezier(.2,.7,.2,1) both; }
