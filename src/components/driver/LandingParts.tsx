@@ -195,6 +195,13 @@ const STAGES = [
   { key: 'confirm', status: 'completed' },
 ] as const;
 const PORTAL_TABS = ['overview', 'jobs', 'earnings', 'wallet', 'subscription'] as const;
+const TAB_ICON: Record<(typeof PORTAL_TABS)[number], JSX.Element> = {
+  overview: <><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></>,
+  jobs: <><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" /><circle cx="7" cy="17.5" r="1.8" /><circle cx="17" cy="17.5" r="1.8" /></>,
+  earnings: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>,
+  wallet: <><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M16 12.5h2M3 9h15" /></>,
+  subscription: <><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z" /></>,
+};
 
 export function DayOnFlyttGo() {
   const { t, i18n } = useTranslation();
@@ -224,7 +231,7 @@ export function DayOnFlyttGo() {
   const benefits = ['jobs', 'earnings', 'workflow', 'payment'] as const;
 
   return (
-    <div className="grid gap-x-10 gap-y-8 xl:gap-x-14 md:pt-4 [grid-template-areas:'intro'_'steps'_'phone'_'panel'] md:grid-cols-[auto_minmax(0,1fr)] md:[grid-template-areas:'intro_intro'_'phone_steps'_'phone_panel'] xl:grid-cols-[minmax(0,.72fr)_auto_minmax(0,1.28fr)] xl:[grid-template-areas:'intro_phone_steps'_'intro_phone_panel'] md:grid-rows-[auto_auto_1fr] xl:grid-rows-[auto_1fr]">
+    <div className="grid gap-x-10 gap-y-8 xl:gap-x-14 md:pt-4 [grid-template-areas:'intro'_'steps'_'phone'_'panel'] md:grid-cols-[auto_minmax(0,1fr)] md:[grid-template-areas:'intro_intro'_'phone_steps'_'phone_panel'] xl:grid-cols-[minmax(0,.6fr)_auto_minmax(0,1.4fr)] xl:[grid-template-areas:'intro_phone_steps'_'intro_phone_panel'] md:grid-rows-[auto_auto_1fr] xl:grid-rows-[auto_1fr]">
       {/* The story in one line, and what the demonstration shows */}
       <div className="[grid-area:intro] xl:self-center">
         <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.day.eyebrow')}</p>
@@ -254,41 +261,48 @@ export function DayOnFlyttGo() {
           <span className="fg-phone-btn absolute -end-[2px] top-[57%] h-[7%] w-[2px] rounded-e-[1px]" />
           <div className="fg-phone-edge absolute inset-0 rounded-[52px] p-[2.5px]">
             <div className="h-full rounded-[49.5px] bg-black p-[7px]">
-              <div className="relative h-full rounded-[42.5px] overflow-hidden bg-gray-50">
-                {/* status bar, on the portal's white top bar */}
-                <div className="relative z-10 bg-white flex items-center justify-between h-[40px] sm:h-[42px] ps-[30px] pe-[24px] text-[13.5px] font-semibold text-black" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif', letterSpacing: '-.01em' }}>
-                  <span className="mt-[3px]">9:41</span>
-                  <span className="flex items-center gap-[5px] mt-[3px]">
-                    <svg width="16" height="10" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx=".8" fill="currentColor"/><rect x="4.6" y="5" width="3" height="6" rx=".8" fill="currentColor"/><rect x="9.2" y="2.6" width="3" height="8.4" rx=".8" fill="currentColor"/><rect x="13.8" y="0" width="3" height="11" rx=".8" fill="currentColor"/></svg>
-                    <svg width="14" height="10" viewBox="0 0 15 11"><path d="M7.5 2.2c2 0 3.9.8 5.3 2.1l1.1-1.1A9 9 0 0 0 7.5.6 9 9 0 0 0 1.1 3.2l1.1 1.1A7.5 7.5 0 0 1 7.5 2.2Zm0 3.2c1.2 0 2.3.4 3.1 1.2l1.1-1.1a6 6 0 0 0-8.4 0l1.1 1.1c.8-.8 1.9-1.2 3.1-1.2Zm0 3.1c-.5 0-.9.2-1.2.5L7.5 10.2 8.7 9a1.7 1.7 0 0 0-1.2-.5Z" fill="currentColor"/></svg>
-                    <svg width="24" height="11" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.4" fill="none" stroke="currentColor" opacity=".35"/><rect x="2" y="2" width="16.5" height="8" rx="2" fill="currentColor"/><path d="M24 4v4c.8-.3 1.3-1.1 1.3-2S24.8 4.3 24 4Z" fill="currentColor" opacity=".4"/></svg>
-                  </span>
-                </div>
-                <span className="absolute z-20 top-[8px] left-1/2 -translate-x-1/2 w-[32%] h-[27px] sm:h-[28.5px] rounded-full bg-black">
-                  <span className="absolute right-[10px] top-1/2 -translate-y-1/2 w-[8px] h-[8px] rounded-full bg-[radial-gradient(circle_at_35%_35%,#2b3242,#0b0d12_70%)]" />
-                </span>
-                {/* the portal at 390 px, scaled to the screen */}
-                <div className="origin-top-left" style={{ width: 390, transform: 'scale(var(--s))' }}>
-                  <div className="bg-white px-4 pb-4 pt-2 flex justify-between items-center border-b">
-                    <h1 className="text-xl font-bold m-0 text-gray-900" style={{ fontFamily: 'inherit', letterSpacing: 'normal' }}>{t('driverPortal.title')}</h1>
-                    <span className="px-4 py-2 rounded-full font-medium text-sm bg-green-100 text-green-700">{t('driverPortal.online')}</span>
-                  </div>
-                  <div key={ix} className="fg-stage p-6">
-                    <div className="flex gap-2 mb-6 flex-wrap">
-                      {PORTAL_TABS.map(tab => (
-                        <span key={tab} className={`px-4 py-2 rounded capitalize text-sm font-medium ${tab === 'jobs' ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}>{t(`driverPortal.${tab}`)}</span>
-                      ))}
+              <div className="relative h-full rounded-[42.5px] overflow-hidden bg-[#EEF2F0]">
+                {/* The portal at a phone's width in iOS points (390 wide), scaled to the screen. */}
+                <div className="absolute top-0 left-0 origin-top-left flex flex-col" style={{ width: 390, height: 'calc(100% / var(--s))', transform: 'scale(var(--s))' }}>
+                  {/* status bar and the app's top bar, in FlyttGo's evergreen */}
+                  <div className="bg-[#1F3A2E] text-white">
+                    <div className="relative flex items-center justify-between h-[54px] ps-[42px] pe-[30px] text-[17px] font-semibold" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif', letterSpacing: '-.02em' }}>
+                      <span className="mt-[6px]">9:41</span>
+                      <span className="absolute top-[11px] left-1/2 -translate-x-1/2 w-[126px] h-[37px] rounded-full bg-black">
+                        <span className="absolute right-[14px] top-1/2 -translate-y-1/2 w-[11px] h-[11px] rounded-full bg-[radial-gradient(circle_at_35%_35%,#2b3242,#0b0d12_70%)]" />
+                      </span>
+                      <span className="flex items-center gap-[6px] mt-[6px]">
+                        <svg width="19" height="12" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx=".8" fill="currentColor"/><rect x="4.6" y="5" width="3" height="6" rx=".8" fill="currentColor"/><rect x="9.2" y="2.6" width="3" height="8.4" rx=".8" fill="currentColor"/><rect x="13.8" y="0" width="3" height="11" rx=".8" fill="currentColor"/></svg>
+                        <svg width="17" height="12" viewBox="0 0 15 11"><path d="M7.5 2.2c2 0 3.9.8 5.3 2.1l1.1-1.1A9 9 0 0 0 7.5.6 9 9 0 0 0 1.1 3.2l1.1 1.1A7.5 7.5 0 0 1 7.5 2.2Zm0 3.2c1.2 0 2.3.4 3.1 1.2l1.1-1.1a6 6 0 0 0-8.4 0l1.1 1.1c.8-.8 1.9-1.2 3.1-1.2Zm0 3.1c-.5 0-.9.2-1.2.5L7.5 10.2 8.7 9a1.7 1.7 0 0 0-1.2-.5Z" fill="currentColor"/></svg>
+                        <svg width="27" height="13" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.4" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="16.5" height="8" rx="2" fill="currentColor"/><path d="M24 4v4c.8-.3 1.3-1.1 1.3-2S24.8 4.3 24 4Z" fill="currentColor" opacity=".5"/></svg>
+                      </span>
                     </div>
-                    <div className="space-y-4">
+                    <div className="px-5 pt-2 pb-4 flex justify-between items-center">
+                      <span className="text-[21px] font-bold">{t('driverPortal.title')}</span>
+                      <span className="px-4 py-2 rounded-full font-medium text-sm bg-green-100 text-green-700">{t('driverPortal.online')}</span>
+                    </div>
+                  </div>
+                  {/* the Jobs tab: the map card and the job card, in the portal's own markup */}
+                  <div className="flex-1 min-h-0 overflow-hidden">
+                    <div key={ix} className="fg-stage p-4 space-y-3">
                       <div className="bg-white rounded-xl border p-4">
                         <div className="flex items-center justify-between">
-                          <div><h3 className="font-bold text-gray-900 text-sm m-0" style={{ fontFamily: 'inherit', letterSpacing: 'normal' }}>📍 {t('driverPortal.mapView')}</h3><p className="text-xs text-gray-500 m-0">Tap a pin to see job details and accept.</p></div>
+                          <div><p className="font-bold text-gray-900 text-sm m-0">📍 {t('driverPortal.mapView')}</p><p className="text-xs text-gray-500 m-0">Tap a pin to see job details and accept.</p></div>
                           <span className="flex-shrink-0 ms-3 text-xs font-semibold text-emerald-600">{t('driverPortal.showMap')}</span>
                         </div>
                       </div>
                       <JobCard preview job={job} plan={SAMPLE_PLAN} driverId="sample-driver" />
                     </div>
                   </div>
+                  {/* the portal's five tabs as the bar at the foot of the screen */}
+                  <nav className="bg-white border-t border-gray-200 grid grid-cols-5 pt-2 pb-[30px]">
+                    {PORTAL_TABS.map(tab => (
+                      <span key={tab} className={`flex flex-col items-center gap-1 text-[10px] tracking-tight font-medium ${tab === 'jobs' ? 'text-[#24513B]' : 'text-gray-500'}`}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={tab === 'jobs' ? 2.2 : 1.7} strokeLinecap="round" strokeLinejoin="round">{TAB_ICON[tab]}</svg>
+                        {t(`driverPortal.${tab}`)}
+                      </span>
+                    ))}
+                  </nav>
                 </div>
                 {/* glass and home indicator */}
                 <span className="pointer-events-none absolute inset-0 z-30 rounded-[42.5px] bg-[linear-gradient(118deg,rgba(255,255,255,.16)_0%,rgba(255,255,255,.05)_28%,rgba(255,255,255,0)_42%)]" />
@@ -315,7 +329,7 @@ export function DayOnFlyttGo() {
 
       <div className="[grid-area:panel] min-w-0 self-start">
         <div id="day-panel" role="tabpanel" aria-labelledby={`day-tab-${stage.key}`} className="bg-[#FFFEFA] border border-[#E2DACA] shadow-[0_24px_48px_-36px_rgba(23,33,46,.35)]">
-          <div key={ix} className="fg-stage">
+          <div key={ix} className="fg-stage min-[1360px]:grid min-[1360px]:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
             <div className="p-6 md:p-8">
               <p className="inline-block m-0 mb-4 px-3 py-1 text-[11px] font-bold tracking-[.12em] uppercase text-[#7A6436] bg-[#F3EEE2]">{t('driverLanding.day.stepOf', { n: ix + 1, total: STAGES.length })}</p>
               <h3 className="text-[30px] md:text-[34px] !font-normal !tracking-[-.01em] leading-[1.1] m-0 mb-3" style={serif}>{t(`driverLanding.day.stages.${stage.key}.title`)}</h3>
@@ -329,11 +343,11 @@ export function DayOnFlyttGo() {
                 ))}
               </ul>
             </div>
-            <dl className="m-0 px-6 md:px-8 py-5 border-t border-[#E2DACA] grid grid-cols-2 2xl:grid-cols-3 gap-4 text-[13px]">
-              <div className="flex flex-col-reverse gap-1"><dt className="text-[#4A5260]">{t('driverLanding.day.total')}</dt><dd className="m-0 text-[17px] sm:text-[20px] whitespace-nowrap" style={serif}>{nok(SAMPLE_PRICE)}</dd></div>
-              <div className="flex flex-col-reverse gap-1"><dt className="text-[#4A5260]">{t('driverLanding.day.commission', { rate: Math.round(c.rate * 100) })}</dt><dd className="m-0 text-[17px] sm:text-[20px] whitespace-nowrap" style={serif}>{nok(c.commission)}</dd></div>
-              <div className="col-span-2 2xl:col-span-1 flex flex-col-reverse gap-1 bg-[#EEF3EF] 2xl:-my-2 px-3 py-2"><dt className="font-semibold text-[#1f4a33]">{t('driverLanding.day.earnings')}</dt><dd className="m-0 text-[18px] sm:text-[22px] text-[#1f4a33] whitespace-nowrap" style={serif}>{nok(c.earning)}</dd></div>
-              <p className="col-span-2 2xl:col-span-3 m-0 text-[12px] text-[#4A5260]">{t('driverLanding.day.moneyNote')}</p>
+            <dl className="m-0 px-6 md:px-8 py-5 border-t border-[#E2DACA] grid grid-cols-2 gap-4 text-[13px] min-[1360px]:border-t-0 min-[1360px]:border-s min-[1360px]:grid-cols-1 min-[1360px]:content-center min-[1360px]:gap-5 min-[1360px]:py-8 min-[1360px]:text-[14px]">
+              <div className="flex flex-col-reverse gap-1 min-[1360px]:flex-row min-[1360px]:justify-between min-[1360px]:items-baseline min-[1360px]:gap-4 min-[1360px]:pb-4 min-[1360px]:border-b min-[1360px]:border-[#EDE6D6]"><dt className="text-[#4A5260]">{t('driverLanding.day.total')}</dt><dd className="m-0 text-[17px] sm:text-[20px] whitespace-nowrap" style={serif}>{nok(SAMPLE_PRICE)}</dd></div>
+              <div className="flex flex-col-reverse gap-1 min-[1360px]:flex-row min-[1360px]:justify-between min-[1360px]:items-baseline min-[1360px]:gap-4 min-[1360px]:pb-4 min-[1360px]:border-b min-[1360px]:border-[#EDE6D6]"><dt className="text-[#4A5260]">{t('driverLanding.day.commission', { rate: Math.round(c.rate * 100) })}</dt><dd className="m-0 text-[17px] sm:text-[20px] whitespace-nowrap" style={serif}>{nok(c.commission)}</dd></div>
+              <div className="col-span-2 min-[1360px]:col-span-1 flex flex-col-reverse gap-1 min-[1360px]:flex-row min-[1360px]:justify-between min-[1360px]:items-baseline bg-[#EEF3EF] px-3 py-2 min-[1360px]:py-3"><dt className="font-semibold text-[#1f4a33]">{t('driverLanding.day.earnings')}</dt><dd className="m-0 text-[18px] sm:text-[22px] text-[#1f4a33] whitespace-nowrap" style={serif}>{nok(c.earning)}</dd></div>
+              <p className="col-span-2 min-[1360px]:col-span-1 m-0 text-[12px] text-[#4A5260]">{t('driverLanding.day.moneyNote')}</p>
             </dl>
           </div>
         </div>

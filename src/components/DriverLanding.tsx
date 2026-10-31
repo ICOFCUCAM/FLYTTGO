@@ -234,7 +234,7 @@ export default function DriverLanding() {
 
       {/* ── A day on FlyttGo, in the driver app's own screens (items 5, 6) ── */}
       <section id="day" className="fg-reveal scroll-mt-32 pb-20 md:pb-28">
-        <div className="max-w-[1240px] mx-auto px-5 md:px-10">
+        <div className="max-w-[1440px] mx-auto px-5 md:px-10 xl:px-14">
           <DayOnFlyttGo />
         </div>
       </section>
