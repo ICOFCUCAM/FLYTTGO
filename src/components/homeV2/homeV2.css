@@ -64,8 +64,11 @@
 @media (min-width: 761px) { .fgv2 .wrap { width: min(var(--wrap-max), calc(100% - 80px)); } }
 .fgv2 :is(.section-head, .ecosystem-intro, .workspace-intro, .finance-intro, .industry-intro, .wl-intro, .network-intro, .entry-head) > p,
 .fgv2 .legacy-suite .section-head p, .fgv2 .corp-copy > p {
-  font-size: var(--body-size); line-height: 1.75; color: var(--muted);
+  font-size: var(--body-size); line-height: 1.75; color: var(--muted); max-width: 54ch;
 }
+/* Section heads: headings hold to a measure so two-line headings break where they read best. */
+.fgv2 :is(.section-head, .ecosystem-intro, .workspace-intro, .finance-intro, .industry-intro, .wl-intro, .network-intro) h2 { max-width: 18ch; text-wrap: balance; }
+.fgv2 .entry-head h2, .fgv2 .final-cta h2 { text-wrap: balance; }
 /* Labels: one size and tracking for every eyebrow and kicker on the page. */
 .fgv2 { --label-size: 12px; --label-track: .16em; }
 .fgv2 .eyebrow, .fgv2 main .eyebrow.eyebrow, .fgv2 .eyebrow :is(.hl-sig, .hl-sig-a) { color: var(--blue); font-size: var(--label-size); letter-spacing: var(--label-track); }
