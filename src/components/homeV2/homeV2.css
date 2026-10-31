@@ -399,6 +399,13 @@
 .fgv2 .market-card:focus-visible img { transform: scale(1.03); }
 
 /* ── 9. Moving and transport: one vertical within FlyttGo ──────────────── */
+/* One chapter: services, steps, vans and guarantees share one ivory ground and run on with a hairline
+ * between them, so moving reads as one vertical rather than four sections. */
+.fgv2[data-grounds="alternate"] main > section:is(#moving-services, #how-it-works, #van-types, :has(.testimonial-grid)) { background: var(--paper); --section-ground: var(--paper); }
+.fgv2[data-grounds="alternate"] main > section#marketplace { background: var(--white); --section-ground: var(--white); }
+.fgv2 main > section:is(#how-it-works, #van-types, :has(.testimonial-grid)) { border-top: 0; padding-top: calc(var(--section) * .5); }
+.fgv2 main > section:is(#how-it-works, #van-types, :has(.testimonial-grid)) > .wrap:first-child { border-top: 1px solid var(--line); padding-top: calc(var(--section) * .5); }
+.fgv2 main > section:is(#moving-services, #how-it-works, #van-types) { padding-bottom: calc(var(--section) * .5); }
 .fgv2 .legacy-suite .section-head p { max-width: 440px; }
 .fgv2 .service-grid { background: transparent; gap: 16px; border: 0; }
 .fgv2 .service-card, .fgv2 .fleet-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); box-shadow: none; }
