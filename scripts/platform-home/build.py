@@ -248,9 +248,9 @@ V2_SECTIONS = [                                   # (attribute in the section's 
     # industries; only then the connected platform, organisations, providers, the optional white-label
     # infrastructure and network independence.
     ('class="hero wrap"', '1 understand FlyttGo'),
-    ('id="entry-points"', '2 find your journey'),
-    ('id="marketplace"', '3 discover the marketplace'),
-    ('id="moving-services"', '4 the service offering'),
+    ('id="moving-services"', '2 moving and transport, the core service, straight after its booking band'),
+    ('id="entry-points"', '3 find your journey'),
+    ('id="marketplace"', '4 discover the marketplace'),
     ('id="how-it-works"', '5 the booking experience'),
     ('id="van-types"', '5 vehicle sizes (rates on the van guide)'),
     ('class="section testimonials"', '5 what every booking includes'),
@@ -404,9 +404,17 @@ V2_ANCHORS = {'#platform': '#unified-platform', '#business-platform': '#business
               '#top': '#main-content'}
 V2_ECO_NOTE = ('<p class="v2-eco-note">Every business and marketplace keeps its own customers, records and permissions '
                'on the shared foundation. Customers, businesses and operators move between the capabilities as one experience.</p>')
-V2_BOOKING = ('<div class="v2-booking" id="booking"><div class="wrap v2-booking-inner">'
-              '<div class="v2-booking-head"><span class="eyebrow">Start with a service</span>'
-              '<p>Get a moving price in a minute, or explore every service below.</p></div>'
+# Moving and transport, FlyttGo's core service, as a bold band straight after the hero (owner, 31 October
+# 2026): the transport site's own photograph, its proof points (all built: approved drivers, MVA-inclusive
+# prices, tracking, card and Vipps), the real booking widget and a way to the full transport site.
+V2_BOOKING = ('<div class="v2-booking v2-move-band" id="booking"><div class="wrap v2-booking-inner">'
+              '<div class="v2-booking-head"><span class="eyebrow">FlyttGo Moving &amp; Transport</span>'
+              '<h2>Moving and transport across Norway.</h2>'
+              '<p>Book approved movers and cargo drivers in a minute. Upfront price, live tracking and secure payment.</p>'
+              '<ul class="v2-move-proof"><li>Approved, document-checked drivers</li><li>Upfront price with 25% MVA included</li>'
+              '<li>Live tracking on the day</li><li>Pay by card or Vipps</li></ul>'
+              '<div class="v2-move-actions"><a href="/book" data-page="booking" data-anchor>Get a moving price →</a>'
+              '<a href="/transport" data-page="transport-home" data-anchor>Go to FlyttGo Moving &amp; Transport</a></div></div>'
               '<div data-slot="booking"></div></div></div>')
 V2_LIFECYCLE = ('<ol class="v2-lifecycle" aria-label="From booking to financial record">'
                 + ''.join(f'<li><b>0{i + 1}</b>{t}</li>' for i, t in enumerate(
@@ -520,6 +528,7 @@ V2_VOICE = [
      '<span class="hl hl-b"><span class="h1-line">Book services.</span> <span class="h1-line">Run your company.</span> <span class="h1-line">Grow with FlyttGo.</span></span>'
      '<span class="hl hl-c"><span class="h1-line">The platform behind</span> <span class="h1-line">every service business.</span></span><br/>'),
     ('<div class="eyebrow">Services · Business tools · Network</div>',
+     '<a class="hero-move" href="#booking" data-anchor><i aria-hidden="true"></i>Moving &amp; transport across Norway — get a price in a minute →</a>'
      '<div class="eyebrow"><span class="hl-sig-a">Services · Business tools · Network</span><span class="hl-sig">Assisting companies to fly high</span></div>'),
     # What the studio shows that exists, what is being connected and what is in development
     # (docs/PLATFORM_AUDIT_2026-10-30.md, white label rows).

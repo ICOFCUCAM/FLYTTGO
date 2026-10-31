@@ -249,6 +249,36 @@
 .fgv2 .fgp-oldcard .text-emerald-400 { color: var(--gold); }
 .fgv2 .fgp-oldcard .bg-emerald-50 { background: var(--paper); color: var(--blue); }
 
+/* Moving and transport band: FlyttGo's core service straight after the hero, on the transport site's own
+ * photograph, with its proof points, two actions and the real booking widget. */
+.fgv2 main > .v2-booking.v2-move-band { position: relative; padding: 96px 0 104px; border-top: 3px solid var(--forest);
+  background: linear-gradient(90deg, rgb(245 243 235 / .98) 0%, rgb(245 243 235 / .94) 34%, rgb(245 243 235 / .55) 62%, rgb(245 243 235 / .2) 100%),
+    url(https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766787761_26698bc2.jpg) center / cover; }
+.fgv2[data-booking] .v2-move-band .v2-booking-inner { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 64px; align-items: center; max-width: var(--wrap-max); }
+.fgv2 .v2-move-band .v2-booking-head { display: block; margin: 0; }
+.fgv2 .v2-move-band .v2-booking-head h2 { font: var(--head-weight) clamp(34px, 3.6vw, 52px)/1.04 var(--font-display); letter-spacing: -.04em; color: var(--ink); margin: 14px 0; text-wrap: balance; }
+.fgv2[data-booking] .v2-move-band .v2-booking-head > p { font: 400 16px/1.7 var(--font-body); letter-spacing: 0; color: var(--muted); max-width: 38ch; margin: 0 0 22px; }
+.fgv2[data-booking] .v2-move-band .v2-booking-head > p:after { display: none; }
+.fgv2 .v2-move-proof { list-style: none; padding: 0; margin: 0 0 26px; display: grid; gap: 10px; }
+.fgv2 .v2-move-proof li { display: flex; gap: 10px; align-items: center; font: 600 15px var(--font-body); color: var(--ink); }
+.fgv2 .v2-move-proof li:before { content: "✓"; flex: none; width: 22px; height: 22px; display: inline-grid; place-items: center; background: var(--forest); color: #fff; border-radius: 50%; font-size: 12px; }
+.fgv2 .v2-move-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.fgv2 .v2-move-actions a { display: inline-flex; align-items: center; min-height: 50px; padding: 0 22px; font: 700 14px var(--font-body); border-radius: var(--radius); transition: background .2s, border-color .2s; }
+.fgv2 .v2-move-actions a:first-child { background: var(--forest); color: #fff; }
+.fgv2 .v2-move-actions a:first-child:hover { background: var(--evergreen); }
+.fgv2 .v2-move-actions a:last-child { border: 1px solid var(--blue); color: var(--blue); background: rgb(255 254 250 / .85); }
+.fgv2 .v2-move-actions a:last-child:hover { background: var(--white); }
+@media (max-width: 999px) {
+  .fgv2[data-booking] .v2-move-band .v2-booking-inner { grid-template-columns: 1fr; gap: 36px; }
+  .fgv2 main > .v2-booking.v2-move-band { padding: 64px 0 72px; background: linear-gradient(180deg, rgb(245 243 235 / .97), rgb(245 243 235 / .9)), url(https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766787761_26698bc2.jpg) center / cover; }
+}
+@media (max-width: 600px) { .fgv2 .v2-move-actions a { width: 100%; justify-content: center; } }
+/* The hero's line for moving: the core service is visible in the first second. */
+.fgv2 .hero-move { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 22px; padding: 8px 14px 8px 10px; background: var(--forest); color: #fff; font: 600 14px/1.35 var(--font-body); border-radius: var(--radius); transition: background .2s; }
+.fgv2 .hero-move:hover { background: var(--evergreen); }
+.fgv2 .hero-move i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--gold-text); }
+@media (min-width: 761px) { .fgv2[data-hero="c"] .hero-move { grid-column: 1 / -1; justify-self: start; } }
+
 /* ── 5. Journeys: two main routes, For Organisations a refined panel beneath ── */
 .fgv2 .entry-head { margin-bottom: 52px; }
 .fgv2 .entry-head h2 { max-width: 20ch; margin-left: auto; margin-right: auto; }
@@ -710,7 +740,7 @@
   .fgv2[data-hero="b"] .hero-grid { grid-template-columns: 1fr; max-width: none; min-height: 0; }
   .fgv2[data-hero="b"] .hero-grid > * { grid-area: 1 / 1; }
   /* The card always ends above the bands, so they are never covered. */
-  .fgv2[data-hero="b"] .hero-visual { min-height: calc(clamp(660px, 54vw, 820px) * var(--hero-height)); border-radius: 0 0 0 var(--corner); align-self: stretch; }
+  .fgv2[data-hero="b"] .hero-visual { min-height: calc(clamp(660px, 54vw, 820px) * var(--hero-height)); border-radius: 0; align-self: stretch; } /* square: no curved corner on the journeys band (owner) */
   .fgv2[data-hero="b"] .hero-photo { position: absolute; inset: 0; }
   .fgv2[data-hero="b"] .hero-copy { z-index: 3; align-self: start; width: min(600px, 46%); margin: 56px 0 184px max(40px, calc((100% - var(--wrap-max)) / 2)); padding: 44px 44px 40px; background: rgb(255 254 250 / .96); box-shadow: var(--lift); }
   .fgv2[data-hero="b"] .hero h1 { font-size: calc(11cqi * var(--hero-scale) * var(--hl-fit)); }

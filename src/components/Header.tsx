@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { Fragment, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { LANG_STORAGE_KEY } from '../lib/i18n';
 import { useAuth } from '../lib/auth';
@@ -7,7 +7,7 @@ import { LogIn, Bell, User as UserIcon } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import type { Page as PageType } from '../lib/store';
 import { displayPhone, useCompanyIdentity } from '../lib/companyIdentity';
-import { isTransportHost } from '../lib/hosts';
+import { isTransportHost, transportUrl } from '../lib/hosts';
 import { newDesign } from '../lib/siteDesign';
 import { PENDING_SECTION } from './homeV2/pendingSection';
 import { SECTION_PAGE } from './homeV2/sitePages';
@@ -206,6 +206,18 @@ export default function Header() {
   /* One site, one header: with the new design (lib/siteDesign.ts) every page carries this menu, except the
    * moving and transport front page on its own address, which keeps its own. */
   const preview = currentPage === 'home-preview' || (newDesign() && !(currentPage === 'home' && isTransportHost(window.location.hostname)));
+  /* Moving and transport on the bar: the transport front page (its own address once set, else /transport). */
+  const openMoving = () => {
+    const url = transportUrl();
+    if (!url.startsWith('/')) { window.location.href = url; return; }
+    handleNav('transport-home');
+  };
+  const movingItem = isTransportHost(window.location.hostname) ? null : (
+    <button onClick={openMoving}
+      className={`px-1.5 xl:px-2 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-semibold transition ${
+        currentPage === 'transport-home' ? 'text-[#24513B] bg-[#F5F3EB]' : 'text-[#24513B] hover:bg-gray-50'
+      }`}>{t('header.transport')}</button>
+  );
   /* The new homepage's address: `/` once it is the front page, else the preview path. */
   const homeOfDesign: Page = newDesign() ? 'home' : 'home-preview';
   type JourneyItem = { label: string; desc?: string; go: () => void };
@@ -418,11 +430,14 @@ export default function Header() {
 
             {/* Desktop nav */}
             {preview && (
-              <nav className="hidden lg:flex items-center gap-0.5">
-                {JOURNEYS.map((j) => (
-                  <div key={j.id}>
+              <nav className="hidden lg:flex items-center gap-0 xl:gap-0.5 text-[13px] xl:text-sm">
+                {JOURNEYS.map((j, ji) => (
+                  <Fragment key={j.id}>
+                  {/* Moving and transport, FlyttGo's core service, one click away (owner, 31 October 2026). */}
+                  {ji === 1 && movingItem}
+                  <div>
                     <button onClick={() => toggleJourney(j.id)} aria-expanded={journeyOpen === j.id}
-                      className={`flex items-center gap-1 px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium transition ${
+                      className={`flex items-center gap-1 px-1.5 xl:px-2 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm font-medium transition ${
                         journeyOpen === j.id ? 'text-[#203F68] bg-[#F5F3EB]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                       }`}>{j.label}{chevron(journeyOpen === j.id)}</button>
                     {/* Under the bar, centred on it: the menus are wide (columns). */}
@@ -432,9 +447,10 @@ export default function Header() {
                       </div>
                     )}
                   </div>
+                  </Fragment>
                 ))}
-                <button onClick={() => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page'))} className="px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.journeys.howItWorks')}</button>
-                <button onClick={() => handleNav('driver-onboarding')} className="px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.becomeDriver')}</button>
+                <button onClick={() => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page'))} className="px-1.5 xl:px-2 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.journeys.howItWorks')}</button>
+                <button onClick={() => handleNav('driver-onboarding')} className="hidden xl:block px-1.5 xl:px-2 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.becomeDriver')}</button>
               </nav>
             )}
             <nav className={preview ? 'hidden' : 'hidden lg:flex items-center gap-0.5'}>
@@ -497,7 +513,7 @@ export default function Header() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
-              <button onClick={() => handleNav('booking')} className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-2.5 xl:px-5 whitespace-nowrap' : 'px-5'} py-2 ${preview ? 'bg-[#24513B] hover:bg-[#20352B]' : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded-lg text-sm font-semibold transition shadow-sm`}>{t('header.bookNow')}</button>
+              <button onClick={() => handleNav('booking')} className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-2.5 xl:px-4 2xl:px-5 whitespace-nowrap' : 'px-5'} py-2 ${preview ? 'bg-[#24513B] hover:bg-[#20352B]' : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded-lg text-sm font-semibold transition shadow-sm`}>{t('header.bookNow')}</button>
 
               {/* Notifications bell — signed-in only. Subscribes to
                * the notifications table over Supabase Realtime; flips
@@ -606,14 +622,14 @@ export default function Header() {
                 <>
                   <button
                     onClick={openSignIn}
-                    className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm`}
+                    className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 2xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm`}
                   >
                     <LogIn className={`w-4 h-4${preview ? ' hidden xl:block' : ''}`} />
                     {t('header.signIn')}
                   </button>
                   <button
                     onClick={openSignUp}
-                    className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border rounded-lg text-sm font-semibold transition shadow-sm ${
+                    className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 2xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border rounded-lg text-sm font-semibold transition shadow-sm ${
                       preview ? 'bg-[#203F68] border-[#203F68] text-white hover:bg-[#18304f]' : 'border-emerald-600 text-emerald-600 hover:bg-emerald-50'
                     }`}
                   >
@@ -646,6 +662,9 @@ export default function Header() {
                 {journeyMenu(j, true)}
               </div>
             ))}
+            {preview && !isTransportHost(window.location.hostname) && (
+              <button onClick={() => openMoving()} className="block w-full text-left px-4 py-2.5 text-sm font-semibold rounded-lg text-[#24513B] hover:bg-gray-50">{t('header.transport')}</button>
+            )}
             {preview && (
               <button onClick={() => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page'))} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.journeys.howItWorks')}</button>
             )}
