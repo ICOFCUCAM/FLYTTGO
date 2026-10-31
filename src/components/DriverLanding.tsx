@@ -8,6 +8,7 @@
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 import { SUBSCRIPTION_PLANS } from '../lib/constants';
+import DriverGrowth from './DriverGrowth';
 
 const PHOTO = 'https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766976394_04c23eab.jpg';
 const PRIORITY_NO: Record<string, string> = { Standard: 'Standard', Moderate: 'Moderat', High: 'Høy', 'Very High': 'Svært høy', Highest: 'Høyest' };
@@ -107,6 +108,8 @@ export default function DriverLanding() {
             <p className="text-[#4a5260] leading-relaxed m-0">{t('driverLanding.checkText')}</p>
           </div>
         </div>
+
+        <DriverGrowth />
 
         <div className="flex justify-center pt-14 pb-6">
           <button type="button" onClick={toForm} className="min-h-[54px] px-7 bg-[#203F68] hover:bg-[#18304f] text-white font-bold">{t('driverLanding.apply')} ↓</button>
