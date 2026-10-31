@@ -894,7 +894,12 @@
 .fgv2[data-providers="b"] .driver-panel li:before { color: var(--forest); }
 .fgv2[data-providers="b"] .driver-panel .eyebrow { color: var(--blue) !important; }
 .fgv2[data-providers="b"] .driver-panel ul { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-.fgv2[data-providers="b"] .driver-panel .btn { color: var(--blue); border-color: var(--blue); }
+/* Providers: the five benefits as a numbered ruled grid and a filled action, filling the band. */
+.fgv2[data-providers="b"] .driver-panel ul { counter-reset: perk; gap: 0 28px; margin: 36px 0; }
+.fgv2[data-providers="b"] .driver-panel li { counter-increment: perk; padding: 16px 0; border-top: 1px solid var(--ink); font: var(--head-weight) 17px/1.35 var(--font-display); letter-spacing: -.01em; color: var(--ink); }
+.fgv2[data-providers="b"] .driver-panel li:before { content: counter(perk, decimal-leading-zero); display: block; margin: 0 0 8px; font: 600 13px var(--font-display); color: var(--gold); letter-spacing: .04em; }
+.fgv2[data-providers="b"] .driver-panel .btn, .fgv2[data-providers="b"] .driver-panel .btn.btn-light { background: var(--blue); color: #fff !important; border-color: var(--blue); }
+.fgv2[data-providers="b"] .driver-panel .btn:hover { background: #18304f; }
 /* Providers C · evergreen card: the provider offer in the network's own colour. */
 .fgv2[data-providers="c"] .driver-panel { background: var(--evergreen); }
 .fgv2[data-providers="c"] .driver-panel li:before { color: #d9c9a2; }
