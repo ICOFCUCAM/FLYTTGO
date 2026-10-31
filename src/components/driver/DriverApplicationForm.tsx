@@ -12,7 +12,7 @@ import { APPLICATION_CITIES, DOCUMENT_ACCEPT, DOCUMENT_TYPES, VEHICLE_TYPES, typ
 import { useDriverApplication, type Field } from './useDriverApplication';
 import { checkPhoto, type PhotoCheck } from './imageQuality';
 import { TermsSummary } from './LandingParts';
-import { callFunction, supabase } from '../../lib/supabase';
+import { callFunction, supabase, supabaseFunctionUrl } from '../../lib/supabase';
 
 const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24513B]';
 const inputBase = 'block w-full h-12 px-4 bg-white text-[15px] text-[#17212E] border placeholder:text-[#8a8f98] outline-none transition focus:border-[#24513B] focus:ring-2 focus:ring-[#24513B]/25';
@@ -54,7 +54,9 @@ export default function DriverApplicationForm({ presetCity, onProgress }: { pres
   const [lookup, setLookup] = useState<'idle' | 'busy' | 'filled' | 'notFound' | 'signIn' | 'failed'>('idle');
   useEffect(() => {
     let live = true;
-    callFunction('vehicle-lookup', { probe: true }).then(r => r.ok ? r.json() : null)
+    /* Sent like the public price check (calculatePrice.ts): no key or token needed to ask whether it is on. */
+    fetch(supabaseFunctionUrl('vehicle-lookup'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ probe: true }) })
+      .then(r => r.ok ? r.json() : null)
       .then(d => { if (live && d?.available) setLookupOn(true); }).catch(() => {});
     return () => { live = false; };
   }, []);
