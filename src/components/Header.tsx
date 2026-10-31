@@ -202,7 +202,10 @@ export default function Header() {
    * Book Now on the bar as before. Every earlier item is kept inside them (the
    * Moving Tools and the Companies links). My Company's items open the matching
    * tab of the page's business or finance workspace; creating a marketplace
-   * is the last, optional group of For Organisations. */
+   * is the last, optional group of For Organisations.
+   * One audience per menu (owner, 31 October 2026): My Company is labelled "Run your business" (companies
+   * that sell; it also holds the provider network), For Organisations "For business customers" (companies
+   * that buy, and building a marketplace). No item was removed. */
   /* One site, one header: with the new design (lib/siteDesign.ts) every page carries this menu, except the
    * moving and transport front page on its own address, which keeps its own. */
   const preview = currentPage === 'home-preview' || (newDesign() && !(currentPage === 'home' && isTransportHost(window.location.hostname)));
@@ -214,7 +217,7 @@ export default function Header() {
   };
   const movingItem = isTransportHost(window.location.hostname) ? null : (
     <button onClick={openMoving}
-      className={`px-1.5 xl:px-2 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-semibold transition ${
+      className={`px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm font-semibold transition ${
         currentPage === 'transport-home' ? 'text-[#24513B] bg-[#F5F3EB]' : 'text-[#24513B] hover:bg-gray-50'
       }`}>{t('header.journeys.logistics')}</button>
   );
@@ -237,7 +240,7 @@ export default function Header() {
     },
   });
   const jt = (key: string) => t(`header.journeys.${key}`);
-  const JOURNEYS: { id: string; label: string; width: string; columns: JourneyColumn[] }[] = [
+  const JOURNEYS: { id: string; label: string; short?: string; width: string; columns: JourneyColumn[] }[] = [
     { id: 'explore', label: jt('explore'), width: 'w-[min(600px,calc(100vw-32px))]', columns: [
       { title: jt('exploreTitle'), items: [
         page(jt('moving'), 'booking', jt('movingDesc')),
@@ -251,7 +254,7 @@ export default function Header() {
       ] },
       { title: t('header.movingTools'), items: MOVING_TOOLS.map((tool) => page(tool.label, tool.page, tool.desc)) },
     ] },
-    { id: 'company', label: jt('myCompany'), width: 'w-[min(620px,calc(100vw-32px))]', columns: [
+    { id: 'company', label: jt('myCompany'), short: jt('myCompanyShort'), width: 'w-[min(900px,calc(100vw-32px))]', columns: [
       { title: jt('runTitle'), items: [
         page(jt('openMyCompany'), 'my-company', jt('openMyCompanyDesc')),
         section(jt('overview'), 'business-workspace', '[data-bw="overview"]'),
@@ -268,8 +271,14 @@ export default function Header() {
         section(jt('expenses'), 'financial-administration', '[data-finance="expenses"]'),
         section(jt('participation'), 'how-flyttgo-works'),
       ], note: jt('companyNote') },
+      { title: jt('providers'), items: [
+        page(jt('drivers'), 'driver-onboarding'),
+        section(jt('serviceProviders'), 'business-workspace'),
+        page(jt('plans'), 'subscriptions'),
+        section(jt('opportunities'), 'driver-network'),
+      ] },
     ] },
-    { id: 'organisations', label: jt('organisations'), width: 'w-[min(900px,calc(100vw-32px))]', columns: [
+    { id: 'organisations', label: jt('organisations'), short: jt('organisationsShort'), width: 'w-[min(620px,calc(100vw-32px))]', columns: [
       { title: jt('corporate'), items: [
         page(jt('bulk'), 'bulk-booking'),
         page(jt('users'), 'company-dashboard-info'),
@@ -278,12 +287,6 @@ export default function Header() {
         page(jt('recurring'), 'recurring-deliveries'),
         page(jt('reporting'), 'corporate-api-access'),
         page(jt('corpDashboard'), 'corporate-dashboard'),
-      ] },
-      { title: jt('providers'), items: [
-        page(jt('drivers'), 'driver-onboarding'),
-        section(jt('serviceProviders'), 'business-workspace'),
-        page(jt('plans'), 'subscriptions'),
-        section(jt('opportunities'), 'driver-network'),
       ] },
       { title: jt('infrastructure'), tag: jt('optional'), items: [
         page(jt('createMarketplace'), 'white-label', jt('createMarketplaceDesc')),
@@ -437,9 +440,9 @@ export default function Header() {
                   {ji === 1 && movingItem}
                   <div>
                     <button onClick={() => toggleJourney(j.id)} aria-expanded={journeyOpen === j.id}
-                      className={`flex items-center gap-1 px-1.5 xl:px-2 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm font-medium transition ${
+                      className={`flex items-center gap-1 px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm font-medium transition ${
                         journeyOpen === j.id ? 'text-[#203F68] bg-[#F5F3EB]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                      }`}>{j.label}{chevron(journeyOpen === j.id)}</button>
+                      }`}>{j.short ? <><span className="xl:hidden">{j.short}</span><span className="hidden xl:inline">{j.label}</span></> : j.label}{chevron(journeyOpen === j.id)}</button>
                     {/* Under the bar, centred on it: the menus are wide (columns). */}
                     {journeyOpen === j.id && (
                       <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 ${j.width} p-3 max-h-[75vh] overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-200 z-50`}>
@@ -449,8 +452,8 @@ export default function Header() {
                   </div>
                   </Fragment>
                 ))}
-                <button onClick={() => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page'))} className="px-1.5 xl:px-2 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.journeys.howItWorks')}</button>
-                <button onClick={() => handleNav('driver-onboarding')} className="hidden xl:block px-1.5 xl:px-2 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.becomeDriver')}</button>
+                <button onClick={() => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page'))} className="px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.journeys.howItWorks')}</button>
+                <button onClick={() => handleNav('driver-onboarding')} className="hidden xl:block px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.becomeDriver')}</button>
               </nav>
             )}
             <nav className={preview ? 'hidden' : 'hidden lg:flex items-center gap-0.5'}>

@@ -27,8 +27,10 @@ export const en = {
     /* The restructured homepage's menu (/preview/home, owner 30 October 2026). */
     journeys: {
       explore: 'Explore',
-      myCompany: 'My Company',
-      organisations: 'For Organisations',
+      myCompany: 'Run your business',
+      myCompanyShort: 'Your business',
+      organisations: 'For business customers',
+      organisationsShort: 'Business customers',
       howItWorks: 'How it works',
       getStarted: 'Get started',
       exploreTitle: 'Find a service',
@@ -45,7 +47,7 @@ export const en = {
       services: 'All moving and transport services',
       servicesDesc: 'Furniture, house moves, deliveries and logistics',
       runTitle: 'Run the business',
-      moneyTitle: 'People, money and network',
+      moneyTitle: 'People and money',
       overview: 'Business overview',
       servicesPricing: 'My services and pricing',
       customers: 'Customers',

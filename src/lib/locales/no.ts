@@ -29,8 +29,10 @@ export const no: PartialTranslationKeys = {
     /* Menyen på den omstrukturerte forsiden (/preview/home). */
     journeys: {
       explore: 'Utforsk',
-      myCompany: 'Min bedrift',
-      organisations: 'For organisasjoner',
+      myCompany: 'Drift bedriften',
+      myCompanyShort: 'Din bedrift',
+      organisations: 'For bedriftskunder',
+      organisationsShort: 'Bedriftskunder',
       howItWorks: 'Slik fungerer det',
       getStarted: 'Kom i gang',
       exploreTitle: 'Finn en tjeneste',
@@ -47,7 +49,7 @@ export const no: PartialTranslationKeys = {
       services: 'Alle flytte- og transporttjenester',
       servicesDesc: 'Møbler, boligflytting, leveranser og logistikk',
       runTitle: 'Driv bedriften',
-      moneyTitle: 'Folk, penger og nettverk',
+      moneyTitle: 'Folk og penger',
       overview: 'Bedriftsoversikt',
       servicesPricing: 'Mine tjenester og priser',
       customers: 'Kunder',
