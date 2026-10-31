@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, calculatePrice, recommendVan } from '../lib/constants';
+import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, billedHours, calculatePrice, recommendVan } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { formatNorwegianAddress, validateNorwegianAddress } from '../utils/formatNorwegianAddress';
 import { clearBookingDraft, readBookingDraft, returnToBookingAfterSignIn, saveBookingDraft } from '../lib/bookingDraft';
@@ -156,6 +156,13 @@ export default function BookingFlow() {
   /* Effective values — server wins if available, else client preview. */
   const distanceKm     = serverPrice?.distance_km            ?? clientRoute?.distanceKm   ?? 0;
   const durationMin    = serverPrice?.duration_minutes       ?? clientRoute?.durationMinutes ?? 0;
+  /* The hours follow the distance (owner, 31 October 2026): a move cannot be booked for less time than the drive
+   * alone takes (rounded up to the half hour), and never below the 2-hour minimum. The chosen hours are raised
+   * to that automatically, and the picker does not go below it. */
+  const minHours = billedHours(2, durationMin);
+  useEffect(() => {
+    if (estimatedHours < minHours) setEstimatedHours(minHours);
+  }, [minHours, estimatedHours]);
   const routingProvider: 'OSRM' | 'haversine-fallback' | 'osrm' | 'haversine' | null =
     serverPrice?.routing_provider ?? clientRoute?.source ?? null;
   const priceTotal     = serverPrice?.price_total            ?? clientPricing?.total       ?? 0;
@@ -877,13 +884,18 @@ export default function BookingFlow() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('booking.durationLabel')}</label>
                 <div className="flex items-center gap-4">
-                  <button type="button" onClick={() => setEstimatedHours(h => Math.max(2, h - 0.5))}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">−</button>
-                  <span className="text-xl font-bold text-gray-800 w-12 text-center">{estimatedHours}h</span>
-                  <button type="button" onClick={() => setEstimatedHours(h => Math.min(12, h + 0.5))}
+                  <button type="button" onClick={() => setEstimatedHours(h => Math.max(minHours, h - 0.5))} disabled={estimatedHours <= minHours}
+                    aria-label={t('booking.durationLess')}
+                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">−</button>
+                  <span className="text-xl font-bold text-gray-800 w-14 text-center" aria-live="polite">{estimatedHours}h</span>
+                  <button type="button" onClick={() => setEstimatedHours(h => Math.min(Math.max(12, minHours + 6), h + 0.5))}
+                    aria-label={t('booking.durationMore')}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">+</button>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">{t('booking.durationHint')}</p>
+                {minHours > 2 && (
+                  <p className="text-xs text-amber-700 mt-1">{t('booking.durationMinRoute', { hours: minHours })}</p>
+                )}
               </div>
             </div>
           </div>
