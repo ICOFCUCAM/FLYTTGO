@@ -282,7 +282,10 @@
 .fgv2 .entry-org .entry-for { grid-column: 1 / -1; margin-top: 0; color: var(--muted); font-weight: 500; opacity: 1; }
 .fgv2 .entry-org .entry-body > a { padding-top: 0; white-space: nowrap; color: var(--blue); }
 .fgv2 .entry-card .entry-options { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14px; font-weight: 600; }
-.fgv2 .entry-card .entry-options a { color: var(--blue); border-bottom: 1px solid var(--gold); padding-bottom: 1px; }
+.fgv2 .entry-card .entry-options a { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px solid var(--line); background: var(--paper); color: var(--blue); font-size: 14px; transition: border-color .2s, background .2s; }
+.fgv2 .entry-card .entry-options a:after { content: "→"; transition: transform .25s; }
+.fgv2 .entry-card .entry-options a:hover { border-color: var(--blue); background: var(--white); }
+.fgv2 .entry-card .entry-options a:hover:after { transform: translateX(3px); }
 .fgv2 .entry-card .entry-options span { font-weight: 400; color: var(--muted); }
 @media (min-width: 901px) { .fgv2 .entry-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 900px) {
