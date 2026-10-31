@@ -435,7 +435,7 @@
 .fgv2 .legacy-suite .step-card { position: relative; padding: 30px 0 0; border: 0; background: transparent; box-shadow: none; }
 .fgv2 .legacy-suite .step-card:before { content: ""; position: absolute; top: -7px; left: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--white); border: 2px solid var(--blue); }
 @media (max-width: 900px) {
-  .fgv2 .steps-grid { grid-template-columns: 1fr; border-top: 0; border-left: 2px solid var(--gold); padding-left: 24px; gap: 24px; }
+  .fgv2 .steps-grid, .fgv2 #how-it-works .steps-grid { grid-template-columns: 1fr; border-top: 0; border-left: 2px solid var(--gold); padding-left: 24px; gap: 24px; }
   .fgv2 .legacy-suite .step-card { padding-top: 0; }
   .fgv2 .legacy-suite .step-card:before { top: 10px; left: -32px; }
 }
@@ -446,6 +446,8 @@
 .fgv2 .legacy-suite .step-card .step-no { font-size: clamp(40px, 3.4vw, 54px); line-height: 1; color: var(--blue); margin-bottom: 18px; }
 .fgv2 .legacy-suite .step-card h3 { font: var(--head-weight) 19px/1.25 var(--font-display); letter-spacing: -.02em; }
 .fgv2 #van-types .price-from { display: none; } /* rates live on the van guide (linked) */
+/* Phones: one van per row so the specification table keeps its figures on one line. */
+@media (max-width: 600px) { .fgv2 .fleet-grid, .fgv2 #van-types .fleet-grid { grid-template-columns: 1fr; } .fgv2 .fleet-card .fleet-photo { aspect-ratio: 16 / 9; } }
 /* "What every booking includes": a ruled two-column list, not a third row of boxes. */
 .fgv2 .testimonial-grid { background: transparent; border: 0; gap: 0 56px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .fgv2 .testimonial-grid .quote { background: transparent; padding: 22px 0 24px; border: 0; border-top: 1px solid var(--ink); box-shadow: none; }
