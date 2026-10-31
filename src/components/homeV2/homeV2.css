@@ -463,6 +463,9 @@
 .fgv2 .bw-company b { display: block; font-size: 14px; color: var(--ink); }
 .fgv2 .bw-nav button { font-size: 14px; }
 .fgv2 :is(.bw-nav, .finance-side) button[aria-pressed="true"] { background: var(--white); color: var(--blue); box-shadow: inset 3px 0 var(--blue); }
+.fgv2 :is(.bw-nav, .finance-side nav) button { min-height: 38px; border-radius: var(--radius); transition: background .2s, color .2s; text-align: left; }
+.fgv2 :is(.bw-nav, .finance-side nav) button:not([aria-pressed="true"]):hover { background: rgb(255 254 250 / .7); color: var(--ink); }
+.fgv2 .bw-sidebar .bw-label, .fgv2 .finance-side > small { display: block; margin: 4px 0 8px; font-size: var(--label-size); letter-spacing: var(--label-track); color: var(--muted); }
 .fgv2 :is(.bw-metrics, .finance-metrics) article { background: var(--white); border: 1px solid var(--line); }
 .fgv2 :is(.bw-metrics, .finance-metrics) article b { font-size: 16px; color: var(--ink); }
 .fgv2 :is(.bw-metrics, .finance-metrics) article em { font-size: 13px; color: var(--muted); }
