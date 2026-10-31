@@ -1,313 +1,308 @@
-import React, { useState, useEffect, useRef } from 'react';
+/**
+ * Tracking (/track), rebuilt on 31 October 2026 (owner: premium tracking, real data only).
+ *
+ * Before: the page searched a uuid with the first eight characters customers were shown (never matched),
+ * mapped statuses that do not exist, called a single fetch "live", and showed a made-up driver with a phone
+ * number, a scripted chat reply, a fake arrival countdown and invented step times.
+ *
+ * Now:
+ *  - Lookup by the booking's own short reference (bookings.booking_ref, FG-XXXXXX, migration 00029) through
+ *    track_booking(), which anyone holding the reference may call: status, times, van and the two towns only.
+ *  - The booking's own customer (signed in) gets the full booking under the usual row rules: the road route
+ *    on the map (components/RouteMap), the driver's live position (lib/driverTracking) and an arrival
+ *    estimate from that position (labelled an estimate), and the status follows the database over realtime,
+ *    with a timed refetch as fallback. The page says "live" only while that subscription is connected.
+ *  - One status mapping for every real status (lib/trackingStatus.ts); cancelled shown as cancelled.
+ *  - Only real times; nothing invented. Where something is not known, it says so.
+ */
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
-import DeliveryMap from '../components/DeliveryMap';
 import { useAuth } from '../lib/auth';
 import { supabase } from '../lib/supabase';
+import { followBookingDriver, type Coords } from '../lib/driverTracking';
+import { formatDuration, routeGeometry } from '../lib/routeGeometry';
+import { TRACKING_STEPS, isUuid, normaliseRef, stepTime, trackingState } from '../lib/trackingStatus';
 
-interface Stage { label: string; time: string; done: boolean; icon: string; }
+const RouteMap = lazy(() => import('../components/RouteMap'));
 
-const DEFAULT_STAGES: Stage[] = [
-  { label: 'Booking Confirmed',           time: '',  done: false, icon: '✅' },
-  { label: 'Driver Assigned',             time: '',  done: false, icon: '👤' },
-  { label: 'Driver En Route to Pickup',   time: '',  done: false, icon: '🚗' },
-  { label: 'Items Loaded',                time: '',  done: false, icon: '📦' },
-  { label: 'In Transit',                  time: '',  done: false, icon: '🚚' },
-  { label: 'Delivered',                   time: '',  done: false, icon: '🏠' },
-];
-
-const STATUS_TO_STAGE: Record<string, number> = {
-  pending: 0, confirmed: 1, driver_assigned: 2,
-  in_progress: 4, in_transit: 4, completed: 5, customer_confirmed: 5,
-};
-
-function ProgressRing({ pct }: { pct: number }) {
-  const r = 54; const c = 2 * Math.PI * r;
-  return (
-    <svg className="w-32 h-32 -rotate-90" viewBox="0 0 120 120">
-      <circle cx="60" cy="60" r={r} fill="none" stroke="#e5e7eb" strokeWidth="10"/>
-      <circle cx="60" cy="60" r={r} fill="none" stroke="#10b981" strokeWidth="10"
-        strokeDasharray={c} strokeDashoffset={c - (pct / 100) * c}
-        strokeLinecap="round" className="transition-all duration-1000"/>
-    </svg>
-  );
+/** What track_booking() returns to anyone holding the reference. */
+interface PublicTrack {
+  ref: string; status: string; paid: boolean; created_at: string | null; updated_at: string | null;
+  move_date: string | null; move_time: string | null; start_time: string | null; end_time: string | null;
+  cancelled_at: string | null; van_type: string | null; pickup_city: string | null; dropoff_city: string | null;
+  driver_assigned: boolean; is_owner: boolean; booking_id: string | null;
 }
+type OwnBooking = Record<string, any>;
+
+const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24513B]';
+const POLL_MS = 30_000;
 
 export default function TrackingPage() {
-  const { t } = useTranslation();
-  const { setPage } = useApp();
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language === 'no' ? 'no' : 'en';
+  const locale = lang === 'no' ? 'nb-NO' : 'en-GB';
+  const { setPage, setShowAuthModal, setAuthMode } = useApp();
   const { user } = useAuth();
-  const [bookingId, setBookingId] = useState('');
-  const [searched, setSearched] = useState(false);
+
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [booking, setBooking] = useState<any>(null);
-  const [eta, setEta] = useState(12);
-  const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<{ text: string; from: 'you' | 'driver'; time: string }[]>([]);
-  const [stages, setStages] = useState<Stage[]>(DEFAULT_STAGES);
-  const chatRef = useRef<HTMLDivElement>(null);
+  const [searched, setSearched] = useState(false);
+  const [error, setError] = useState('');
+  const [pub, setPub] = useState<PublicTrack | null>(null);
+  const [own, setOwn] = useState<OwnBooking | null>(null);
+  const [live, setLive] = useState(false);
+  const [checkedAt, setCheckedAt] = useState<Date | null>(null);
+  const [driverPos, setDriverPos] = useState<Coords | null>(null);
+  const [eta, setEta] = useState<{ minutes: number; to: 'pickup' | 'dropoff'; road: boolean } | null>(null);
 
-  /* Auto-load user's active booking */
+  const status = own?.status ?? pub?.status ?? null;
+  const state = trackingState(status);
+  const ref = own?.booking_ref ?? pub?.ref ?? null;
+  const times = own ?? pub ?? {};
+
+  /* ── Loading a booking ─────────────────────────────────────────── */
+  const loadOwn = useCallback(async (id: string) => {
+    const { data } = await supabase.from('bookings').select('*').eq('id', id).maybeSingle();
+    if (data) { setOwn(data); setPub(null); setCheckedAt(new Date()); return true; }
+    return false;
+  }, []);
+
+  const lookup = useCallback(async (raw: string) => {
+    const text = raw.trim();
+    if (!text) return;
+    setLoading(true); setError(''); setSearched(true); setOwn(null); setPub(null); setDriverPos(null); setEta(null);
+    try {
+      if (isUuid(text) && user) { if (await loadOwn(text)) return; }
+      const refValue = normaliseRef(text);
+      if (!refValue) { setError(t('trackingV2.badRef')); return; }
+      const { data, error: rpcError } = await supabase.rpc('track_booking', { p_ref: refValue });
+      if (rpcError) { setError(t('trackingV2.unavailable')); return; }
+      const found = data as PublicTrack | null;
+      if (!found) return;
+      if (found.is_owner && found.booking_id && await loadOwn(found.booking_id)) return;
+      setPub(found); setCheckedAt(new Date());
+      try { const u = new URL(window.location.href); u.searchParams.set('ref', found.ref); window.history.replaceState(null, '', u.toString()); } catch { /* no URL API */ }
+    } finally { setLoading(false); }
+  }, [user, loadOwn, t]);
+
+  /* A reference in the address (/track?ref=FG-…) opens straight away; otherwise a signed-in customer's active booking. */
+  const started = useRef(false);
   useEffect(() => {
+    if (started.current) return;
+    const fromUrl = (() => { try { return new URLSearchParams(window.location.search).get('ref'); } catch { return null; } })();
+    if (fromUrl) { started.current = true; setQuery(fromUrl); void lookup(fromUrl); return; }
     if (!user) return;
-    supabase.from('bookings').select('*')
-      .eq('customer_id', user.id)
-      .not('status', 'in', '("completed","cancelled")')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .then(({ data }) => {
-        if (data?.[0]) { setBooking(data[0]); setSearched(true); applyStages(data[0].status); }
-      });
-  }, [user]);
+    started.current = true;
+    void Promise.resolve(supabase.from('bookings').select('*').eq('customer_id', user.id)
+      .not('status', 'in', '("completed","cancelled")').order('created_at', { ascending: false }).limit(1))
+      .then(({ data }) => { if (data?.[0]) { setOwn(data[0]); setSearched(true); setCheckedAt(new Date()); } })
+      .catch(() => {});
+  }, [user, lookup]);
 
-  /* ETA countdown */
+  /* ── Keeping it current ────────────────────────────────────────── */
+  const ownId = own?.id as string | undefined;
   useEffect(() => {
-    if (!searched) return;
-    const timer = setInterval(() => setEta(p => Math.max(0, p - 1)), 15000);
-    return () => clearInterval(timer);
-  }, [searched]);
+    if (!ownId) return;
+    setLive(false);
+    const channel = supabase.channel(`booking-${ownId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bookings', filter: `id=eq.${ownId}` },
+          (payload: { new?: OwnBooking }) => { if (payload.new) { setOwn(o => ({ ...(o ?? {}), ...payload.new })); setCheckedAt(new Date()); } })
+      .subscribe((s: string) => setLive(s === 'SUBSCRIBED'));
+    const timer = window.setInterval(() => { void loadOwn(ownId); }, POLL_MS);
+    return () => { window.clearInterval(timer); void supabase.removeChannel(channel); setLive(false); };
+  }, [ownId, loadOwn]);
 
-  /* Scroll chat */
+  const pubRef = pub?.ref;
   useEffect(() => {
-    chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+    if (!pubRef) return;
+    const timer = window.setInterval(async () => {
+      const { data } = await supabase.rpc('track_booking', { p_ref: pubRef });
+      if (data) { setPub(data as PublicTrack); setCheckedAt(new Date()); }
+    }, POLL_MS * 2);
+    return () => window.clearInterval(timer);
+  }, [pubRef]);
 
-  function applyStages(status: string) {
-    const idx = STATUS_TO_STAGE[status] ?? 0;
-    setStages(DEFAULT_STAGES.map((s, i) => ({
-      ...s,
-      done: i <= idx,
-      time: i <= idx ? new Date(Date.now() - (idx - i) * 900000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-    })));
-  }
+  /* The driver's live position, while the job is in flight (the database allows it only then). */
+  const inFlight = state.step >= 1 && state.step <= 4;
+  useEffect(() => {
+    setDriverPos(null);
+    if (!ownId || !inFlight) return;
+    return followBookingDriver(supabase, ownId, setDriverPos);
+  }, [ownId, inFlight]);
 
-  async function handleTrack() {
-    if (!bookingId.trim()) return;
-    setLoading(true);
-    const { data } = await supabase.from('bookings').select('*')
-      .or(`id.eq.${bookingId},id.ilike.%${bookingId}%`)
-      .limit(1);
-    setLoading(false);
-    if (data?.[0]) { setBooking(data[0]); applyStages(data[0].status); }
-    else setBooking(null);
-    setSearched(true);
-  }
+  /* Arrival estimate from the driver's position to the next stop, refreshed as the driver moves. */
+  const pickup = own && own.pickup_lat != null ? { lat: Number(own.pickup_lat), lng: Number(own.pickup_lng) } : null;
+  const dropoff = own && own.dropoff_lat != null ? { lat: Number(own.dropoff_lat), lng: Number(own.dropoff_lng) } : null;
+  const target = state.heading === 'pickup' ? pickup : state.heading === 'dropoff' ? dropoff : null;
+  const driverKey = driverPos ? `${driverPos.lat.toFixed(3)},${driverPos.lng.toFixed(3)}` : '';
+  useEffect(() => {
+    if (!driverPos || !target || !state.heading) { setEta(null); return; }
+    let on = true;
+    void routeGeometry(driverPos, target).then(r => { if (on) setEta({ minutes: r.durationMinutes, to: state.heading!, road: r.source === 'road' }); });
+    return () => { on = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [driverKey, target?.lat, target?.lng, state.heading]);
 
-  function sendMessage() {
-    if (!message.trim()) return;
-    const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setMessages(m => [...m, { text: message, from: 'you', time: now }]);
-    setMessage('');
-    setTimeout(() => setMessages(m => [...m, { text: "Got it, thanks! I'll be there shortly.", from: 'driver', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]), 3000);
-  }
+  /* ── Formatting ────────────────────────────────────────────────── */
+  const time = (iso: string | null | undefined) => iso ? new Date(iso).toLocaleString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
+  const moveDay = (d: string | null | undefined, tm: string | null | undefined) => d
+    ? `${new Date(d).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'long' })}${tm ? ` · ${String(tm).slice(0, 5)}` : ''}` : null;
+  const statusLabel = state.cancelled ? t('trackingV2.cancelled') : state.unknown ? t('trackingV2.unknownStatus', { status: status ?? '—' })
+    : t(`trackingV2.step.${TRACKING_STEPS[state.step]}`);
+  const vanName = (v: string | null | undefined) => v ? t(`trackingV2.vans.${v}`, v.replace(/_/g, ' ')) : '—';
+  const from = own?.pickup_city || pub?.pickup_city || null;
+  const to = own?.dropoff_city || pub?.dropoff_city || null;
+  const found = !!(own || pub);
 
-  const activeIdx = stages.filter(s => s.done).length - 1;
-  const pct = ((activeIdx + 1) / stages.length) * 100;
+  const facts = useMemo(() => {
+    const rows: [string, string][] = [
+      [t('trackingV2.ref'), ref ?? '—'],
+      [t('trackingV2.van'), vanName(own?.van_type ?? pub?.van_type)],
+      [t('trackingV2.moveDate'), moveDay(own?.move_date ?? pub?.move_date, own?.move_time ?? pub?.move_time) ?? '—'],
+      [t('trackingV2.payment'), (own ? ['paid', 'escrow', 'released'].includes(own.payment_status) : pub?.paid) ? t('trackingV2.paid') : t('trackingV2.notPaid')],
+    ];
+    if (own) {
+      rows.push([t('trackingV2.from'), own.pickup_address ?? '—'], [t('trackingV2.to'), own.dropoff_address ?? '—']);
+      const price = Number(own.final_price ?? own.price_estimate);
+      if (Number.isFinite(price) && price > 0) rows.push([t('trackingV2.total'), `${price.toLocaleString(locale, { maximumFractionDigits: 0 })} NOK`]);
+    }
+    return rows;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [own, pub, ref, lang]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-
-      {/* HERO / SEARCH */}
-      <section className="bg-gradient-to-br from-[#0B2E59] to-[#1a4a8a] pt-8 pb-12">
-        <div className="max-w-3xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/10 text-white/80 text-xs px-4 py-2 rounded-full mb-5">
-            📍 {t('tracking.badge')}
-          </div>
-          <h1 className="text-4xl font-extrabold text-white mb-3">{t('tracking.title')}</h1>
-          <p className="text-white/60 mb-8">{t('tracking.subtitle')}</p>
-          <div className="flex gap-2 max-w-lg mx-auto">
-            <div className="relative flex-1">
-              <span className="absolute left-3.5 top-3.5 text-gray-400 text-sm">🔍</span>
-              <input
-                value={bookingId}
-                onChange={e => setBookingId(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleTrack()}
-                placeholder={t('tracking.searchPlaceholder')}
-                className="w-full pl-9 pr-4 py-3.5 rounded-xl text-sm shadow-lg focus:ring-2 focus:ring-[#F2B705] outline-none"
-              />
-            </div>
-            <button onClick={handleTrack} disabled={loading}
-              className="px-6 py-3.5 bg-[#F2B705] text-[#0B2E59] font-bold rounded-xl hover:bg-[#F2B705]/90 transition disabled:opacity-60 whitespace-nowrap">
-              {loading ? '...' : t('tracking.trackBtn')}
+    <div className="min-h-screen bg-[#FBF8F1] text-[#17212E]">
+      {/* ── Search ─────────────────────────────────────────────── */}
+      <section className="bg-[#1F3A2E] text-[#F3EEE2] pt-12 pb-14">
+        <div className="max-w-3xl mx-auto px-5">
+          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#DCC9A0] mb-3">{t('trackingV2.eyebrow')}</p>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-[#FFFEFA] mb-3">{t('trackingV2.title')}</h1>
+          <p className="text-[#D5DDD7] mb-7 max-w-[60ch]">{t('trackingV2.lede')}</p>
+          <form className="flex flex-col sm:flex-row gap-2" onSubmit={e => { e.preventDefault(); void lookup(query); }}>
+            <label htmlFor="track-ref" className="sr-only">{t('trackingV2.refLabel')}</label>
+            <input id="track-ref" value={query} onChange={e => setQuery(e.target.value)} placeholder="FG-7K3M9Q" autoComplete="off" autoCapitalize="characters"
+                   className="flex-1 min-h-[52px] px-4 bg-white text-[#17212E] text-[17px] tracking-wide border border-transparent outline-none focus:ring-2 focus:ring-[#C3A66C]" />
+            <button type="submit" disabled={loading} className={`min-h-[52px] px-7 bg-[#C3A66C] hover:bg-[#D2B87F] text-[#17212E] font-bold disabled:opacity-60 ${focus}`}>
+              {loading ? t('trackingV2.searching') : t('trackingV2.track')}
             </button>
-          </div>
-          {!user && (
-            <p className="text-white/40 text-xs mt-3">
-              <button onClick={() => setPage('home')} className="underline hover:text-white/70">{t('auth.signInTitle')}</button> {t('tracking.signInHint')}
-            </p>
-          )}
+          </form>
+          <p className="text-[13px] text-[#BFCBC3] mt-3">
+            {t('trackingV2.refHint')}{' '}
+            {!user && <button type="button" onClick={() => { setAuthMode('signin'); setShowAuthModal(true); }} className={`underline ${focus}`}>{t('trackingV2.signInHint')}</button>}
+          </p>
         </div>
       </section>
 
-      {/* TRUST BAR */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap justify-center gap-6 text-xs text-gray-500 font-medium">
-          {[
-            { icon: '🔒', key: 'tracking.trustEscrow' },
-            { icon: '📍', key: 'tracking.trustGps' },
-            { icon: '⭐', key: 'tracking.trustRating' },
-            { icon: '🛡️', key: 'tracking.trustInsured' },
-            { icon: '📞', key: 'tracking.trustSupport' },
-          ].map(b => (
-            <span key={b.key}>{b.icon} {t(b.key)}</span>
-          ))}
-        </div>
-      </div>
+      <div className="max-w-6xl mx-auto px-5 py-10">
+        {error && <p role="alert" className="max-w-3xl mx-auto mb-6 p-4 border-s-4 border-[#A4271C] bg-[#FBEDEA] text-[#5E1610] font-semibold">{error}</p>}
 
-      {/* NOT FOUND */}
-      {searched && !booking && (
-        <div className="max-w-lg mx-auto px-4 py-16 text-center">
-          <div className="text-5xl mb-4">🔍</div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">{t('tracking.notFoundTitle')}</h2>
-          <p className="text-gray-500 mb-6">{t('tracking.notFoundBody')}</p>
-          <button onClick={() => setPage('my-bookings')} className="px-6 py-3 bg-[#0B2E59] text-white rounded-xl font-semibold text-sm">{t('tracking.viewBookings')}</button>
-        </div>
-      )}
+        {searched && !loading && !found && !error && (
+          <div className="max-w-xl mx-auto text-center py-12">
+            <h2 className="text-2xl font-bold mb-2">{t('trackingV2.notFoundTitle')}</h2>
+            <p className="text-[#4A5260] mb-6">{t('trackingV2.notFoundBody')}</p>
+            <button type="button" onClick={() => setPage('my-bookings')} className={`min-h-[48px] px-6 bg-[#24513B] text-white font-bold ${focus}`}>{t('trackingV2.myBookings')}</button>
+          </div>
+        )}
 
-      {/* TRACKING PANEL */}
-      {searched && booking && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid lg:grid-cols-3 gap-6">
-
-            {/* LEFT — Map + Chat */}
-            <div className="lg:col-span-2 space-y-4">
-
-              {/* LIVE MAP — DeliveryMap with Leaflet + Supabase geocoding */}
-              <DeliveryMap
-                pickupAddress={booking.pickup_address || 'Karl Johans gate 1, Oslo'}
-                deliveryAddress={booking.dropoff_address || 'Storgata 15, Drammen'}
-                status={booking.status || 'in_transit'}
-                mode="customer"
-                driverLat={booking.driver_lat ?? null}
-                driverLng={booking.driver_lng ?? null}
-                className="shadow-sm"
-              />
-
-              {/* CHAT */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-                  <div className="w-8 h-8 bg-[#0B2E59] rounded-full flex items-center justify-center text-white text-xs font-bold">L</div>
-                  <div>
-                    <div className="font-semibold text-gray-900 text-sm">Lars Olsen</div>
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-500"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"/>{t('tracking.driverOnline')}</div>
-                  </div>
-                  <a href="tel:+4791234567" className="ml-auto px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-semibold flex items-center gap-1">📞 {t('tracking.callDriver')}</a>
+        {found && (
+          <div className="grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-8">
+            <div className="min-w-0 space-y-6">
+              {/* Status */}
+              <div className="bg-[#FFFEFA] border border-[#E2DACA] p-6 md:p-8">
+                <div className="flex flex-wrap items-center gap-3 mb-1">
+                  <p className="text-xs font-bold tracking-[.14em] uppercase text-[#7A6436] m-0">{ref}</p>
+                  {own && (
+                    <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${live ? 'text-[#24513B]' : 'text-[#4A5260]'}`}>
+                      <span className={`w-2 h-2 rounded-full ${live ? 'bg-[#24513B] animate-pulse' : 'bg-[#CFC7B5]'}`} aria-hidden="true" />
+                      {live ? t('trackingV2.live') : t('trackingV2.refreshing')}
+                    </span>
+                  )}
                 </div>
-                <div ref={chatRef} className="h-40 overflow-y-auto p-4 space-y-3 bg-gray-50">
-                  <div className="flex justify-start">
-                    <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm max-w-xs shadow-sm">
-                      Hi! I&apos;m on my way. Should be there in about {eta} minutes 🚐
-                    </div>
-                  </div>
-                  {messages.map((m, i) => (
-                    <div key={i} className={`flex ${m.from === 'you' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`px-4 py-2.5 rounded-2xl text-sm max-w-xs ${m.from === 'you' ? 'bg-[#0B2E59] text-white rounded-tr-sm' : 'bg-white border border-gray-100 rounded-tl-sm shadow-sm'}`}>
-                        {m.text}
-                        <div className={`text-xs mt-1 ${m.from === 'you' ? 'text-white/60' : 'text-gray-400'}`}>{m.time}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2 p-3 border-t border-gray-100 bg-white">
-                  <input
-                    value={message}
-                    onChange={e => setMessage(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                    placeholder={t('tracking.chatPlaceholder')}
-                    className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:border-[#0B2E59] outline-none"
-                  />
-                  <button onClick={sendMessage} className="px-4 py-2.5 bg-[#0B2E59] text-white rounded-xl text-sm font-medium">{t('tracking.sendBtn')}</button>
-                </div>
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tight m-0" aria-live="polite">{statusLabel}</h2>
+                {(from || to) && <p className="text-[#4A5260] mt-2 mb-0">{from ?? '—'} → {to ?? '—'}</p>}
+                {eta && (
+                  <p className="mt-4 mb-0 inline-flex items-baseline gap-2 px-4 py-2 bg-[#F3EEE2] text-[15px]">
+                    <b>{t(eta.to === 'pickup' ? 'trackingV2.etaPickup' : 'trackingV2.etaDropoff', { time: formatDuration(eta.minutes, lang) })}</b>
+                    <span className="text-[13px] text-[#4A5260]">{eta.road ? t('trackingV2.etaNote') : t('trackingV2.etaNoteStraight')}</span>
+                  </p>
+                )}
+                {state.cancelled && <p className="mt-3 mb-0 text-[#4A5260]">{t('trackingV2.cancelledBody', { when: time(times.cancelled_at) ?? '—' })}</p>}
+                {checkedAt && <p className="mt-4 mb-0 text-[12px] text-[#4A5260]">{t('trackingV2.checked', { time: checkedAt.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }) })}</p>}
               </div>
+
+              {/* Map: the booking's own customer sees the road and the driver */}
+              {pickup && dropoff ? (
+                <Suspense fallback={<div className="h-80 bg-[#F3EEE2] border border-[#E2DACA] animate-pulse" aria-hidden="true" />}>
+                  <RouteMap pickup={pickup} dropoff={dropoff} driver={driverPos} height="h-80 md:h-[420px]"
+                            pickupLabel={own?.pickup_city || undefined} dropoffLabel={own?.dropoff_city || undefined} />
+                </Suspense>
+              ) : (
+                <div className="p-6 border border-dashed border-[#CFC7B5] bg-[#FFFEFA] text-[15px] text-[#4A5260]">
+                  {t('trackingV2.mapForOwner')}
+                </div>
+              )}
+              {own && inFlight && !driverPos && <p className="text-[13px] text-[#4A5260] -mt-3">{t('trackingV2.noDriverPos')}</p>}
             </div>
 
-            {/* RIGHT SIDEBAR */}
-            <div className="space-y-4">
-
-              {/* Progress ring */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center">
-                <div className="relative inline-flex items-center justify-center">
-                  <ProgressRing pct={pct}/>
-                  <div className="absolute text-center">
-                    <div className="text-2xl font-extrabold text-gray-900">{Math.round(pct)}%</div>
-                    <div className="text-xs text-gray-400">{t('tracking.complete')}</div>
-                  </div>
-                </div>
-                <div className="mt-3 font-semibold text-[#0B2E59]">
-                  {t(`tracking.stage${Math.max(activeIdx, 0)}`)}
-                </div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {eta > 0 ? t('tracking.arrivingIn', { min: eta }) : t('tracking.delivered')}
-                </div>
-              </div>
-
+            <aside className="space-y-6">
               {/* Timeline */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <h3 className="font-bold text-[#0B2E59] mb-4 text-sm">{t('tracking.timeline')}</h3>
-                <div className="space-y-0">
-                  {stages.map((stage, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${stage.done ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                          {stage.done ? '✓' : stage.icon}
-                        </div>
-                        {i < stages.length - 1 && (
-                          <div className={`w-0.5 h-6 ${stage.done ? 'bg-emerald-300' : 'bg-gray-200'}`}/>
-                        )}
-                      </div>
-                      <div className="pb-2">
-                        <div className={`text-sm font-medium leading-tight ${stage.done ? 'text-[#0B2E59]' : 'text-gray-400'}`}>{t(`tracking.stage${i}`)}</div>
-                        {stage.time && <div className="text-xs text-gray-400 mt-0.5">{stage.time}</div>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="bg-[#FFFEFA] border border-[#E2DACA] p-6">
+                <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#4A5260] mb-5">{t('trackingV2.timeline')}</h3>
+                {state.cancelled ? (
+                  <p className="m-0 text-[15px]">{t('trackingV2.cancelled')}{time(times.cancelled_at) ? ` · ${time(times.cancelled_at)}` : ''}</p>
+                ) : (
+                  <ol className="list-none p-0 m-0">
+                    {TRACKING_STEPS.map((s, i) => {
+                      const done = i <= state.step, now = i === state.step;
+                      const at = done ? time(stepTime(s, times)) : null;
+                      return (
+                        <li key={s} className="relative flex gap-4 pb-5 last:pb-0" aria-current={now ? 'step' : undefined}>
+                          {i < TRACKING_STEPS.length - 1 && <span aria-hidden="true" className={`absolute start-[11px] top-6 bottom-0 w-[2px] ${i < state.step ? 'bg-[#24513B]' : 'bg-[#E2DACA]'}`} />}
+                          <span aria-hidden="true" className={`relative z-10 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                            now ? 'bg-[#24513B] text-white ring-4 ring-[#24513B]/15' : done ? 'bg-[#24513B] text-white' : 'bg-[#F3EEE2] text-[#4A5260] border border-[#CFC7B5]'}`}>{done && !now ? '✓' : i + 1}</span>
+                          <div>
+                            <p className={`m-0 text-[15px] ${now ? 'font-bold' : done ? 'font-semibold' : 'text-[#4A5260]'}`}>{t(`trackingV2.step.${s}`)}</p>
+                            {at && <p className="m-0 text-[12px] text-[#4A5260]">{at}</p>}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
               </div>
 
-              {/* Booking details */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <h3 className="font-bold text-[#0B2E59] mb-4 text-sm">{t('tracking.bookingDetails')}</h3>
-                <div className="space-y-2.5">
-                  {[
-                    { label: t('tracking.bookingId'), value: booking.id?.slice(0,8).toUpperCase() || 'BK-7842', key: 'bookingId' },
-                    { label: t('tracking.service'), value: booking.van_type || 'Large Van', key: 'service' },
-                    { label: t('tracking.moveDate'), value: booking.move_date || 'Today', key: 'moveDate' },
-                    { label: t('tracking.total'), value: `${Number(booking.final_price || booking.price_estimate || 2450).toFixed(0)} NOK`, key: 'total' },
-                    { label: 'Payment', value: booking.payment_status === 'escrow' ? '🔒 Paid' : booking.payment_status || 'Secured', key: 'payment' },
-                  ].map(row => (
-                    <div key={row.key} className="flex justify-between items-center text-sm">
-                      <span className="text-gray-500">{row.label}</span>
-                      <span className={`font-semibold ${row.key === 'total' ? 'text-[#F2B705]' : 'text-gray-900'}`}>{row.value}</span>
+              {/* The booking */}
+              <div className="bg-[#FFFEFA] border border-[#E2DACA] p-6">
+                <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#4A5260] mb-4">{t('trackingV2.details')}</h3>
+                <dl className="m-0 space-y-3">
+                  {facts.map(([k, v]) => (
+                    <div key={k} className="grid grid-cols-[110px_minmax(0,1fr)] gap-3 text-[14px]">
+                      <dt className="text-[#4A5260]">{k}</dt><dd className="m-0 font-semibold break-words">{v}</dd>
                     </div>
                   ))}
+                </dl>
+                {!own && <p className="text-[12px] text-[#4A5260] mt-4 mb-0">{t('trackingV2.publicNote')}</p>}
+                <div className="flex flex-wrap gap-2 mt-5">
+                  {own && <button type="button" onClick={() => setPage('my-bookings')} className={`min-h-[44px] px-4 border border-[#CFC7B5] font-semibold text-sm hover:bg-[#F3EEE2] ${focus}`}>{t('trackingV2.myBookings')}</button>}
+                  <button type="button" onClick={() => setPage('contact')} className={`min-h-[44px] px-4 border border-[#CFC7B5] font-semibold text-sm hover:bg-[#F3EEE2] ${focus}`}>{t('trackingV2.help')}</button>
                 </div>
-                <button onClick={() => setPage('my-bookings')} className="mt-4 w-full py-2.5 border-2 border-[#0B2E59] text-[#0B2E59] rounded-xl text-sm font-semibold hover:bg-[#0B2E59] hover:text-white transition">
-                  {t('tracking.viewAll')}
-                </button>
               </div>
-            </div>
+            </aside>
           </div>
-        </section>
-      )}
+        )}
 
-      {/* EMPTY STATE — not searched yet */}
-      {!searched && (
-        <section className="max-w-4xl mx-auto px-4 py-16">
-          <div className="grid sm:grid-cols-3 gap-4">
-            {[
-              { icon: '📍', titleKey: 'tracking.featureGps', descKey: 'tracking.featureGpsDesc' },
-              { icon: '💬', titleKey: 'tracking.featureChat', descKey: 'tracking.featureChatDesc' },
-              { icon: '🔒', titleKey: 'tracking.featureEscrow', descKey: 'tracking.featureEscrowDesc' },
-            ].map(f => (
-              <div key={f.titleKey} className="bg-white rounded-2xl border border-gray-100 p-6 text-center shadow-sm">
-                <div className="text-4xl mb-3">{f.icon}</div>
-                <h3 className="font-bold text-gray-900 mb-2">{t(f.titleKey)}</h3>
-                <p className="text-gray-500 text-sm">{t(f.descKey)}</p>
-              </div>
+        {!searched && (
+          <ul className="list-none p-0 m-0 grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto pt-4">
+            {(['ref', 'live', 'escrow'] as const).map(k => (
+              <li key={k} className="border-t-2 border-[#24513B] pt-4">
+                <h3 className="text-[17px] font-bold mb-1">{t(`trackingV2.feature.${k}`)}</h3>
+                <p className="text-[14px] text-[#4A5260] m-0">{t(`trackingV2.feature.${k}Desc`)}</p>
+              </li>
             ))}
-          </div>
-        </section>
-      )}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
