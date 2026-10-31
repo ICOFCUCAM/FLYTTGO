@@ -774,6 +774,15 @@
   .fgv2[data-moving="b"] .service-card:first-child h3 { color: #fff; font: var(--head-weight) clamp(24px, 2.2vw, 32px)/1.1 var(--font-display); letter-spacing: -.03em; margin: 0 0 8px; }
   .fgv2[data-moving="b"] .service-card:first-child .body p { color: #eef1f5; font-size: 15px; }
 }
+/* Moving B on phones: the first service as a picture card, the rest as a compact ruled list. */
+@media (max-width: 900px) {
+  .fgv2[data-moving="b"] .service-grid { gap: 0; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child) { border: 0; border-bottom: 1px solid var(--line); background: transparent; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child) .photo { display: none; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child) .body { padding: 16px 0; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child):after { content: "→"; color: var(--blue); }
+  .fgv2[data-moving="b"] .service-card:first-child { margin-bottom: 8px; }
+}
 /* Moving C · picture-led pairs: two columns, each service a picture beside its words. */
 @media (min-width: 901px) {
   .fgv2[data-moving="c"] .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
