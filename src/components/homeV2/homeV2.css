@@ -178,8 +178,11 @@
 .fgv2 .hero-visual .fgp-slides img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.4s ease; }
 .fgv2 .hero-visual .fgp-slides img.on { opacity: 1; }
 .fgv2 .fgp-dots { position: absolute; right: 22px; top: 22px; display: flex; gap: 6px; z-index: 3; }
-.fgv2 .fgp-dots button { width: 8px; height: 8px; border-radius: 9999px; border: 0; padding: 0; background: rgba(255,255,255,.65); cursor: pointer; }
-.fgv2 .fgp-dots button.on { background: #fff; width: 22px; }
+/* Slideshow position as segments: a thin line per picture, the current one longer and solid. */
+.fgv2 .fgp-dots { gap: 4px; padding: 10px 0; }
+.fgv2 .fgp-dots button { width: 22px; height: 3px; border-radius: 0; border: 0; padding: 0; background: rgba(255,255,255,.5); cursor: pointer; box-shadow: 0 1px 4px rgb(0 0 0 / .25); transition: width .4s, background .4s; }
+.fgv2 .fgp-dots button.on { background: #fff; width: 40px; }
+.fgv2 .fgp-dots button:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
 .fgv2 .hero-ledger { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr); background: rgba(32,63,104,.95); }
 .fgv2 .hero-ledger a { display: block; padding: 20px 22px 22px; color: #fff; border-left: 1px solid rgba(195,166,108,.35); transition: background .2s; }
 .fgv2 .hero-ledger a:first-child { border-left: 0; }
