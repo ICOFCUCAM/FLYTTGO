@@ -740,6 +740,10 @@
   .fgv2[data-moving="b"] .service-card:not(:first-child):after { content: "→"; color: var(--blue); font-size: 18px; transition: transform .3s; }
   .fgv2[data-moving="b"] .service-card:not(:first-child):hover:after { transform: translateX(4px); }
   .fgv2[data-moving="b"] .service-card:not(:first-child) h3 { font-size: 18px; }
+  .fgv2[data-moving="b"] .service-grid { counter-reset: svc 1; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child) { counter-increment: svc; grid-template-columns: 44px 1fr auto; transition: background .2s, padding .25s; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child):before { content: counter(svc, decimal-leading-zero); align-self: center; font: 600 13px var(--font-display); color: var(--gold); letter-spacing: .04em; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child):hover { background: var(--white); padding-left: 10px; }
   .fgv2[data-moving="b"] .service-card:first-child { grid-row: 1 / span 7; grid-template-columns: 1fr; border: 1px solid var(--line); background: var(--white); align-self: start; }
   .fgv2[data-moving="b"] .service-card:first-child .photo { aspect-ratio: 4 / 5; height: auto; }
   /* The feature service carries its caption on the picture, under a deep-blue veil. */
