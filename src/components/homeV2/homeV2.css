@@ -581,6 +581,10 @@
 .fgv2 :is(.corp-row, .corp-invoice) em { font-style: normal; font-size: 12px; font-weight: 700; padding: 4px 10px; border: 1px solid; white-space: nowrap; }
 .fgv2 .corp-wait { color: #5a4517; background: #f8f2e4; border-color: #e2d2a6; }
 .fgv2 .corp-ok { color: #1f4a33; background: #eaf2ec; border-color: #bcd3c4; }
+.fgv2 .corp-row { transition: background .15s; }
+.fgv2 .corp-row:hover { background: #faf8f2; }
+.fgv2 :is(.corp-wait, .corp-ok, .corp-invoice em) { min-width: 132px; text-align: center; }
+.fgv2 .feature i { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 10px; font-size: 11px; font-style: normal; color: var(--white); background: var(--forest); border-radius: 50%; }
 .fgv2 .corp-roles { margin-top: 16px; border: 1px solid var(--line); padding: 16px 18px; font-size: 13px; }
 .fgv2 .corp-roles > b { display: block; margin-bottom: 10px; color: var(--ink); }
 .fgv2 .corp-roles > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
