@@ -302,6 +302,11 @@
 .fgv2 .ecosystem-pillar strong { font-size: 18px; color: var(--ink); }
 .fgv2 .ecosystem-pillar span { font-size: 14px; line-height: 1.6; color: var(--muted); }
 .fgv2 .ecosystem-pillar[aria-pressed="true"] { border-color: var(--blue); background: var(--white); box-shadow: inset 3px 0 var(--gold); }
+/* The shared core: pillars lift on hover and the selected one carries a champagne rule toward the core. */
+.fgv2 .ecosystem-pillar { position: relative; transition: border-color .2s, box-shadow .25s, transform .25s; cursor: pointer; }
+.fgv2 .ecosystem-pillar:hover { border-color: var(--blue); box-shadow: 0 18px 36px -28px rgb(32 63 104 / .45); }
+.fgv2 .ecosystem-pillar[aria-pressed="true"] { box-shadow: inset 3px 0 var(--gold); }
+.fgv2 .ecosystem-hub { box-shadow: 0 0 0 10px rgb(195 166 108 / .14); }
 .fgv2 .ecosystem-hub { background: var(--blue); color: #fff; padding: 40px 34px; border-radius: var(--radius) var(--corner) var(--radius) var(--radius); text-align: center; }
 .fgv2 .ecosystem-hub small { color: var(--gold-text); }
 .fgv2 .ecosystem-hub strong { font-size: clamp(24px, 2.4vw, 32px); }
