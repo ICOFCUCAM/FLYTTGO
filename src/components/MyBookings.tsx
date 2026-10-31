@@ -30,7 +30,7 @@ function formatDuration(start?: string | null, end?: string | null) {
 }
 
 interface Booking {
-  id: string; pickup_address: string | null; dropoff_address: string | null;
+  id: string; booking_ref?: string | null; pickup_address: string | null; dropoff_address: string | null;
   pickup_lat?: number | null; pickup_lng?: number | null;
   dropoff_lat?: number | null; dropoff_lng?: number | null;
   driver_id?: string | null;
@@ -168,6 +168,10 @@ export default function MyBookings() {
               <div className="flex gap-3 mb-3 flex-wrap">
                 <span className={`px-3 py-1 rounded text-xs font-medium ${statusColors[booking.status || ""] || "bg-gray-100 text-gray-600"}`}>{booking.status?.replace(/_/g, " ")}</span>
                 <span className={`px-3 py-1 rounded text-xs font-medium ${paymentColors[booking.payment_status || ""] || "bg-gray-100 text-gray-600"}`}>{booking.payment_status === "escrow" ? "paid" : booking.payment_status}</span>
+                {booking.booking_ref && (
+                  <a href={`/track?ref=${encodeURIComponent(booking.booking_ref)}`} className="ms-auto px-3 py-1 rounded text-xs font-mono font-semibold bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100"
+                     title="Track this booking">{booking.booking_ref} →</a>
+                )}
               </div>
               <div className="mb-3">
                 <p className="text-sm text-gray-500">Pickup</p><p className="font-medium">{booking.pickup_address}</p>

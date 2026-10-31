@@ -99,9 +99,21 @@ export function calculateCommission(jobPrice: number, plan: string) {
   return { rate, commission, earning: safePrice - commission };
 }
 
-export function calculatePrice(vanType: string, hours: number, distanceKm: number, helpers: number, extras: string[]) {
+/**
+ * The hours a job is billed: the hours booked, or the time the drive alone takes when that is longer
+ * (rounded up to the half hour), never below the minimum. Same rule as billedHours() in
+ * supabase/functions/_shared/pricing.ts, which the payment functions charge by.
+ */
+export function billedHours(bookedHours: number, routeMinutes?: number | null): number {
+  const booked = Math.max(Number(bookedHours) || 0, PRICING.minimumHours);
+  const drive = routeMinutes && routeMinutes > 0 ? Math.ceil((routeMinutes / 60) * 2) / 2 : 0;
+  return Math.max(booked, drive);
+}
+
+export function calculatePrice(vanType: string, hours: number, distanceKm: number, helpers: number, extras: string[], routeMinutes?: number | null) {
   const van = VAN_TYPES.find(v => v.id === vanType);
-  const safeHours = Math.max(hours ?? 0, PRICING.minimumHours);
+  const booked = Math.max(hours ?? 0, PRICING.minimumHours);
+  const safeHours = billedHours(hours, routeMinutes);
   const extraKm = Math.max(0, distanceKm - PRICING.distancePricing.includedKm);
   const basePrice = (van?.pricePerHour ?? 850) * safeHours;
   const distanceCharge = extraKm * PRICING.distancePricing.extraPerKm;
@@ -109,7 +121,7 @@ export function calculatePrice(vanType: string, hours: number, distanceKm: numbe
   const extrasCharge = extras.reduce((sum, extra) => sum + ((PRICING.extras as any)[extra] ?? 0), 0);
   const subtotal = basePrice + distanceCharge + helpersCharge + extrasCharge;
   const vat = subtotal * PRICING.vat;
-  return { basePrice, distanceCharge, helpersCharge, extrasCharge, subtotal, vat, total: subtotal + vat };
+  return { billedHours: safeHours, routeHoursApplied: safeHours > booked, basePrice, distanceCharge, helpersCharge, extrasCharge, subtotal, vat, total: subtotal + vat };
 }
 
 export function recommendVan(totalVolume: number): string {

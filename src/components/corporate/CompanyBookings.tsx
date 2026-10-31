@@ -141,7 +141,7 @@ export default function CompanyBookings({ membership }: { membership: Membership
               const a = approvals[b.id];
               return (
                 <tr key={b.id} className="hover:bg-gray-50 transition">
-                  <td className="py-3.5 px-4 font-mono text-xs text-gray-600">{String(b.id).slice(0, 8)}</td>
+                  <td className="py-3.5 px-4 font-mono text-xs text-gray-600">{b.booking_ref ?? String(b.id).slice(0, 8)}</td>
                   <td className="py-3.5 px-4 text-gray-700">{b.pickup_city ?? '—'}</td>
                   <td className="py-3.5 px-4 text-gray-700">{b.dropoff_city ?? '—'}</td>
                   <td className="py-3.5 px-4 text-gray-600">{b.move_date ? new Date(b.move_date).toLocaleDateString('nb-NO') : '—'}{b.move_time ? ` ${String(b.move_time).slice(0, 5)}` : ''}</td>

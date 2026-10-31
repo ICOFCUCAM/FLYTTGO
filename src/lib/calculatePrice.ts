@@ -47,6 +47,9 @@ export interface ServerPriceResult {
   vat_amount:       number;
   price_total:      number;
   routing_provider: 'OSRM' | 'haversine-fallback';
+  /** Hours billed: the hours booked, or the drive time when longer (absent from an older server). */
+  billed_hours?:    number;
+  route_hours_applied?: boolean;
   breakdown: {
     base_price:      number;
     distance_charge: number;

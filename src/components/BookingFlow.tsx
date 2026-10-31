@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, calculatePrice, recommendVan } from '../lib/constants';
+import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, billedHours, calculatePrice, recommendVan } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { formatNorwegianAddress, validateNorwegianAddress } from '../utils/formatNorwegianAddress';
+import { clearBookingDraft, readBookingDraft, returnToBookingAfterSignIn, saveBookingDraft } from '../lib/bookingDraft';
 import { fetchServerPrice, ServerPriceResult } from '../lib/calculatePrice';
 import { getRouteDistance, RouteResult } from '../lib/routing';
 import { CustomerLegalAcceptance } from './LegalAcceptance';
@@ -52,12 +53,17 @@ function safeNum(v: any): number {
    BOOKING FLOW
 ───────────────────────────────────────────── */
 
+/* The route on a map (owner, 31 October 2026): Leaflet is fetched only when a map is shown. */
+const RouteMap = lazy(() => import('./RouteMap'));
+
 export default function BookingFlow() {
   const { profile, user } = useAuth();
   const { bookingData, setBookingData, setPage, setShowAuthModal, setAuthMode } = useApp();
   const { t } = useTranslation();
 
-  const [step, setStep] = useState(1);
+  /* A booking started before signing in with Google or Apple, restored after the round trip (lib/bookingDraft.ts). */
+  const [draft] = useState(() => readBookingDraft<Record<string, any>>());
+  const [step, setStep] = useState<number>(() => (typeof draft?.step === 'number' ? draft.step : 1));
   const TOTAL_STEPS = 6;
 
   /* Book for a company (00007): offered to owners, admins and bookers of
@@ -74,27 +80,27 @@ export default function BookingFlow() {
    * captured a Norwegian address — that way customers don't have to
    * re-type it after clicking "Book Now" from the home page. */
   const [pickupAddress, setPickupAddress] = useState<StructuredAddress>(
-    () => (bookingData.pickupAddressData as StructuredAddress | undefined) ?? emptyAddress()
+    () => (draft?.pickupAddress as StructuredAddress | undefined) ?? (bookingData.pickupAddressData as StructuredAddress | undefined) ?? emptyAddress()
   );
   const [dropoffAddress, setDropoffAddress] = useState<StructuredAddress>(
-    () => (bookingData.dropoffAddressData as StructuredAddress | undefined) ?? emptyAddress()
+    () => (draft?.dropoffAddress as StructuredAddress | undefined) ?? (bookingData.dropoffAddressData as StructuredAddress | undefined) ?? emptyAddress()
   );
 
   /* ── Move details ── */
-  const [moveType, setMoveType] = useState(bookingData.moveType || '');
-  const [propertyType, setPropertyType] = useState(bookingData.propertyType || '');
-  const [vanType, setVanType] = useState(bookingData.vanType || '');
-  const [helpers, setHelpers] = useState(bookingData.helpers || 0);
-  const [inventory, setInventory] = useState<Record<string, number>>(bookingData.inventory || {});
-  const [additionalServices, setAdditionalServices] = useState<string[]>(bookingData.additionalServices || []);
+  const [moveType, setMoveType] = useState(draft?.moveType ?? bookingData.moveType ?? '');
+  const [propertyType, setPropertyType] = useState(draft?.propertyType ?? bookingData.propertyType ?? '');
+  const [vanType, setVanType] = useState(draft?.vanType ?? bookingData.vanType ?? '');
+  const [helpers, setHelpers] = useState<number>(draft?.helpers ?? bookingData.helpers ?? 0);
+  const [inventory, setInventory] = useState<Record<string, number>>(draft?.inventory ?? bookingData.inventory ?? {});
+  const [additionalServices, setAdditionalServices] = useState<string[]>(draft?.additionalServices ?? bookingData.additionalServices ?? []);
 
   /* ── Schedule & contact ── */
-  const [moveDate, setMoveDate] = useState(bookingData.moveDate || '');
-  const [moveTime, setMoveTime] = useState(bookingData.moveTime || '09:00');
-  const [name, setName] = useState(profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : '');
-  const [phone, setPhone] = useState(profile?.phone || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [notes, setNotes] = useState('');
+  const [moveDate, setMoveDate] = useState(draft?.moveDate ?? bookingData.moveDate ?? '');
+  const [moveTime, setMoveTime] = useState(draft?.moveTime ?? bookingData.moveTime ?? '09:00');
+  const [name, setName] = useState(draft?.name || (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : ''));
+  const [phone, setPhone] = useState(draft?.phone || profile?.phone || '');
+  const [email, setEmail] = useState(draft?.email || user?.email || '');
+  const [notes, setNotes] = useState<string>(draft?.notes ?? '');
 
   /* ── Pricing ──
    *
@@ -121,7 +127,15 @@ export default function BookingFlow() {
    *      the server never responded. Either way the insert writes
    *      a real distance + price, not zeros or placeholders.
    */
-  const [estimatedHours, setEstimatedHours] = useState(2);
+  const [estimatedHours, setEstimatedHours] = useState<number>(draft?.estimatedHours ?? 2);
+
+  /* While not signed in, keep the booking in this tab, so a Google or Apple sign-in brings it back. */
+  useEffect(() => {
+    if (user) return;
+    saveBookingDraft({ step, pickupAddress, dropoffAddress, moveType, propertyType, vanType, helpers, inventory,
+                       additionalServices, estimatedHours, moveDate, moveTime, name, phone, email, notes });
+  }, [user, step, pickupAddress, dropoffAddress, moveType, propertyType, vanType, helpers, inventory,
+      additionalServices, estimatedHours, moveDate, moveTime, name, phone, email, notes]);
   const [clientRoute,  setClientRoute]      = useState<RouteResult | null>(null);
   const [serverPrice,  setServerPrice]      = useState<ServerPriceResult | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
@@ -138,12 +152,30 @@ export default function BookingFlow() {
         clientRoute.distanceKm,
         helpers,
         additionalServices,
+        clientRoute.durationMinutes,
       )
     : null;
 
   /* Effective values — server wins if available, else client preview. */
   const distanceKm     = serverPrice?.distance_km            ?? clientRoute?.distanceKm   ?? 0;
   const durationMin    = serverPrice?.duration_minutes       ?? clientRoute?.durationMinutes ?? 0;
+  /* The hours follow the distance (owner, 31 October 2026): a move cannot be booked for less time than the drive
+   * alone takes (rounded up to the half hour), and never below the 2-hour minimum. The chosen hours are raised
+   * to that automatically, and the picker does not go below it. */
+  const minHours = billedHours(2, durationMin);
+  const hasRoutePoints = pickupAddress.lat != null && pickupAddress.lng != null && dropoffAddress.lat != null && dropoffAddress.lng != null;
+  const routeMap = (height: string) => hasRoutePoints ? (
+    <Suspense fallback={<div className={`${height} bg-gray-50 border border-gray-100 animate-pulse`} aria-hidden="true" />}>
+      <RouteMap pickup={{ lat: Number(pickupAddress.lat), lng: Number(pickupAddress.lng) }}
+                dropoff={{ lat: Number(dropoffAddress.lat), lng: Number(dropoffAddress.lng) }}
+                pickupLabel={pickupAddress.city || formatNorwegianAddress(pickupAddress).line1 || undefined}
+                dropoffLabel={dropoffAddress.city || formatNorwegianAddress(dropoffAddress).line1 || undefined}
+                height={height} />
+    </Suspense>
+  ) : null;
+  useEffect(() => {
+    if (estimatedHours < minHours) setEstimatedHours(minHours);
+  }, [minHours, estimatedHours]);
   const routingProvider: 'OSRM' | 'haversine-fallback' | 'osrm' | 'haversine' | null =
     serverPrice?.routing_provider ?? clientRoute?.source ?? null;
   const priceTotal     = serverPrice?.price_total            ?? clientPricing?.total       ?? 0;
@@ -158,6 +190,15 @@ export default function BookingFlow() {
   const basePrice      = serverPrice?.breakdown?.base_price      ?? clientPricing?.basePrice      ?? 0;
   const distanceCharge = serverPrice?.breakdown?.distance_charge ?? clientPricing?.distanceCharge ?? 0;
   const helpersCharge  = serverPrice?.breakdown?.helpers_charge  ?? clientPricing?.helpersCharge  ?? 0;
+  const extrasCharge   = serverPrice?.breakdown?.extras_charge   ?? clientPricing?.extrasCharge   ?? 0;
+  /* Hours billed: the hours chosen, or the drive time when it is longer (same rule as the payment functions). */
+  /* Taken from the same source as the figures: a server that predates billed hours reports none, so its hours are
+   * read back from its base price. */
+  const vanRate = VAN_TYPES.find(v => v.id === (vanType || 'medium_van'))?.pricePerHour || 850;
+  const billedHoursShown = serverPrice
+    ? (serverPrice.billed_hours ?? Math.round((basePrice / vanRate) * 2) / 2)
+    : (clientPricing?.billedHours ?? Math.max(estimatedHours, 2));
+  const routeHoursApplied = serverPrice ? serverPrice.route_hours_applied === true : (clientPricing?.routeHoursApplied ?? false);
 
   /* Ready-to-submit means we have AT LEAST a client-side number
    * set. The submit button stays disabled until this is true so a
@@ -323,11 +364,13 @@ export default function BookingFlow() {
        * the app store so it survives the auth modal opening and
        * closing, and after signing in they just click Confirm & Pay
        * again with all their work intact. */
+      returnToBookingAfterSignIn();
       setAuthMode('signin');
       setShowAuthModal(true);
       setError('Please sign in to complete your booking.');
       return;
     }
+    clearBookingDraft();
     if (!name.trim() || !phone.trim() || !email.trim()) {
       setError('Please fill in your name, phone, and email before submitting.');
       return;
@@ -541,7 +584,7 @@ export default function BookingFlow() {
             </div>
             <button
               type="button"
-              onClick={() => { setAuthMode('signin'); setShowAuthModal(true); }}
+              onClick={() => { returnToBookingAfterSignIn(); setAuthMode('signin'); setShowAuthModal(true); }}
               className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
             >
               Sign In
@@ -697,6 +740,8 @@ export default function BookingFlow() {
                   </div>
                 );
               })()}
+              {/* The real road between the two addresses, once both are chosen. */}
+              {routeMap('h-64')}
             </div>
           </div>
         )}
@@ -854,13 +899,18 @@ export default function BookingFlow() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('booking.durationLabel')}</label>
                 <div className="flex items-center gap-4">
-                  <button type="button" onClick={() => setEstimatedHours(h => Math.max(2, h - 0.5))}
-                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">−</button>
-                  <span className="text-xl font-bold text-gray-800 w-12 text-center">{estimatedHours}h</span>
-                  <button type="button" onClick={() => setEstimatedHours(h => Math.min(12, h + 0.5))}
+                  <button type="button" onClick={() => setEstimatedHours(h => Math.max(minHours, h - 0.5))} disabled={estimatedHours <= minHours}
+                    aria-label={t('booking.durationLess')}
+                    className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed">−</button>
+                  <span className="text-xl font-bold text-gray-800 w-14 text-center" aria-live="polite">{estimatedHours}h</span>
+                  <button type="button" onClick={() => setEstimatedHours(h => Math.min(Math.max(12, minHours + 6), h + 0.5))}
+                    aria-label={t('booking.durationMore')}
                     className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">+</button>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">{t('booking.durationHint')}</p>
+                {minHours > 2 && (
+                  <p className="text-xs text-amber-700 mt-1">{t('booking.durationMinRoute', { hours: minHours })}</p>
+                )}
               </div>
             </div>
           </div>
@@ -954,6 +1004,9 @@ export default function BookingFlow() {
                   </div>
                 </div>
 
+                {/* The route on the map, the real road between the two addresses. */}
+                {routeMap('h-56')}
+
                 {/* Price breakdown — prefers server-side numbers
                  * when calculate-price is deployed, falls back to
                  * the client OSRM preview + local calculatePrice()
@@ -965,9 +1018,12 @@ export default function BookingFlow() {
                   ) : (
                     <>
                       <div className="flex justify-between text-sm text-gray-600">
-                        <span>{t('booking.priceBase')} ({estimatedHours}h × {VAN_TYPES.find(v => v.id === vanType)?.pricePerHour || 850} NOK/h)</span>
+                        <span>{t('booking.priceBase')} ({billedHoursShown}h × {VAN_TYPES.find(v => v.id === vanType)?.pricePerHour || 850} NOK/h)</span>
                         <span>{basePrice.toFixed(0)} NOK</span>
                       </div>
+                      {routeHoursApplied && (
+                        <p className="text-xs text-amber-700 -mt-1">{t('booking.priceDriveHours', { hours: billedHoursShown, chosen: estimatedHours })}</p>
+                      )}
                       {distanceCharge > 0 && (
                         <div className="flex justify-between text-sm text-gray-600">
                           <span>{t('booking.priceDistance')}</span>
@@ -978,6 +1034,12 @@ export default function BookingFlow() {
                         <div className="flex justify-between text-sm text-gray-600">
                           <span>{t('booking.priceHelpers')} ({helpers})</span>
                           <span>{helpersCharge.toFixed(0)} NOK</span>
+                        </div>
+                      )}
+                      {extrasCharge > 0 && (
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>{t('booking.priceExtras')}</span>
+                          <span>{extrasCharge.toFixed(0)} NOK</span>
                         </div>
                       )}
                       <div className="flex justify-between text-sm text-gray-600">
@@ -1063,7 +1125,7 @@ export default function BookingFlow() {
                   {!user ? (
                     <button
                       type="button"
-                      onClick={() => { setAuthMode('signin'); setShowAuthModal(true); }}
+                      onClick={() => { returnToBookingAfterSignIn(); setAuthMode('signin'); setShowAuthModal(true); }}
                       className="mt-3 px-4 py-2 bg-[#0B2E59] text-white rounded-lg text-xs font-semibold hover:bg-[#1a4a8a] transition"
                     >
                       Sign in to continue →
