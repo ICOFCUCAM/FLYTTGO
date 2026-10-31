@@ -403,6 +403,13 @@
 .fgv2 .service-grid { background: transparent; gap: 16px; border: 0; }
 .fgv2 .service-card, .fgv2 .fleet-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); box-shadow: none; }
 .fgv2 .fleet-card:hover { transform: none; box-shadow: var(--lift); }
+/* Van cards: one picture ratio, the specification as a ruled table, "best for" as a quiet note. */
+.fgv2 .fleet-card .fleet-photo { aspect-ratio: 4 / 3; height: auto; overflow: hidden; }
+.fgv2 .fleet-card .fleet-photo img { width: 100%; height: 100%; object-fit: cover; }
+.fgv2 .fleet-card h3 { font: var(--head-weight) 20px/1.2 var(--font-display); letter-spacing: -.02em; margin-bottom: 12px; }
+.fgv2 .fleet-card .spec-row { display: flex; justify-content: space-between; padding: 9px 0; border-top: 1px solid var(--line); }
+.fgv2 .fleet-card .spec-row strong { font-variant-numeric: tabular-nums; color: var(--ink); }
+.fgv2 .fleet-card .bestfor { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); line-height: 1.55; }
 .fgv2 :is(.steps-grid, .fleet-grid, .tool-grid, .plan-grid) { background: transparent; border: 0; gap: 16px; }
 /* The four booking steps as a timeline: numbers on one gold line, no boxes. */
 .fgv2 .steps-grid { gap: 0 32px; border: 0; border-top: 2px solid var(--gold); background: transparent; }
