@@ -509,6 +509,10 @@
 .fgv2 .finance-top { background: var(--evergreen); color: #fff; }
 .fgv2 .finance-side { background: #eef0ea; }
 .fgv2 .finance-document { background: var(--white); border-color: var(--line); }
+/* The document as paper: a champagne rule on top, its title in the display face. */
+.fgv2 .finance-document { box-shadow: inset 0 3px var(--gold), 0 1px 0 var(--line); }
+.fgv2 .finance-document-head strong, .fgv2 #finance-doc-title { font: var(--head-weight) 16px var(--font-display) !important; letter-spacing: -.01em; }
+.fgv2 .finance-doc-meta { padding-bottom: 16px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
 .fgv2 .finance-document-content { padding: 24px; }
 .fgv2 .finance-doc-meta b { font-size: 14px; color: var(--ink); }
 .fgv2 .finance-doc-meta small { font-size: 13px; color: var(--muted); }
