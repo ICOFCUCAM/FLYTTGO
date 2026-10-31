@@ -72,7 +72,7 @@ describe('Driver Agreement summary', () => {
   });
   it('the new sections and the lookup have text in both languages', () => {
     for (const l of [en, no] as any[]) {
-      for (const k of ['accept', 'drive', 'work', 'confirm', 'paid']) expect(l.driverLanding.day[`${k}Desc`]).toBeTruthy();
+      for (const k of ['accept', 'start', 'finish', 'confirm']) for (const f of ['label', 'title', 'text', 'p1', 'p2', 'p3']) expect(l.driverLanding.day.stages[k][f]).toBeTruthy();
       for (const k of ['register', 'team', 'drivers', 'grow']) expect(l.driverLanding.fleet[`${k}Desc`]).toBeTruthy();
       for (const k of ['button', 'hint', 'filled', 'notFound', 'signIn', 'failed']) expect(l.driverApplication.lookup[k]).toBeTruthy();
       expect(l.driverLanding.nav.day && l.driverLanding.nav.terms).toBeTruthy();

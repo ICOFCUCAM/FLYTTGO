@@ -182,7 +182,7 @@ export default function DriverLanding() {
       <nav aria-label={t('driverLanding.navLabel')} className="sticky top-16 z-40 bg-[#FBF8F1]/95 backdrop-blur border-y border-[#E2DACA]">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10 flex items-center gap-3">
           {/* Laptops: every section as a link. */}
-          <div className="hidden lg:flex flex-1 min-w-0 items-center gap-1">
+          <div className="hidden xl:flex flex-1 min-w-0 items-center gap-1">
             {sections.map(id => (
               <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); go(id); }} aria-current={active === id ? 'true' : undefined}
                  className={`relative whitespace-nowrap px-3 py-4 text-sm font-semibold transition ${focus} ${active === id ? 'text-[#17212E]' : 'text-[#4A5260] hover:text-[#17212E]'}`}>
@@ -192,7 +192,7 @@ export default function DriverLanding() {
             ))}
           </div>
           {/* Phones and tablets: one menu, so nothing is cut off. */}
-          <div data-sections-menu className="lg:hidden flex-1 min-w-0 relative">
+          <div data-sections-menu className="xl:hidden flex-1 min-w-0 relative">
             <button type="button" aria-expanded={menu} aria-controls="driver-sections" onClick={() => setMenu(m => !m)}
                     className={`my-2 min-h-[40px] inline-flex items-center gap-2 text-sm font-semibold text-[#17212E] ${focus}`}>
               <span className="truncate">{active && (sections as readonly string[]).includes(active) ? t(`driverLanding.nav.${active}`) : t('driverLanding.sectionsMenu')}</span>
@@ -235,13 +235,6 @@ export default function DriverLanding() {
       {/* ── A day on FlyttGo, in the driver app's own screens (items 5, 6) ── */}
       <section id="day" className="fg-reveal scroll-mt-32 pb-20 md:pb-28">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10">
-          <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 lg:gap-16 items-end mb-10">
-            <div>
-              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.day.eyebrow')}</p>
-              <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] m-0">{t('driverLanding.day.title')}</h2>
-            </div>
-            <p className="text-lg text-[#4A5260] leading-relaxed m-0 max-w-[56ch]">{t('driverLanding.day.lede')}</p>
-          </div>
           <DayOnFlyttGo />
         </div>
       </section>

@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { SUBSCRIPTION_PLANS, calculateCommission } from '../../lib/constants';
 import { CANCELLATION_POLICY } from '../../../supabase/functions/_shared/pricing';
 import { DRIVER_TERMS, TERMS_SUMMARY } from '../../lib/driverTerms';
-import { JobCard, WalletPanel, calcCommission } from './PortalCards';
+import { JobCard, calcCommission } from './PortalCards';
 
 const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24513B]';
 const serif = { fontFamily: 'Georgia, "Times New Roman", serif' };
@@ -182,65 +182,134 @@ export function DriverFaq({ onApply, onContact }: { onApply: () => void; onConta
   );
 }
 
-/* ── A day on FlyttGo (items 5 and 6) ─────────────────────────────────────────────────────────── */
+/* ── A day on FlyttGo (items 5 and 6; redesigned 31 October 2026) ─────────────────────────────
+ * One phone and the four actions a driver takes in the portal (Accept, Start, Finish, Confirm). Choosing a
+ * stage puts the same sample job into that state in the portal's own job card (PortalCards), so the screen is
+ * the real component, never a drawing. The job is labelled a sample; the figures are the commission rule's. */
 const SAMPLE_PLAN = 'pro_mini';
 const SAMPLE_PRICE = 2500;
-function sampleJob(status: string, extra: Record<string, unknown> = {}) {
-  return {
-    id: 'sample', status, pickup_address: 'Storgata 12, 0184 Oslo', dropoff_address: 'Bogstadveien 40, 0366 Oslo',
-    price_estimate: SAMPLE_PRICE, estimated_hours: 3, helpers: 1, additional_services: ['furniture_assembly'],
-    move_date: new Date().toISOString().slice(0, 10), driver_id: 'sample-driver',
-    customer_notes: status === 'awaiting_driver' ? null : '', ...extra,
-  };
-}
+const STAGES = [
+  { key: 'accept', status: 'awaiting_driver' },
+  { key: 'start', status: 'driver_assigned' },
+  { key: 'finish', status: 'in_transit' },
+  { key: 'confirm', status: 'completed' },
+] as const;
+const PORTAL_TABS = ['overview', 'jobs', 'earnings', 'wallet', 'subscription'] as const;
 
 export function DayOnFlyttGo() {
-  const { t } = useTranslation();
-  const track = useRef<HTMLOListElement>(null);
+  const { t, i18n } = useTranslation();
+  const no = i18n.language === 'no';
+  const nok = (n: number) => `${Math.round(n).toLocaleString(no ? 'nb-NO' : 'en-GB')} NOK`;
+  const [ix, setIx] = useState(0);
+  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
+  const stage = STAGES[ix];
+  const c = calcCommission(SAMPLE_PRICE, SAMPLE_PLAN);
+  const planName = SUBSCRIPTION_PLANS.find(p => p.id === SAMPLE_PLAN)?.name ?? SAMPLE_PLAN;
   const started = new Date(Date.now() - 74 * 60_000).toISOString();
   const ended = new Date(Date.now() - 2 * 60_000).toISOString();
-  const earning = Math.round(calcCommission(SAMPLE_PRICE, SAMPLE_PLAN).earning);
-  const screens: { key: string; tab: string; screen: JSX.Element }[] = [
-    { key: 'accept', tab: 'jobs', screen: <JobCard preview job={sampleJob('awaiting_driver')} plan={SAMPLE_PLAN} /> },
-    { key: 'drive', tab: 'jobs', screen: <JobCard preview job={sampleJob('driver_assigned')} plan={SAMPLE_PLAN} /> },
-    { key: 'work', tab: 'jobs', screen: <JobCard preview job={sampleJob('in_transit', { start_time: started })} plan={SAMPLE_PLAN} /> },
-    { key: 'confirm', tab: 'jobs', screen: <JobCard preview job={sampleJob('completed', { start_time: started, end_time: ended, actual_hours: 1.2 })} plan={SAMPLE_PLAN} /> },
-    { key: 'paid', tab: 'wallet', screen: <WalletPanel preview wallet={{ balance: earning, pending: 0, total_earned: earning }}
-                                                     transactions={[{ id: 's', description: t('driverLanding.day.sampleTx'), amount: earning }]} /> },
-  ];
-  const scrollBy = (dir: number) => {
-    const el = track.current; if (!el) return;
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    el.scrollBy({ left: dir * Math.min(el.clientWidth, 360) * (document.dir === 'rtl' ? -1 : 1), behavior: reduce ? 'auto' : 'smooth' });
+  const job = {
+    id: 'sample', status: stage.status, pickup_address: 'Storgata 12, 0184 Oslo', dropoff_address: 'Bogstadveien 40, 0366 Oslo',
+    price_estimate: SAMPLE_PRICE, estimated_hours: 3, helpers: 1, additional_services: ['furniture_assembly'],
+    move_date: new Date().toISOString().slice(0, 10), driver_id: 'sample-driver',
+    customer_notes: ix > 0 ? t('driverLanding.day.sampleNote') : null,
+    ...(ix >= 2 ? { start_time: started } : {}), ...(ix === 3 ? { end_time: ended, actual_hours: 1.2 } : {}),
   };
+  const go = (n: number) => { const i = (n + STAGES.length) % STAGES.length; setIx(i); tabs.current[i]?.focus(); };
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); go(ix + (document.dir === 'rtl' ? -1 : 1)); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); go(ix - (document.dir === 'rtl' ? -1 : 1)); }
+    if (e.key === 'Home') { e.preventDefault(); go(0); }
+    if (e.key === 'End') { e.preventDefault(); go(STAGES.length - 1); }
+  };
+  const benefits = ['jobs', 'earnings', 'workflow', 'payment'] as const;
+
   return (
-    <div>
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <p className="m-0 text-[13px] font-semibold text-[#7A6436]">{t('driverLanding.day.sample', { plan: SUBSCRIPTION_PLANS.find(p => p.id === SAMPLE_PLAN)?.name ?? SAMPLE_PLAN })}</p>
-        <div className="flex gap-2">
-          <button type="button" onClick={() => scrollBy(-1)} aria-label={t('driverLanding.day.prev')} className={`w-11 h-11 border border-[#CFC7B5] bg-white hover:bg-[#F3EEE2] ${focus}`}>←</button>
-          <button type="button" onClick={() => scrollBy(1)} aria-label={t('driverLanding.day.next')} className={`w-11 h-11 border border-[#CFC7B5] bg-white hover:bg-[#F3EEE2] ${focus}`}>→</button>
-        </div>
+    <div className="grid gap-x-10 gap-y-8 xl:gap-x-14 md:pt-4 [grid-template-areas:'intro'_'steps'_'phone'_'panel'] md:grid-cols-[auto_minmax(0,1fr)] md:[grid-template-areas:'intro_intro'_'phone_steps'_'phone_panel'] xl:grid-cols-[minmax(0,.72fr)_auto_minmax(0,1.28fr)] xl:[grid-template-areas:'intro_phone_steps'_'intro_phone_panel'] md:grid-rows-[auto_auto_1fr] xl:grid-rows-[auto_1fr]">
+      {/* The story in one line, and what the demonstration shows */}
+      <div className="[grid-area:intro] xl:self-center">
+        <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.day.eyebrow')}</p>
+        <h2 className="text-[36px] md:text-[44px] !font-normal !tracking-[-.01em] leading-[1.06] m-0 mb-5" style={serif}>{t('driverLanding.day.title')}</h2>
+        <p className="text-[17px] text-[#4A5260] leading-relaxed m-0 mb-8 max-w-[44ch]">{t('driverLanding.day.lede')}</p>
+        <ul className="list-none p-0 m-0 space-y-5">
+          {benefits.map((k, i) => (
+            <li key={k} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3">
+              <span aria-hidden="true" className="w-9 h-9 flex items-center justify-center border border-[#DCC9A0] bg-[#FFFEFA] text-[#9F8249] text-[15px]" style={serif}>{i + 1}</span>
+              <span><b className="block text-[16px] tracking-tight">{t(`driverLanding.day.b.${k}`)}</b><span className="block text-[14px] text-[#4A5260] leading-snug">{t(`driverLanding.day.b.${k}Desc`)}</span></span>
+            </li>
+          ))}
+        </ul>
       </div>
-      <ol ref={track} className="list-none p-0 m-0 flex gap-8 overflow-x-auto snap-x snap-mandatory pb-6 [scrollbar-width:thin]">
-        {screens.map((s, i) => (
-          <li key={s.key} className="snap-start flex-shrink-0 w-[300px] sm:w-[320px]">
-            <div aria-hidden="true" className="relative h-[470px] rounded-[38px] border-[10px] border-[#17212E] bg-gray-50 overflow-hidden shadow-[0_24px_48px_-24px_rgba(23,33,46,.45)]">
-              <div className="absolute top-0 inset-x-0 h-6 flex justify-center"><span className="mt-1.5 w-20 h-4 rounded-full bg-[#17212E]" /></div>
-              <div className="pt-9 px-3 pb-3 h-full overflow-hidden">
-                <div className="flex items-center justify-between px-1 mb-3">
-                  <span className="text-[13px] font-bold text-gray-900">FlyttGo Driver</span>
-                  <span className="text-[11px] px-2 py-0.5 rounded bg-black text-white capitalize">{t(`driverPortal.${s.tab}`)}</span>
-                </div>
-                <div className="origin-top-left scale-[.92] w-[108.7%]">{s.screen}</div>
+
+      {/* One phone: the driver portal's own job card for the chosen stage */}
+      <figure className="[grid-area:phone] m-0 justify-self-center self-start xl:self-center">
+        <div aria-hidden="true" className="relative w-[312px] sm:w-[336px] h-[590px] rounded-[46px] p-[9px] bg-[#17212E] shadow-[0_40px_80px_-40px_rgba(23,40,32,.55),0_8px_24px_-12px_rgba(23,40,32,.35)]">
+          <div className="relative h-full rounded-[38px] overflow-hidden bg-gray-50">
+            <div className="flex items-center justify-between px-6 pt-3 text-[11px] font-semibold text-gray-900">
+              <span>09:41</span><span className="w-24 h-6 rounded-full bg-[#17212E] -mt-1" /><span>5G</span>
+            </div>
+            <div className="flex items-center justify-between px-4 mt-3 mb-2">
+              <span className="text-[14px] font-bold text-gray-900">FlyttGo Driver</span>
+              <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700">{t('driverPortal.online')}</span>
+            </div>
+            <div className="flex gap-1.5 px-4 pb-3 overflow-hidden">
+              {PORTAL_TABS.map(tab => (
+                <span key={tab} className={`flex-shrink-0 px-2.5 py-1 rounded text-[11px] font-medium ${tab === 'jobs' ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}>{t(`driverPortal.${tab}`)}</span>
+              ))}
+            </div>
+            <div key={ix} className="fg-stage px-3">
+              <div className="origin-top-left scale-[.9] w-[111.2%]">
+                <JobCard preview job={job} plan={SAMPLE_PLAN} driverId="sample-driver" />
               </div>
             </div>
-            <p className="mt-6 mb-1 text-[13px] font-bold tracking-[.12em] uppercase text-[#9F8249]">{t('driverLanding.day.stepN', { n: i + 1 })}</p>
-            <h3 className="text-[19px] font-bold tracking-tight m-0 mb-1.5">{t(`driverLanding.day.${s.key}`)}</h3>
-            <p className="text-[14px] leading-relaxed text-[#4A5260] m-0">{t(`driverLanding.day.${s.key}Desc`)}</p>
-          </li>
-        ))}
-      </ol>
+          </div>
+        </div>
+        <figcaption className="mt-4 text-center text-[12px] font-semibold text-[#7A6436]">{t('driverLanding.day.sample', { plan: planName })}</figcaption>
+      </figure>
+
+      {/* The four stages and what the chosen one means */}
+      <div role="tablist" aria-label={t('driverLanding.day.stagesLabel')} onKeyDown={onKey} className="[grid-area:steps] self-end relative grid grid-cols-4 min-w-0">
+          <span aria-hidden="true" className="absolute top-[19px] start-[12.5%] end-[12.5%] h-px bg-[#DCD4C2]" />
+          <span aria-hidden="true" className="absolute top-[19px] start-[12.5%] h-px bg-[#24513B] transition-all duration-500" style={{ width: `${(ix / 3) * 75}%` }} />
+          {STAGES.map((st, i) => (
+            <button key={st.key} ref={el => { tabs.current[i] = el; }} type="button" role="tab" id={`day-tab-${st.key}`} aria-selected={i === ix} aria-controls="day-panel" tabIndex={i === ix ? 0 : -1}
+                    onClick={() => setIx(i)} className={`relative flex flex-col items-center gap-2 ${focus}`}>
+              <span className={`w-10 h-10 rounded-full flex items-center justify-center text-[15px] border-2 transition ${i < ix ? 'bg-[#24513B] border-[#24513B] text-white' : i === ix ? 'bg-[#24513B] border-[#24513B] text-white ring-4 ring-[#24513B]/15' : 'bg-[#FFFEFA] border-[#CFC7B5] text-[#4A5260]'}`} style={serif}>{i < ix ? '✓' : i + 1}</span>
+              <span className={`text-[13px] sm:text-[14px] font-bold text-center leading-tight ${i === ix ? 'text-[#17212E]' : 'text-[#4A5260]'}`}>{t(`driverLanding.day.stages.${st.key}.label`)}</span>
+            </button>
+          ))}
+        </div>
+
+      <div className="[grid-area:panel] min-w-0 self-start">
+        <div id="day-panel" role="tabpanel" aria-labelledby={`day-tab-${stage.key}`} className="bg-[#FFFEFA] border border-[#E2DACA] shadow-[0_24px_48px_-36px_rgba(23,33,46,.35)]">
+          <div key={ix} className="fg-stage">
+            <div className="p-6 md:p-8">
+              <p className="inline-block m-0 mb-4 px-3 py-1 text-[11px] font-bold tracking-[.12em] uppercase text-[#7A6436] bg-[#F3EEE2]">{t('driverLanding.day.stepOf', { n: ix + 1, total: STAGES.length })}</p>
+              <h3 className="text-[30px] md:text-[34px] !font-normal !tracking-[-.01em] leading-[1.1] m-0 mb-3" style={serif}>{t(`driverLanding.day.stages.${stage.key}.title`)}</h3>
+              <p className="text-[15px] leading-relaxed text-[#4A5260] m-0 mb-5">{t(`driverLanding.day.stages.${stage.key}.text`)}</p>
+              <ul className="list-none p-0 m-0 space-y-2.5">
+                {(['p1', 'p2', 'p3'] as const).map(pk => (
+                  <li key={pk} className="flex gap-2.5 text-[14px] leading-snug">
+                    <span aria-hidden="true" className="flex-shrink-0 w-5 h-5 rounded-full bg-[#24513B] text-white text-[11px] flex items-center justify-center mt-px">✓</span>
+                    {t(`driverLanding.day.stages.${stage.key}.${pk}`)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <dl className="m-0 px-6 md:px-8 py-5 border-t border-[#E2DACA] grid grid-cols-2 2xl:grid-cols-3 gap-4 text-[13px]">
+              <div className="flex flex-col-reverse gap-1"><dt className="text-[#4A5260]">{t('driverLanding.day.total')}</dt><dd className="m-0 text-[17px] sm:text-[20px] whitespace-nowrap" style={serif}>{nok(SAMPLE_PRICE)}</dd></div>
+              <div className="flex flex-col-reverse gap-1"><dt className="text-[#4A5260]">{t('driverLanding.day.commission', { rate: Math.round(c.rate * 100) })}</dt><dd className="m-0 text-[17px] sm:text-[20px] whitespace-nowrap" style={serif}>{nok(c.commission)}</dd></div>
+              <div className="col-span-2 2xl:col-span-1 flex flex-col-reverse gap-1 bg-[#EEF3EF] 2xl:-my-2 px-3 py-2"><dt className="font-semibold text-[#1f4a33]">{t('driverLanding.day.earnings')}</dt><dd className="m-0 text-[18px] sm:text-[22px] text-[#1f4a33] whitespace-nowrap" style={serif}>{nok(c.earning)}</dd></div>
+              <p className="col-span-2 2xl:col-span-3 m-0 text-[12px] text-[#4A5260]">{t('driverLanding.day.moneyNote')}</p>
+            </dl>
+          </div>
+        </div>
+
+        <div className="mt-6 flex items-center justify-center gap-5">
+          <button type="button" onClick={() => setIx((ix + 3) % 4)} aria-label={t('driverLanding.day.prev')} className={`w-11 h-11 rounded-full border border-[#CFC7B5] bg-[#FFFEFA] hover:bg-[#F3EEE2] ${focus}`}>←</button>
+          <span className="flex gap-2" aria-hidden="true">{STAGES.map((st, i) => <span key={st.key} className={`h-2 rounded-full transition-all ${i === ix ? 'w-6 bg-[#24513B]' : 'w-2 bg-[#CFC7B5]'}`} />)}</span>
+          <button type="button" onClick={() => setIx((ix + 1) % 4)} aria-label={t('driverLanding.day.next')} className={`w-11 h-11 rounded-full bg-[#24513B] hover:bg-[#1C4130] text-white ${focus}`}>→</button>
+        </div>
+      </div>
     </div>
   );
 }
