@@ -239,12 +239,12 @@ export default function Header() {
    * Explore and Run your business, in one list. Its first item is the transport front page, which the
    * button opened before it became a menu. Not shown on the transport front page's own address. */
   const logisticsJourney: Journey = {
-    id: 'logistics', label: jt('logistics'), short: jt('logisticsShort'), strong: true, list: true,
+    id: 'logistics', label: jt('logistics'), strong: true, list: true,
     width: 'w-[min(360px,calc(100vw-32px))]', columns: [
       { items: [
         { label: jt('logistics'), desc: jt('logisticsDesc'), go: openMoving },
         page(jt('ourServices'), 'services', jt('ourServicesDesc')),
-        page(jt('howFlyttGoWorks'), 'moving-hub', jt('howFlyttGoWorksDesc')),
+        page(jt('howMovingWorks'), 'moving-hub', jt('howMovingWorksDesc')),
       ] },
       { title: jt('freeTools'), items: MOVING_TOOLS.filter((tool) => tool.page !== 'subscriptions').map((tool) => page(tool.label, tool.page, tool.desc)) },
       { items: [page(jt('driverPlans'), 'subscriptions', jt('driverPlansDesc'))] },
@@ -261,6 +261,10 @@ export default function Header() {
         page(jt('services'), 'services', jt('servicesDesc')),
         page(jt('industriesPage'), 'industries', jt('industriesPageDesc')),
         page(jt('movingPage'), 'moving-hub', jt('movingPageDesc')),
+        /* How FlyttGo works was a button of its own on the bar; it moved here (owner, 31 October 2026) so the
+         * bar has room for Logistics & transport in full. Same behaviour: the section when it is on the page,
+         * else the page. */
+        { label: jt('howFlyttGoWorks'), desc: jt('howFlyttGoWorksDesc'), go: () => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page')) },
       ] },
       { title: t('header.movingTools'), items: MOVING_TOOLS.map((tool) => page(tool.label, tool.page, tool.desc)) },
     ] },
@@ -448,14 +452,13 @@ export default function Header() {
                 {JOURNEYS.map((j) => (
                   <Fragment key={j.id}>
                   <div>
-                    {/* Short labels below 1280 px; Logistics & transport, now a menu with its chevron, keeps its
-                      * short label below 1600 px so the bar still fits on one row. */}
+                    {/* Short labels below 1280 px; Logistics & transport always shows in full. */}
                     <button onClick={() => toggleJourney(j.id)} aria-expanded={journeyOpen === j.id}
-                      className={`flex items-center gap-1 px-1.5 ${j.strong ? '2xl:px-3' : '2xl:px-4'} py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm ${j.strong ? 'font-semibold' : 'font-medium'} transition ${
+                      className={`flex items-center gap-1 px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm ${j.strong ? 'font-semibold' : 'font-medium'} transition ${
                         j.strong
                           ? (journeyOpen === j.id || currentPage === 'transport-home' ? 'text-[#24513B] bg-[#F5F3EB]' : 'text-[#24513B] hover:bg-gray-50')
                           : journeyOpen === j.id ? 'text-[#203F68] bg-[#F5F3EB]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                      }`}>{j.short ? <><span className={j.strong ? 'min-[1600px]:hidden' : 'xl:hidden'}>{j.short}</span><span className={j.strong ? 'hidden min-[1600px]:inline' : 'hidden xl:inline'}>{j.label}</span></> : j.label}{chevron(journeyOpen === j.id)}</button>
+                      }`}>{j.short ? <><span className="xl:hidden">{j.short}</span><span className="hidden xl:inline">{j.label}</span></> : j.label}{chevron(journeyOpen === j.id)}</button>
                     {/* Under the bar, centred on it: the menus are wide (columns). */}
                     {journeyOpen === j.id && (
                       <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 ${j.width} p-3 max-h-[75vh] overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-200 z-50`}>
@@ -465,7 +468,6 @@ export default function Header() {
                   </div>
                   </Fragment>
                 ))}
-                <button onClick={() => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page'))} className="px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.journeys.howItWorks')}</button>
                 <button onClick={() => handleNav('driver-onboarding')} className="hidden xl:block px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.becomeDriver')}</button>
               </nav>
             )}
@@ -678,9 +680,6 @@ export default function Header() {
                 {journeyMenu(j, true)}
               </div>
             ))}
-            {preview && (
-              <button onClick={() => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page'))} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.journeys.howItWorks')}</button>
-            )}
             {preview && (
               <button onClick={() => handleNav('driver-onboarding')} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.becomeDriver')}</button>
             )}
