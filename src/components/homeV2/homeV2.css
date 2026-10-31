@@ -929,6 +929,39 @@
   .fgv2[data-moving="b"] .service-card:not(:first-child):after { content: "→"; color: var(--blue); }
   .fgv2[data-moving="b"] .service-card:first-child { margin-bottom: 8px; }
 }
+/* Moving B · the picture follows the list (serviceScroll.ts): it stays in place while the services scroll
+   past and shows the one crossing a line a third of the way down, with its name as the caption. */
+@media (min-width: 901px) {
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:first-child { position: sticky; top: 104px; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:first-child .photo { position: relative; aspect-ratio: auto; height: min(calc(100vh - 140px), 760px); min-height: 420px; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .v2-svc-layer { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .45s ease; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .v2-svc-layer.is-on { opacity: 1; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:first-child .body { transition: opacity .3s; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card.is-swapped .body { opacity: 0; }
+  .fgv2[data-moving="b"] .v2-svc-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 120px 32px 30px; background: linear-gradient(180deg, rgba(20,38,64,0), rgba(20,38,64,.88) 62%); color: #fff; opacity: 0; transition: opacity .3s; pointer-events: none; }
+  .fgv2[data-moving="b"] .is-swapped .v2-svc-caption { opacity: 1; }
+  .fgv2[data-moving="b"] .v2-svc-caption span:first-child { display: block; font: 600 13px var(--font-display); letter-spacing: .08em; color: #DCC9A0; margin-bottom: 6px; }
+  .fgv2[data-moving="b"] .v2-svc-caption b { display: block; font: var(--head-weight) clamp(24px, 2.2vw, 32px)/1.1 var(--font-display); letter-spacing: -.03em; margin-bottom: 8px; }
+  .fgv2[data-moving="b"] .v2-svc-caption span:last-child { display: block; font-size: 15px; color: #eef1f5; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:not(:first-child) { padding-top: 14px; padding-bottom: 14px; }
+  /* Room under the list, so the picture stays on screen until the last service has reached the line. */
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:first-child { grid-row: 1 / span 8; }
+  .fgv2[data-moving="b"] .v2-svc-spacer { grid-column: 2; height: 46vh; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card.is-active { background: var(--white); padding-left: 10px; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card.is-active:before { color: var(--blue); }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card.is-active h3 { color: var(--blue); }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card.is-active:after { transform: translateX(4px); }
+}
+/* Phones: each service shows its own small photo in the list. */
+@media (max-width: 900px) {
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:not(:first-child) { grid-template-columns: 72px 1fr auto; gap: 14px; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:not(:first-child) .photo { display: block; width: 72px; height: 56px; border-radius: 0; overflow: hidden; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .service-card:not(:first-child) .photo img { width: 100%; height: 100%; object-fit: cover; }
+  .fgv2[data-moving="b"] .v2-svc-scroll .v2-svc-layer:not(:first-child), .fgv2[data-moving="b"] .v2-svc-caption, .fgv2 .v2-svc-spacer { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fgv2 .v2-svc-layer, .fgv2 .v2-svc-caption, .fgv2 .v2-svc-scroll .service-card .body { transition: none !important; }
+}
 /* Moving C · picture-led pairs: two columns, each service a picture beside its words. */
 @media (min-width: 901px) {
   .fgv2[data-moving="c"] .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

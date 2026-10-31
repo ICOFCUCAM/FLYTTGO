@@ -25,6 +25,7 @@ import { initDesign as initEn } from '../platformHome/design-scripts';
 import { initDesign as initNo } from '../platformHome/design-scripts.no';
 import { installDemoRecords } from './demoRecords';
 import { installStudio } from './studioPreview';
+import { installServiceScroll } from './serviceScroll';
 import { PENDING_SECTION, takePendingSection } from './pendingSection';
 import { SECTION_PAGE, sectionKey } from './sitePages';
 import { LIVE_NEW_DESIGN, newDesign } from '../../lib/siteDesign';
@@ -138,6 +139,7 @@ export default function HomeV2Page({ keep }: { keep?: string[] } = {}) {
     const removeRecords = installDemoRecords(el, lang);
     const removeStudio = installStudio(el, lang);
     const removeMotion = installMotion(el);
+    const removeServiceScroll = installServiceScroll(el);
     wireCards(el);
     /* A section asked for from another page's menu: open there once the page has rendered. */
     const pending = takePendingSection();
@@ -178,7 +180,7 @@ export default function HomeV2Page({ keep }: { keep?: string[] } = {}) {
     };
     el.addEventListener('click', onClick);
     el.addEventListener('keydown', onKey);
-    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); removeRecords(); removeStudio(); removeMotion(); mounted = false; removeProbe(); window.clearTimeout(pendingTimer); };
+    return () => { el.removeEventListener('click', onClick); el.removeEventListener('keydown', onKey); removeRecords(); removeStudio(); removeMotion(); removeServiceScroll(); mounted = false; removeProbe(); window.clearTimeout(pendingTimer); };
   }, [version, language, setPage, setShowAuthModal, setAuthMode, keep]);
 
   return (
