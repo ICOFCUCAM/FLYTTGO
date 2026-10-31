@@ -36,7 +36,7 @@ const DRIVER = L.divIcon({
   className: '',
   iconSize: [20, 20],
   iconAnchor: [10, 10],
-  html: '<div class="fg-driver-dot" style="width:20px;height:20px;border-radius:9999px;background:#203F68;border:3px solid #fff;box-shadow:0 0 0 6px rgba(32,63,104,.3),0 2px 6px rgba(0,0,0,.3)"></div>',
+  html: '<div class="fg-driver-dot" style="width:20px;height:20px;border-radius:9999px;background:#C3A66C;border:3px solid #fff;box-shadow:0 0 0 6px rgba(195,166,108,.35),0 2px 6px rgba(0,0,0,.3)"></div>',
 });
 
 function FitBounds({ points }: { points: [number, number][] }) {
@@ -66,7 +66,7 @@ export default function RouteMap({ pickup, dropoff, driver, pickupLabel, dropoff
 
   return (
     <figure className={`m-0 ${className}`}>
-      <div className={`${height} overflow-hidden border border-[#E1E6E3] bg-[#F3F6F5] relative z-0`}>
+      <div className={`${height} overflow-hidden border border-[#E2DACA] bg-[#F3EEE2] relative z-0`}>
         <MapContainer center={[(pickup.lat + dropoff.lat) / 2, (pickup.lng + dropoff.lng) / 2]} zoom={7} scrollWheelZoom={false}
                       style={{ height: '100%', width: '100%' }} attributionControl>
           <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

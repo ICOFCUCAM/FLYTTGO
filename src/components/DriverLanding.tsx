@@ -92,7 +92,7 @@ export default function DriverLanding() {
 
   const meter = (n: number) => (
     <span className="inline-flex gap-[3px] align-middle" aria-hidden="true">
-      {[1, 2, 3, 4, 5].map(i => <span key={i} className={`w-[6px] h-[14px] ${i <= n ? 'bg-[#24513B]' : 'bg-[#D7DED9]'}`} />)}
+      {[1, 2, 3, 4, 5].map(i => <span key={i} className={`w-[6px] h-[14px] ${i <= n ? 'bg-[#24513B]' : 'bg-[#DCD4C2]'}`} />)}
     </span>
   );
 
@@ -108,7 +108,7 @@ export default function DriverLanding() {
   );
 
   return (
-    <div className="fg-driver-page bg-[#FFFFFF] text-[#17212E]">
+    <div className="fg-driver-page bg-[#FBF8F1] text-[#17212E]">
       {/* ── Hero: full screen, the van on the road, the headline word by word (items 1–2) ── */}
       <section className="relative overflow-hidden min-h-[min(820px,calc(100vh-64px))] flex items-end bg-[#1F3A2E] text-white">
         <img src={HERO} alt={t('driverLanding.heroAlt')} className="fg-hero-photo absolute inset-0 w-full h-full object-cover" fetchPriority="high" decoding="async" />
@@ -120,15 +120,15 @@ export default function DriverLanding() {
           <div role="radiogroup" aria-label={t('driverLanding.audience.label')} className="inline-flex border border-white/30 bg-black/15 backdrop-blur mb-9">
             {(['driver', 'company'] as const).map(a => (
               <button key={a} type="button" role="radio" aria-checked={audience === a} onClick={() => setAudience(a)}
-                      className={`min-h-[44px] px-5 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${audience === a ? 'bg-[#FFFFFF] text-[#17212E]' : 'text-white hover:bg-white/10'}`}>
+                      className={`min-h-[44px] px-5 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DCC9A0] ${audience === a ? 'bg-[#FFFEFA] text-[#17212E]' : 'text-white hover:bg-white/10'}`}>
                 {t(`driverLanding.audience.${a}`)}
               </button>
             ))}
           </div>
-          <p className="flex items-center gap-3 text-xs font-bold tracking-[.18em] uppercase text-[#A7D3BA] mb-6">
-            <span className="w-8 h-px bg-[#A7D3BA]" aria-hidden="true" />{audience === 'driver' ? t('driverLanding.eyebrow') : t('driverLanding.grow.eyebrow')}
+          <p className="flex items-center gap-3 text-xs font-bold tracking-[.18em] uppercase text-[#DCC9A0] mb-6">
+            <span className="w-8 h-px bg-[#C3A66C]" aria-hidden="true" />{audience === 'driver' ? t('driverLanding.eyebrow') : t('driverLanding.grow.eyebrow')}
           </p>
-          <h1 key={audience} className="text-[46px] sm:text-[64px] xl:text-[92px] font-bold tracking-[-.045em] leading-[.95] mb-7 max-w-[12ch] text-[#FFFFFF]" aria-label={titleA + ' ' + titleB}>
+          <h1 key={audience} className="text-[46px] sm:text-[64px] xl:text-[92px] font-bold tracking-[-.045em] leading-[.95] mb-7 max-w-[12ch] text-[#FFFEFA]" aria-label={titleA + ' ' + titleB}>
             {titleA.split(' ').map((w, i) => <span key={`a${i}`} aria-hidden="true" className="fg-word me-[.25em]" style={{ animationDelay: `${120 + i * 110}ms` }}>{w}</span>)}
             <span aria-hidden="true" className="font-normal italic text-[#DCC9A0]" style={serif}>
               {titleB.split(' ').map((w, i, arr) => <span key={`b${i}`} className={`fg-word ${i < arr.length - 1 ? 'me-[.25em]' : ''}`} style={{ animationDelay: `${120 + (titleA.split(' ').length + i) * 110}ms` }}>{w}</span>)}
@@ -136,8 +136,8 @@ export default function DriverLanding() {
           </h1>
           <p className="text-lg md:text-xl leading-relaxed text-[#E3E9E5] max-w-[52ch] mb-9">{audience === 'driver' ? t('driverLanding.lede') : t('driverLanding.grow.lede')}</p>
           <div className="flex flex-wrap gap-3 mb-12">
-            <button type="button" onClick={toForm} className="min-h-[56px] px-8 bg-white hover:bg-[#E6EEE9] text-[#17212E] font-bold text-[16px] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{t('driverLanding.apply')} ↓</button>
-            <button type="button" onClick={() => go(audience === 'driver' ? 'plans' : 'companies')} className="min-h-[56px] px-7 border border-white/50 text-white font-bold hover:bg-white/10 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            <button type="button" onClick={toForm} className="min-h-[56px] px-8 bg-[#C3A66C] hover:bg-[#D2B87F] text-[#17212E] font-bold text-[16px] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DCC9A0]">{t('driverLanding.apply')} ↓</button>
+            <button type="button" onClick={() => go(audience === 'driver' ? 'plans' : 'companies')} className="min-h-[56px] px-7 border border-white/50 text-white font-bold hover:bg-white/10 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DCC9A0]">
               {audience === 'driver' ? t('driverLanding.compare') : t('driverLanding.audience.companyCta')}
             </button>
           </div>
@@ -145,7 +145,7 @@ export default function DriverLanding() {
             {facts.map(([value, label], i) => (
               <div key={label} className={`flex flex-col-reverse justify-end pt-5 ${i ? 'ps-4 sm:ps-5 border-s border-white/25' : ''} pe-3`}>
                 <dt className="text-[13px] leading-snug text-[#D5DDD7]">{label}</dt>
-                <dd className="m-0 text-[24px] sm:text-[30px] md:text-[36px] leading-none text-[#FFFFFF] mb-2" style={serif}>{value}</dd>
+                <dd className="m-0 text-[24px] sm:text-[30px] md:text-[36px] leading-none text-[#FFFEFA] mb-2" style={serif}>{value}</dd>
               </div>
             ))}
           </dl>
@@ -153,12 +153,12 @@ export default function DriverLanding() {
       </section>
 
       {/* ── Cities open for applications: each one starts the application there (item 3) ── */}
-      <div className="bg-[#FFFFFF] border-b border-[#E1E6E3]">
+      <div className="bg-[#FFFEFA] border-b border-[#E2DACA]">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10 py-4 flex items-center gap-3 overflow-x-auto [scrollbar-width:none]">
-          <span className="flex-shrink-0 text-xs font-bold tracking-[.14em] uppercase text-[#24513B] me-2">{t('driverLanding.citiesTitle')}</span>
+          <span className="flex-shrink-0 text-xs font-bold tracking-[.14em] uppercase text-[#7A6436] me-2">{t('driverLanding.citiesTitle')}</span>
           {APPLICATION_CITIES.map(c => (
             <button key={c} type="button" onClick={() => { setPresetCity(c); toForm(); }}
-                    className={`flex-shrink-0 min-h-[40px] px-4 border border-[#D7DED9] bg-white text-sm font-semibold hover:border-[#24513B] hover:text-[#24513B] transition ${focus}`}
+                    className={`flex-shrink-0 min-h-[40px] px-4 border border-[#DCD4C2] bg-white text-sm font-semibold hover:border-[#24513B] hover:text-[#24513B] transition ${focus}`}
                     aria-label={t('driverLanding.cityApply', { city: c })}>{c}</button>
           ))}
         </div>
@@ -167,14 +167,14 @@ export default function DriverLanding() {
       {audience === 'company' && companiesSection}
 
       {/* ── Section bar ────────────────────────────────────────────── */}
-      <nav aria-label={t('driverLanding.navLabel')} className="sticky top-16 z-40 bg-[#FFFFFF]/95 backdrop-blur border-y border-[#E1E6E3]">
+      <nav aria-label={t('driverLanding.navLabel')} className="sticky top-16 z-40 bg-[#FBF8F1]/95 backdrop-blur border-y border-[#E2DACA]">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10 flex items-center gap-3">
           <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto [scrollbar-width:none]">
             {SECTIONS.map(id => (
               <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); go(id); }} aria-current={active === id ? 'true' : undefined}
                  className={`relative whitespace-nowrap px-3 py-4 text-sm font-semibold transition ${focus} ${active === id ? 'text-[#17212E]' : 'text-[#4A5260] hover:text-[#17212E]'}`}>
                 {t(`driverLanding.nav.${id}`)}
-                <span aria-hidden="true" className={`absolute inset-x-3 bottom-0 h-[2px] ${active === id ? 'bg-[#24513B]' : 'bg-transparent'}`} />
+                <span aria-hidden="true" className={`absolute inset-x-3 bottom-0 h-[2px] ${active === id ? 'bg-[#C3A66C]' : 'bg-transparent'}`} />
               </a>
             ))}
           </div>
@@ -192,8 +192,8 @@ export default function DriverLanding() {
           </div>
           <ol className="list-none p-0 m-0 grid sm:grid-cols-2 lg:grid-cols-4 border-t border-[#17212E]">
             {[1, 2, 3, 4].map(i => (
-              <li key={i} className={`relative pt-8 pb-2 pe-8 ${i > 1 ? 'lg:ps-8 lg:border-s border-[#E1E6E3]' : ''} ${i === 3 ? 'sm:max-lg:pt-12' : ''} ${i === 4 ? 'sm:max-lg:pt-12' : ''}`}>
-                <span className="block text-[64px] leading-none text-[#24513B] mb-5" style={serif}>{i}</span>
+              <li key={i} className={`relative pt-8 pb-2 pe-8 ${i > 1 ? 'lg:ps-8 lg:border-s border-[#E2DACA]' : ''} ${i === 3 ? 'sm:max-lg:pt-12' : ''} ${i === 4 ? 'sm:max-lg:pt-12' : ''}`}>
+                <span className="block text-[64px] leading-none text-[#9F8249] mb-5" style={serif}>{i}</span>
                 <h3 className="text-xl font-bold tracking-tight mb-2">{t(`driverLanding.step${i}`)}</h3>
                 <p className="text-[15px] leading-relaxed text-[#4A5260] m-0">{t(`driverLanding.step${i}Desc`)}</p>
               </li>
@@ -207,7 +207,7 @@ export default function DriverLanding() {
         <div className="max-w-[1240px] mx-auto px-5 md:px-10">
           <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 lg:gap-16 items-end mb-10">
             <div>
-              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#24513B] mb-3">{t('driverLanding.day.eyebrow')}</p>
+              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.day.eyebrow')}</p>
               <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] m-0">{t('driverLanding.day.title')}</h2>
             </div>
             <p className="text-lg text-[#4A5260] leading-relaxed m-0 max-w-[56ch]">{t('driverLanding.day.lede')}</p>
@@ -217,16 +217,16 @@ export default function DriverLanding() {
       </section>
 
       {/* ── What you get ───────────────────────────────────────────── */}
-      <section id="benefits" className="fg-reveal scroll-mt-32 bg-[#FFFFFF] py-20 md:py-28 border-y border-[#E8EDEA]">
+      <section id="benefits" className="fg-reveal scroll-mt-32 bg-[#FFFEFA] py-20 md:py-28 border-y border-[#EDE6D6]">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-12 lg:gap-20 items-center">
           <div className="relative order-2 lg:order-1">
             <div className="absolute -top-5 -start-5 w-2/3 h-2/3 bg-[#E4ECE6]" aria-hidden="true" />
             <img src={CREW} alt={t('driverLanding.crewAlt')} loading="lazy" className="relative w-full aspect-[4/5] sm:aspect-[5/4] lg:aspect-[4/5] object-cover" />
           </div>
           <div className="order-1 lg:order-2">
-            <p className="text-xs font-bold tracking-[.16em] uppercase text-[#24513B] mb-3">{t('driverLanding.benefitsEyebrow')}</p>
+            <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.benefitsEyebrow')}</p>
             <h2 className="text-[36px] md:text-[48px] font-bold tracking-[-.04em] leading-[1.04] mb-10">{t('driverLanding.benefitsTitle')}</h2>
-            <dl className="m-0 divide-y divide-[#E1E6E3] border-y border-[#E1E6E3]">
+            <dl className="m-0 divide-y divide-[#E2DACA] border-y border-[#E2DACA]">
               {(['pay', 'customers', 'paid', 'plan'] as const).map(k => (
                 <div key={k} className="grid sm:grid-cols-[minmax(0,200px)_minmax(0,1fr)] gap-x-8 gap-y-1 py-6">
                   <dt className="font-bold text-[17px] tracking-tight">{t(`driverLanding.benefit.${k}`)}</dt>
@@ -239,11 +239,11 @@ export default function DriverLanding() {
       </section>
 
       {/* ── Plans compared ─────────────────────────────────────────── */}
-      <section id="plans" className="fg-reveal scroll-mt-32 bg-[#F3F6F5] py-20 md:py-28">
+      <section id="plans" className="fg-reveal scroll-mt-32 bg-[#F3EEE2] py-20 md:py-28">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10">
           <div className="grid lg:grid-cols-[minmax(0,1fr)_auto] gap-6 items-end mb-10">
             <div>
-              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#24513B] mb-3">{t('driverLanding.plansEyebrow')}</p>
+              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.plansEyebrow')}</p>
               <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] mb-4">{t('driverLanding.plansTitle')}</h2>
               <p className="text-lg text-[#4A5260] leading-relaxed m-0 max-w-[64ch]">{t('driverLanding.plansLede')}</p>
             </div>
@@ -260,7 +260,7 @@ export default function DriverLanding() {
           {/* Phones and tablets: one row per plan. */}
           <ul className="lg:hidden list-none p-0 m-0 border-t-2 border-[#17212E]">
             {SUBSCRIPTION_PLANS.map((p, i) => (
-              <li key={p.id} className={`py-5 px-4 border-b border-[#D7DED9] ${i === 0 ? 'bg-[#FFFFFF]' : ''}`}>
+              <li key={p.id} className={`py-5 px-4 border-b border-[#DCD4C2] ${i === 0 ? 'bg-[#FFFEFA]' : ''}`}>
                 <div className="flex items-baseline justify-between gap-3">
                   <b className="text-[19px] tracking-tight">{p.name}{i === 0 && <span className="ms-2 align-middle text-[11px] font-bold tracking-[.08em] uppercase text-[#1f4a33] bg-[#E4ECE6] px-2 py-0.5">{t('driverLanding.startHere')}</span>}</b>
                   <span className="text-[15px] font-semibold whitespace-nowrap">{price(p)}</span>
@@ -280,15 +280,15 @@ export default function DriverLanding() {
               </thead>
               <tbody>
                 {SUBSCRIPTION_PLANS.map((p, i) => (
-                  <tr key={p.id} className={i === 0 ? 'bg-[#FFFFFF]' : ''}>
-                    <th scope="row" className="text-start px-4 py-5 border-b border-[#D7DED9] text-[19px] font-bold tracking-tight whitespace-nowrap">
+                  <tr key={p.id} className={i === 0 ? 'bg-[#FFFEFA]' : ''}>
+                    <th scope="row" className="text-start px-4 py-5 border-b border-[#DCD4C2] text-[19px] font-bold tracking-tight whitespace-nowrap">
                       {p.name}
                       {i === 0 && <span className="ms-2.5 align-middle text-[11px] font-bold tracking-[.08em] uppercase text-[#1f4a33] bg-[#E4ECE6] px-2 py-0.5">{t('driverLanding.startHere')}</span>}
                     </th>
-                    <td className="px-4 py-5 border-b border-[#D7DED9] whitespace-nowrap font-semibold">{price(p)}</td>
-                    <td className="px-4 py-5 border-b border-[#D7DED9]">{jobs(p)}</td>
-                    <td className="px-4 py-5 border-b border-[#D7DED9] whitespace-nowrap">{commission(p)}</td>
-                    <td className="px-4 py-5 border-b border-[#D7DED9] whitespace-nowrap"><span className="inline-flex items-center gap-2.5">{meter(p.priorityLevel)}<span>{level(p)}</span></span></td>
+                    <td className="px-4 py-5 border-b border-[#DCD4C2] whitespace-nowrap font-semibold">{price(p)}</td>
+                    <td className="px-4 py-5 border-b border-[#DCD4C2]">{jobs(p)}</td>
+                    <td className="px-4 py-5 border-b border-[#DCD4C2] whitespace-nowrap">{commission(p)}</td>
+                    <td className="px-4 py-5 border-b border-[#DCD4C2] whitespace-nowrap"><span className="inline-flex items-center gap-2.5">{meter(p.priorityLevel)}<span>{level(p)}</span></span></td>
                   </tr>
                 ))}
               </tbody>
@@ -305,7 +305,7 @@ export default function DriverLanding() {
         <div className="max-w-[1240px] mx-auto px-5 md:px-10">
           <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 lg:gap-16 items-end mb-14">
             <div>
-              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#24513B] mb-3">{t('driverLanding.escrow.eyebrow')}</p>
+              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.escrow.eyebrow')}</p>
               <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] m-0">{t('driverLanding.escrow.title')}</h2>
             </div>
             <p className="text-lg text-[#4A5260] leading-relaxed m-0 max-w-[56ch]">{t('driverLanding.escrow.lede')}</p>
@@ -315,31 +315,31 @@ export default function DriverLanding() {
       </section>
 
       {/* ── What you need ──────────────────────────────────────────── */}
-      <section id="requirements" className="fg-reveal scroll-mt-32 bg-[#1F3A2E] text-[#F3F6F5] py-20 md:py-28">
+      <section id="requirements" className="fg-reveal scroll-mt-32 bg-[#1F3A2E] text-[#F3EEE2] py-20 md:py-28">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10">
           <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 lg:gap-16 items-end mb-14">
             <div>
-              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#A7D3BA] mb-3">{t('driverLanding.reqEyebrow')}</p>
-              <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] m-0 text-[#FFFFFF]">{t('driverLanding.reqTitle')}</h2>
+              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#DCC9A0] mb-3">{t('driverLanding.reqEyebrow')}</p>
+              <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] m-0 text-[#FFFEFA]">{t('driverLanding.reqTitle')}</h2>
             </div>
             <div>
-              <h3 className="text-[15px] font-bold text-[#FFFFFF] mb-1">{t('driverLanding.checkTitle')}</h3>
+              <h3 className="text-[15px] font-bold text-[#FFFEFA] mb-1">{t('driverLanding.checkTitle')}</h3>
               <p className="text-[16px] leading-relaxed text-[#D5DDD7] m-0 max-w-[56ch]">{t('driverLanding.checkText')}</p>
             </div>
           </div>
           <div className="grid md:grid-cols-3 gap-10 md:gap-0">
             <div className="md:pe-10">
-              <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#A7D3BA] pb-3 mb-4 border-b border-[#F3F6F5]/20">{t('driverLanding.reqVehicle')}</h3>
+              <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#DCC9A0] pb-3 mb-4 border-b border-[#F3EEE2]/20">{t('driverLanding.reqVehicle')}</h3>
               <ul className="list-none p-0 m-0 space-y-4">
                 {VEHICLE_TYPES.map(v => {
                   const name = t(`driverApplication.vehicles.${v.id}`, v.label.replace(/\s*\(.*\)$/, ''));
                   const photo = VAN_TYPES.find(x => x.id === v.id)?.image;
-                  return <li key={v.id} className="flex items-center justify-between gap-4">{photo && <img src={photo} alt="" loading="lazy" decoding="async" className="w-16 h-11 object-cover flex-shrink-0" />}<span className="text-[16px] flex-1">{name}</span><span className="text-[#A7D3BA] whitespace-nowrap" style={serif}>{/\(([^)]+)\)/.exec(v.label)?.[1]}</span></li>;
+                  return <li key={v.id} className="flex items-center justify-between gap-4">{photo && <img src={photo} alt="" loading="lazy" decoding="async" className="w-16 h-11 object-cover flex-shrink-0" />}<span className="text-[16px] flex-1">{name}</span><span className="text-[#DCC9A0] whitespace-nowrap" style={serif}>{/\(([^)]+)\)/.exec(v.label)?.[1]}</span></li>;
                 })}
               </ul>
             </div>
-            <div className="md:px-10 md:border-s border-[#F3F6F5]/20">
-              <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#A7D3BA] pb-3 mb-4 border-b border-[#F3F6F5]/20">{t('driverLanding.reqDocuments')}</h3>
+            <div className="md:px-10 md:border-s border-[#F3EEE2]/20">
+              <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#DCC9A0] pb-3 mb-4 border-b border-[#F3EEE2]/20">{t('driverLanding.reqDocuments')}</h3>
               <ul className="list-none p-0 m-0 space-y-3.5">
                 {DOCUMENT_TYPES.map(d => (
                   <li key={d.key}>
@@ -350,12 +350,12 @@ export default function DriverLanding() {
               </ul>
               <p className="text-[13px] text-[#BFCBC3] mt-5">{t('driverApplication.formats')}</p>
             </div>
-            <div className="md:ps-10 md:border-s border-[#F3F6F5]/20">
-              <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#A7D3BA] pb-3 mb-4 border-b border-[#F3F6F5]/20">{t('driverLanding.reqWhere')}</h3>
+            <div className="md:ps-10 md:border-s border-[#F3EEE2]/20">
+              <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#DCC9A0] pb-3 mb-4 border-b border-[#F3EEE2]/20">{t('driverLanding.reqWhere')}</h3>
               <ul className="list-none p-0 m-0 grid grid-cols-2 gap-y-3 gap-x-4">
                 {APPLICATION_CITIES.map(c => <li key={c} className="text-[16px]">{c}</li>)}
               </ul>
-              <button type="button" onClick={toForm} className="mt-10 min-h-[52px] px-6 bg-white hover:bg-[#E6EEE9] text-[#17212E] font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{t('driverLanding.apply')} ↓</button>
+              <button type="button" onClick={toForm} className="mt-10 min-h-[52px] px-6 bg-[#C3A66C] hover:bg-[#D2B87F] text-[#17212E] font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DCC9A0]">{t('driverLanding.apply')} ↓</button>
             </div>
           </div>
         </div>
@@ -366,7 +366,7 @@ export default function DriverLanding() {
         <div className="max-w-[1240px] mx-auto px-5 md:px-10">
           <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 lg:gap-16 items-end mb-12">
             <div>
-              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#24513B] mb-3">{t('driverLanding.terms.eyebrow')}</p>
+              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.terms.eyebrow')}</p>
               <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] m-0">{t('driverLanding.terms.title')}</h2>
             </div>
             <p className="text-lg text-[#4A5260] leading-relaxed m-0 max-w-[56ch]">{t('driverLanding.terms.lede')}</p>
@@ -376,9 +376,9 @@ export default function DriverLanding() {
       </section>
 
       {/* ── Questions (item 11) ───────────────────────────────────── */}
-      <section id="faq" className="fg-reveal scroll-mt-32 bg-[#FFFFFF] py-20 md:py-28 border-y border-[#E8EDEA]">
+      <section id="faq" className="fg-reveal scroll-mt-32 bg-[#FFFEFA] py-20 md:py-28 border-y border-[#EDE6D6]">
         <div className="max-w-[1040px] mx-auto px-5 md:px-10">
-          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#24513B] mb-3">{t('driverLanding.faq.eyebrow')}</p>
+          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.faq.eyebrow')}</p>
           <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] mb-10">{t('driverLanding.faq.title')}</h2>
           <DriverFaq />
         </div>

@@ -6,14 +6,12 @@
  * phone rules beside it. Add to a block; never append overrides at the end.
  *
  * Art direction (owner, 30 October 2026). The established palette, one job per colour:
- *   cool paper #F3F6F5 and white #FFFFFF   every ground: the page stays light
+ *   ivory #F5F3EB and soft white #FFFEFA  every ground: the page stays light
  *   deep blue #203F68                     the brand: headings, primary actions, labels, the dark panels
  *   forest #24513B, evergreen #20352B     positive states; evergreen also frames the financial workspace
- *   steel #8DA4BF                         hairlines, connectors and numerals; text only on deep blue (#C3D3E6)
- * Owner, 31 October 2026: the gold had taken over the site, so the accent tokens (--gold, --gold-text) now
- * hold a soft steel blue; their names are kept so the generated design and the lab still read them.
+ *   champagne gold #C3A66C                hairlines, connectors and numerals; text only on deep blue (#DCC9A0)
  * One motif, used deliberately: the curved top-right corner on the hero picture,
- * the platform core and the provider panel; an accent hairline before every label.
+ * the platform core and the provider panel; a gold hairline before every label.
  *
  * Contents
  *   1 Tokens  2 Base  3 Hero  4 Booking  5 Journeys  6 Platform  7 How FlyttGo works
@@ -28,14 +26,14 @@
 .fgv2 {
   --green: var(--blue);  /* the design's dark-ground variable follows the brand token */
   --green2: #2b4f7e;
-  --gold: #8DA4BF;       /* the accent (steel since 31 October 2026; was champagne) */
-  --gold-text: #C3D3E6;  /* the accent lightened for small labels on deep blue (4.5:1 and above) */
-  --paper: #F3F6F5;
-  --white: #FFFFFF;
+  --gold: #C3A66C;
+  --gold-text: #DCC9A0;  /* gold lightened for small labels on deep blue (4.5:1 and above) */
+  --paper: #F5F3EB;
+  --white: #FFFEFA;
   --ink: #17212e;
   --muted: #4a5260;
-  /* hairlines: one cool line colour, its strength a token */
-  --line: color-mix(in srgb, #c5cfd6 min(100%, calc(var(--hairline, 1) * 60%)), transparent);
+  /* hairlines: one warm line colour, its strength a token */
+  --line: color-mix(in srgb, #cfc5ad min(100%, calc(var(--hairline, 1) * 60%)), transparent);
   --blue: #203F68;
   --forest: #24513B;
   --evergreen: #20352B;
@@ -942,7 +940,7 @@
   .fgv2[data-moving="b"] .v2-svc-scroll .service-card.is-swapped .body { opacity: 0; }
   .fgv2[data-moving="b"] .v2-svc-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 120px 32px 30px; background: linear-gradient(180deg, rgba(20,38,64,0), rgba(20,38,64,.88) 62%); color: #fff; opacity: 0; transition: opacity .3s; pointer-events: none; }
   .fgv2[data-moving="b"] .is-swapped .v2-svc-caption { opacity: 1; }
-  .fgv2[data-moving="b"] .v2-svc-caption span:first-child { display: block; font: 600 13px var(--font-display); letter-spacing: .08em; color: var(--gold-text); margin-bottom: 6px; }
+  .fgv2[data-moving="b"] .v2-svc-caption span:first-child { display: block; font: 600 13px var(--font-display); letter-spacing: .08em; color: #DCC9A0; margin-bottom: 6px; }
   .fgv2[data-moving="b"] .v2-svc-caption b { display: block; font: var(--head-weight) clamp(24px, 2.2vw, 32px)/1.1 var(--font-display); letter-spacing: -.03em; margin-bottom: 8px; }
   .fgv2[data-moving="b"] .v2-svc-caption span:last-child { display: block; font-size: 15px; color: #eef1f5; }
   .fgv2[data-moving="b"] .v2-svc-scroll .service-card:not(:first-child) { padding-top: 14px; padding-bottom: 14px; }

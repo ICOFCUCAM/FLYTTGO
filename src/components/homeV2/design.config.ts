@@ -49,10 +49,9 @@ export type DesignVariants = {
   grounds: 'alternate' | 'quiet' | 'banded'; photo: 'natural' | 'editorial' | 'documentary'; motion: 'on' | 'off';
 };
 
-/* The approved palette and the type of #21, kept as the baseline every trial is compared with. Owner, 31 October 2026:
- * the accent is steel (#8DA4BF) and the grounds cool white instead of champagne and ivory. */
+/* The approved palette and the type of #21, kept as the baseline every trial is compared with. */
 export const BASELINE_TOKENS: DesignTokens = {
-  blue: '#203F68', forest: '#24513B', evergreen: '#20352B', gold: '#8DA4BF', paper: '#F3F6F5', white: '#FFFFFF', ink: '#17212E',
+  blue: '#203F68', forest: '#24513B', evergreen: '#20352B', gold: '#C3A66C', paper: '#F5F3EB', white: '#FFFEFA', ink: '#17212E',
   fontDisplay: 'Manrope', fontBody: 'DM Sans', fontAccent: 'Georgia',
   heroScale: 1, heroWeight: 650, heroLeading: 0.98, heroTracking: -0.045,
   typeScale: 1, headWeight: 650, headLeading: 1.04, headTracking: -0.045, bodySize: 16,
@@ -80,7 +79,7 @@ export const COLOUR_CONTROLS: { key: keyof DesignTokens; label: string }[] = [
   { key: 'blue', label: 'Deep blue · brand, actions, dark panels' },
   { key: 'forest', label: 'Forest · positive states, booking' },
   { key: 'evergreen', label: 'Evergreen · financial identity' },
-  { key: 'gold', label: 'Accent (steel) · hairlines, numerals' },
+  { key: 'gold', label: 'Champagne · hairlines, numerals' },
   { key: 'paper', label: 'Ivory · alternate ground' },
   { key: 'white', label: 'Soft white · main ground' },
   { key: 'ink', label: 'Ink · body text' },

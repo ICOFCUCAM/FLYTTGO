@@ -172,18 +172,18 @@ export default function TrackingPage() {
   }, [own, pub, ref, lang]);
 
   return (
-    <div className="min-h-screen bg-[#FFFFFF] text-[#17212E]">
+    <div className="min-h-screen bg-[#FBF8F1] text-[#17212E]">
       {/* ── Search ─────────────────────────────────────────────── */}
-      <section className="bg-[#1F3A2E] text-[#F3F6F5] pt-12 pb-14">
+      <section className="bg-[#1F3A2E] text-[#F3EEE2] pt-12 pb-14">
         <div className="max-w-3xl mx-auto px-5">
-          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#A7D3BA] mb-3">{t('trackingV2.eyebrow')}</p>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-[#FFFFFF] mb-3">{t('trackingV2.title')}</h1>
+          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#DCC9A0] mb-3">{t('trackingV2.eyebrow')}</p>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight text-[#FFFEFA] mb-3">{t('trackingV2.title')}</h1>
           <p className="text-[#D5DDD7] mb-7 max-w-[60ch]">{t('trackingV2.lede')}</p>
           <form className="flex flex-col sm:flex-row gap-2" onSubmit={e => { e.preventDefault(); void lookup(query); }}>
             <label htmlFor="track-ref" className="sr-only">{t('trackingV2.refLabel')}</label>
             <input id="track-ref" value={query} onChange={e => setQuery(e.target.value)} placeholder="FG-7K3M9Q" autoComplete="off" autoCapitalize="characters"
-                   className="flex-1 min-h-[52px] px-4 bg-white text-[#17212E] text-[17px] tracking-wide border border-transparent outline-none focus:ring-2 focus:ring-[#A7D3BA]" />
-            <button type="submit" disabled={loading} className={`min-h-[52px] px-7 bg-white hover:bg-[#E6EEE9] text-[#17212E] font-bold disabled:opacity-60 ${focus}`}>
+                   className="flex-1 min-h-[52px] px-4 bg-white text-[#17212E] text-[17px] tracking-wide border border-transparent outline-none focus:ring-2 focus:ring-[#C3A66C]" />
+            <button type="submit" disabled={loading} className={`min-h-[52px] px-7 bg-[#C3A66C] hover:bg-[#D2B87F] text-[#17212E] font-bold disabled:opacity-60 ${focus}`}>
               {loading ? t('trackingV2.searching') : t('trackingV2.track')}
             </button>
           </form>
@@ -209,12 +209,12 @@ export default function TrackingPage() {
           <div className="grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-8">
             <div className="min-w-0 space-y-6">
               {/* Status */}
-              <div className="bg-[#FFFFFF] border border-[#E1E6E3] p-6 md:p-8">
+              <div className="bg-[#FFFEFA] border border-[#E2DACA] p-6 md:p-8">
                 <div className="flex flex-wrap items-center gap-3 mb-1">
-                  <p className="text-xs font-bold tracking-[.14em] uppercase text-[#24513B] m-0">{ref}</p>
+                  <p className="text-xs font-bold tracking-[.14em] uppercase text-[#7A6436] m-0">{ref}</p>
                   {own && (
                     <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${live ? 'text-[#24513B]' : 'text-[#4A5260]'}`}>
-                      <span className={`w-2 h-2 rounded-full ${live ? 'bg-[#24513B] animate-pulse' : 'bg-[#C8D0CB]'}`} aria-hidden="true" />
+                      <span className={`w-2 h-2 rounded-full ${live ? 'bg-[#24513B] animate-pulse' : 'bg-[#CFC7B5]'}`} aria-hidden="true" />
                       {live ? t('trackingV2.live') : t('trackingV2.refreshing')}
                     </span>
                   )}
@@ -222,7 +222,7 @@ export default function TrackingPage() {
                 <h2 className="text-3xl md:text-4xl font-bold tracking-tight m-0" aria-live="polite">{statusLabel}</h2>
                 {(from || to) && <p className="text-[#4A5260] mt-2 mb-0">{from ?? '—'} → {to ?? '—'}</p>}
                 {eta && (
-                  <p className="mt-4 mb-0 inline-flex items-baseline gap-2 px-4 py-2 bg-[#F3F6F5] text-[15px]">
+                  <p className="mt-4 mb-0 inline-flex items-baseline gap-2 px-4 py-2 bg-[#F3EEE2] text-[15px]">
                     <b>{t(eta.to === 'pickup' ? 'trackingV2.etaPickup' : 'trackingV2.etaDropoff', { time: formatDuration(eta.minutes, lang) })}</b>
                     <span className="text-[13px] text-[#4A5260]">{eta.road ? t('trackingV2.etaNote') : t('trackingV2.etaNoteStraight')}</span>
                   </p>
@@ -233,12 +233,12 @@ export default function TrackingPage() {
 
               {/* Map: the booking's own customer sees the road and the driver */}
               {pickup && dropoff ? (
-                <Suspense fallback={<div className="h-80 bg-[#F3F6F5] border border-[#E1E6E3] animate-pulse" aria-hidden="true" />}>
+                <Suspense fallback={<div className="h-80 bg-[#F3EEE2] border border-[#E2DACA] animate-pulse" aria-hidden="true" />}>
                   <RouteMap pickup={pickup} dropoff={dropoff} driver={driverPos} height="h-80 md:h-[420px]"
                             pickupLabel={own?.pickup_city || undefined} dropoffLabel={own?.dropoff_city || undefined} />
                 </Suspense>
               ) : (
-                <div className="p-6 border border-dashed border-[#C8D0CB] bg-[#FFFFFF] text-[15px] text-[#4A5260]">
+                <div className="p-6 border border-dashed border-[#CFC7B5] bg-[#FFFEFA] text-[15px] text-[#4A5260]">
                   {t('trackingV2.mapForOwner')}
                 </div>
               )}
@@ -247,7 +247,7 @@ export default function TrackingPage() {
 
             <aside className="space-y-6">
               {/* Timeline */}
-              <div className="bg-[#FFFFFF] border border-[#E1E6E3] p-6">
+              <div className="bg-[#FFFEFA] border border-[#E2DACA] p-6">
                 <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#4A5260] mb-5">{t('trackingV2.timeline')}</h3>
                 {state.cancelled ? (
                   <p className="m-0 text-[15px]">{t('trackingV2.cancelled')}{time(times.cancelled_at) ? ` · ${time(times.cancelled_at)}` : ''}</p>
@@ -258,9 +258,9 @@ export default function TrackingPage() {
                       const at = done ? time(stepTime(s, times)) : null;
                       return (
                         <li key={s} className="relative flex gap-4 pb-5 last:pb-0" aria-current={now ? 'step' : undefined}>
-                          {i < TRACKING_STEPS.length - 1 && <span aria-hidden="true" className={`absolute start-[11px] top-6 bottom-0 w-[2px] ${i < state.step ? 'bg-[#24513B]' : 'bg-[#E1E6E3]'}`} />}
+                          {i < TRACKING_STEPS.length - 1 && <span aria-hidden="true" className={`absolute start-[11px] top-6 bottom-0 w-[2px] ${i < state.step ? 'bg-[#24513B]' : 'bg-[#E2DACA]'}`} />}
                           <span aria-hidden="true" className={`relative z-10 flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                            now ? 'bg-[#24513B] text-white ring-4 ring-[#24513B]/15' : done ? 'bg-[#24513B] text-white' : 'bg-[#F3F6F5] text-[#4A5260] border border-[#C8D0CB]'}`}>{done && !now ? '✓' : i + 1}</span>
+                            now ? 'bg-[#24513B] text-white ring-4 ring-[#24513B]/15' : done ? 'bg-[#24513B] text-white' : 'bg-[#F3EEE2] text-[#4A5260] border border-[#CFC7B5]'}`}>{done && !now ? '✓' : i + 1}</span>
                           <div>
                             <p className={`m-0 text-[15px] ${now ? 'font-bold' : done ? 'font-semibold' : 'text-[#4A5260]'}`}>{t(`trackingV2.step.${s}`)}</p>
                             {at && <p className="m-0 text-[12px] text-[#4A5260]">{at}</p>}
@@ -273,7 +273,7 @@ export default function TrackingPage() {
               </div>
 
               {/* The booking */}
-              <div className="bg-[#FFFFFF] border border-[#E1E6E3] p-6">
+              <div className="bg-[#FFFEFA] border border-[#E2DACA] p-6">
                 <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#4A5260] mb-4">{t('trackingV2.details')}</h3>
                 <dl className="m-0 space-y-3">
                   {facts.map(([k, v]) => (
@@ -284,8 +284,8 @@ export default function TrackingPage() {
                 </dl>
                 {!own && <p className="text-[12px] text-[#4A5260] mt-4 mb-0">{t('trackingV2.publicNote')}</p>}
                 <div className="flex flex-wrap gap-2 mt-5">
-                  {own && <button type="button" onClick={() => setPage('my-bookings')} className={`min-h-[44px] px-4 border border-[#C8D0CB] font-semibold text-sm hover:bg-[#F3F6F5] ${focus}`}>{t('trackingV2.myBookings')}</button>}
-                  <button type="button" onClick={() => setPage('contact')} className={`min-h-[44px] px-4 border border-[#C8D0CB] font-semibold text-sm hover:bg-[#F3F6F5] ${focus}`}>{t('trackingV2.help')}</button>
+                  {own && <button type="button" onClick={() => setPage('my-bookings')} className={`min-h-[44px] px-4 border border-[#CFC7B5] font-semibold text-sm hover:bg-[#F3EEE2] ${focus}`}>{t('trackingV2.myBookings')}</button>}
+                  <button type="button" onClick={() => setPage('contact')} className={`min-h-[44px] px-4 border border-[#CFC7B5] font-semibold text-sm hover:bg-[#F3EEE2] ${focus}`}>{t('trackingV2.help')}</button>
                 </div>
               </div>
             </aside>
