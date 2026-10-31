@@ -111,6 +111,7 @@ export const no: PartialTranslationKeys = {
     toolCheckDesc: 'Steg-for-steg pakkeguide',
     subPlans:      'Abonnementer',
     subPlansDesc:  'Spar med sjåførabonnement',
+    corpDashboard: 'Bedriftsdashbord',
     corpDashDesc:  'Bedriftslogistikk kommandosenter',
   },
 

@@ -69,7 +69,7 @@ export default function Header() {
     { label: t('home.corpAnalytics', 'Company Dashboard Info'),    desc: t('home.corpAnalyticsDesc', 'Track spending & delivery performance'), page: 'company-dashboard-info' as Page },
     { label: t('home.corpInvoice', 'Invoice & Billing'),           desc: t('home.corpInvoiceDesc', 'Consolidated monthly invoices'),         page: 'invoice-billing' as Page },
     { label: t('home.corpApi', 'Corporate API Access'),            desc: t('home.corpApiDesc', 'Integrate FlyttGo into your systems'),       page: 'corporate-api-access' as Page },
-    { label: t('home.corpAnalytics', 'Corporate Dashboard'),       desc: t('header.corpDashDesc', 'Enterprise logistics command center'),    page: 'corporate-dashboard' as Page },
+    { label: t('header.corpDashboard', 'Corporate Dashboard'),       desc: t('header.corpDashDesc', 'Enterprise logistics command center'),    page: 'corporate-dashboard' as Page },
   ];
 
   /* Real-time notifications for the bell icon. Returns an empty list

@@ -505,6 +505,15 @@ No new section, claim or data was added.
 
 Every page is the same component with a list of sections, so nothing is built twice. Each page without the hero has its own page heading.
 
+**Existing pages in the new design (`homeV2/siteTheme.css`).**
+- **Scope:** about twenty-five public pages (transport, services, van guide, driver pages, business pages, white label, legal and help pages).
+- **What changes:** AppLayout wraps them in `.fg-site` while the new design shows. The layer maps their earlier colours (emerald, `#1A365D`, `#0B2E59`, the yellow actions, near-black bands) onto the approved palette, and sets Manrope and DM Sans and squarer corners.
+- **What stays:** no content or behaviour changes.
+- **Not wrapped:** dashboards, admin and the booking flow.
+- **Remaining:** emoji icons on some business pages are page content and change only when those pages are rewritten.
+
+**Header fix:** the Companies menu listed "Analytics Dashboard" twice; the second entry is the Corporate Dashboard again (`header.corpDashboard`).
+
 ## Stage D: content checked against the source
 
 | Content | Where it is |

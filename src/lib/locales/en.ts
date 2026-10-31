@@ -109,6 +109,7 @@ export const en = {
     toolCheckDesc: 'Step-by-step packing guide',
     subPlans:      'Subscription Plans',
     subPlansDesc:  'Save with a driver subscription',
+    corpDashboard: 'Corporate Dashboard',
     corpDashDesc:  'Enterprise logistics command center',
   },
 

@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { useApp } from '../lib/store';
+import { useApp, type Page } from '../lib/store';
 import Header from './Header';
 import { useWhiteLabel } from '../lib/whiteLabelContext';
 import { ownBooking as ownCompanyBooking } from '../lib/whiteLabel';
@@ -9,6 +9,12 @@ import { isEmbedded, useEmbedResize } from '../lib/embed';
 import { isTransportHost } from '../lib/hosts';
 import { newDesign } from '../lib/siteDesign';
 import { HOME_SECTIONS, PAGE_SECTIONS } from './homeV2/sitePages';
+import './homeV2/siteTheme.css';
+
+const THEMED_PAGES: Page[] = ['transport-home', 'services', 'van-guide', 'checklist', 'subscriptions', 'driver-onboarding', 'corporate',
+  'bulk-booking', 'recurring-deliveries', 'company-dashboard-info', 'invoice-billing', 'corporate-api-access', 'white-label', 'white-label-dpa',
+  'about', 'contact', 'faq', 'help', 'safety', 'careers', 'press', 'sustainability', 'terms', 'privacy', 'liability', 'driver-terms', 'not-found'];
+const SITE_FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap';
 
 const HomePage           = lazy(() => import('./HomePage'));
 const PlatformHomePage   = lazy(() => import('./PlatformHomePage'));
@@ -103,6 +109,16 @@ export default function AppLayout() {
   const showHeader = currentPage !== 'auth-callback' && currentPage !== 'home-lab' && !embedded;
   const showFooter = !embedded && (!['booking', 'driver-portal', 'admin', 'auth-callback', 'home-lab'].includes(currentPage) || (currentPage === 'booking' && (ownBooking || shopOnly)));
 
+  /* The new design on the existing public pages (homeV2/siteTheme.css): not dashboards, admin or booking. */
+  const themed = newDesign() && THEMED_PAGES.includes(currentPage);
+  useEffect(() => {
+    if (!themed || document.querySelector(`link[href="${SITE_FONTS}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = SITE_FONTS;
+    document.head.appendChild(link);
+  }, [themed]);
+
   const renderPage = () => {
     switch (currentPage) {
       /* flyttgo.no: the platform's front page; transport.flyttgo.no and
@@ -173,7 +189,7 @@ export default function AppLayout() {
       {showHeader && (branded && site ? <BrandHeader site={site} /> : <Header />)}
       <AuthModal />
       <Suspense fallback={<Loading />}>
-        {renderPage()}
+        {themed ? <div className="fg-site">{renderPage()}</div> : renderPage()}
       </Suspense>
       {showFooter && currentPage !== 'brand-site' && (branded && site ? <BrandFooter site={site} /> : (
         <Suspense fallback={null}>
