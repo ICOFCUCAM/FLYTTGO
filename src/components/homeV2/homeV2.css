@@ -454,6 +454,10 @@
 /* ── 10. Business workspace: the flagship product demonstration ────────── */
 .fgv2 .bw-sidebar { background: var(--paper); }
 .fgv2 .bw-company { display: flex; gap: 12px; align-items: center; padding: 4px 4px 18px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+/* Title bars of the demonstrations: the product path on the left, a quiet status on the right. */
+.fgv2 :is(.bw-topbar, .finance-top) { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 46px; padding: 0 20px; }
+.fgv2 :is(.bw-topbar, .finance-top) :is(.bw-brand, b, strong) { font: 700 12px var(--font-display); letter-spacing: .14em; }
+.fgv2 :is(.bw-topbar, .finance-top) small { font-size: var(--label-size); letter-spacing: .12em; opacity: .8; }
 .fgv2 .bw-company i { flex: none; width: 36px; height: 36px; display: grid; place-items: center; background: var(--blue); color: #fff; font: 700 13px var(--font-display); font-style: normal; }
 .fgv2 .bw-company span { font-size: 12px; line-height: 1.4; color: var(--muted); }
 .fgv2 .bw-company b { display: block; font-size: 14px; color: var(--ink); }
