@@ -1231,6 +1231,12 @@ export const no: PartialTranslationKeys = {
   },
 
   driverLanding: {
+    sectionsMenu: 'Deler av siden',
+    companyTeaser: {
+      title: 'Driver du et transportfirma?',
+      text: 'Se hvordan et firma med flere biler blir med, og hva det koster å ta bestillinger i eget navn.',
+      cta: 'Vis firmasiden',
+    },
     day: {
       eyebrow: 'En dag med FlyttGo', title: 'Fra jobbtilbud til lommebok.',
       lede: 'Dette er sjåførappens egne skjermbilder: det samme jobbkortet og den samme lommeboken du jobber med, vist med én eksempeljobb.',
@@ -1244,6 +1250,7 @@ export const no: PartialTranslationKeys = {
       sampleTx: 'Utbetaling for jobb (eksempel)',
     },
     terms: {
+      showAll: 'Vis alle {{n}} punktene', showFewer: 'Vis færre',
       eyebrow: 'Før du signerer', title: 'Avtalen din, i klartekst.',
       lede: 'Hva sjåføravtalen krever av deg, på én skjerm. Den fulle teksten er det du signerer i steg 4.',
       section: 'Punkt {{n}}',
@@ -1356,6 +1363,10 @@ export const no: PartialTranslationKeys = {
       wallet: 'Betalt til lommeboken', walletDesc: 'Din andel går til lommeboken; be om utbetaling når du vil.',
     },
     faq: {
+      lede: 'Rette svar fra planene, betalingsreglene og sjåføravtalen.',
+      groups: { money: 'Penger', joining: 'Bli med', companies: 'Firmaer og planer' },
+      askTitle: 'Har du fortsatt et spørsmål?', askText: 'Spør FlyttGo, eller start søknaden; ingenting sendes før siste steg.',
+      contact: 'Kontakt oss', or: 'Eller send e-post til',
       eyebrow: 'Spørsmål', title: 'Før du søker.',
       costQ: 'Koster det noe å bli med?', costA: 'Nei. Du kan starte på {{plan}}-planen for 0 NOK og ta oppdrag opptil {{amount}}. Betalte planer åpner flere oppdrag, senker provisjonen og gir høyere prioritet.',
       commissionQ: 'Hvor mye provisjon tar FlyttGo?', commissionA: 'Det avhenger av planen og prisen på oppdraget: oppdrag opptil {{amount}} har ingen provisjon, og over det har hver plan sine satser, vist i sammenligningen på denne siden.',

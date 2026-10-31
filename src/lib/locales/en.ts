@@ -895,7 +895,7 @@ export const en = {
     vehicleMake:    'Make',
     vehicleModel:   'Model',
     vehicleYear:    'Year',
-    licensePlate:   'License Plate',
+    licensePlate:   'Number plate',
     continueBtn:    'Continue',
     backBtn:        'Back',
     submitBtn:      'Submit Application',
@@ -1531,7 +1531,7 @@ export const en = {
     },
     vehicles: { small_van: 'Small van', medium_van: 'Medium van', large_van: 'Large van', luton_van: 'Luton van' },
     docs: {
-      driver_license:       { label: "Driver's License", desc: 'Valid Norwegian or EU/EEA driver’s license (front + back)' },
+      driver_license:       { label: 'Driving licence', desc: 'Valid Norwegian or EU/EEA driving licence (front and back)' },
       insurance:            { label: 'Vehicle Insurance', desc: 'Comprehensive insurance covering commercial use' },
       vehicle_registration: { label: 'Vehicle Registration', desc: 'Current vehicle registration document' },
       identity_document:    { label: 'ID / Passport', desc: 'Government-issued photo ID or passport' },
@@ -1539,6 +1539,12 @@ export const en = {
   },
 
   driverLanding: {
+    sectionsMenu: 'Sections',
+    companyTeaser: {
+      title: 'Run a transport company?',
+      text: 'See how a company with several vans joins, and what it costs to take bookings under your own name.',
+      cta: 'Show the company page',
+    },
     day: {
       eyebrow: 'A day on FlyttGo', title: 'From the job offer to your wallet.',
       lede: 'These are the driver app\'s own screens: the same job card and wallet you work with, shown with one sample job.',
@@ -1552,6 +1558,7 @@ export const en = {
       sampleTx: 'Job payout (sample)',
     },
     terms: {
+      showAll: 'Show all {{n}} points', showFewer: 'Show fewer',
       eyebrow: 'Before you sign', title: 'Your agreement, in plain words.',
       lede: 'What the Driver Agreement asks of you, in one screen. The full text is what you sign in step 4.',
       section: 'Section {{n}}',
@@ -1664,6 +1671,10 @@ export const en = {
       wallet: 'Paid to your wallet', walletDesc: 'Your share goes to your wallet; request a payout when you want.',
     },
     faq: {
+      lede: 'Straight answers from the plans, the payment rules and the Driver Agreement.',
+      groups: { money: 'Money', joining: 'Joining', companies: 'Companies and plans' },
+      askTitle: 'Still have a question?', askText: 'Ask the FlyttGo team, or start your application; nothing is sent until the last step.',
+      contact: 'Contact us', or: 'Or email',
       eyebrow: 'Questions', title: 'Before you apply.',
       costQ: 'Does it cost anything to join?', costA: 'No. You can start on the {{plan}} plan for 0 NOK and take jobs up to {{amount}}. Paid plans open more jobs, lower your commission and raise your dispatch priority.',
       commissionQ: 'How much commission does FlyttGo take?', commissionA: 'It depends on your plan and the price of the job: jobs up to {{amount}} carry no commission, and above that each plan has its own rates, shown in the plan comparison on this page.',

@@ -9,14 +9,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
-import { SUBSCRIPTION_PLANS, VAN_TYPES } from '../lib/constants';
+import { IMAGES, SUBSCRIPTION_PLANS, VAN_TYPES } from '../lib/constants';
 import DriverGrowth from './DriverGrowth';
 import DriverApplicationForm, { type ApplicationProgress } from './driver/DriverApplicationForm';
 import { DayOnFlyttGo, DriverFaq, EscrowFlow, FleetSection, PlanPicker, TermsSummary } from './driver/LandingParts';
 import './driver/driverPage.css';
 import { APPLICATION_CITIES, DOCUMENT_TYPES, VEHICLE_TYPES } from './driver/applicationData';
 
-const HERO = 'https://d64gsuwffb70l.cloudfront.net/69b48d1c24a3a59014dde38a_1773440407421_d3f9f76f.jpg';
+/* The FlyttGo truck in a Norwegian street, lettered flyttgo.no (the earlier picture read flyttgo.ch and Danish text). */
+const HERO = IMAGES.hero.truck1;
 const CREW = 'https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766976394_04c23eab.jpg';
 const PRIORITY_NO: Record<string, string> = { Standard: 'Standard', Moderate: 'Moderat', High: 'Høy', 'Very High': 'Svært høy', Highest: 'Høyest' };
 const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24513B]';
@@ -24,6 +25,7 @@ const serif = { fontFamily: 'Georgia, "Times New Roman", serif' };
 
 type Plan = (typeof SUBSCRIPTION_PLANS)[number];
 const SECTIONS = ['process', 'day', 'benefits', 'plans', 'payments', 'requirements', 'terms', 'faq', 'companies'] as const;
+const COMPANY_SECTIONS = ['companies', 'process', 'day', 'benefits', 'plans', 'payments', 'requirements', 'terms', 'faq'] as const;
 
 export default function DriverLanding() {
   const { t, i18n } = useTranslation();
@@ -51,6 +53,16 @@ export default function DriverLanding() {
 
   /* Driver or transport company (item 13): the hero speaks to the one chosen; companies see their section first. */
   const [audience, setAudience] = useState<'driver' | 'company'>('driver');
+  const sections = audience === 'company' ? COMPANY_SECTIONS : SECTIONS;
+  const [menu, setMenu] = useState(false);
+  /* The phone sections menu closes on Escape or a tap outside it. */
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenu(false); };
+    const onDown = (e: PointerEvent) => { if (!(e.target as Element)?.closest?.('[data-sections-menu]')) setMenu(false); };
+    document.addEventListener('keydown', onKey); document.addEventListener('pointerdown', onDown);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('pointerdown', onDown); };
+  }, [menu]);
   const titleA = audience === 'driver' ? t('driverLanding.heroTitleA') : t('driverLanding.audience.companyTitleA');
   const titleB = audience === 'driver' ? t('driverLanding.heroTitleB') : t('driverLanding.audience.companyTitleB');
   /* A city chosen in the ribbon is filled into the application (item 3); the form reports its progress for the sticky bar (item 4). */
@@ -88,7 +100,7 @@ export default function DriverLanding() {
     }, { rootMargin: '-45% 0px -50% 0px' });
     [...SECTIONS, 'driver-application'].forEach(id => { const el = document.getElementById(id); if (el) io.observe(el); });
     return () => io.disconnect();
-  }, []);
+  }, [audience]);
 
   const meter = (n: number) => (
     <span className="inline-flex gap-[3px] align-middle" aria-hidden="true">
@@ -141,11 +153,11 @@ export default function DriverLanding() {
               {audience === 'driver' ? t('driverLanding.compare') : t('driverLanding.audience.companyCta')}
             </button>
           </div>
-          <dl className="grid grid-cols-3 gap-0 border-t border-white/25 m-0 max-w-[600px]">
+          <dl className="grid sm:grid-cols-3 gap-0 border-t border-white/25 m-0 max-w-[600px] pe-16 sm:pe-0">
             {facts.map(([value, label], i) => (
-              <div key={label} className={`flex flex-col-reverse justify-end pt-5 ${i ? 'ps-4 sm:ps-5 border-s border-white/25' : ''} pe-3`}>
-                <dt className="text-[13px] leading-snug text-[#D5DDD7]">{label}</dt>
-                <dd className="m-0 text-[24px] sm:text-[30px] md:text-[36px] leading-none text-[#FFFEFA] mb-2" style={serif}>{value}</dd>
+              <div key={label} className={`flex flex-row-reverse sm:flex-col-reverse items-baseline sm:items-stretch justify-end gap-4 sm:gap-0 py-3 sm:py-0 sm:pt-5 ${i ? 'border-t sm:border-t-0 sm:ps-5 sm:border-s border-white/25' : ''} pe-3`}>
+                <dt className="text-[14px] sm:text-[13px] leading-snug text-[#D5DDD7]">{label}</dt>
+                <dd className="m-0 min-w-[84px] sm:min-w-0 text-[26px] sm:text-[30px] md:text-[36px] leading-none text-[#FFFEFA] sm:mb-2" style={serif}>{value}</dd>
               </div>
             ))}
           </dl>
@@ -169,8 +181,9 @@ export default function DriverLanding() {
       {/* ── Section bar ────────────────────────────────────────────── */}
       <nav aria-label={t('driverLanding.navLabel')} className="sticky top-16 z-40 bg-[#FBF8F1]/95 backdrop-blur border-y border-[#E2DACA]">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10 flex items-center gap-3">
-          <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto [scrollbar-width:none]">
-            {SECTIONS.map(id => (
+          {/* Laptops: every section as a link. */}
+          <div className="hidden lg:flex flex-1 min-w-0 items-center gap-1">
+            {sections.map(id => (
               <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); go(id); }} aria-current={active === id ? 'true' : undefined}
                  className={`relative whitespace-nowrap px-3 py-4 text-sm font-semibold transition ${focus} ${active === id ? 'text-[#17212E]' : 'text-[#4A5260] hover:text-[#17212E]'}`}>
                 {t(`driverLanding.nav.${id}`)}
@@ -178,7 +191,24 @@ export default function DriverLanding() {
               </a>
             ))}
           </div>
-          {progress.started && !progress.submitted && <span className="hidden 2xl:inline whitespace-nowrap text-[13px] text-[#4A5260]">{t('driverLanding.applyProgress', { n: progress.step })}</span>}
+          {/* Phones and tablets: one menu, so nothing is cut off. */}
+          <div data-sections-menu className="lg:hidden flex-1 min-w-0 relative">
+            <button type="button" aria-expanded={menu} aria-controls="driver-sections" onClick={() => setMenu(m => !m)}
+                    className={`my-2 min-h-[40px] inline-flex items-center gap-2 text-sm font-semibold text-[#17212E] ${focus}`}>
+              <span className="truncate">{active && (sections as readonly string[]).includes(active) ? t(`driverLanding.nav.${active}`) : t('driverLanding.sectionsMenu')}</span>
+              <span aria-hidden="true" className={`transition ${menu ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+            {menu && (
+              <ul id="driver-sections" className="absolute start-0 top-full mt-1 w-64 max-w-[80vw] list-none p-1 m-0 bg-[#FFFEFA] border border-[#E2DACA] shadow-[0_18px_40px_-20px_rgba(23,33,46,.45)]">
+                {sections.map(id => (
+                  <li key={id}>
+                    <a href={`#${id}`} onClick={e => { e.preventDefault(); setMenu(false); go(id); }} aria-current={active === id ? 'true' : undefined}
+                       className={`block px-4 py-3 text-[15px] font-semibold ${focus} ${active === id ? 'bg-[#F3EEE2] text-[#17212E]' : 'text-[#4A5260] hover:bg-[#F3EEE2]'}`}>{t(`driverLanding.nav.${id}`)}</a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <button type="button" onClick={toForm} className={`flex-shrink-0 whitespace-nowrap my-2 min-h-[40px] px-4 bg-[#24513B] hover:bg-[#1C4130] text-white text-sm font-bold ${focus}`}>{applyLabel}</button>
         </div>
       </nav>
@@ -251,7 +281,7 @@ export default function DriverLanding() {
           </div>
 
           {/* The plans as a selector, with what a job leaves you (items 7–8). */}
-          <PlanPicker onFullPlans={() => setPage('subscriptions')} />
+          <PlanPicker />
           <details className="mt-8 group">
             <summary className={`cursor-pointer list-none inline-flex items-center gap-2 font-bold text-[#24513B] ${focus}`}>
               <span aria-hidden="true" className="transition group-open:rotate-90">›</span>{t('driverLanding.compareAll')}
@@ -375,19 +405,32 @@ export default function DriverLanding() {
         </div>
       </section>
 
-      {/* ── Questions (item 11) ───────────────────────────────────── */}
+      {/* ── The application: for drivers right after the agreement (owner, 31 October 2026) ── */}
+      {audience === 'driver' && <DriverApplicationForm presetCity={presetCity} onProgress={onProgress} />}
+
+      {/* ── Questions: grouped, with a way to ask (item 11, second pass) ── */}
       <section id="faq" className="fg-reveal scroll-mt-32 bg-[#FFFEFA] py-20 md:py-28 border-y border-[#EDE6D6]">
-        <div className="max-w-[1040px] mx-auto px-5 md:px-10">
-          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.faq.eyebrow')}</p>
-          <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] mb-10">{t('driverLanding.faq.title')}</h2>
-          <DriverFaq />
+        <div className="max-w-[1240px] mx-auto px-5 md:px-10">
+          <DriverFaq onApply={toForm} onContact={() => setPage('contact')} />
         </div>
       </section>
 
-      {audience === 'driver' && companiesSection}
+      {/* ── For drivers, the company page is one step away (the switch at the top shows it all). ── */}
+      {audience === 'driver' && (
+        <section id="companies" className="scroll-mt-32 py-16 md:py-20">
+          <div className="max-w-[1240px] mx-auto px-5 md:px-10 grid md:grid-cols-[minmax(0,1fr)_auto] gap-6 items-center border-s-2 border-[#C3A66C] ps-6">
+            <div>
+              <h2 className="text-[26px] md:text-[32px] font-bold tracking-[-.03em] leading-tight m-0 mb-2">{t('driverLanding.companyTeaser.title')}</h2>
+              <p className="text-[16px] leading-relaxed text-[#4A5260] m-0 max-w-[62ch]">{t('driverLanding.companyTeaser.text')}</p>
+            </div>
+            <button type="button" onClick={() => { setAudience('company'); window.scrollTo({ top: 0, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }}
+                    className={`justify-self-start min-h-[52px] px-6 border border-[#17212E] font-bold hover:bg-[#17212E] hover:text-white transition ${focus}`}>{t('driverLanding.companyTeaser.cta')} →</button>
+          </div>
+        </section>
+      )}
 
-      {/* ── The application ───────────────────────────────────────── */}
-      <DriverApplicationForm presetCity={presetCity} onProgress={onProgress} />
+      {/* ── The application, last for companies ── */}
+      {audience === 'company' && <DriverApplicationForm presetCity={presetCity} onProgress={onProgress} />}
     </div>
   );
 }

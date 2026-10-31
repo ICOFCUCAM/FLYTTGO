@@ -20,7 +20,7 @@ export const VEHICLE_TYPES = [
  * is new — admin doesn't currently require it, but uploading it
  * costs nothing and matches the spec. */
 export const DOCUMENT_TYPES = [
-  { key: 'driver_license',       label: "Driver's License",   desc: 'Valid Norwegian or EU/EEA driver’s license (front + back)' },
+  { key: 'driver_license',       label: 'Driving licence',    desc: 'Valid Norwegian or EU/EEA driving licence (front and back)' },
   { key: 'insurance',             label: 'Vehicle Insurance',  desc: 'Comprehensive insurance covering commercial use' },
   { key: 'vehicle_registration', label: 'Vehicle Registration', desc: 'Current vehicle registration document' },
   { key: 'identity_document',    label: 'ID / Passport',      desc: 'Government-issued photo ID or passport' },

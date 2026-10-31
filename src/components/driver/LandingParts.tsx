@@ -11,6 +11,7 @@
  * Every figure comes from SUBSCRIPTION_PLANS, the commission rule, the cancellation policy or the agreement.
  */
 import { useRef, useState } from 'react';
+import { DEFAULT_SUPPORT_EMAIL, useCompanyIdentity } from '../../lib/companyIdentity';
 import { useTranslation } from 'react-i18next';
 import { SUBSCRIPTION_PLANS, calculateCommission } from '../../lib/constants';
 import { CANCELLATION_POLICY } from '../../../supabase/functions/_shared/pricing';
@@ -22,7 +23,7 @@ const serif = { fontFamily: 'Georgia, "Times New Roman", serif' };
 type Plan = (typeof SUBSCRIPTION_PLANS)[number];
 const PRIORITY_NO: Record<string, string> = { Standard: 'Standard', Moderate: 'Moderat', High: 'Høy', 'Very High': 'Svært høy', Highest: 'Høyest' };
 
-export function PlanPicker({ onFullPlans }: { onFullPlans: () => void }) {
+export function PlanPicker() {
   const { t, i18n } = useTranslation();
   const no = i18n.language === 'no';
   const nok = (n: number) => `${Math.round(n).toLocaleString(no ? 'nb-NO' : 'en-GB')} NOK`;
@@ -38,12 +39,12 @@ export function PlanPicker({ onFullPlans }: { onFullPlans: () => void }) {
   const planPrice = p.price === 0 ? nok(0) : `${nok(p.price)} ${p.period === '/day' ? t('driverLanding.perDay') : t('driverLanding.perMonth')}`;
 
   return (
-    <div className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-0 border border-[#DCD4C2] bg-[#FFFEFA]">
-      <div className="p-6 md:p-9">
-        <div role="radiogroup" aria-label={t('driverLanding.picker.label')} className="grid grid-cols-5 border border-[#DCD4C2]">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-0 border border-[#DCD4C2] bg-[#FFFEFA]">
+      <div className="p-6 md:p-9 min-w-0">
+        <div role="radiogroup" aria-label={t('driverLanding.picker.label')} className="flex sm:grid sm:grid-cols-5 gap-2 sm:gap-0 overflow-x-auto [scrollbar-width:none] -mx-1 px-1 sm:mx-0 sm:px-0 sm:border sm:border-[#DCD4C2]">
           {SUBSCRIPTION_PLANS.map((pl, i) => (
             <button key={pl.id} type="button" role="radio" aria-checked={i === ix} onClick={() => setIx(i)}
-                    className={`min-h-[52px] px-1 text-[13px] sm:text-sm font-bold transition border-s first:border-s-0 border-[#DCD4C2] ${focus} ${i === ix ? 'bg-[#24513B] text-white' : 'text-[#17212E] hover:bg-[#F3EEE2]'}`}>
+                    className={`flex-shrink-0 whitespace-nowrap min-h-[48px] sm:min-h-[52px] px-4 sm:px-1 text-sm font-bold transition border sm:border-0 sm:border-s sm:first:border-s-0 border-[#DCD4C2] ${focus} ${i === ix ? 'bg-[#24513B] border-[#24513B] text-white' : 'bg-white sm:bg-transparent text-[#17212E] hover:bg-[#F3EEE2]'}`}>
               {pl.name}
             </button>
           ))}
@@ -65,7 +66,6 @@ export function PlanPicker({ onFullPlans }: { onFullPlans: () => void }) {
         <ul className="mt-7 list-none p-0 m-0 grid sm:grid-cols-2 gap-x-6 gap-y-2 text-[15px] text-[#4A5260]">
           {p.features.map(f => <li key={f} className="flex gap-2"><span className="text-[#24513B]" aria-hidden="true">✓</span>{t(`driverLanding.feature.${f}`, f)}</li>)}
         </ul>
-        <button type="button" onClick={onFullPlans} className={`mt-7 font-bold text-[#24513B] underline underline-offset-4 ${focus}`}>{t('driverLanding.fullPlans')} →</button>
       </div>
 
       {/* What a job of this price leaves you on this plan */}
@@ -114,9 +114,18 @@ export function EscrowFlow() {
   );
 }
 
-export function DriverFaq() {
+/* Questions (owner, 31 October 2026, second pass): grouped, one open at a time, with a way to ask beside them. */
+const FAQ_GROUPS = [
+  { key: 'money', items: ['cost', 'commission', 'payout', 'paid', 'cancel'] },
+  { key: 'joining', items: ['after', 'vehicle', 'insurance'] },
+  { key: 'companies', items: ['company', 'switch'] },
+] as const;
+
+export function DriverFaq({ onApply, onContact }: { onApply: () => void; onContact: () => void }) {
   const { t, i18n } = useTranslation();
   const no = i18n.language === 'no';
+  const identity = useCompanyIdentity();
+  const email = identity.email ?? DEFAULT_SUPPORT_EMAIL;
   const nok = (n: number) => `${n.toLocaleString(no ? 'nb-NO' : 'en-GB')} NOK`;
   const free = SUBSCRIPTION_PLANS[0];
   const freeUpTo = Number(/up to (\d+)/i.exec(free.jobVisibility)?.[1] ?? 500);
@@ -126,18 +135,49 @@ export function DriverFaq() {
     payout: { amount: nok(500) },
     cancel: { hours: CANCELLATION_POLICY.freeUntilHoursBefore, share: Math.round(CANCELLATION_POLICY.lateCustomerShare * 100) },
   };
-  const items = ['cost', 'commission', 'payout', 'paid', 'cancel', 'after', 'vehicle', 'insurance', 'company', 'switch'] as const;
+  const [open, setOpen] = useState<string | null>('cost');
   return (
-    <div className="divide-y divide-[#E2DACA] border-y border-[#E2DACA]">
-      {items.map(k => (
-        <details key={k} className="group py-1">
-          <summary className={`flex items-center justify-between gap-6 py-5 cursor-pointer list-none text-[18px] font-bold tracking-tight ${focus}`}>
-            {t(`driverLanding.faq.${k}Q`)}
-            <span aria-hidden="true" className="flex-shrink-0 w-8 h-8 rounded-full border border-[#CFC7B5] flex items-center justify-center text-[#24513B] transition group-open:rotate-45">+</span>
-          </summary>
-          <p className="m-0 pb-6 pe-12 text-[16px] leading-relaxed text-[#4A5260] max-w-[75ch]">{t(`driverLanding.faq.${k}A`, vars[k] ?? {})}</p>
-        </details>
-      ))}
+    <div className="grid lg:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] gap-10 lg:gap-20">
+      <div className="lg:sticky lg:top-40 self-start">
+        <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.faq.eyebrow')}</p>
+        <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] mb-5">{t('driverLanding.faq.title')}</h2>
+        <p className="text-lg text-[#4A5260] leading-relaxed m-0 mb-8 max-w-[44ch]">{t('driverLanding.faq.lede')}</p>
+        <div className="border border-[#E2DACA] bg-[#FBF8F1] p-6">
+          <h3 className="text-[17px] font-bold tracking-tight m-0 mb-1.5">{t('driverLanding.faq.askTitle')}</h3>
+          <p className="text-[15px] leading-relaxed text-[#4A5260] m-0 mb-5">{t('driverLanding.faq.askText')}</p>
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={onApply} className={`min-h-[48px] px-5 bg-[#24513B] hover:bg-[#1C4130] text-white font-bold ${focus}`}>{t('driverLanding.apply')} ↓</button>
+            <button type="button" onClick={onContact} className={`min-h-[48px] px-5 border border-[#CFC7B5] bg-white font-semibold hover:bg-[#F3EEE2] ${focus}`}>{t('driverLanding.faq.contact')}</button>
+          </div>
+          <p className="text-[14px] text-[#4A5260] mt-4 mb-0">{t('driverLanding.faq.or')} <a href={`mailto:${email}`} className={`font-semibold text-[#24513B] underline underline-offset-4 ${focus}`}>{email}</a></p>
+        </div>
+      </div>
+      <div className="space-y-12">
+        {FAQ_GROUPS.map(g => (
+          <section key={g.key} aria-labelledby={`faq-${g.key}`}>
+            <h3 id={`faq-${g.key}`} className="text-xs font-bold !tracking-[.16em] uppercase text-[#7A6436] m-0 pb-3 border-b-2 border-[#17212E]">{t(`driverLanding.faq.groups.${g.key}`)}</h3>
+            <ul className="list-none p-0 m-0">
+              {g.items.map(k => {
+                const isOpen = open === k;
+                return (
+                  <li key={k} className={`border-b border-[#E2DACA] transition-colors ${isOpen ? 'bg-[#FFFEFA] border-s-2 border-s-[#C3A66C]' : 'border-s-2 border-s-transparent'}`}>
+                    <h4 className="m-0">
+                      <button type="button" aria-expanded={isOpen} aria-controls={`faq-a-${k}`} id={`faq-q-${k}`} onClick={() => setOpen(isOpen ? null : k)}
+                              className={`w-full flex items-center justify-between gap-6 py-5 ps-4 pe-2 text-start text-[17px] font-bold tracking-tight ${focus}`}>
+                        {t(`driverLanding.faq.${k}Q`)}
+                        <span aria-hidden="true" className={`flex-shrink-0 w-8 h-8 rounded-full border flex items-center justify-center transition ${isOpen ? 'rotate-45 bg-[#24513B] border-[#24513B] text-white' : 'border-[#CFC7B5] text-[#24513B]'}`}>+</span>
+                      </button>
+                    </h4>
+                    <div id={`faq-a-${k}`} role="region" aria-labelledby={`faq-q-${k}`} hidden={!isOpen}>
+                      <p className="m-0 pb-6 ps-4 pe-12 text-[16px] leading-relaxed text-[#4A5260] max-w-[70ch]">{t(`driverLanding.faq.${k}A`, vars[k] ?? {})}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }
@@ -236,6 +276,7 @@ export function FleetSection({ onCompany }: { onCompany: () => void }) {
 /* ── The Driver Agreement in plain words (item 12) ────────────────────────────────────────────── */
 export function TermsSummary({ compact = false }: { compact?: boolean }) {
   const { t, i18n } = useTranslation();
+  const [all, setAll] = useState(false);
   const no = i18n.language === 'no';
   const nok = (n: number) => `${n.toLocaleString(no ? 'nb-NO' : 'en-GB')} NOK`;
   const vars = {
@@ -245,8 +286,8 @@ export function TermsSummary({ compact = false }: { compact?: boolean }) {
   return (
     <div>
       <ul className={`list-none p-0 m-0 grid ${compact ? 'gap-3' : 'md:grid-cols-3 gap-x-10 gap-y-8'}`}>
-        {TERMS_SUMMARY.map(({ key, section }) => (
-          <li key={key} className={compact ? 'text-[14px] leading-relaxed' : ''}>
+        {TERMS_SUMMARY.map(({ key, section }, i) => (
+          <li key={key} className={compact ? 'text-[14px] leading-relaxed' : (i >= 3 && !all ? 'hidden md:block' : '')}>
             {compact ? <><b>{t(`driverLanding.terms.${key}`)}.</b> {t(`driverLanding.terms.${key}Desc`, vars)}</> : (
               <>
                 <p className="m-0 mb-1 text-xs font-bold tracking-[.12em] uppercase text-[#7A6436]">{t('driverLanding.terms.section', { n: section })}</p>
@@ -257,6 +298,12 @@ export function TermsSummary({ compact = false }: { compact?: boolean }) {
           </li>
         ))}
       </ul>
+      {!compact && (
+        <button type="button" onClick={() => setAll(v => !v)} aria-expanded={all}
+                className={`md:hidden mt-6 min-h-[44px] px-5 border border-[#CFC7B5] bg-white font-semibold text-[15px] ${focus}`}>
+          {all ? t('driverLanding.terms.showFewer') : t('driverLanding.terms.showAll', { n: TERMS_SUMMARY.length })}
+        </button>
+      )}
       <p className={`${compact ? 'mt-4 text-[13px]' : 'mt-10 text-[14px]'} text-[#4A5260]`}>
         {t('driverLanding.terms.note', { date: DRIVER_TERMS.lastUpdated })}{' '}
         <a href="/driver-terms" target="_blank" rel="noopener noreferrer" className={`font-bold text-[#24513B] underline underline-offset-4 ${focus}`}>{t('driverLanding.terms.full')}</a>
