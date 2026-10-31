@@ -64,25 +64,45 @@
 @media (min-width: 761px) { .fgv2 .wrap { width: min(var(--wrap-max), calc(100% - 80px)); } }
 .fgv2 :is(.section-head, .ecosystem-intro, .workspace-intro, .finance-intro, .industry-intro, .wl-intro, .network-intro, .entry-head) > p,
 .fgv2 .legacy-suite .section-head p, .fgv2 .corp-copy > p {
-  font-size: var(--body-size); line-height: 1.75; color: var(--muted);
+  font-size: var(--body-size); line-height: 1.75; color: var(--muted); max-width: 54ch;
 }
-.fgv2 .eyebrow { color: var(--blue); font-size: 11px; letter-spacing: .2em; }
+/* Section heads: headings hold to a measure so two-line headings break where they read best. */
+.fgv2 :is(.section-head, .ecosystem-intro, .workspace-intro, .finance-intro, .industry-intro, .wl-intro, .network-intro) h2 { max-width: 18ch; text-wrap: balance; }
+.fgv2 .entry-head h2, .fgv2 .final-cta h2 { text-wrap: balance; }
+/* Labels: one size and tracking for every eyebrow and kicker on the page. */
+.fgv2 { --label-size: 12px; --label-track: .16em; }
+.fgv2 .eyebrow, .fgv2 main .eyebrow.eyebrow, .fgv2 .eyebrow :is(.hl-sig, .hl-sig-a) { color: var(--blue); font-size: var(--label-size); letter-spacing: var(--label-track); }
+.fgv2 :is(.hero-ledger small, .entry-card > span, .entry-side > span, .v2-categories > span, .v2-related > span, .market-card small, .bw-main-head small, .finance-main-head small, .wl-config label, .wl-setting-label, .network-node small, .v2-trail-label) {
+  font-size: var(--label-size); letter-spacing: var(--label-track);
+}
 .fgv2 .eyebrow:before { background: var(--gold); width: 28px; }
 
 /* Sections alternate soft white and ivory under one warm hairline; sections that are themselves the
  * content width paint their ground across the page. */
-.fgv2 main > section { padding-top: var(--section); padding-bottom: var(--section); }
+/* One section spacing for every chapter (the generated design set eight different values). */
+.fgv2 main > section:not(.hero) { padding-top: var(--section); padding-bottom: var(--section); }
+.fgv2 main > section#entry-points { padding-top: calc(var(--section) * .75); }
 .fgv2 main > section:nth-of-type(odd) { background: var(--white); --section-ground: var(--white); }
 .fgv2 main > section:nth-of-type(even) { background: var(--paper); --section-ground: var(--paper); }
 .fgv2 main > section + section, .fgv2 main > .v2-booking + section { border-top: 1px solid var(--line); }
 .fgv2 main > section.wrap { box-shadow: 0 0 0 100vmax var(--section-ground); clip-path: inset(0 -100vmax); }
 
-.fgv2 .btn { border-radius: var(--radius); min-height: 52px; padding: 0 24px; font-size: 14px; font-weight: 700; letter-spacing: .01em; }
+.fgv2 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; border-radius: var(--radius); min-height: 52px; padding: 0 24px; font-size: 14px; font-weight: 700; letter-spacing: .01em; }
+.fgv2 .btn .arrow { margin: 0; font-size: 13px; transition: transform .25s; }
+.fgv2 .btn:hover .arrow { transform: translate(2px, -2px); }
 .fgv2 .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
 .fgv2 .btn-primary:hover { background: #18304f; border-color: #18304f; }
 .fgv2 .btn-light { background: transparent; border-color: rgba(32,63,104,.35); color: var(--blue); }
 .fgv2 .btn-light:hover { background: var(--paper); border-color: var(--blue); }
-.fgv2 :is(a, button, input, select):focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+/* Focus: a deep-blue ring on light grounds, a champagne ring on dark ones; never removed. */
+.fgv2 :is(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: max(var(--radius), 1px); }
+.fgv2 :is(.entry-dark, .hero-ledger, .final-cta, .bw-topbar, .network-node.core, .driver-panel, [data-workspace="b"] .business-workspace) :is(a, button):focus-visible,
+.fgv2[data-workspace="b"] .business-workspace > .wrap > :not(.bw-frame) :is(a, button):focus-visible { outline-color: var(--gold); }
+
+/* Text links: one underline (champagne, blue on hover) and an arrow that nudges forward. */
+.fgv2 :is(.v2-related a, .entry-options a, .hero-link, .entry-card > a, .entry-body > a, .v2-links a) { text-decoration: none; transition: border-color .2s, color .2s; }
+.fgv2 :is(.v2-related a, .entry-options a, .hero-link):hover { color: var(--ink); border-color: var(--blue); }
+.fgv2 .v2-related a { display: inline-flex; gap: 6px; }
 
 /* Product mockups: square, one warm hairline, one soft lift; deep-blue title bars. */
 .fgv2 :is(.bw-frame, .finance-frame, .ecosystem-frame, .wl-builder, .network-panel, .industry-panel, .dashboard) {
@@ -98,6 +118,10 @@
 .fgv2 :is(.network-guardrails, .bw-footnotes, .finance-principles, .wl-steps) span, .fgv2 .ecosystem-detail p, .fgv2 .industry-principles p {
   font-size: 14px; line-height: 1.7; color: var(--muted);
 }
+
+/* Hairlines: cards, rules and table lines all use the one warm line colour at one weight. */
+.fgv2 :is(.entry-light, .entry-org, .service-card, .fleet-card, .feature, .ecosystem-pillar, .network-node:not(.core), .industry-panel, .corp-row, .bw-metrics article, .finance-metrics article, .finance-document) { border-color: var(--line); border-width: 1px; }
+.fgv2 :is(.v2-records td, .finance-lines td, .finance-lines th) { border-color: var(--line); }
 
 /* Status chips, shared by every demonstration. */
 .fgv2 .v2-chip { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border: 1px solid; white-space: nowrap; }
@@ -154,13 +178,21 @@
 .fgv2 .hero-visual .fgp-slides img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.4s ease; }
 .fgv2 .hero-visual .fgp-slides img.on { opacity: 1; }
 .fgv2 .fgp-dots { position: absolute; right: 22px; top: 22px; display: flex; gap: 6px; z-index: 3; }
-.fgv2 .fgp-dots button { width: 8px; height: 8px; border-radius: 9999px; border: 0; padding: 0; background: rgba(255,255,255,.65); cursor: pointer; }
-.fgv2 .fgp-dots button.on { background: #fff; width: 22px; }
+/* Slideshow position as segments: a thin line per picture, the current one longer and solid. */
+.fgv2 .fgp-dots { gap: 4px; padding: 10px 0; }
+.fgv2 .fgp-dots button { width: 22px; height: 3px; border-radius: 0; border: 0; padding: 0; background: rgba(255,255,255,.5); cursor: pointer; box-shadow: 0 1px 4px rgb(0 0 0 / .25); transition: width .4s, background .4s; }
+.fgv2 .fgp-dots button.on { background: #fff; width: 40px; }
+.fgv2 .fgp-dots button:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
 .fgv2 .hero-ledger { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr); background: rgba(32,63,104,.95); }
 .fgv2 .hero-ledger a { display: block; padding: 20px 22px 22px; color: #fff; border-left: 1px solid rgba(195,166,108,.35); transition: background .2s; }
 .fgv2 .hero-ledger a:first-child { border-left: 0; }
+.fgv2 .hero-ledger a { position: relative; }
+.fgv2 .hero-ledger a:after { content: "→"; position: absolute; right: 22px; bottom: 22px; color: var(--gold-text); transition: transform .3s; }
+.fgv2 .hero-ledger a:before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--gold); transform: scaleX(0); transform-origin: left; transition: transform .35s; }
 .fgv2 .hero-ledger a:hover { background: rgba(255,255,255,.07); }
-.fgv2 .hero-ledger small { display: block; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--gold-text); }
+.fgv2 .hero-ledger a:hover:before, .fgv2 .hero-ledger a:focus-visible:before { transform: scaleX(1); }
+.fgv2 .hero-ledger a:hover:after { transform: translateX(4px); }
+.fgv2 .hero-ledger small { display: block; font-size: var(--label-size); letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--gold-text); }
 .fgv2 .hero-ledger strong { display: block; font: 600 17px/1.3 var(--font-display); margin-top: 6px; letter-spacing: -.01em; }
 /* The design stacks the hero below 760px (its own later rule wins over its 900px one); these follow it. */
 @media (min-width: 761px) {
@@ -180,7 +212,13 @@
   .fgv2 .hero h1 .h1-line { display: block; }
   .fgv2 .hero h1 br { display: none; }
   .fgv2 .hero h1 .serif { font-size: max(.5em, 18px); line-height: 1.25; margin-top: .55em; }
-  .fgv2 .hero-visual { display: flex; flex-direction: column; justify-content: flex-end; height: auto; min-height: calc(540px * var(--hero-height)); }
+  .fgv2 .hero-visual { display: flex; flex-direction: column; justify-content: flex-end; height: auto; min-height: calc(560px * var(--hero-height)); margin-left: 0; }
+  /* Phones: a calmer top, the actions full width, the picture clear of the journeys band for longer. */
+  .fgv2 main > section.hero { padding-top: 32px; }
+  .fgv2 .hero-actions { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .fgv2 .hero-actions .btn { width: 100%; padding: 0 18px; justify-content: space-between; }
+  .fgv2 .hero-actions .hero-link { grid-column: 1 / -1; justify-self: start; }
+  .fgv2 .hero-note { font-size: 13px; }
   .fgv2 .hero-ledger { position: relative; grid-template-columns: 1fr; }
   .fgv2 .hero-ledger a { border-left: 0; border-top: 1px solid rgba(195,166,108,.35); padding: 14px 18px; }
   .fgv2 .hero-ledger a:first-child { border-top: 0; }
@@ -188,11 +226,21 @@
 
 /* ── 4. Booking: one opening with the hero, framed and introduced ──────── */
 .fgv2 main > .v2-booking { background: var(--white); padding: 56px 0 88px; }
+/* Hero to booking: the booking promise starts on the hero card's edge and the widget takes the rest of
+ * the width, so the two blocks read as one opening without squeezing the form. */
+@media (min-width: 1000px) {
+  .fgv2[data-hero="b"][data-booking="b"] main > .v2-booking { padding: 72px 0 96px; }
+  .fgv2[data-hero="b"][data-booking="b"] .v2-booking-inner { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 64px; }
+}
 .fgv2 .v2-booking-inner { max-width: 1180px; }
 .fgv2 .v2-booking-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 32px; margin-bottom: 18px; }
 .fgv2 .v2-booking-head p { margin: 0; font-size: 15px; color: var(--muted); }
+.fgv2[data-booking="b"] .v2-booking-head p:after { content: ""; display: block; width: 48px; height: 2px; margin-top: 22px; background: var(--gold); }
 .fgv2 .fgp-oldcard, .fgv2 .fgp-oldcard * { border-radius: 0 !important; }
-.fgv2 .fgp-oldcard { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; box-shadow: var(--lift); border: 1px solid var(--line); }
+.fgv2 .fgp-oldcard { font-family: var(--font-body); box-shadow: 0 30px 60px -36px rgb(32 63 104 / calc(.45 * var(--depth))), 0 2px 6px rgb(32 63 104 / .06); border: 1px solid var(--line); }
+.fgv2 .fgp-oldcard :is(input, select) { border-color: var(--line) !important; min-height: 46px; }
+.fgv2 .fgp-oldcard :is(input, select):focus { border-color: var(--blue) !important; box-shadow: 0 0 0 3px rgb(32 63 104 / .12) !important; outline: none; }
+.fgv2 .fgp-oldcard button { min-height: 46px; letter-spacing: .01em; }
 .fgv2 .fgp-oldcard :is(input, select, button) { font-family: inherit; }
 .fgv2 .fgp-oldcard :is(.from-\[\#1A365D\], .bg-\[\#1A365D\]) { background: var(--blue); }
 .fgv2 .fgp-oldcard .text-\[\#1A365D\] { color: var(--blue); }
@@ -202,11 +250,21 @@
 .fgv2 .fgp-oldcard .bg-emerald-50 { background: var(--paper); color: var(--blue); }
 
 /* ── 5. Journeys: two main routes, For Organisations a refined panel beneath ── */
-.fgv2 .entry-head { margin-bottom: 44px; }
+.fgv2 .entry-head { margin-bottom: 52px; }
+.fgv2 .entry-head h2 { max-width: 20ch; margin-left: auto; margin-right: auto; }
+.fgv2 .entry-head > p { max-width: 58ch; margin-left: auto; margin-right: auto; }
 .fgv2 .entry-grid { gap: 16px; }
 .fgv2 .entry-card { min-height: 300px; padding: 40px; justify-content: flex-start; border-radius: var(--radius); }
 .fgv2 .entry-card:hover { transform: none; box-shadow: none; }
-.fgv2 :is(.entry-card > span, .entry-side > span) { font-size: 11px; letter-spacing: .18em; font-weight: 700; text-transform: uppercase; }
+/* Each journey carries its number large and quiet in the corner; hover deepens its colour rule. */
+.fgv2 .entry-card { position: relative; overflow: hidden; transition: box-shadow .3s, background-color .3s; }
+.fgv2 .entry-card:not(.entry-org):after { position: absolute; top: 22px; right: 30px; font: 300 clamp(64px, 6vw, 96px)/1 var(--font-display); letter-spacing: -.05em; pointer-events: none; }
+.fgv2 .entry-dark:after { content: "01"; color: rgb(255 255 255 / .12); }
+.fgv2 .entry-light:after { content: "02"; color: rgb(36 81 59 / .12); }
+.fgv2 .entry-dark:hover { box-shadow: inset 0 5px var(--gold); }
+.fgv2 .entry-light:hover { box-shadow: inset 0 5px var(--forest); background: #fbfaf6; }
+.fgv2 .entry-org:hover { box-shadow: inset 0 5px var(--blue); }
+.fgv2 :is(.entry-card > span, .entry-side > span) { font-size: var(--label-size); letter-spacing: .18em; font-weight: 700; text-transform: uppercase; }
 .fgv2 .entry-card h3 { font: 650 clamp(28px, 2.8vw, 38px)/1.08 var(--font-display); letter-spacing: -.04em; margin: 26px 0 12px; }
 .fgv2 .entry-card p { margin: 0; font-size: 16px; line-height: 1.65; max-width: 440px; }
 .fgv2 .entry-card .entry-for { font-size: 14px; font-weight: 600; margin-top: 14px; opacity: .85; }
@@ -224,7 +282,10 @@
 .fgv2 .entry-org .entry-for { grid-column: 1 / -1; margin-top: 0; color: var(--muted); font-weight: 500; opacity: 1; }
 .fgv2 .entry-org .entry-body > a { padding-top: 0; white-space: nowrap; color: var(--blue); }
 .fgv2 .entry-card .entry-options { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14px; font-weight: 600; }
-.fgv2 .entry-card .entry-options a { color: var(--blue); border-bottom: 1px solid var(--gold); padding-bottom: 1px; }
+.fgv2 .entry-card .entry-options a { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px solid var(--line); background: var(--paper); color: var(--blue); font-size: 14px; transition: border-color .2s, background .2s; }
+.fgv2 .entry-card .entry-options a:after { content: "→"; transition: transform .25s; }
+.fgv2 .entry-card .entry-options a:hover { border-color: var(--blue); background: var(--white); }
+.fgv2 .entry-card .entry-options a:hover:after { transform: translateX(3px); }
 .fgv2 .entry-card .entry-options span { font-weight: 400; color: var(--muted); }
 @media (min-width: 901px) { .fgv2 .entry-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 900px) {
@@ -241,6 +302,11 @@
 .fgv2 .ecosystem-pillar strong { font-size: 18px; color: var(--ink); }
 .fgv2 .ecosystem-pillar span { font-size: 14px; line-height: 1.6; color: var(--muted); }
 .fgv2 .ecosystem-pillar[aria-pressed="true"] { border-color: var(--blue); background: var(--white); box-shadow: inset 3px 0 var(--gold); }
+/* The shared core: pillars lift on hover and the selected one carries a champagne rule toward the core. */
+.fgv2 .ecosystem-pillar { position: relative; transition: border-color .2s, box-shadow .25s, transform .25s; cursor: pointer; }
+.fgv2 .ecosystem-pillar:hover { border-color: var(--blue); box-shadow: 0 18px 36px -28px rgb(32 63 104 / .45); }
+.fgv2 .ecosystem-pillar[aria-pressed="true"] { box-shadow: inset 3px 0 var(--gold); }
+.fgv2 .ecosystem-hub { box-shadow: 0 0 0 10px rgb(195 166 108 / .14); }
 .fgv2 .ecosystem-hub { background: var(--blue); color: #fff; padding: 40px 34px; border-radius: var(--radius) var(--corner) var(--radius) var(--radius); text-align: center; }
 .fgv2 .ecosystem-hub small { color: var(--gold-text); }
 .fgv2 .ecosystem-hub strong { font-size: clamp(24px, 2.4vw, 32px); }
@@ -276,12 +342,15 @@
 .fgv2 .v2-steps { grid-template-columns: repeat(8, 1fr); margin-bottom: 64px; }
 .fgv2 .v2-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px 48px; }
 .fgv2 .v2-links article { display: flex; flex-direction: column; padding-top: 22px; border-top: 1px solid var(--ink); }
-.fgv2 .v2-links small { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: var(--blue); }
+.fgv2 .v2-links small { font-size: var(--label-size); letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: var(--blue); }
 .fgv2 .v2-links h3 { font: 650 24px/1.2 var(--font-display); letter-spacing: -.02em; margin: 8px 0 10px; color: var(--ink); }
 .fgv2 .v2-links p { font-size: 15px; line-height: 1.7; color: var(--muted); margin: 0 0 14px; }
 .fgv2 .v2-links ul { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 8px; }
 .fgv2 .v2-links a { margin-top: auto; font-size: 14px; font-weight: 700; color: var(--blue); border-bottom: 1px solid var(--gold); align-self: flex-start; padding-bottom: 3px; }
 .fgv2 .v2-status { font-size: 14px; line-height: 1.5; color: var(--ink); }
+/* Capability statuses: the status word in a fixed column so the capabilities line up. */
+.fgv2 .v2-status { display: grid; grid-template-columns: 112px 1fr; align-items: baseline; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.fgv2 .v2-status > span { justify-self: start; margin: 0; }
 .fgv2 .v2-status > span { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .04em; padding: 2px 8px; margin-right: 8px; border: 1px solid; }
 .fgv2 .v2-ok > span { color: #1f4a33; background: #eaf2ec; border-color: #bcd3c4; }
 .fgv2 .v2-dev > span { color: #5a4517; background: #f8f2e4; border-color: #e2d2a6; }
@@ -292,6 +361,10 @@
 .fgv2 .v2-path ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
 .fgv2 .v2-path li { background: var(--white); padding: 15px 18px; font-size: 15px; font-weight: 600; color: var(--ink); display: flex; gap: 12px; align-items: baseline; }
 .fgv2 .v2-path li b { color: var(--blue); font-family: var(--font-accent); font-weight: 400; }
+.fgv2 .v2-path { box-shadow: inset 0 3px var(--blue); }
+.fgv2 .v2-path li { display: flex; gap: 12px; align-items: baseline; transition: background .2s; }
+.fgv2 .v2-path li b { font-size: 20px; min-width: 22px; }
+.fgv2 .v2-path li:hover { background: var(--paper); }
 .fgv2 .v2-legend { margin: 32px 0 0; font-size: 13px; line-height: 2.2; color: var(--muted); }
 .fgv2 .v2-legend .v2-status { margin-left: 10px; }
 .fgv2 .v2-legend .v2-status:first-child { margin-left: 0; }
@@ -305,41 +378,84 @@
 
 /* ── 8. The FlyttGo Marketplace: a way in by category, one dominant picture and four beside it ── */
 .fgv2 .v2-categories { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 28px; padding: 18px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.fgv2 .v2-categories > span { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; font-weight: 700; color: var(--blue); margin-right: 8px; }
+.fgv2 .v2-categories > span { font-size: var(--label-size); letter-spacing: .18em; text-transform: uppercase; font-weight: 700; color: var(--blue); margin-right: 8px; }
 .fgv2 .v2-categories a { padding: 10px 16px; border: 1px solid var(--line); background: var(--white); font-size: 14px; font-weight: 600; color: var(--blue); transition: background .2s, color .2s; }
 .fgv2 .v2-categories a:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
 .fgv2 .v2-categories em { margin-left: auto; font-style: normal; font-size: 13px; color: var(--muted); }
+/* Phones: the categories become one row that scrolls sideways, its far edge fading as a cue. */
+@media (max-width: 760px) {
+  .fgv2 .v2-categories { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; mask-image: linear-gradient(90deg, #000 85%, transparent); padding-right: 32px; }
+  .fgv2 .v2-categories::-webkit-scrollbar { display: none; }
+  .fgv2 .v2-categories a { flex: none; scroll-snap-align: start; min-height: 44px; display: inline-flex; align-items: center; }
+  .fgv2 .v2-categories em { display: none; }
+}
 .fgv2 .market-card { border-radius: var(--radius); }
 .fgv2 .market-card img { transition: transform .9s ease; }
 .fgv2 .market-card:hover img { transform: scale(1.03); }
 .fgv2 .market-card:after { background: linear-gradient(180deg, rgba(20,38,64,0) 45%, rgba(20,38,64,.5) 72%, rgba(20,38,64,.86) 100%); }
+/* Phones: the five categories as one swipeable row, the next card peeking in as a cue. */
+@media (max-width: 760px) {
+  .fgv2[data-market="a"] .market-grid { display: grid; grid-template-columns: none; grid-template-rows: none; grid-auto-flow: column; grid-auto-columns: 84%; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-bottom: 6px; }
+  .fgv2[data-market="a"] .market-grid::-webkit-scrollbar { display: none; }
+  .fgv2[data-market="a"] .market-card, .fgv2[data-market="a"] .market-card:first-child { height: 380px; scroll-snap-align: start; }
+}
 .fgv2 .market-card .card-copy { text-shadow: 0 1px 6px rgba(0,0,0,.3); }
-.fgv2 .market-card small { color: #e9dcc0; }
-.fgv2 .market-card .card-arrow { border-radius: 0; }
+.fgv2 .market-card small { color: #e9dcc0; display: block; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; }
+/* Captions: category, title, one line of detail, in that order of weight. */
+.fgv2 .market-card .card-copy { left: 28px; right: 28px; bottom: 26px; }
+.fgv2 .market-card h3 { font-family: var(--font-display); font-weight: var(--head-weight); letter-spacing: -.025em; line-height: 1.12; margin: 0 0 8px; }
+.fgv2 .market-card p { max-width: 40ch; opacity: .92; margin: 0; }
+.fgv2 .market-card .card-arrow { border-radius: 0; transition: transform .3s, background .3s; }
+.fgv2 .market-card:hover .card-arrow, .fgv2 .market-card:focus-visible .card-arrow { background: var(--white); color: var(--blue); }
+.fgv2 .market-card:focus-visible { outline: 3px solid var(--white); outline-offset: -6px; }
+.fgv2 .market-card:focus-visible img { transform: scale(1.03); }
 
 /* ── 9. Moving and transport: one vertical within FlyttGo ──────────────── */
+/* One chapter: services, steps, vans and guarantees share one ivory ground and run on with a hairline
+ * between them, so moving reads as one vertical rather than four sections. */
+.fgv2[data-grounds="alternate"] main > section:is(#moving-services, #how-it-works, #van-types, :has(.testimonial-grid)) { background: var(--paper); --section-ground: var(--paper); }
+.fgv2[data-grounds="alternate"] main > section#marketplace { background: var(--white); --section-ground: var(--white); }
+.fgv2 main > section:is(#how-it-works, #van-types, :has(.testimonial-grid)) { border-top: 0; padding-top: calc(var(--section) * .5); }
+.fgv2 main > section:is(#how-it-works, #van-types, :has(.testimonial-grid)) > .wrap:first-child { border-top: 1px solid var(--line); padding-top: calc(var(--section) * .5); }
+.fgv2 main > section:is(#moving-services, #how-it-works, #van-types) { padding-bottom: calc(var(--section) * .5); }
 .fgv2 .legacy-suite .section-head p { max-width: 440px; }
 .fgv2 .service-grid { background: transparent; gap: 16px; border: 0; }
 .fgv2 .service-card, .fgv2 .fleet-card { border: 1px solid var(--line); border-radius: var(--radius); background: var(--white); box-shadow: none; }
 .fgv2 .fleet-card:hover { transform: none; box-shadow: var(--lift); }
+/* Van cards: one picture ratio, the specification as a ruled table, "best for" as a quiet note. */
+.fgv2 .fleet-card .fleet-photo { aspect-ratio: 4 / 3; height: auto; overflow: hidden; }
+.fgv2 .fleet-card .fleet-photo img { width: 100%; height: 100%; object-fit: cover; }
+.fgv2 .fleet-card h3 { font: var(--head-weight) 20px/1.2 var(--font-display); letter-spacing: -.02em; margin-bottom: 12px; }
+.fgv2 .fleet-card .spec-row { display: flex; justify-content: space-between; padding: 9px 0; border-top: 1px solid var(--line); }
+.fgv2 .fleet-card .spec-row strong { font-variant-numeric: tabular-nums; color: var(--ink); }
+.fgv2 .fleet-card .bestfor { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); line-height: 1.55; }
 .fgv2 :is(.steps-grid, .fleet-grid, .tool-grid, .plan-grid) { background: transparent; border: 0; gap: 16px; }
 /* The four booking steps as a timeline: numbers on one gold line, no boxes. */
 .fgv2 .steps-grid { gap: 0 32px; border: 0; border-top: 2px solid var(--gold); background: transparent; }
 .fgv2 .legacy-suite .step-card { position: relative; padding: 30px 0 0; border: 0; background: transparent; box-shadow: none; }
 .fgv2 .legacy-suite .step-card:before { content: ""; position: absolute; top: -7px; left: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--white); border: 2px solid var(--blue); }
 @media (max-width: 900px) {
-  .fgv2 .steps-grid { grid-template-columns: 1fr; border-top: 0; border-left: 2px solid var(--gold); padding-left: 24px; gap: 24px; }
+  .fgv2 .steps-grid, .fgv2 #how-it-works .steps-grid { grid-template-columns: 1fr; border-top: 0; border-left: 2px solid var(--gold); padding-left: 24px; gap: 24px; }
   .fgv2 .legacy-suite .step-card { padding-top: 0; }
   .fgv2 .legacy-suite .step-card:before { top: 10px; left: -32px; }
 }
 .fgv2 .legacy-suite .step-card p { font-size: 15px; }
 /* Step numbers on a light ground: deep-blue serif (gold is for dark grounds only). */
 .fgv2 .legacy-suite .step-no { width: auto; height: auto; background: transparent; border-radius: 0; color: var(--blue); font-family: var(--font-accent); font-size: 34px; display: block; margin-bottom: 14px; }
+/* Booking steps: larger accent numerals sitting on the gold line. */
+.fgv2 .legacy-suite .step-card .step-no { font-size: clamp(40px, 3.4vw, 54px); line-height: 1; color: var(--blue); margin-bottom: 18px; }
+.fgv2 .legacy-suite .step-card h3 { font: var(--head-weight) 19px/1.25 var(--font-display); letter-spacing: -.02em; }
 .fgv2 #van-types .price-from { display: none; } /* rates live on the van guide (linked) */
+/* Phones: one van per row so the specification table keeps its figures on one line. */
+@media (max-width: 600px) { .fgv2 .fleet-grid, .fgv2 #van-types .fleet-grid { grid-template-columns: 1fr; } .fgv2 .fleet-card .fleet-photo { aspect-ratio: 16 / 9; } }
 /* "What every booking includes": a ruled two-column list, not a third row of boxes. */
 .fgv2 .testimonial-grid { background: transparent; border: 0; gap: 0 56px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .fgv2 .testimonial-grid .quote { background: transparent; padding: 22px 0 24px; border: 0; border-top: 1px solid var(--ink); box-shadow: none; }
-.fgv2 .testimonial-grid .quote small { color: var(--blue); }
+.fgv2 .testimonial-grid .quote small { color: var(--blue); display: block; margin-bottom: 12px; font-weight: 700; letter-spacing: var(--label-track); }
+.fgv2 .testimonial-grid .quote b { display: block; font: var(--head-weight) 19px/1.25 var(--font-display); letter-spacing: -.02em; color: var(--ink); margin: 2px 0 8px; order: -1; }
+.fgv2 .testimonial-grid .quote { display: flex; flex-direction: column; }
+.fgv2 .testimonial-grid .quote small { order: -2; }
+.fgv2 .testimonial-grid .quote-text { font-size: 15px; line-height: 1.65; color: var(--muted); margin: 0; }
 @media (max-width: 700px) { .fgv2 .testimonial-grid { grid-template-columns: 1fr; } }
 @media (min-width: 901px) {
   .fgv2 .legacy-suite .section-head { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr); grid-template-areas: "label label" "title text"; column-gap: 64px; row-gap: 18px; }
@@ -352,20 +468,34 @@
 /* ── 10. Business workspace: the flagship product demonstration ────────── */
 .fgv2 .bw-sidebar { background: var(--paper); }
 .fgv2 .bw-company { display: flex; gap: 12px; align-items: center; padding: 4px 4px 18px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+/* Title bars of the demonstrations: the product path on the left, a quiet status on the right. */
+.fgv2 :is(.bw-topbar, .finance-top) { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 46px; padding: 0 20px; }
+.fgv2 :is(.bw-topbar, .finance-top) :is(.bw-brand, b, strong) { font: 700 12px var(--font-display); letter-spacing: .14em; }
+.fgv2 :is(.bw-topbar, .finance-top) small { font-size: var(--label-size); letter-spacing: .12em; opacity: .8; }
 .fgv2 .bw-company i { flex: none; width: 36px; height: 36px; display: grid; place-items: center; background: var(--blue); color: #fff; font: 700 13px var(--font-display); font-style: normal; }
 .fgv2 .bw-company span { font-size: 12px; line-height: 1.4; color: var(--muted); }
 .fgv2 .bw-company b { display: block; font-size: 14px; color: var(--ink); }
 .fgv2 .bw-nav button { font-size: 14px; }
 .fgv2 :is(.bw-nav, .finance-side) button[aria-pressed="true"] { background: var(--white); color: var(--blue); box-shadow: inset 3px 0 var(--blue); }
+.fgv2 :is(.bw-nav, .finance-side nav) button { min-height: 38px; border-radius: var(--radius); transition: background .2s, color .2s; text-align: left; }
+.fgv2 :is(.bw-nav, .finance-side nav) button:not([aria-pressed="true"]):hover { background: rgb(255 254 250 / .7); color: var(--ink); }
+.fgv2 .bw-sidebar .bw-label, .fgv2 .finance-side > small { display: block; margin: 4px 0 8px; font-size: var(--label-size); letter-spacing: var(--label-track); color: var(--muted); }
 .fgv2 :is(.bw-metrics, .finance-metrics) article { background: var(--white); border: 1px solid var(--line); }
+.fgv2 :is(.bw-metrics, .finance-metrics) article { padding: 16px 18px; display: grid; gap: 4px; }
+.fgv2 :is(.bw-metrics, .finance-metrics) article :is(small, span:first-child) { font-size: var(--label-size); letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+.fgv2 :is(.bw-metrics, .finance-metrics) article b { font: var(--head-weight) 19px/1.25 var(--font-display) !important; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .fgv2 :is(.bw-metrics, .finance-metrics) article b { font-size: 16px; color: var(--ink); }
 .fgv2 :is(.bw-metrics, .finance-metrics) article em { font-size: 13px; color: var(--muted); }
 .fgv2 :is(.bw-panel-head, .finance-document-head) strong { font-size: 14px; color: var(--ink); }
-.fgv2 :is(.bw-panel-head, .finance-document-head) span { font-size: 11px; letter-spacing: .08em; color: var(--muted); }
+.fgv2 :is(.bw-panel-head, .finance-document-head) span { font-size: var(--label-size); letter-spacing: .08em; color: var(--muted); }
 .fgv2 #bw-panel-content { padding: 0; text-align: left; }
 /* The example company's records (demoRecords.ts). */
 .fgv2 .v2-records { width: 100%; border-collapse: collapse; font-size: 14px; }
-.fgv2 .v2-records th { text-align: left; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.fgv2 .v2-records th { text-align: left; font-size: var(--label-size); letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.fgv2 .v2-records tbody tr { transition: background .15s; }
+.fgv2 .v2-records tbody tr:hover td { background: #faf8f2; }
+.fgv2 .v2-records td { font-variant-numeric: tabular-nums; }
+.fgv2 .v2-records td:last-child .v2-chip { min-width: 96px; text-align: center; }
 .fgv2 .v2-records td { padding: 14px 16px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
 .fgv2 .v2-records tr:last-child td { border-bottom: 0; }
 .fgv2 .v2-records td:first-child { font-weight: 600; }
@@ -373,6 +503,8 @@
 @media (max-width: 900px) {
   .fgv2 :is(.bw-body > *, .bw-main, .bw-sidebar, .bw-panel) { min-width: 0; }
   .fgv2 .bw-nav { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; }
+  .fgv2 :is(.bw-nav, .finance-side nav) { scroll-snap-type: x proximity; scrollbar-width: none; mask-image: linear-gradient(90deg, #000 82%, transparent); padding-right: 28px; }
+  .fgv2 :is(.bw-nav, .finance-side nav) button { flex: none; scroll-snap-align: start; min-height: 44px; }
   .fgv2 .bw-metrics, .fgv2 .bw-lower { grid-template-columns: 1fr; }
   .fgv2 .bw-company { padding-bottom: 12px; }
 }
@@ -383,13 +515,22 @@
 
 /* ── 11. Financial workspace: its own identity, a ledger beside a timeline ── */
 .fgv2 .finance-section .v2-lifecycle { margin-bottom: 56px; }
+/* The finance lifecycle: numbered stops on one evergreen line, ending on the financial record. */
+.fgv2 .finance-section .v2-lifecycle li::before { background: var(--evergreen); height: 2px; top: 5px; }
+.fgv2 .finance-section .v2-lifecycle li::after { background: var(--white); border: 2px solid var(--evergreen); width: 12px; height: 12px; top: 0; }
+.fgv2 .finance-section .v2-lifecycle li:last-child::after { background: var(--evergreen); }
+.fgv2 .finance-section .v2-lifecycle b { color: var(--evergreen); }
 .fgv2 .finance-top { background: var(--evergreen); color: #fff; }
 .fgv2 .finance-side { background: #eef0ea; }
 .fgv2 .finance-document { background: var(--white); border-color: var(--line); }
+/* The document as paper: a champagne rule on top, its title in the display face. */
+.fgv2 .finance-document { box-shadow: inset 0 3px var(--gold), 0 1px 0 var(--line); }
+.fgv2 .finance-document-head strong, .fgv2 #finance-doc-title { font: var(--head-weight) 16px var(--font-display) !important; letter-spacing: -.01em; }
+.fgv2 .finance-doc-meta { padding-bottom: 16px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
 .fgv2 .finance-document-content { padding: 24px; }
 .fgv2 .finance-doc-meta b { font-size: 14px; color: var(--ink); }
 .fgv2 .finance-doc-meta small { font-size: 13px; color: var(--muted); }
-.fgv2 .finance-lines th { font-size: 11px; letter-spacing: .1em; color: var(--muted); }
+.fgv2 .finance-lines th { font-size: var(--label-size); letter-spacing: .1em; color: var(--muted); }
 .fgv2 .finance-lines td { font-size: 14px; color: var(--ink); padding-top: 12px; padding-bottom: 12px; font-variant-numeric: tabular-nums; }
 .fgv2 .finance-lines :is(td, th):last-child { text-align: right; }
 .fgv2 .v2-totals { margin: 8px 0 0 auto; max-width: 340px; display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -397,6 +538,10 @@
 .fgv2 .v2-totals b { color: var(--ink); font-weight: 600; }
 .fgv2 .v2-total-final { padding-top: 8px; margin-top: 4px; border-top: 2px solid var(--evergreen); color: var(--ink); font-weight: 700; }
 .fgv2 .v2-total-final b { font: 700 20px var(--font-display); color: var(--evergreen); }
+/* Notes under the financial workspace: four ruled principles, then the important distinction set apart. */
+.fgv2 .finance-principles { gap: 0 32px; margin-top: 40px; }
+.fgv2 .finance-principles > * { padding-top: 16px; border-top: 1px solid var(--evergreen); }
+.fgv2 .finance-note { margin-top: 32px; padding: 18px 22px; background: var(--white); border: 1px solid var(--line); border-left: 3px solid var(--gold); max-width: 92ch; }
 @media (max-width: 900px) {
   .fgv2 :is(.finance-body > *, .finance-main, .finance-side) { min-width: 0; }
   .fgv2 .finance-body { grid-template-columns: 1fr; }
@@ -408,11 +553,22 @@
 .fgv2 .industry-tab { padding: 10px 18px; border: 1px solid var(--line); background: var(--white); font-size: 14px; font-weight: 600; color: var(--blue); border-radius: 0; }
 .fgv2 .industry-tab[aria-selected="true"] { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: none; }
 .fgv2 .industry-tab[aria-selected="true"]::after { display: none; }
+@media (max-width: 760px) {
+  .fgv2 .industry-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; mask-image: linear-gradient(90deg, #000 85%, transparent); padding-right: 32px; }
+  .fgv2 .industry-tab { flex: none; scroll-snap-align: start; min-height: 44px; }
+}
 .fgv2 .industry-panel-copy > p, .fgv2 .industry-bottom > p { font-size: 16px; line-height: 1.7; color: var(--muted); }
 .fgv2 .industry-work-types span { font-size: 13px; padding: 8px 12px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
 .fgv2 .industry-workflow { font-size: 14px; }
 .fgv2 .industry-workflow b { font-size: 14px; color: var(--ink); }
 .fgv2 .industry-workflow span { font-size: 14px; color: var(--muted); }
+/* The example booking form: fields that look like fields, the booking flow as connected chips. */
+.fgv2 .industry-form { border: 1px solid var(--line); background: var(--white); box-shadow: 0 24px 50px -36px rgb(32 63 104 / .35); border-radius: var(--radius); }
+.fgv2 .industry-input { background: var(--white) !important; border: 1px solid var(--line) !important; border-radius: var(--radius); padding: 10px 12px !important; color: var(--ink); }
+.fgv2 .industry-workflow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fgv2 .industry-workflow span { padding: 6px 10px; background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+.fgv2 .industry-workflow i { color: var(--gold); font-style: normal; }
+.fgv2 .industry-workflow b { flex-basis: 100%; }
 .fgv2 .industry-workflow i { color: var(--gold); }
 
 /* ── 13. Corporate: approvals, roles and invoicing, not figures ────────── */
@@ -427,6 +583,10 @@
 .fgv2 :is(.corp-row, .corp-invoice) em { font-style: normal; font-size: 12px; font-weight: 700; padding: 4px 10px; border: 1px solid; white-space: nowrap; }
 .fgv2 .corp-wait { color: #5a4517; background: #f8f2e4; border-color: #e2d2a6; }
 .fgv2 .corp-ok { color: #1f4a33; background: #eaf2ec; border-color: #bcd3c4; }
+.fgv2 .corp-row { transition: background .15s; }
+.fgv2 .corp-row:hover { background: #faf8f2; }
+.fgv2 :is(.corp-wait, .corp-ok, .corp-invoice em) { min-width: 132px; text-align: center; }
+.fgv2 .feature i { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 10px; font-size: 11px; font-style: normal; color: var(--white); background: var(--forest); border-radius: 50%; }
 .fgv2 .corp-roles { margin-top: 16px; border: 1px solid var(--line); padding: 16px 18px; font-size: 13px; }
 .fgv2 .corp-roles > b { display: block; margin-bottom: 10px; color: var(--ink); }
 .fgv2 .corp-roles > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -450,12 +610,24 @@
 /* ── 15. Marketplace Studio: an infrastructure product, a convincing storefront ── */
 .fgv2 .wl-layout { grid-template-columns: 290px 1fr; min-height: 560px; }
 .fgv2 .wl-config { background: var(--paper); padding: 26px 22px; }
-.fgv2 .wl-config :is(label, .wl-setting-label) { display: block; color: var(--blue); letter-spacing: .14em; font-size: 11px; font-weight: 700; margin: 0 0 8px; }
+/* The storefront stays in view while the longer settings column scrolls past it. */
+@media (min-width: 901px) {
+  .fgv2[data-studio="a"] .wl-layout { align-items: start; }
+  .fgv2[data-studio="a"] .wl-preview { position: sticky; top: 96px; }
+}
+.fgv2 .wl-config :is(label, .wl-setting-label) { display: block; color: var(--blue); letter-spacing: .14em; font-size: var(--label-size); font-weight: 700; margin: 0 0 8px; }
 .fgv2 .wl-config :is(input, select) { border-radius: 0; border: 1px solid var(--line); background: var(--white); min-height: 44px; font-size: 14px; }
 .fgv2 .wl-settings { margin: 22px 0 0; padding: 18px 0 0; border-top: 1px solid var(--line); display: grid; gap: 14px; }
-.fgv2 .wl-settings dt { font-size: 11px; letter-spacing: .14em; font-weight: 700; color: var(--blue); }
+.fgv2 .wl-settings dt { font-size: var(--label-size); letter-spacing: .14em; font-weight: 700; color: var(--blue); }
 .fgv2 .wl-settings dd { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
 @media (max-width: 900px) { .fgv2 .wl-layout { grid-template-columns: 1fr; } }
+/* Tablets: the stacked studio settings in two columns, so the storefront is reached sooner. */
+@media (min-width: 640px) and (max-width: 900px) {
+  .fgv2 .wl-config { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; align-content: start; }
+  .fgv2 .wl-config > :is(.wl-group, .wl-more, .wl-settings, .wl-status, .wl-setting-label, .wl-color-row) { grid-column: 1 / -1; }
+  .fgv2 .wl-more { grid-template-columns: 1fr 1fr; column-gap: 24px; }
+  .fgv2 .wl-more > :is(.wl-group, .wl-cat-toggles, .wl-domain-row, .wl-settings, .wl-status, .wl-setting-label) { grid-column: 1 / -1; }
+}
 
 /* ── 16. Network model: three plain tiers a business owner can read ───── */
 .fgv2 .network-lines { display: none; }
@@ -464,18 +636,22 @@
 .fgv2 .network-column:has(.core) { grid-template-columns: 1fr; }
 .fgv2 .network-canvas .network-node { width: auto; height: auto; display: block; font: inherit; color: inherit; margin: 0; padding: 22px; border-radius: var(--radius); }
 .fgv2 .network-canvas .network-node.core { padding: 30px; text-align: center; background: var(--blue); color: #fff; }
-.fgv2 .network-canvas .network-node small { font-size: 11px; color: var(--blue); }
+.fgv2 .network-canvas .network-node small { font-size: var(--label-size); color: var(--blue); }
 .fgv2 .network-canvas .network-node.core small { color: var(--gold-text); }
 .fgv2 .network-canvas .network-node strong { font-size: 17px; }
 .fgv2 .network-canvas .network-node.core strong { font-size: 22px; }
 .fgv2 .network-canvas .network-node p { font-size: 14px; line-height: 1.6; }
 .fgv2 .network-controls button { font-size: 12px; }
+.fgv2 .network-controls { display: flex; flex-wrap: wrap; gap: 0; border-bottom: 1px solid var(--line); }
+.fgv2 .network-controls button { font-size: 13px; padding: 12px 16px; border: 0; background: transparent; color: var(--muted); font-weight: 600; box-shadow: none; border-radius: 0; }
+.fgv2 .network-controls button:hover { color: var(--ink); }
+.fgv2 .network-controls button[aria-pressed="true"], .fgv2 .network-controls button.active { color: var(--blue); box-shadow: inset 0 -3px var(--blue); background: transparent; }
 .fgv2 .network-detail :is(strong, p) { font-size: 14px; }
 @media (max-width: 700px) { .fgv2 .network-column { grid-template-columns: 1fr; } }
 
 /* ── 17. Related links and the closing section ─────────────────────────── */
-.fgv2 .v2-related { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 26px; padding-top: 36px; font-size: 14px; }
-.fgv2 .v2-related span { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+.fgv2 .v2-related { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 26px; margin-top: 44px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; }
+.fgv2 .v2-related span { font-size: var(--label-size); letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
 .fgv2 .v2-related a { font-weight: 600; color: var(--blue); border-bottom: 1px solid var(--gold); padding-bottom: 2px; }
 .fgv2 .v2-related a:hover { border-color: var(--blue); }
 .fgv2 main > section.final-cta { background: var(--blue); color: #fff; }
@@ -517,9 +693,15 @@
   .fgv2[data-hero="b"] .hero-photo { position: absolute; inset: 0; }
   .fgv2[data-hero="b"] .hero-copy { z-index: 3; align-self: start; width: min(600px, 46%); margin: 56px 0 184px max(40px, calc((100% - var(--wrap-max)) / 2)); padding: 44px 44px 40px; background: rgb(255 254 250 / .96); box-shadow: var(--lift); }
   .fgv2[data-hero="b"] .hero h1 { font-size: calc(11cqi * var(--hero-scale) * var(--hl-fit)); }
+  /* The card: a champagne rule along its top, the proposition held to a measure, a readable note. */
+  .fgv2[data-hero="b"] .hero-copy { box-shadow: var(--lift), inset 0 3px var(--gold); padding: 48px 48px 40px; }
+  .fgv2[data-hero="b"] .hero h1 .serif { max-width: 28ch; }
+  .fgv2[data-hero="b"] .hero-lede { font-size: 16px; max-width: 46ch; }
+  .fgv2[data-hero="b"] .hero-note { font-size: 13px; }
   .fgv2[data-hero="b"] .hero-actors { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); position: absolute; z-index: 2; left: 0; right: 0; bottom: 88px; margin: 0; padding: 0 0 0 max(40px, calc((100% - var(--wrap-max)) / 2)); list-style: none; background: var(--white); border-top: 1px solid var(--gold); }
-  .fgv2[data-hero="b"] .hero-actors li { padding: 12px 18px 12px 0; display: flex; gap: 8px; align-items: baseline; font-size: 14px; color: var(--muted); }
-  .fgv2[data-hero="b"] .hero-actors b { color: var(--blue); font: 700 14px var(--font-display); }
+  .fgv2[data-hero="b"] .hero-actors li { padding: 15px 20px 15px 0; display: flex; gap: 10px; align-items: baseline; font-size: 15px; line-height: 1.35; color: var(--muted); }
+  .fgv2[data-hero="b"] .hero-actors li + li { padding-left: 20px; border-left: 1px solid var(--line); }
+  .fgv2[data-hero="b"] .hero-actors b { color: var(--blue); font: 700 15px var(--font-display); white-space: nowrap; }
 }
 @media (min-width: 761px) and (max-width: 1100px) {
   .fgv2[data-hero="b"] .hero-copy { width: min(560px, 66%); margin-top: 40px; margin-bottom: 236px; }
@@ -653,8 +835,27 @@
   .fgv2[data-moving="b"] .service-card:not(:first-child):after { content: "→"; color: var(--blue); font-size: 18px; transition: transform .3s; }
   .fgv2[data-moving="b"] .service-card:not(:first-child):hover:after { transform: translateX(4px); }
   .fgv2[data-moving="b"] .service-card:not(:first-child) h3 { font-size: 18px; }
+  .fgv2[data-moving="b"] .service-grid { counter-reset: svc 1; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child) { counter-increment: svc; grid-template-columns: 44px 1fr auto; transition: background .2s, padding .25s; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child):before { content: counter(svc, decimal-leading-zero); align-self: center; font: 600 13px var(--font-display); color: var(--gold); letter-spacing: .04em; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child):hover { background: var(--white); padding-left: 10px; }
   .fgv2[data-moving="b"] .service-card:first-child { grid-row: 1 / span 7; grid-template-columns: 1fr; border: 1px solid var(--line); background: var(--white); align-self: start; }
-  .fgv2[data-moving="b"] .service-card:first-child .photo { aspect-ratio: 4 / 3; height: auto; }
+  .fgv2[data-moving="b"] .service-card:first-child .photo { aspect-ratio: 4 / 5; height: auto; }
+  /* The feature service carries its caption on the picture, under a deep-blue veil. */
+  .fgv2[data-moving="b"] .service-card:first-child { position: relative; border: 0; overflow: hidden; }
+  .fgv2[data-moving="b"] .service-card:first-child .photo img { height: 100%; }
+  .fgv2[data-moving="b"] .service-card:first-child .body { position: absolute; left: 0; right: 0; bottom: 0; padding: 120px 32px 30px; background: linear-gradient(180deg, rgba(20,38,64,0), rgba(20,38,64,.88) 62%); color: #fff; }
+  .fgv2[data-moving="b"] .service-card:first-child h3 { color: #fff; font: var(--head-weight) clamp(24px, 2.2vw, 32px)/1.1 var(--font-display); letter-spacing: -.03em; margin: 0 0 8px; }
+  .fgv2[data-moving="b"] .service-card:first-child .body p { color: #eef1f5; font-size: 15px; }
+}
+/* Moving B on phones: the first service as a picture card, the rest as a compact ruled list. */
+@media (max-width: 900px) {
+  .fgv2[data-moving="b"] .service-grid { gap: 0; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child) { border: 0; border-bottom: 1px solid var(--line); background: transparent; display: grid; grid-template-columns: 1fr auto; align-items: center; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child) .photo { display: none; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child) .body { padding: 16px 0; }
+  .fgv2[data-moving="b"] .service-card:not(:first-child):after { content: "→"; color: var(--blue); }
+  .fgv2[data-moving="b"] .service-card:first-child { margin-bottom: 8px; }
 }
 /* Moving C · picture-led pairs: two columns, each service a picture beside its words. */
 @media (min-width: 901px) {
@@ -667,7 +868,7 @@
 @media (min-width: 1000px) {
   .fgv2[data-booking="b"] .v2-booking-inner { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 2fr); gap: 48px; align-items: center; max-width: var(--wrap-max); }
   .fgv2[data-booking="b"] .v2-booking-head { display: block; margin: 0; }
-  .fgv2[data-booking="b"] .v2-booking-head p { margin-top: 16px; font: var(--head-weight) clamp(22px, 2vw, 30px)/1.2 var(--font-display); letter-spacing: -.03em; color: var(--ink); }
+  .fgv2[data-booking="b"] .v2-booking-head p { margin-top: 16px; font: var(--head-weight) clamp(24px, 2.3vw, 34px)/1.16 var(--font-display); letter-spacing: -.035em; color: var(--ink); max-width: 15ch; text-wrap: balance; }
 }
 /* Booking C · deep-blue band: the widget lifted on the brand ground between hero and journeys. */
 .fgv2[data-booking="c"] main > .v2-booking { background: var(--blue); }
@@ -711,7 +912,12 @@
 .fgv2[data-providers="b"] .driver-panel li:before { color: var(--forest); }
 .fgv2[data-providers="b"] .driver-panel .eyebrow { color: var(--blue) !important; }
 .fgv2[data-providers="b"] .driver-panel ul { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-.fgv2[data-providers="b"] .driver-panel .btn { color: var(--blue); border-color: var(--blue); }
+/* Providers: the five benefits as a numbered ruled grid and a filled action, filling the band. */
+.fgv2[data-providers="b"] .driver-panel ul { counter-reset: perk; gap: 0 28px; margin: 36px 0; }
+.fgv2[data-providers="b"] .driver-panel li { counter-increment: perk; padding: 16px 0; border-top: 1px solid var(--ink); font: var(--head-weight) 17px/1.35 var(--font-display); letter-spacing: -.01em; color: var(--ink); }
+.fgv2[data-providers="b"] .driver-panel li:before { content: counter(perk, decimal-leading-zero); display: block; margin: 0 0 8px; font: 600 13px var(--font-display); color: var(--gold); letter-spacing: .04em; }
+.fgv2[data-providers="b"] .driver-panel .btn, .fgv2[data-providers="b"] .driver-panel .btn.btn-light { background: var(--blue); color: #fff !important; border-color: var(--blue); }
+.fgv2[data-providers="b"] .driver-panel .btn:hover { background: #18304f; }
 /* Providers C · evergreen card: the provider offer in the network's own colour. */
 .fgv2[data-providers="c"] .driver-panel { background: var(--evergreen); }
 .fgv2[data-providers="c"] .driver-panel li:before { color: #d9c9a2; }
@@ -738,7 +944,19 @@
 .fgv2[data-closing="b"] .final-actions .btn { background: transparent !important; color: var(--blue) !important; border: 0; border-right: 1px solid var(--line); min-height: 96px; justify-content: center; font: var(--head-weight) clamp(18px, 1.8vw, 24px) var(--font-display); letter-spacing: -.02em; }
 .fgv2[data-closing="b"] .final-actions .btn:last-child { border-right: 0; }
 .fgv2[data-closing="b"] .final-actions .btn:hover { background: var(--white) !important; }
+/* Each closing journey with one line saying what it leads to. */
+.fgv2 .final-actions .btn { flex-wrap: wrap; }
+.fgv2 .final-note { flex-basis: 100%; display: none; text-align: center; font: 400 14px/1.4 var(--font-body); letter-spacing: 0; color: var(--muted); }
+.fgv2[data-closing="b"] .final-actions .btn { flex-direction: column; gap: 6px; padding: 26px 18px; }
+.fgv2[data-closing="b"] .final-note { display: block; }
+/* Closing to footer: the ivory closing ends on a champagne hairline before the deep-blue footer. */
+.fgv2 main > section.final-cta { padding-bottom: calc(var(--section) * 1.1); box-shadow: inset 0 -1px var(--gold); }
 @media (max-width: 700px) { .fgv2[data-closing="b"] .final-actions { grid-template-columns: 1fr; } .fgv2[data-closing="b"] .final-actions .btn { border-right: 0; border-bottom: 1px solid var(--line); min-height: 64px; } }
+@media (max-width: 700px) {
+  .fgv2[data-closing="b"] .final-actions .btn { flex-direction: row; justify-content: space-between; align-items: baseline; text-align: left; padding: 18px 4px; min-height: 0; }
+  .fgv2[data-closing="b"] .final-note { flex-basis: 100%; text-align: left; order: 2; }
+  .fgv2 .final-cta h2 { font-size: calc(clamp(32px, 9vw, 44px) * var(--type-scale)); }
+}
 /* Closing C · split statement: the heading on the left, the words and actions on the right. */
 @media (min-width: 901px) {
   .fgv2[data-closing="c"] .final-cta > .wrap { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); column-gap: 64px; text-align: left; align-items: end; }
@@ -808,6 +1026,9 @@
 .fgv2 .v2-explorer button i { font: 700 11px var(--font-display); font-style: normal; color: var(--evergreen); letter-spacing: .08em; }
 .fgv2 .v2-explorer button:hover { background: var(--white); color: var(--ink); }
 .fgv2 .v2-explorer button[aria-pressed="true"] { background: var(--white); color: var(--evergreen); box-shadow: inset 0 -3px var(--evergreen); }
+/* Steps before the current one read as done: a check beside the number and an evergreen rule. */
+.fgv2 .v2-explorer button:has(~ button[aria-pressed="true"]) { color: var(--ink); box-shadow: inset 0 -3px rgb(32 53 43 / .35); }
+.fgv2 .v2-explorer button:has(~ button[aria-pressed="true"]) i:after { content: " ✓"; color: var(--forest); }
 @media (max-width: 700px) {
   .fgv2 .v2-explorer { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: -16px -16px 18px; }
   .fgv2 .v2-explorer button:nth-child(3) { border-right: 0; }
@@ -815,6 +1036,14 @@
 }
 /* Marketplace Studio: the further settings and how the storefront answers them. */
 .fgv2 .wl-more { display: grid; gap: 0; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+/* The storefront search (illustration): a field and a button in the marketplace's own colours. */
+.fgv2 .wl-search { display: flex; margin: 0 28px 4px; border: 1px solid var(--line); background: var(--white); box-shadow: 0 14px 30px -24px rgb(32 63 104 / .4); transform: translateY(-50%); }
+.fgv2 .wl-search span { flex: 1; padding: 14px 16px; font-size: 14px; color: var(--muted); }
+.fgv2 .wl-search b { padding: 14px 20px; color: #fff; background: var(--wl-accent, var(--blue)); font-size: 13px; letter-spacing: .04em; transition: background var(--motion-duration); }
+
+.fgv2 .wl-group { display: block; margin: 26px 0 12px; padding-top: 14px; border-top: 1px solid var(--blue); font: 700 13px var(--font-display); color: var(--ink); letter-spacing: -.005em; }
+.fgv2 .wl-config > .wl-group:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.fgv2 .wl-more > .wl-group { margin-top: 22px; }
 .fgv2 .wl-more > label, .fgv2 .wl-more > .wl-setting-label { margin-top: 14px; }
 .fgv2 .wl-more > :first-child { margin-top: 0; }
 .fgv2 .wl-more input[type="color"] { width: 64px; padding: 4px; cursor: pointer; }
@@ -826,7 +1055,7 @@
 .fgv2 .wl-cat-toggles input { min-height: 0 !important; width: 14px; height: 14px; accent-color: var(--blue); }
 .fgv2 .wl-preview-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .fgv2 .wl-address { font: 600 13px ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); padding: 6px 12px; background: var(--white); border: 1px solid var(--line); min-width: 0; overflow-wrap: anywhere; }
-.fgv2 .wl-address:before { content: "🔒 "; font-size: 11px; }
+.fgv2 .wl-address:before { content: "🔒 "; font-size: var(--label-size); }
 .fgv2 .wl-storefront .wl-mark-el, .fgv2 .wl-mark-el { color: #fff; }
 .fgv2 .wl-mark-el { display: inline-grid; place-items: center; width: 34px; height: 34px; margin-right: 10px; vertical-align: middle; font: 800 13px var(--font-display); background: var(--wl-accent, var(--blue)); box-shadow: inset 0 -3px var(--wl-accent2, var(--gold)); }
 .fgv2 .wl-mark-el[data-style="circle"] { border-radius: 9999px; box-shadow: 0 0 0 2px var(--wl-accent2, var(--gold)); }
@@ -852,6 +1081,12 @@
 @media (prefers-reduced-motion: no-preference) {
   .fgv2[data-motion="on"] .v2-reveal { opacity: 0; transform: translateY(var(--motion-distance)); transition: opacity var(--motion-duration) cubic-bezier(.2,.7,.2,1), transform var(--motion-duration) cubic-bezier(.2,.7,.2,1); }
   .fgv2[data-motion="on"] .v2-reveal.v2-in { opacity: 1; transform: none; }
+  /* Cards inside a section enter one after another, briefly, after the section itself. */
+  .fgv2[data-motion="on"] .v2-reveal :is(.entry-grid, .market-grid, .service-grid, .fleet-grid, .steps-grid, .testimonial-grid, .feature-list, .ecosystem-pillars) > * { opacity: 0; transform: translateY(calc(var(--motion-distance) * .5)); transition: opacity calc(var(--motion-duration) * .7) ease, transform calc(var(--motion-duration) * .7) ease; }
+  .fgv2[data-motion="on"] .v2-reveal.v2-in :is(.entry-grid, .market-grid, .service-grid, .fleet-grid, .steps-grid, .testimonial-grid, .feature-list, .ecosystem-pillars) > * { opacity: 1; transform: none; }
+  .fgv2[data-motion="on"] .v2-reveal.v2-in :is(.entry-grid, .market-grid, .service-grid, .fleet-grid, .steps-grid, .testimonial-grid, .feature-list, .ecosystem-pillars) > :nth-child(2) { transition-delay: .08s; }
+  .fgv2[data-motion="on"] .v2-reveal.v2-in :is(.entry-grid, .market-grid, .service-grid, .fleet-grid, .steps-grid, .testimonial-grid, .feature-list, .ecosystem-pillars) > :nth-child(3) { transition-delay: .16s; }
+  .fgv2[data-motion="on"] .v2-reveal.v2-in :is(.entry-grid, .market-grid, .service-grid, .fleet-grid, .steps-grid, .testimonial-grid, .feature-list, .ecosystem-pillars) > :nth-child(n+4) { transition-delay: .24s; }
   .fgv2[data-motion="on"] .v2-reveal :is(.market-card, .service-card, .fleet-card) img { clip-path: inset(0 0 100% 0); transition: clip-path calc(var(--motion-duration) * 1.2) cubic-bezier(.6,0,.2,1) .15s, transform .9s ease; }
   .fgv2[data-motion="on"] .v2-reveal.v2-in :is(.market-card, .service-card, .fleet-card) img { clip-path: inset(0); }
   .fgv2[data-motion="on"] .hero-copy > * { animation: v2-rise var(--motion-duration) cubic-bezier(.2,.7,.2,1) both; }
@@ -875,5 +1110,15 @@
   .fgv2[data-motion="on"] .hero-ledger a:after, .fgv2[data-motion="on"] .market-card .card-arrow { transition: transform .3s; }
   .fgv2[data-motion="on"] .market-card:hover .card-arrow { transform: translate(3px, -3px); }
 }
+/* Forced colours (Windows high contrast): chips, cards and selected tabs keep visible boundaries. */
+@media (forced-colors: active) {
+  .fgv2 :is(.v2-chip, .entry-card, .market-card, .service-card, .fleet-card, .bw-frame, .finance-frame, .wl-builder, .network-panel, .fgp-oldcard) { border: 1px solid CanvasText; }
+  .fgv2 :is(.v2-explorer button, .network-controls button, .industry-tab, .bw-nav button, .finance-side button)[aria-pressed="true"],
+  .fgv2 .industry-tab[aria-selected="true"] { outline: 2px solid Highlight; }
+  .fgv2 .hero-ledger a:before { background: Highlight; }
+}
+/* Everything is visible whenever motion cannot or should not run: printing, motion off in the studio. */
+@media print { .fgv2 :is(.v2-reveal, .v2-reveal *) { opacity: 1 !important; transform: none !important; clip-path: none !important; } }
+.fgv2[data-motion="off"] :is(.v2-reveal, .v2-reveal *) { opacity: 1; transform: none; clip-path: none; }
 @keyframes v2-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @keyframes v2-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

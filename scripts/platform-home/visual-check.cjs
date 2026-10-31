@@ -91,6 +91,11 @@ async function diff(page, a, b) {
     (await page.locator('.hero h1').textContent()).includes('Book services') ? ok('selected headline shown') : fail('headline');
     await ws.scrollIntoViewIfNeeded();
     (await page.locator('.v2-trail').count()) ? ok('job trail under the workspace records') : fail('job trail missing');
+    (await page.locator('.final-note:visible').count()) === 3 ? ok('closing journeys each say where they lead') : fail('closing notes');
+    (await page.locator('.wl-search').count()) ? ok('storefront search shown') : fail('storefront search');
+    const provider = page.locator('#driver-network .btn').first();
+    const [fg, bg] = await provider.evaluate(b => [getComputedStyle(b).color, getComputedStyle(b).backgroundColor]);
+    fg !== bg ? ok('provider action readable') : fail('provider action text matches its background');
     (await page.locator('.v2-activity li').count()) === 5 ? ok('team activity on the overview') : fail('team activity missing');
     await page.fill('.v2-bw-tools input', 'Strand');
     (await page.locator('#bw-panel-content .v2-records tbody tr:visible').count()) === 1 ? ok('workspace search filters the records') : fail('workspace search');

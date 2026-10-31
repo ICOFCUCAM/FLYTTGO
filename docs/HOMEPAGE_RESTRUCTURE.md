@@ -463,6 +463,21 @@ Provider networks stay "In development". Nothing is created, connected or charge
 - overflow, smallest text, slideshow, booking widget and console errors at each width;
 - the job trail into finance, all six explorer documents, the voucher's accounts, every studio control, and the lab.
 
+### Premium refinement in 60 commits (2026-10-31)
+
+A visual refinement of every section in 60 focused commits; plan and results in `docs/HOMEPAGE_PREMIUM_PLAN.md`. It covers:
+- **Foundations:** labels, measure, rhythm, hairlines, focus, links and buttons.
+- **Opening:** hero and booking.
+- **Journeys and marketplace:** including a swipe row on phones.
+- **Moving:** the moving sections as one chapter.
+- **Workspaces:** title bars, metrics, tables, the explorer's progress and the finance document.
+- **Platform story:** industries, shared core, statuses, path, corporate, providers and trust.
+- **Studio:** sticky storefront, search and grouped settings.
+- **Closing:** journeys with a line each.
+- **Whole page:** staggered motion, motion parity, forced colours, and phone and tablet passes.
+
+No new section, claim or data was added.
+
 ## Stage D: content checked against the source
 
 | Content | Where it is |
