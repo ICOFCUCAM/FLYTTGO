@@ -920,6 +920,56 @@ export const no: PartialTranslationKeys = {
   },
 
   /* ─── Tracking page ─── */
+  /* ─── Sporing, bygd om 31. oktober 2026 ─── */
+  trackingV2: {
+    eyebrow: 'Spor flyttingen',
+    title: 'Hvor er flyttingen min?',
+    lede: 'Skriv inn bestillingsreferansen fra bekreftelsen. Er du logget inn, ser du også ruten, sjåføren på kartet og et anslag for ankomst.',
+    refLabel: 'Bestillingsreferanse',
+    refHint: 'Referansen ser slik ut: FG-7K3M9Q. Den står på bekreftelsen og under Mine bestillinger.',
+    signInHint: 'Logg inn for å se din egen bestilling.',
+    track: 'Spor',
+    searching: 'Søker …',
+    badRef: 'Det ser ikke ut som en bestillingsreferanse. Den er FG fulgt av seks bokstaver og tall.',
+    unavailable: 'Sporing er ikke tilgjengelig akkurat nå. Prøv igjen om litt.',
+    notFoundTitle: 'Ingen bestilling med den referansen',
+    notFoundBody: 'Sjekk referansen på bekreftelsen og prøv igjen, eller åpne Mine bestillinger.',
+    myBookings: 'Mine bestillinger',
+    help: 'Kontakt FlyttGo',
+    live: 'Direkte',
+    refreshing: 'Oppdateres hvert 30. sekund',
+    checked: 'Sist sjekket {{time}}',
+    cancelled: 'Avbestilt',
+    cancelledBody: 'Denne bestillingen ble avbestilt ({{when}}).',
+    unknownStatus: 'Status: {{status}}',
+    etaPickup: 'Sjåføren er ved henting om ca. {{time}}',
+    etaDropoff: 'Fremme ved levering om ca. {{time}}',
+    etaNote: 'Anslag langs veien fra sjåførens nåværende posisjon.',
+    etaNoteStraight: 'Grovt anslag: veiruten er ikke tilgjengelig.',
+    mapForOwner: 'Ruten og sjåførens posisjon vises for bestillingens egen kunde når kunden er logget inn.',
+    noDriverPos: 'Sjåførens posisjon vises her når appen deler den.',
+    timeline: 'Fremdrift',
+    details: 'Bestilling',
+    ref: 'Referanse', van: 'Varebil', moveDate: 'Flyttedag', payment: 'Betaling', paid: 'Betalt', notPaid: 'Ikke betalt ennå',
+    from: 'Fra', to: 'Til', total: 'Totalt',
+    publicNote: 'Alle med referansen ser bare status, tider, varebil og steder. Adresser og kontaktopplysninger forblir private.',
+    step: { booked: 'Bestilt', assigned: 'Sjåfør tildelt', arrived: 'Sjåføren er ved henting', loading: 'Lasting', transit: 'På vei', delivered: 'Levert' },
+    vans: { small_van: 'Liten varebil', medium_van: 'Mellomstor varebil', large_van: 'Stor varebil', luton_van: 'Kassebil (Luton)' },
+    feature: {
+      ref: 'Én referanse', refDesc: 'Hver bestilling har en kort referanse du kan lese opp eller skrive inn.',
+      live: 'Direkte når det er mulig', liveDesc: 'Er du logget inn, oppdateres status og sjåførens posisjon fortløpende.',
+      escrow: 'Trygg betaling', escrowDesc: 'Betalingen holdes til jobben er bekreftet utført.',
+    },
+  },
+
+  /* ─── Rutekart ─── */
+  routeMap: {
+    pickup: 'Henting', dropoff: 'Levering', driver: 'Sjåfør',
+    loading: 'Finner veien …',
+    road: '{{km}} km langs veien · ca. {{time}}',
+    straight: 'Ca. {{km}} km · omtrentlig linje (veiruten er ikke tilgjengelig)',
+  },
+
   tracking: {
     badge:         'Sanntids leveringssporing',
     title:         'Spor leveringen din',

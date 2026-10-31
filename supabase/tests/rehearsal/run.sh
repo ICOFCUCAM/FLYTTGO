@@ -6,12 +6,12 @@
 #      supabase/schema/production-2026-10-29.sql with 00002–00015;
 #   2. representative synthetic data written through the platform's own
 #      functions (data_before.sql);
-#   3. 00016–00028 applied twice with that data in place; the financial
+#   3. 00016–00029 applied twice with that data in place; the financial
 #      records must be exactly as before;
-#   4. the data only 00016–00028 allow (data_after.sql), then the checks
+#   4. the data only 00016–00029 allow (data_after.sql), then the checks
 #      (checks.sql): RLS and cross-company isolation per table, payment
 #      idempotency, financial records immutable;
-#   5. rollback 00028 → 00017 with the data in place (after moving the
+#   5. rollback 00029 → 00017 with the data in place (after moving the
 #      companies off the plans those rollbacks remove, as their notes
 #      require); the financial records must be exactly as before; and
 #      00016's rollback must refuse while bank imports are recorded,
@@ -47,13 +47,13 @@ q "SELECT 'companies ' || (SELECT count(*) FROM public.organizations) || ', memb
      || ', payments ' || (SELECT count(*) FROM public.invoice_payments)" | sed 's/^/data before 00016: /'
 q "$HASH" > "$WORK/before"
 
-# ── 00016–00028, twice, with the data in place ───────────────────────────
+# ── 00016–00029, twice, with the data in place ───────────────────────────
 for pass in 1 2; do
   for f in supabase/migrations/0001[6-9]_*.sql supabase/migrations/0002[0-9]_*.sql; do "${PSQL[@]}" -d "$DB" -f "$f"; done
 done
-ok "00016–00028 applied twice over the data"
+ok "00016–00029 applied twice over the data"
 diff "$WORK/before" <(q "$HASH" | grep -v '^bank_import') > "$WORK/diff" \
-  || { cat "$WORK/diff" >&2; fail "applying 00016–00028 changed financial records"; }
+  || { cat "$WORK/diff" >&2; fail "applying 00016–00029 changed financial records"; }
 ok "every invoice (both series), line, payment, reminder, credit note, payment event and refund is exactly as before the migrations"
 
 show supabase/tests/rehearsal/data_after.sql
@@ -64,21 +64,21 @@ q "SELECT 'add-ons ' || (SELECT count(*) FROM public.organization_addons) || ', 
 show supabase/tests/rehearsal/checks.sql
 q "$HASH" > "$WORK/after"
 
-# ── Rollback 00028 → 00017 with the data in place ─────────────────────────
+# ── Rollback 00029 → 00017 with the data in place ─────────────────────────
 # The rollbacks of 00019 and 00020 stop while a company is on a plan they
 # remove; their notes say to move such companies to another plan first
 # (and to export the records each company keeps). Done here as an
 # administrator would, to Website and invoicing.
 q "UPDATE public.organization_white_label SET plan_code = 'website_invoicing', requested_plan_code = NULL
     WHERE plan_code IN ('restaurant', 'hotel', 'shop') OR requested_plan_code IN ('restaurant', 'hotel', 'shop')" >/dev/null
-for n in 00028 00027 00026 00025 00024 00023 00022 00021 00020 00019 00018 00017; do
+for n in 00029 00028 00027 00026 00025 00024 00023 00022 00021 00020 00019 00018 00017; do
   PGOPTIONS='-c client_min_messages=notice' "${PSQL[@]}" -d "$DB" -f "supabase/rollback/${n}_down.sql" 2>&1 \
     | grep -E 'NOTICE|ERROR' | sed 's/^psql:[^ ]* //' || true
   [ "$(q "SELECT to_regclass('public.bank_imports') IS NOT NULL")" = t ] || fail "rolling back $n removed the bank imports"
 done
 [ "$(q "SELECT to_regclass('public.company_booking_approvals') IS NULL AND to_regclass('public.organization_addons') IS NULL AND to_regclass('public.image_library') IS NULL AND to_regclass('public.contact_messages') IS NULL")" = t ] \
   || fail "the rollbacks of 00017–00026 did not complete"
-ok "00028, 00027, 00026, 00025, 00024, 00023, 00022, 00021, 00020, 00019, 00018 and 00017 roll back with the data in place"
+ok "00029, 00028, 00027, 00026, 00025, 00024, 00023, 00022, 00021, 00020, 00019, 00018 and 00017 roll back with the data in place"
 diff "$WORK/after" <(q "$HASH") > "$WORK/diff" || { cat "$WORK/diff" >&2; fail "rolling back changed financial records"; }
 ok "every invoice, line, payment, credit note (shop and stay receipts included), payment event, refund, bank import and row survives unchanged"
 [ "$(q "SELECT count(*) FROM public.bookings WHERE id IN (SELECT id FROM tests.rh WHERE key LIKE 'move_%' OR key LIKE 'approval_%')")" \

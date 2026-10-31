@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../lib/auth';
 import { useApp } from '../lib/store';
@@ -52,6 +52,9 @@ function safeNum(v: any): number {
 /* ─────────────────────────────────────────────
    BOOKING FLOW
 ───────────────────────────────────────────── */
+
+/* The route on a map (owner, 31 October 2026): Leaflet is fetched only when a map is shown. */
+const RouteMap = lazy(() => import('./RouteMap'));
 
 export default function BookingFlow() {
   const { profile, user } = useAuth();
@@ -160,6 +163,16 @@ export default function BookingFlow() {
    * alone takes (rounded up to the half hour), and never below the 2-hour minimum. The chosen hours are raised
    * to that automatically, and the picker does not go below it. */
   const minHours = billedHours(2, durationMin);
+  const hasRoutePoints = pickupAddress.lat != null && pickupAddress.lng != null && dropoffAddress.lat != null && dropoffAddress.lng != null;
+  const routeMap = (height: string) => hasRoutePoints ? (
+    <Suspense fallback={<div className={`${height} bg-gray-50 border border-gray-100 animate-pulse`} aria-hidden="true" />}>
+      <RouteMap pickup={{ lat: Number(pickupAddress.lat), lng: Number(pickupAddress.lng) }}
+                dropoff={{ lat: Number(dropoffAddress.lat), lng: Number(dropoffAddress.lng) }}
+                pickupLabel={pickupAddress.city || formatNorwegianAddress(pickupAddress).line1 || undefined}
+                dropoffLabel={dropoffAddress.city || formatNorwegianAddress(dropoffAddress).line1 || undefined}
+                height={height} />
+    </Suspense>
+  ) : null;
   useEffect(() => {
     if (estimatedHours < minHours) setEstimatedHours(minHours);
   }, [minHours, estimatedHours]);
@@ -727,6 +740,8 @@ export default function BookingFlow() {
                   </div>
                 );
               })()}
+              {/* The real road between the two addresses, once both are chosen. */}
+              {routeMap('h-64')}
             </div>
           </div>
         )}
@@ -988,6 +1003,9 @@ export default function BookingFlow() {
                     <p className="font-medium">~{distanceKm} km</p>
                   </div>
                 </div>
+
+                {/* The route on the map, the real road between the two addresses. */}
+                {routeMap('h-56')}
 
                 {/* Price breakdown — prefers server-side numbers
                  * when calculate-price is deployed, falls back to

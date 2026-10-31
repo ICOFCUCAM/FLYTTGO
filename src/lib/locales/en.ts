@@ -923,6 +923,56 @@ export const en = {
   },
 
   /* ─── Tracking page ─── */
+  /* ─── Tracking, rebuilt 31 October 2026 (pages/TrackingPage.tsx) ─── */
+  trackingV2: {
+    eyebrow: 'Track your move',
+    title: 'Where is my move?',
+    lede: 'Enter the booking reference from your confirmation. Signed in, you also see the route, your driver on the map and an arrival estimate.',
+    refLabel: 'Booking reference',
+    refHint: 'Your reference looks like FG-7K3M9Q and is on your confirmation and in My Bookings.',
+    signInHint: 'Sign in to see your own booking.',
+    track: 'Track',
+    searching: 'Looking…',
+    badRef: 'That does not look like a booking reference. It is FG followed by six letters and numbers.',
+    unavailable: 'Tracking is not available right now. Please try again in a moment.',
+    notFoundTitle: 'No booking with that reference',
+    notFoundBody: 'Check the reference on your confirmation and try again, or open My Bookings.',
+    myBookings: 'My Bookings',
+    help: 'Contact FlyttGo',
+    live: 'Live',
+    refreshing: 'Updates every 30 seconds',
+    checked: 'Last checked {{time}}',
+    cancelled: 'Cancelled',
+    cancelledBody: 'This booking was cancelled ({{when}}).',
+    unknownStatus: 'Status: {{status}}',
+    etaPickup: 'Driver at pickup in about {{time}}',
+    etaDropoff: 'At the drop-off in about {{time}}',
+    etaNote: 'Estimate by road from the driver’s current position.',
+    etaNoteStraight: 'Rough estimate: the road route is not available.',
+    mapForOwner: 'The route and your driver’s position are shown to the booking’s own customer when signed in.',
+    noDriverPos: 'The driver’s position appears here once their app shares it.',
+    timeline: 'Progress',
+    details: 'Booking',
+    ref: 'Reference', van: 'Van', moveDate: 'Moving day', payment: 'Payment', paid: 'Paid', notPaid: 'Not paid yet',
+    from: 'From', to: 'To', total: 'Total',
+    publicNote: 'Anyone with the reference sees only the status, times, van and towns. Addresses and contact details stay private.',
+    step: { booked: 'Booked', assigned: 'Driver assigned', arrived: 'Driver at pickup', loading: 'Loading', transit: 'On the way', delivered: 'Delivered' },
+    vans: { small_van: 'Small van', medium_van: 'Medium van', large_van: 'Large van', luton_van: 'Luton van' },
+    feature: {
+      ref: 'One reference', refDesc: 'Every booking has a short reference you can read out or type.',
+      live: 'Live when it can be', liveDesc: 'Signed in, the status and your driver’s position update as they change.',
+      escrow: 'Paid safely', escrowDesc: 'Your payment is held until the job is confirmed complete.',
+    },
+  },
+
+  /* ─── Route map (components/RouteMap.tsx) ─── */
+  routeMap: {
+    pickup: 'Pickup', dropoff: 'Drop-off', driver: 'Driver',
+    loading: 'Finding the road…',
+    road: '{{km}} km by road · about {{time}}',
+    straight: 'About {{km}} km · approximate line (road route unavailable)',
+  },
+
   tracking: {
     badge:         'Real-Time Delivery Tracking',
     title:         'Track Your Delivery',

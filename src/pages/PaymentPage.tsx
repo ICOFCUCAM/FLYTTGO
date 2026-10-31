@@ -257,7 +257,7 @@ export default function PaymentPage() {
           {[
             ['Status', t('payment.successStatus')],
             ['Amount', `${total.toLocaleString()} NOK`],
-            ['Booking', booking?.id?.slice(0,8).toUpperCase() || '—'],
+            ['Booking', booking?.booking_ref || booking?.id?.slice(0,8).toUpperCase() || '—'],
             ['Driver payout', t('payment.successPayout')],
           ].map(([k, v]) => (
             <div key={k} className="flex justify-between text-sm">
