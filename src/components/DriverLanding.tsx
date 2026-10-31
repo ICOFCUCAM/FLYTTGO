@@ -55,6 +55,18 @@ export default function DriverLanding() {
   const [audience, setAudience] = useState<'driver' | 'company'>('driver');
   const sections = audience === 'company' ? COMPANY_SECTIONS : SECTIONS;
   const [menu, setMenu] = useState(false);
+  /* Phones (owner, 31 October 2026): a fixed apply button once the hero is passed, hidden while the form is in view. */
+  const [showBar, setShowBar] = useState(false);
+  useEffect(() => {
+    const form = document.getElementById('driver-application');
+    let pastHero = false, formIn = false;
+    const update = () => setShowBar(pastHero && !formIn);
+    const onScroll = () => { pastHero = window.scrollY > window.innerHeight * 0.8; update(); };
+    const io = 'IntersectionObserver' in window && form ? new IntersectionObserver(([e]) => { formIn = e.isIntersecting; update(); }, { threshold: 0.05 }) : null;
+    if (io && form) io.observe(form);
+    window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+    return () => { window.removeEventListener('scroll', onScroll); io?.disconnect(); };
+  }, [audience]);
   /* The phone sections menu closes on Escape or a tap outside it. */
   useEffect(() => {
     if (!menu) return;
@@ -209,7 +221,7 @@ export default function DriverLanding() {
               </ul>
             )}
           </div>
-          <button type="button" onClick={toForm} className={`flex-shrink-0 whitespace-nowrap my-2 min-h-[40px] px-4 bg-[#24513B] hover:bg-[#1C4130] text-white text-sm font-bold ${focus}`}>{applyLabel}</button>
+          <button type="button" onClick={toForm} className={`hidden md:inline-flex items-center flex-shrink-0 whitespace-nowrap my-2 min-h-[40px] px-4 bg-[#24513B] hover:bg-[#1C4130] text-white text-sm font-bold ${focus}`}>{applyLabel}</button>
         </div>
       </nav>
 
@@ -233,15 +245,16 @@ export default function DriverLanding() {
       </section>
 
       {/* ── A day on FlyttGo, in the driver app's own screens (items 5, 6) ── */}
-      <section id="day" className="fg-reveal scroll-mt-32 relative overflow-hidden bg-[linear-gradient(180deg,#FBF8F1_0%,#F6F0E2_100%)] pt-10 md:pt-14 pb-36 md:pb-44">
+      <section id="day" className="fg-reveal scroll-mt-32 relative overflow-x-clip bg-[linear-gradient(180deg,#FBF8F1_0%,#F6F0E2_100%)] pt-10 md:pt-14 pb-40 md:pb-52">
         <div className="relative z-10 max-w-[1440px] mx-auto px-5 md:px-10 xl:px-14">
           <DayOnFlyttGo />
         </div>
         {/* The foot of the section: an evergreen sweep with a champagne line. */}
-        <svg aria-hidden="true" className="absolute bottom-0 left-0 w-full h-[90px] md:h-[130px]" viewBox="0 0 1440 130" preserveAspectRatio="none">
-          <path d="M0 130V74C300 98 640 100 960 76S1330 18 1440 4v126Z" fill="#1F3A2E" />
-          <path d="M0 64C300 88 640 90 960 66S1330 8 1440-6" fill="none" stroke="#C3A66C" strokeWidth="2.5" />
-          <path d="M0 130V100C340 120 720 120 1040 98S1370 56 1440 48v82Z" fill="#24513B" opacity=".55" />
+        <svg aria-hidden="true" className="absolute bottom-0 left-0 w-full h-[100px] md:h-[150px]" viewBox="0 0 1440 150" preserveAspectRatio="none">
+          <defs><linearGradient id="fg-sweep" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stopColor="#24513B" /><stop offset="1" stopColor="#1F3A2E" /></linearGradient></defs>
+          <path d="M0 150V92C260 118 600 124 930 98S1320 30 1440 14v136Z" fill="url(#fg-sweep)" />
+          <path d="M0 82C260 108 600 114 930 88S1320 20 1440 4" fill="none" stroke="#C3A66C" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M0 150v-30c360 26 760 26 1080 6s300-46 360-54v78Z" fill="#1F3A2E" opacity=".6" />
         </svg>
       </section>
 
@@ -427,6 +440,12 @@ export default function DriverLanding() {
           </div>
         </section>
       )}
+
+      {/* ── Phones: the way to apply stays in reach ── */}
+      <div aria-hidden={!showBar} className={`md:hidden fixed z-40 bottom-4 start-4 end-24 transition duration-300 ${showBar ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+        <button type="button" onClick={toForm} tabIndex={showBar ? 0 : -1}
+                className={`w-full min-h-[54px] rounded-full bg-[#24513B] text-white font-bold text-[15px] shadow-[0_14px_30px_-12px_rgba(23,40,32,.7)] ${focus}`}>{applyLabel} ↓</button>
+      </div>
 
       {/* ── The application, last for companies ── */}
       {audience === 'company' && <DriverApplicationForm presetCity={presetCity} onProgress={onProgress} />}

@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_SUPPORT_EMAIL, useCompanyIdentity } from '../../lib/companyIdentity';
 import { useTranslation } from 'react-i18next';
-import { SUBSCRIPTION_PLANS, calculateCommission } from '../../lib/constants';
+import { IMAGES, SUBSCRIPTION_PLANS, calculateCommission } from '../../lib/constants';
 import { CANCELLATION_POLICY } from '../../../supabase/functions/_shared/pricing';
 import { DRIVER_TERMS, TERMS_SUMMARY } from '../../lib/driverTerms';
 import { calcCommission, formatDuration } from './PortalCards';
@@ -39,12 +39,12 @@ export function PlanPicker() {
   const planPrice = p.price === 0 ? nok(0) : `${nok(p.price)} ${p.period === '/day' ? t('driverLanding.perDay') : t('driverLanding.perMonth')}`;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-0 border border-[#DCD4C2] bg-[#FFFEFA]">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-0 rounded-[24px] overflow-hidden border border-[#EDE6D6] bg-[#FFFEFA] shadow-[0_40px_80px_-56px_rgba(23,33,46,.45)]">
       <div className="p-6 md:p-9 min-w-0">
-        <div role="radiogroup" aria-label={t('driverLanding.picker.label')} className="flex sm:grid sm:grid-cols-5 gap-2 sm:gap-0 overflow-x-auto [scrollbar-width:none] -mx-1 px-1 sm:mx-0 sm:px-0 sm:border sm:border-[#DCD4C2]">
+        <div role="radiogroup" aria-label={t('driverLanding.picker.label')} className="flex sm:grid sm:grid-cols-5 gap-2 overflow-x-auto [scrollbar-width:none] -mx-1 px-1 sm:mx-0 sm:p-1 sm:rounded-full sm:bg-[#F3EEE2]">
           {SUBSCRIPTION_PLANS.map((pl, i) => (
             <button key={pl.id} type="button" role="radio" aria-checked={i === ix} onClick={() => setIx(i)}
-                    className={`flex-shrink-0 whitespace-nowrap min-h-[48px] sm:min-h-[52px] px-4 sm:px-1 text-sm font-bold transition border sm:border-0 sm:border-s sm:first:border-s-0 border-[#DCD4C2] ${focus} ${i === ix ? 'bg-[#24513B] border-[#24513B] text-white' : 'bg-white sm:bg-transparent text-[#17212E] hover:bg-[#F3EEE2]'}`}>
+                    className={`flex-shrink-0 whitespace-nowrap min-h-[46px] px-4 sm:px-1 rounded-full text-sm font-bold transition border sm:border-0 border-[#DCD4C2] ${focus} ${i === ix ? 'bg-[#24513B] border-[#24513B] text-white shadow-[0_6px_14px_-8px_rgba(36,81,59,.8)]' : 'bg-white sm:bg-transparent text-[#17212E] hover:bg-white/70'}`}>
               {pl.name}
             </button>
           ))}
@@ -97,15 +97,18 @@ export function PlanPicker() {
 
 export function EscrowFlow() {
   const { t } = useTranslation();
-  const steps = ['book', 'held', 'work', 'confirm', 'wallet'] as const;
+  const steps = [['book', I.calendar], ['held', I.shield], ['work', I.truck], ['confirm', I.check], ['wallet', I.wallet]] as const;
   return (
-    <ol className="fg-escrow list-none p-0 m-0 grid sm:grid-cols-5 gap-6 sm:gap-0 relative">
-      <span aria-hidden="true" className="fg-escrow-line hidden sm:block absolute top-[22px] start-[10%] end-[10%] h-[2px] bg-[#DCD4C2]"><span className="block h-full bg-[#24513B]" /></span>
-      {steps.map((k, i) => (
-        <li key={k} className="relative sm:text-center sm:px-3 flex sm:block gap-4">
-          <span className="relative z-10 flex-shrink-0 sm:mx-auto flex items-center justify-center w-11 h-11 rounded-full bg-[#FFFEFA] border-2 border-[#24513B] text-[#24513B] font-bold" style={serif}>{i + 1}</span>
+    <ol className="fg-escrow list-none p-0 m-0 grid sm:grid-cols-5 gap-6 sm:gap-2 relative rounded-[24px] bg-[#FFFEFA] border border-[#EDE6D6] shadow-[0_40px_80px_-56px_rgba(23,33,46,.45)] px-6 py-8 sm:px-6 sm:py-10">
+      <span aria-hidden="true" className="fg-escrow-line hidden sm:block absolute top-[68px] start-[12%] end-[12%] h-[2px] bg-[#E2DACA]"><span className="block h-full bg-[#24513B]" /></span>
+      {steps.map(([k, icon], i) => (
+        <li key={k} className="relative sm:text-center sm:px-2 flex sm:block gap-4">
+          <span className="relative z-10 flex-shrink-0 sm:mx-auto flex items-center justify-center w-14 h-14 rounded-2xl bg-[#FFFEFA] border border-[#EDE6D6] shadow-[0_10px_22px_-14px_rgba(122,100,54,.55)] text-[#9F8249]">
+            <Ico d={icon} className="w-6 h-6" />
+            <span className="absolute -top-2 -end-2 w-6 h-6 rounded-full bg-[#24513B] text-white text-[12px] flex items-center justify-center" style={serif}>{i + 1}</span>
+          </span>
           <div>
-            <h3 className="text-[17px] font-bold tracking-tight mt-0 sm:mt-4 mb-1">{t(`driverLanding.escrow.${k}`)}</h3>
+            <h3 className="text-[17px] font-bold tracking-tight mt-0 sm:mt-5 mb-1">{t(`driverLanding.escrow.${k}`)}</h3>
             <p className="text-[14px] leading-relaxed text-[#4A5260] m-0">{t(`driverLanding.escrow.${k}Desc`)}</p>
           </div>
         </li>
@@ -252,6 +255,7 @@ export function DayOnFlyttGo() {
     return () => window.clearTimeout(id);
   }, [playing, ix]);
   const choose = (i: number) => { setAuto(false); setIx(i); };
+  const touchX = useRef<number | null>(null);
   /* On Finish the timer runs, counted from the sample start time. */
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -301,8 +305,15 @@ export function DayOnFlyttGo() {
       </div>
 
       {/* One phone, upright */}
-      <figure className="[grid-area:phone] m-0 justify-self-center self-start xl:self-center xl:row-span-2">
-        <div aria-hidden="true" className="fg-phone relative w-[300px] aspect-[71.6/147.6] [--s:0.7205]">
+      <figure className="[grid-area:phone] relative m-0 justify-self-center self-start xl:self-center xl:row-span-2"
+              onTouchStart={e => { touchX.current = e.touches[0].clientX; }}
+              onTouchEnd={e => { const dx = e.changedTouches[0].clientX - (touchX.current ?? e.changedTouches[0].clientX); touchX.current = null;
+                if (Math.abs(dx) > 40) choose((ix + (dx < 0 ? 1 : 3)) % 4); }}>
+        {/* A scene behind the device: a champagne glow and the FlyttGo van, soft and far away */}
+        <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] max-w-[130vw] rounded-full bg-[radial-gradient(closest-side,rgba(220,201,160,.55),rgba(220,201,160,.18)_55%,transparent)]" />
+        <img aria-hidden="true" alt="" src={IMAGES.vans.large} loading="lazy" decoding="async"
+             className="pointer-events-none absolute left-1/2 top-[44%] -translate-x-1/2 -translate-y-1/2 w-[460px] max-w-[120vw] h-[300px] object-cover opacity-[.22] blur-[18px] saturate-[.7] rounded-[50%] [mask-image:radial-gradient(closest-side,#000,transparent)]" />
+        <div aria-hidden="true" className="fg-phone relative z-10 w-[300px] aspect-[71.6/147.6] [--s:0.7205]">
           <span className="fg-phone-btn absolute -start-[3px] top-[17.5%] h-[4.4%] w-[3px] rounded-s-[1.5px]" />
           <span className="fg-phone-btn absolute -start-[3px] top-[25.5%] h-[8%] w-[3px] rounded-s-[1.5px]" />
           <span className="fg-phone-btn absolute -start-[3px] top-[35.5%] h-[8%] w-[3px] rounded-s-[1.5px]" />
@@ -399,11 +410,12 @@ export function DayOnFlyttGo() {
             </div>
           </div>
         </div>
-        <figcaption className="mt-5 text-center text-[12px] font-semibold text-[#7A6436]">{t('driverLanding.day.sample', { plan: planName })}</figcaption>
+        <figcaption className="relative z-10 mt-5 text-center text-[12px] font-semibold text-[#7A6436]">{t('driverLanding.day.sample', { plan: planName })}</figcaption>
       </figure>
 
       {/* Four steps; the active one in a pill */}
-      <div role="tablist" aria-label={t('driverLanding.day.stagesLabel')} onKeyDown={onKey} className="[grid-area:steps] self-end relative grid grid-cols-4 min-w-0">
+      <div className="[grid-area:steps] self-end min-w-0 max-md:sticky max-md:top-[121px] max-md:z-20 max-md:-mx-5 max-md:px-5 max-md:py-3 max-md:bg-[#FBF8F1]/95 max-md:backdrop-blur max-md:border-b max-md:border-[#EDE6D6]">
+      <div role="tablist" aria-label={t('driverLanding.day.stagesLabel')} onKeyDown={onKey} className="relative grid grid-cols-4 min-w-0">
         <span aria-hidden="true" className="absolute top-[21px] start-[12.5%] end-[12.5%] h-[2px] bg-[#E2DACA]" />
         <span aria-hidden="true" className="absolute top-[21px] start-[12.5%] h-[2px] bg-[#24513B] transition-all duration-500" style={{ width: `${(ix / 3) * 75}%` }} />
         {STAGES.map((st, i) => (
@@ -416,6 +428,7 @@ export function DayOnFlyttGo() {
             </span>
           </button>
         ))}
+      </div>
       </div>
 
       {/* What the chosen step means */}
