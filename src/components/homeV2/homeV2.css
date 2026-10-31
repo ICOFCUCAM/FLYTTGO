@@ -382,7 +382,11 @@
 .fgv2 .market-card:hover img { transform: scale(1.03); }
 .fgv2 .market-card:after { background: linear-gradient(180deg, rgba(20,38,64,0) 45%, rgba(20,38,64,.5) 72%, rgba(20,38,64,.86) 100%); }
 .fgv2 .market-card .card-copy { text-shadow: 0 1px 6px rgba(0,0,0,.3); }
-.fgv2 .market-card small { color: #e9dcc0; }
+.fgv2 .market-card small { color: #e9dcc0; display: block; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; }
+/* Captions: category, title, one line of detail, in that order of weight. */
+.fgv2 .market-card .card-copy { left: 28px; right: 28px; bottom: 26px; }
+.fgv2 .market-card h3 { font-family: var(--font-display); font-weight: var(--head-weight); letter-spacing: -.025em; line-height: 1.12; margin: 0 0 8px; }
+.fgv2 .market-card p { max-width: 40ch; opacity: .92; margin: 0; }
 .fgv2 .market-card .card-arrow { border-radius: 0; }
 
 /* ── 9. Moving and transport: one vertical within FlyttGo ──────────────── */
