@@ -256,6 +256,14 @@
 .fgv2 .entry-grid { gap: 16px; }
 .fgv2 .entry-card { min-height: 300px; padding: 40px; justify-content: flex-start; border-radius: var(--radius); }
 .fgv2 .entry-card:hover { transform: none; box-shadow: none; }
+/* Each journey carries its number large and quiet in the corner; hover deepens its colour rule. */
+.fgv2 .entry-card { position: relative; overflow: hidden; transition: box-shadow .3s, background-color .3s; }
+.fgv2 .entry-card:not(.entry-org):after { position: absolute; top: 22px; right: 30px; font: 300 clamp(64px, 6vw, 96px)/1 var(--font-display); letter-spacing: -.05em; pointer-events: none; }
+.fgv2 .entry-dark:after { content: "01"; color: rgb(255 255 255 / .12); }
+.fgv2 .entry-light:after { content: "02"; color: rgb(36 81 59 / .12); }
+.fgv2 .entry-dark:hover { box-shadow: inset 0 5px var(--gold); }
+.fgv2 .entry-light:hover { box-shadow: inset 0 5px var(--forest); background: #fbfaf6; }
+.fgv2 .entry-org:hover { box-shadow: inset 0 5px var(--blue); }
 .fgv2 :is(.entry-card > span, .entry-side > span) { font-size: var(--label-size); letter-spacing: .18em; font-weight: 700; text-transform: uppercase; }
 .fgv2 .entry-card h3 { font: 650 clamp(28px, 2.8vw, 38px)/1.08 var(--font-display); letter-spacing: -.04em; margin: 26px 0 12px; }
 .fgv2 .entry-card p { margin: 0; font-size: 16px; line-height: 1.65; max-width: 440px; }
