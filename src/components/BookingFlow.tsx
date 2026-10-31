@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { VAN_TYPES, INVENTORY_ITEMS, PROPERTY_PRESETS, calculatePrice, recommendVan } from '../lib/constants';
 import NorwayAddressAutocomplete, { NorwegianAddress } from './NorwayAddressAutocomplete';
 import { formatNorwegianAddress, validateNorwegianAddress } from '../utils/formatNorwegianAddress';
+import { clearBookingDraft, readBookingDraft, returnToBookingAfterSignIn, saveBookingDraft } from '../lib/bookingDraft';
 import { fetchServerPrice, ServerPriceResult } from '../lib/calculatePrice';
 import { getRouteDistance, RouteResult } from '../lib/routing';
 import { CustomerLegalAcceptance } from './LegalAcceptance';
@@ -57,7 +58,9 @@ export default function BookingFlow() {
   const { bookingData, setBookingData, setPage, setShowAuthModal, setAuthMode } = useApp();
   const { t } = useTranslation();
 
-  const [step, setStep] = useState(1);
+  /* A booking started before signing in with Google or Apple, restored after the round trip (lib/bookingDraft.ts). */
+  const [draft] = useState(() => readBookingDraft<Record<string, any>>());
+  const [step, setStep] = useState<number>(() => (typeof draft?.step === 'number' ? draft.step : 1));
   const TOTAL_STEPS = 6;
 
   /* Book for a company (00007): offered to owners, admins and bookers of
@@ -74,27 +77,27 @@ export default function BookingFlow() {
    * captured a Norwegian address — that way customers don't have to
    * re-type it after clicking "Book Now" from the home page. */
   const [pickupAddress, setPickupAddress] = useState<StructuredAddress>(
-    () => (bookingData.pickupAddressData as StructuredAddress | undefined) ?? emptyAddress()
+    () => (draft?.pickupAddress as StructuredAddress | undefined) ?? (bookingData.pickupAddressData as StructuredAddress | undefined) ?? emptyAddress()
   );
   const [dropoffAddress, setDropoffAddress] = useState<StructuredAddress>(
-    () => (bookingData.dropoffAddressData as StructuredAddress | undefined) ?? emptyAddress()
+    () => (draft?.dropoffAddress as StructuredAddress | undefined) ?? (bookingData.dropoffAddressData as StructuredAddress | undefined) ?? emptyAddress()
   );
 
   /* ── Move details ── */
-  const [moveType, setMoveType] = useState(bookingData.moveType || '');
-  const [propertyType, setPropertyType] = useState(bookingData.propertyType || '');
-  const [vanType, setVanType] = useState(bookingData.vanType || '');
-  const [helpers, setHelpers] = useState(bookingData.helpers || 0);
-  const [inventory, setInventory] = useState<Record<string, number>>(bookingData.inventory || {});
-  const [additionalServices, setAdditionalServices] = useState<string[]>(bookingData.additionalServices || []);
+  const [moveType, setMoveType] = useState(draft?.moveType ?? bookingData.moveType ?? '');
+  const [propertyType, setPropertyType] = useState(draft?.propertyType ?? bookingData.propertyType ?? '');
+  const [vanType, setVanType] = useState(draft?.vanType ?? bookingData.vanType ?? '');
+  const [helpers, setHelpers] = useState<number>(draft?.helpers ?? bookingData.helpers ?? 0);
+  const [inventory, setInventory] = useState<Record<string, number>>(draft?.inventory ?? bookingData.inventory ?? {});
+  const [additionalServices, setAdditionalServices] = useState<string[]>(draft?.additionalServices ?? bookingData.additionalServices ?? []);
 
   /* ── Schedule & contact ── */
-  const [moveDate, setMoveDate] = useState(bookingData.moveDate || '');
-  const [moveTime, setMoveTime] = useState(bookingData.moveTime || '09:00');
-  const [name, setName] = useState(profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : '');
-  const [phone, setPhone] = useState(profile?.phone || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [notes, setNotes] = useState('');
+  const [moveDate, setMoveDate] = useState(draft?.moveDate ?? bookingData.moveDate ?? '');
+  const [moveTime, setMoveTime] = useState(draft?.moveTime ?? bookingData.moveTime ?? '09:00');
+  const [name, setName] = useState(draft?.name || (profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : ''));
+  const [phone, setPhone] = useState(draft?.phone || profile?.phone || '');
+  const [email, setEmail] = useState(draft?.email || user?.email || '');
+  const [notes, setNotes] = useState<string>(draft?.notes ?? '');
 
   /* ── Pricing ──
    *
@@ -121,7 +124,15 @@ export default function BookingFlow() {
    *      the server never responded. Either way the insert writes
    *      a real distance + price, not zeros or placeholders.
    */
-  const [estimatedHours, setEstimatedHours] = useState(2);
+  const [estimatedHours, setEstimatedHours] = useState<number>(draft?.estimatedHours ?? 2);
+
+  /* While not signed in, keep the booking in this tab, so a Google or Apple sign-in brings it back. */
+  useEffect(() => {
+    if (user) return;
+    saveBookingDraft({ step, pickupAddress, dropoffAddress, moveType, propertyType, vanType, helpers, inventory,
+                       additionalServices, estimatedHours, moveDate, moveTime, name, phone, email, notes });
+  }, [user, step, pickupAddress, dropoffAddress, moveType, propertyType, vanType, helpers, inventory,
+      additionalServices, estimatedHours, moveDate, moveTime, name, phone, email, notes]);
   const [clientRoute,  setClientRoute]      = useState<RouteResult | null>(null);
   const [serverPrice,  setServerPrice]      = useState<ServerPriceResult | null>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
@@ -161,8 +172,13 @@ export default function BookingFlow() {
   const helpersCharge  = serverPrice?.breakdown?.helpers_charge  ?? clientPricing?.helpersCharge  ?? 0;
   const extrasCharge   = serverPrice?.breakdown?.extras_charge   ?? clientPricing?.extrasCharge   ?? 0;
   /* Hours billed: the hours chosen, or the drive time when it is longer (same rule as the payment functions). */
-  const billedHoursShown = serverPrice?.billed_hours ?? clientPricing?.billedHours ?? Math.max(estimatedHours, 2);
-  const routeHoursApplied = serverPrice?.route_hours_applied ?? clientPricing?.routeHoursApplied ?? false;
+  /* Taken from the same source as the figures: a server that predates billed hours reports none, so its hours are
+   * read back from its base price. */
+  const vanRate = VAN_TYPES.find(v => v.id === (vanType || 'medium_van'))?.pricePerHour || 850;
+  const billedHoursShown = serverPrice
+    ? (serverPrice.billed_hours ?? Math.round((basePrice / vanRate) * 2) / 2)
+    : (clientPricing?.billedHours ?? Math.max(estimatedHours, 2));
+  const routeHoursApplied = serverPrice ? serverPrice.route_hours_applied === true : (clientPricing?.routeHoursApplied ?? false);
 
   /* Ready-to-submit means we have AT LEAST a client-side number
    * set. The submit button stays disabled until this is true so a
@@ -328,11 +344,13 @@ export default function BookingFlow() {
        * the app store so it survives the auth modal opening and
        * closing, and after signing in they just click Confirm & Pay
        * again with all their work intact. */
+      returnToBookingAfterSignIn();
       setAuthMode('signin');
       setShowAuthModal(true);
       setError('Please sign in to complete your booking.');
       return;
     }
+    clearBookingDraft();
     if (!name.trim() || !phone.trim() || !email.trim()) {
       setError('Please fill in your name, phone, and email before submitting.');
       return;
@@ -546,7 +564,7 @@ export default function BookingFlow() {
             </div>
             <button
               type="button"
-              onClick={() => { setAuthMode('signin'); setShowAuthModal(true); }}
+              onClick={() => { returnToBookingAfterSignIn(); setAuthMode('signin'); setShowAuthModal(true); }}
               className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
             >
               Sign In
@@ -1077,7 +1095,7 @@ export default function BookingFlow() {
                   {!user ? (
                     <button
                       type="button"
-                      onClick={() => { setAuthMode('signin'); setShowAuthModal(true); }}
+                      onClick={() => { returnToBookingAfterSignIn(); setAuthMode('signin'); setShowAuthModal(true); }}
                       className="mt-3 px-4 py-2 bg-[#0B2E59] text-white rounded-lg text-xs font-semibold hover:bg-[#1a4a8a] transition"
                     >
                       Sign in to continue →

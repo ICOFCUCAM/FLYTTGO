@@ -660,6 +660,22 @@ export default function DriverPortal() {
                     <p>Estimated: {job.estimated_hours ?? '-'} hrs</p><p>Actual: {job.actual_hours ?? 'Running'}</p>
                     <p>Timer: {formatDuration(job.start_time, job.end_time)}</p><p>Move date: {job.move_date ?? '-'}</p>
                   </div>
+                  {/* What the customer asked for (owner, 31 October 2026): helpers and extras on every card; the
+                    * customer's own instructions only on a job this driver holds (the open pool never carries them). */}
+                  {(Number(job.helpers) > 0 || (Array.isArray(job.additional_services) && job.additional_services.length > 0)) && (
+                    <p className="text-sm text-gray-600 mb-3">
+                      {Number(job.helpers) > 0 && <span>{t('driverPortal.helpersLabel', { count: Number(job.helpers) })}</span>}
+                      {Number(job.helpers) > 0 && Array.isArray(job.additional_services) && job.additional_services.length > 0 && ' · '}
+                      {Array.isArray(job.additional_services) && job.additional_services.length > 0 &&
+                        <span>{t('driverPortal.extrasLabel')}: {job.additional_services.map((e: string) => t(`driverPortal.extra.${e}`, e.replace(/_/g, ' '))).join(', ')}</span>}
+                    </p>
+                  )}
+                  {job.driver_id === driver?.id && typeof job.customer_notes === 'string' && job.customer_notes.trim() && (
+                    <div className="mb-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-900">
+                      <p className="font-semibold mb-0.5">{t('driverPortal.customerNotes')}</p>
+                      <p className="whitespace-pre-line break-words">{job.customer_notes}</p>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center mb-3">
                     <div><p className="text-2xl font-bold text-green-600">{safeNumber(comm.earning).toFixed(0)} NOK</p><p className="text-xs text-gray-500">Commission: {safeNumber(comm.rate * 100).toFixed(0)}% ({safeNumber(comm.commission).toFixed(0)} NOK)</p></div>
                     <p className="text-sm text-gray-500">Total: {safeNumber(price).toFixed(0)} NOK</p>
