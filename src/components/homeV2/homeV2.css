@@ -231,7 +231,10 @@
 .fgv2 .v2-booking-head p { margin: 0; font-size: 15px; color: var(--muted); }
 .fgv2[data-booking="b"] .v2-booking-head p:after { content: ""; display: block; width: 48px; height: 2px; margin-top: 22px; background: var(--gold); }
 .fgv2 .fgp-oldcard, .fgv2 .fgp-oldcard * { border-radius: 0 !important; }
-.fgv2 .fgp-oldcard { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; box-shadow: var(--lift); border: 1px solid var(--line); }
+.fgv2 .fgp-oldcard { font-family: var(--font-body); box-shadow: 0 30px 60px -36px rgb(32 63 104 / calc(.45 * var(--depth))), 0 2px 6px rgb(32 63 104 / .06); border: 1px solid var(--line); }
+.fgv2 .fgp-oldcard :is(input, select) { border-color: var(--line) !important; min-height: 46px; }
+.fgv2 .fgp-oldcard :is(input, select):focus { border-color: var(--blue) !important; box-shadow: 0 0 0 3px rgb(32 63 104 / .12) !important; outline: none; }
+.fgv2 .fgp-oldcard button { min-height: 46px; letter-spacing: .01em; }
 .fgv2 .fgp-oldcard :is(input, select, button) { font-family: inherit; }
 .fgv2 .fgp-oldcard :is(.from-\[\#1A365D\], .bg-\[\#1A365D\]) { background: var(--blue); }
 .fgv2 .fgp-oldcard .text-\[\#1A365D\] { color: var(--blue); }
