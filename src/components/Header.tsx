@@ -311,7 +311,7 @@ export default function Header() {
     ] },
   ];
   const journeyItem = (item: JourneyItem) => (
-    <button key={item.label} onClick={item.go} className="w-full text-left px-3 py-2 hover:bg-[#F5F3EB] transition group">
+    <button key={item.label} onClick={item.go} className="w-full text-left px-3 py-2 hover:bg-[#F3F6F5] transition group">
       <div className="text-sm font-semibold text-gray-900 group-hover:text-[#203F68]">{item.label}</div>
       {item.desc && <div className="text-xs text-gray-600 mt-0.5">{item.desc}</div>}
     </button>
@@ -456,8 +456,8 @@ export default function Header() {
                     <button onClick={() => toggleJourney(j.id)} aria-expanded={journeyOpen === j.id}
                       className={`flex items-center gap-1 px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm ${j.strong ? 'font-semibold' : 'font-medium'} transition ${
                         j.strong
-                          ? (journeyOpen === j.id || currentPage === 'transport-home' ? 'text-[#24513B] bg-[#F5F3EB]' : 'text-[#24513B] hover:bg-gray-50')
-                          : journeyOpen === j.id ? 'text-[#203F68] bg-[#F5F3EB]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                          ? (journeyOpen === j.id || currentPage === 'transport-home' ? 'text-[#24513B] bg-[#F3F6F5]' : 'text-[#24513B] hover:bg-gray-50')
+                          : journeyOpen === j.id ? 'text-[#203F68] bg-[#F3F6F5]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                       }`}>{j.short ? <><span className="xl:hidden">{j.short}</span><span className="hidden xl:inline">{j.label}</span></> : j.label}{chevron(journeyOpen === j.id)}</button>
                     {/* Under the bar, centred on it: the menus are wide (columns). */}
                     {journeyOpen === j.id && (

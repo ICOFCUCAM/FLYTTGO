@@ -114,8 +114,8 @@ export default function DriverGrowth({ intro }: { intro?: { title: string; text:
   const step = (key: string, code: Code | 'free' | 'accounting') => {
     const price = code === 'free' || code === 'accounting' ? null : prices[code];
     return (
-      <li key={key} className={`grid md:grid-cols-[150px_minmax(0,1fr)_230px] gap-x-8 gap-y-2 py-7 px-4 md:px-6 border-b border-[#E2DACA] ${code === 'free' ? 'bg-[#EEF3EF]' : ''}`}>
-        <span className="text-xs font-bold tracking-[.12em] uppercase text-[#7A6436] md:pt-1.5">{t(`driverLanding.grow.${key}.tag`)}</span>
+      <li key={key} className={`grid md:grid-cols-[150px_minmax(0,1fr)_230px] gap-x-8 gap-y-2 py-7 px-4 md:px-6 border-b border-[#E1E6E3] ${code === 'free' ? 'bg-[#EEF3EF]' : ''}`}>
+        <span className="text-xs font-bold tracking-[.12em] uppercase text-[#24513B] md:pt-1.5">{t(`driverLanding.grow.${key}.tag`)}</span>
         <div className="min-w-0">
           <h3 className="text-[21px] font-bold tracking-tight mb-1.5">{t(`driverLanding.grow.${key}.title`)}</h3>
           <p className="text-[15px] leading-relaxed text-[#4A5260] m-0 max-w-[62ch]">{t(`driverLanding.grow.${key}.text`)}</p>
@@ -136,7 +136,7 @@ export default function DriverGrowth({ intro }: { intro?: { title: string; text:
               {lowest != null && <span className="text-sm font-semibold text-[#4A5260]" style={{ fontFamily: '"DM Sans", ui-sans-serif, sans-serif' }}> {t('driverLanding.perMonth')}</span>}</p>
           )}
           {code !== 'free' && (
-            <p className="m-0 mt-1.5 text-xs font-semibold text-[#7A6436]">
+            <p className="m-0 mt-1.5 text-xs font-semibold text-[#24513B]">
               {statusLabel(code === 'accounting' ? tiers.status : price!.status)} · {t('driverLanding.grow.exMva')}
             </p>
           )}
@@ -145,17 +145,17 @@ export default function DriverGrowth({ intro }: { intro?: { title: string; text:
     );
   };
 
-  const input = `min-h-[48px] w-full border border-[#CFC7B5] bg-white px-3 text-[15px] text-[#17212E] outline-none focus:border-[#24513B] focus:ring-2 focus:ring-[#24513B]/25`;
+  const input = `min-h-[48px] w-full border border-[#C8D0CB] bg-white px-3 text-[15px] text-[#17212E] outline-none focus:border-[#24513B] focus:ring-2 focus:ring-[#24513B]/25`;
   return (
     <div aria-labelledby="grow-title" role="region">
       <div className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] gap-8 lg:gap-16 items-end mb-12">
         <div>
-          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.grow.eyebrow')}</p>
+          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#24513B] mb-3">{t('driverLanding.grow.eyebrow')}</p>
           <h2 id="grow-title" className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] mb-4">{t('driverLanding.grow.title')}</h2>
           <p className="text-lg text-[#4A5260] leading-relaxed m-0 max-w-[60ch]">{t('driverLanding.grow.lede')}</p>
         </div>
         {intro && (
-          <div className="border-s-2 border-[#C3A66C] ps-6">
+          <div className="border-s-2 border-[#24513B] ps-6">
             <h3 className="text-[19px] font-bold tracking-tight mb-1.5">{intro.title}</h3>
             <p className="text-[15px] leading-relaxed text-[#4A5260] m-0">{intro.text}</p>
           </div>
@@ -172,9 +172,9 @@ export default function DriverGrowth({ intro }: { intro?: { title: string; text:
       </ol>
       <p className="text-[13px] text-[#4A5260] mt-4 max-w-[90ch]">{t('driverLanding.grow.note')}</p>
 
-      <div className="mt-16 grid lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] border border-[#E2DACA]">
-        <div className="bg-[#F3EEE2] p-7 md:p-10">
-          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-2">{t('driverLanding.grow.checker.eyebrow')}</p>
+      <div className="mt-16 grid lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)] border border-[#E1E6E3]">
+        <div className="bg-[#F3F6F5] p-7 md:p-10">
+          <p className="text-xs font-bold tracking-[.16em] uppercase text-[#24513B] mb-2">{t('driverLanding.grow.checker.eyebrow')}</p>
           <h3 className="text-[28px] md:text-[34px] font-bold tracking-tight leading-tight mb-2">{t('driverLanding.grow.checker.title')}</h3>
           <p className="text-[#4A5260] text-[15px] mb-7 max-w-[52ch]">{t('driverLanding.grow.checker.lede')}</p>
           <div className="grid sm:grid-cols-2 gap-5">
@@ -232,13 +232,13 @@ export default function DriverGrowth({ intro }: { intro?: { title: string; text:
           <p className="m-0 mt-4 text-sm text-[#D5E2D8]">{view === 'year' ? t('driverLanding.grow.checker.year') : t('driverLanding.grow.checker.monthly')}</p>
           <p className="m-0 text-[44px] leading-none tracking-tight mt-1" style={{ fontFamily: 'Georgia, serif' }}>{nok(view === 'year' ? est.year : est.monthly)}</p>
           {view === 'month' && est.setup > 0 && <p className="m-0 mt-2 text-sm text-[#D5E2D8]">{t('driverLanding.grow.checker.plusSetup', { amount: nok(est.setup) })}</p>}
-          {est.quote && <p className="m-0 mt-3 text-sm text-[#EBDDBA]">{t('driverLanding.grow.checker.quote')}</p>}
+          {est.quote && <p className="m-0 mt-3 text-sm text-[#E3EFE7]">{t('driverLanding.grow.checker.quote')}</p>}
           <p className="m-0 mt-3 text-xs text-[#D5E2D8]">{t('driverLanding.grow.checker.disclaimer')}</p>
           <span className="flex-1" />
           <button type="button" onClick={savePdf}
                   className="mt-7 self-start min-h-[44px] px-5 border border-white/60 text-white font-bold hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{t('driverLanding.grow.checker.pdf')} ↓</button>
           <button type="button" onClick={() => setPage('white-label')}
-                  className="mt-3 self-start min-h-[50px] px-6 bg-[#C3A66C] hover:bg-[#D2B87F] text-[#17212E] font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{t('driverLanding.grow.seePlans')} →</button>
+                  className="mt-3 self-start min-h-[50px] px-6 bg-white hover:bg-[#E6EEE9] text-[#17212E] font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{t('driverLanding.grow.seePlans')} →</button>
         </div>
       </div>
     </div>

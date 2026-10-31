@@ -4,10 +4,12 @@
  * addresses now, flyttgo.no after the switch. It maps the pages' earlier palette (emerald, #1A365D,
  * gradients, yellow actions) onto the approved one, sets the new type and squarer corners, and changes
  * no page's content or behaviour. Dashboards, admin and the booking flow are not wrapped.
- *   deep blue #203F68  forest #24513B  evergreen #20352B  champagne #C3A66C  ivory #F5F3EB  soft white #FFFEFA
+ *   deep blue #203F68  forest #24513B  evergreen #20352B  white #FFFFFF  cool paper #F3F6F5  mint (on dark) #A7D3BA
+ * Owner, 31 October 2026: the gold had taken over the site. Actions are forest (white on dark grounds), light
+ * accents on dark are mint, grounds are white and a cool paper; gold is no longer used on these pages.
  */
-.fg-site { --fg-blue: #203F68; --fg-blue-dark: #18304f; --fg-forest: #24513B; --fg-evergreen: #20352B; --fg-gold: #C3A66C;
-  --fg-gold-text: #DCC9A0; --fg-paper: #F5F3EB; --fg-white: #FFFEFA; --fg-ink: #17212E; --fg-line: #e3ddcf;
+.fg-site { --fg-blue: #203F68; --fg-blue-dark: #18304f; --fg-forest: #24513B; --fg-evergreen: #20352B; --fg-mint: #A7D3BA;
+  --fg-paper: #F3F6F5; --fg-white: #FFFFFF; --fg-ink: #17212E; --fg-line: #E1E6E3;
   font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; color: var(--fg-ink); background: var(--fg-white); }
 
 /* Type: Manrope headings with the homepage's tracking. */
@@ -30,33 +32,31 @@
 .fg-site :is(.text-\[\#0B2E59\]) { color: var(--fg-blue); }
 .fg-site :is(.border-\[\#0B2E59\]) { border-color: var(--fg-blue); }
 .fg-site :is(.hover\:bg-\[\#1a4a8a\]:hover, .hover\:bg-\[\#0B2E59\]:hover, .hover\:bg-gray-800:hover) { background-color: var(--fg-blue-dark); }
-/* The business pages' yellow (#F2B705) becomes champagne */
-.fg-site .bg-\[\#F2B705\] { background-color: var(--fg-gold); color: var(--fg-ink); }
-.fg-site .hover\:bg-\[\#F2B705\]:hover { background-color: #b3955a; color: var(--fg-ink); }
-.fg-site .text-\[\#F2B705\] { color: var(--fg-gold-text); }
-.fg-site :is(.bg-yellow-50, .bg-yellow-100) { background-color: #f8f2e4; }
-.fg-site :is(.text-yellow-700, .text-yellow-800) { color: #5a4517; }
-.fg-site .border-yellow-200 { border-color: #e2d2a6; }
+/* The business pages' yellow (#F2B705) actions become forest; yellow text on dark becomes mint.
+ * Yellow notice boxes (yellow-50/100, -700/800 text) keep Tailwind's own yellow: they mean "attention". */
+.fg-site .bg-\[\#F2B705\] { background-color: var(--fg-forest); color: #fff; }
+.fg-site .hover\:bg-\[\#F2B705\]:hover { background-color: var(--fg-evergreen); color: #fff; }
+.fg-site .text-\[\#F2B705\] { color: var(--fg-mint); }
 
 /* Forest replaces the bright emerald: actions, positive states, accents */
 .fg-site :is(.bg-emerald-500, .bg-emerald-600, .bg-green-600) { background-color: var(--fg-forest); }
 .fg-site :is(.hover\:bg-emerald-700:hover, .hover\:bg-emerald-800:hover, .bg-emerald-700) { background-color: var(--fg-evergreen); }
 .fg-site :is(.text-emerald-500, .text-emerald-600, .text-emerald-700, .hover\:text-emerald-600:hover) { color: var(--fg-forest); }
 .fg-site :is(.bg-emerald-50, .bg-emerald-100, .hover\:bg-emerald-50:hover) { background-color: var(--fg-paper); }
-.fg-site .hover\:bg-emerald-200:hover { background-color: #ebe6d8; }
+.fg-site .hover\:bg-emerald-200:hover { background-color: #E3EDE7; }
 .fg-site :is(.border-emerald-500, .border-emerald-600) { border-color: var(--fg-forest); }
 .fg-site :is(.border-emerald-200, .border-emerald-100, .border-blue-200) { border-color: var(--fg-line); }
 .fg-site :is(.ring-emerald-500, .focus\:ring-emerald-500:focus) { --tw-ring-color: var(--fg-blue); }
 .fg-site :is(.shadow-emerald-500, .shadow-emerald-600, .shadow-emerald-500\/30, .shadow-emerald-600\/30) { --tw-shadow-color: rgb(32 63 104 / .25); }
-/* Light accents on dark grounds: champagne instead of mint */
-.fg-site :is(.text-emerald-100, .text-emerald-300, .text-emerald-400) { color: var(--fg-gold-text); }
+/* Light accents on dark grounds: a soft mint */
+.fg-site :is(.text-emerald-100, .text-emerald-300, .text-emerald-400) { color: var(--fg-mint); }
 /* Emerald gradient bands become evergreen */
 .fg-site :is(.from-emerald-700, .via-emerald-800, .to-emerald-900, .to-emerald-700, .to-emerald-600) { background-image: none; background-color: var(--fg-evergreen); }
 
-/* Yellow call-to-action buttons become champagne with ink text */
-.fg-site :is(.bg-yellow-400, .bg-yellow-500, .bg-amber-400, .bg-amber-500) { background-color: var(--fg-gold); color: var(--fg-ink); }
-.fg-site :is(.hover\:bg-yellow-600:hover, .hover\:bg-yellow-500:hover, .hover\:bg-amber-500:hover) { background-color: #b3955a; }
-.fg-site .text-yellow-900 { color: var(--fg-ink); }
+/* Yellow call-to-action buttons become forest with white text */
+.fg-site :is(.bg-yellow-400, .bg-yellow-500, .bg-amber-400, .bg-amber-500) { background-color: var(--fg-forest); color: #fff; }
+.fg-site :is(.hover\:bg-yellow-600:hover, .hover\:bg-yellow-500:hover, .hover\:bg-amber-500:hover) { background-color: var(--fg-evergreen); }
+.fg-site :is(.bg-yellow-400, .bg-yellow-500, .bg-amber-400, .bg-amber-500) .text-yellow-900, .fg-site :is(.bg-yellow-400, .bg-yellow-500, .bg-amber-400, .bg-amber-500).text-yellow-900 { color: #fff; }
 
 /* Blue utility accents follow the brand blue */
 .fg-site :is(.text-blue-600, .text-blue-700, .text-blue-900) { color: var(--fg-blue); }
@@ -67,7 +67,7 @@
 .fg-site :is(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl) { border-radius: 4px; }
 .fg-site :is(button, a).rounded-lg, .fg-site :is(button, a).rounded-xl { border-radius: 2px; }
 
-/* Cards: one warm hairline and a softer lift */
+/* Cards: one cool hairline and a softer lift */
 .fg-site :is(.border-gray-100, .border-gray-200) { border-color: var(--fg-line); }
 .fg-site :is(.shadow-lg, .shadow-xl, .shadow-2xl) { box-shadow: 0 30px 60px -40px rgb(32 63 104 / .35), 0 2px 6px rgb(32 63 104 / .05); }
 

@@ -38,12 +38,12 @@ export function PlanPicker({ onFullPlans }: { onFullPlans: () => void }) {
   const planPrice = p.price === 0 ? nok(0) : `${nok(p.price)} ${p.period === '/day' ? t('driverLanding.perDay') : t('driverLanding.perMonth')}`;
 
   return (
-    <div className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-0 border border-[#DCD4C2] bg-[#FFFEFA]">
+    <div className="grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] gap-0 border border-[#D7DED9] bg-[#FFFFFF]">
       <div className="p-6 md:p-9">
-        <div role="radiogroup" aria-label={t('driverLanding.picker.label')} className="grid grid-cols-5 border border-[#DCD4C2]">
+        <div role="radiogroup" aria-label={t('driverLanding.picker.label')} className="grid grid-cols-5 border border-[#D7DED9]">
           {SUBSCRIPTION_PLANS.map((pl, i) => (
             <button key={pl.id} type="button" role="radio" aria-checked={i === ix} onClick={() => setIx(i)}
-                    className={`min-h-[52px] px-1 text-[13px] sm:text-sm font-bold transition border-s first:border-s-0 border-[#DCD4C2] ${focus} ${i === ix ? 'bg-[#24513B] text-white' : 'text-[#17212E] hover:bg-[#F3EEE2]'}`}>
+                    className={`min-h-[52px] px-1 text-[13px] sm:text-sm font-bold transition border-s first:border-s-0 border-[#D7DED9] ${focus} ${i === ix ? 'bg-[#24513B] text-white' : 'text-[#17212E] hover:bg-[#F3F6F5]'}`}>
               {pl.name}
             </button>
           ))}
@@ -60,7 +60,7 @@ export function PlanPicker({ onFullPlans }: { onFullPlans: () => void }) {
             <dd className="m-0 mt-1 text-[17px] font-semibold">{lo === hi ? `${lo}%` : `${lo}–${hi}%`}</dd></div>
           <div><dt className="text-xs font-bold tracking-[.1em] uppercase text-[#4A5260]">{t('driverLanding.colPriority')}</dt>
             <dd className="m-0 mt-1 text-[17px] font-semibold flex items-center gap-2">
-              <span className="inline-flex gap-[3px]" aria-hidden="true">{[1, 2, 3, 4, 5].map(n => <span key={n} className={`w-[6px] h-[14px] ${n <= p.priorityLevel ? 'bg-[#24513B]' : 'bg-[#DCD4C2]'}`} />)}</span>{level}</dd></div>
+              <span className="inline-flex gap-[3px]" aria-hidden="true">{[1, 2, 3, 4, 5].map(n => <span key={n} className={`w-[6px] h-[14px] ${n <= p.priorityLevel ? 'bg-[#24513B]' : 'bg-[#D7DED9]'}`} />)}</span>{level}</dd></div>
         </dl>
         <ul className="mt-7 list-none p-0 m-0 grid sm:grid-cols-2 gap-x-6 gap-y-2 text-[15px] text-[#4A5260]">
           {p.features.map(f => <li key={f} className="flex gap-2"><span className="text-[#24513B]" aria-hidden="true">✓</span>{t(`driverLanding.feature.${f}`, f)}</li>)}
@@ -69,12 +69,12 @@ export function PlanPicker({ onFullPlans }: { onFullPlans: () => void }) {
       </div>
 
       {/* What a job of this price leaves you on this plan */}
-      <div className="p-6 md:p-9 bg-[#1F3A2E] text-[#F3EEE2] flex flex-col">
-        <p className="text-xs font-bold tracking-[.16em] uppercase text-[#DCC9A0] m-0 mb-2">{t('driverLanding.picker.calcEyebrow')}</p>
-        <label htmlFor="pp-price" className="text-[22px] font-bold text-[#FFFEFA]">{t('driverLanding.picker.calcTitle')}</label>
+      <div className="p-6 md:p-9 bg-[#1F3A2E] text-[#F3F6F5] flex flex-col">
+        <p className="text-xs font-bold tracking-[.16em] uppercase text-[#A7D3BA] m-0 mb-2">{t('driverLanding.picker.calcEyebrow')}</p>
+        <label htmlFor="pp-price" className="text-[22px] font-bold text-[#FFFFFF]">{t('driverLanding.picker.calcTitle')}</label>
         <div className="mt-5 flex items-center gap-4">
           <input id="pp-price" type="range" min={200} max={12000} step={100} value={price} onChange={e => setPrice(Number(e.target.value))}
-                 className="flex-1 accent-[#C3A66C]" aria-valuetext={nok(price)} />
+                 className="flex-1 accent-[#A7D3BA]" aria-valuetext={nok(price)} />
           <output htmlFor="pp-price" className="text-[22px] tabular-nums min-w-[110px] text-end" style={serif}>{nok(price)}</output>
         </div>
         <div aria-live="polite" className="mt-8 border-t border-white/20 pt-6">
@@ -85,7 +85,7 @@ export function PlanPicker({ onFullPlans }: { onFullPlans: () => void }) {
               <p className="m-0 mt-3 text-sm text-[#D5DDD7]">{t('driverLanding.picker.commission', { rate: Math.max(0, c.rate), amount: nok(c.commission) })}</p>
             </>
           ) : (
-            <p className="m-0 text-[17px] text-[#EBDDBA]">{t('driverLanding.picker.notVisible', { plan: p.name, amount: nok(upTo ?? 0) })}</p>
+            <p className="m-0 text-[17px] text-[#E3EFE7]">{t('driverLanding.picker.notVisible', { plan: p.name, amount: nok(upTo ?? 0) })}</p>
           )}
         </div>
         <span className="flex-1" />
@@ -100,10 +100,10 @@ export function EscrowFlow() {
   const steps = ['book', 'held', 'work', 'confirm', 'wallet'] as const;
   return (
     <ol className="fg-escrow list-none p-0 m-0 grid sm:grid-cols-5 gap-6 sm:gap-0 relative">
-      <span aria-hidden="true" className="fg-escrow-line hidden sm:block absolute top-[22px] start-[10%] end-[10%] h-[2px] bg-[#DCD4C2]"><span className="block h-full bg-[#24513B]" /></span>
+      <span aria-hidden="true" className="fg-escrow-line hidden sm:block absolute top-[22px] start-[10%] end-[10%] h-[2px] bg-[#D7DED9]"><span className="block h-full bg-[#24513B]" /></span>
       {steps.map((k, i) => (
         <li key={k} className="relative sm:text-center sm:px-3 flex sm:block gap-4">
-          <span className="relative z-10 flex-shrink-0 sm:mx-auto flex items-center justify-center w-11 h-11 rounded-full bg-[#FFFEFA] border-2 border-[#24513B] text-[#24513B] font-bold" style={serif}>{i + 1}</span>
+          <span className="relative z-10 flex-shrink-0 sm:mx-auto flex items-center justify-center w-11 h-11 rounded-full bg-[#FFFFFF] border-2 border-[#24513B] text-[#24513B] font-bold" style={serif}>{i + 1}</span>
           <div>
             <h3 className="text-[17px] font-bold tracking-tight mt-0 sm:mt-4 mb-1">{t(`driverLanding.escrow.${k}`)}</h3>
             <p className="text-[14px] leading-relaxed text-[#4A5260] m-0">{t(`driverLanding.escrow.${k}Desc`)}</p>
@@ -128,12 +128,12 @@ export function DriverFaq() {
   };
   const items = ['cost', 'commission', 'payout', 'paid', 'cancel', 'after', 'vehicle', 'insurance', 'company', 'switch'] as const;
   return (
-    <div className="divide-y divide-[#E2DACA] border-y border-[#E2DACA]">
+    <div className="divide-y divide-[#E1E6E3] border-y border-[#E1E6E3]">
       {items.map(k => (
         <details key={k} className="group py-1">
           <summary className={`flex items-center justify-between gap-6 py-5 cursor-pointer list-none text-[18px] font-bold tracking-tight ${focus}`}>
             {t(`driverLanding.faq.${k}Q`)}
-            <span aria-hidden="true" className="flex-shrink-0 w-8 h-8 rounded-full border border-[#CFC7B5] flex items-center justify-center text-[#24513B] transition group-open:rotate-45">+</span>
+            <span aria-hidden="true" className="flex-shrink-0 w-8 h-8 rounded-full border border-[#C8D0CB] flex items-center justify-center text-[#24513B] transition group-open:rotate-45">+</span>
           </summary>
           <p className="m-0 pb-6 pe-12 text-[16px] leading-relaxed text-[#4A5260] max-w-[75ch]">{t(`driverLanding.faq.${k}A`, vars[k] ?? {})}</p>
         </details>
@@ -176,10 +176,10 @@ export function DayOnFlyttGo() {
   return (
     <div>
       <div className="flex items-center justify-between gap-4 mb-6">
-        <p className="m-0 text-[13px] font-semibold text-[#7A6436]">{t('driverLanding.day.sample', { plan: SUBSCRIPTION_PLANS.find(p => p.id === SAMPLE_PLAN)?.name ?? SAMPLE_PLAN })}</p>
+        <p className="m-0 text-[13px] font-semibold text-[#24513B]">{t('driverLanding.day.sample', { plan: SUBSCRIPTION_PLANS.find(p => p.id === SAMPLE_PLAN)?.name ?? SAMPLE_PLAN })}</p>
         <div className="flex gap-2">
-          <button type="button" onClick={() => scrollBy(-1)} aria-label={t('driverLanding.day.prev')} className={`w-11 h-11 border border-[#CFC7B5] bg-white hover:bg-[#F3EEE2] ${focus}`}>←</button>
-          <button type="button" onClick={() => scrollBy(1)} aria-label={t('driverLanding.day.next')} className={`w-11 h-11 border border-[#CFC7B5] bg-white hover:bg-[#F3EEE2] ${focus}`}>→</button>
+          <button type="button" onClick={() => scrollBy(-1)} aria-label={t('driverLanding.day.prev')} className={`w-11 h-11 border border-[#C8D0CB] bg-white hover:bg-[#F3F6F5] ${focus}`}>←</button>
+          <button type="button" onClick={() => scrollBy(1)} aria-label={t('driverLanding.day.next')} className={`w-11 h-11 border border-[#C8D0CB] bg-white hover:bg-[#F3F6F5] ${focus}`}>→</button>
         </div>
       </div>
       <ol ref={track} className="list-none p-0 m-0 flex gap-8 overflow-x-auto snap-x snap-mandatory pb-6 [scrollbar-width:thin]">
@@ -195,7 +195,7 @@ export function DayOnFlyttGo() {
                 <div className="origin-top-left scale-[.92] w-[108.7%]">{s.screen}</div>
               </div>
             </div>
-            <p className="mt-6 mb-1 text-[13px] font-bold tracking-[.12em] uppercase text-[#9F8249]">{t('driverLanding.day.stepN', { n: i + 1 })}</p>
+            <p className="mt-6 mb-1 text-[13px] font-bold tracking-[.12em] uppercase text-[#24513B]">{t('driverLanding.day.stepN', { n: i + 1 })}</p>
             <h3 className="text-[19px] font-bold tracking-tight m-0 mb-1.5">{t(`driverLanding.day.${s.key}`)}</h3>
             <p className="text-[14px] leading-relaxed text-[#4A5260] m-0">{t(`driverLanding.day.${s.key}Desc`)}</p>
           </li>
@@ -212,16 +212,16 @@ export function FleetSection({ onCompany }: { onCompany: () => void }) {
   return (
     <div className="grid lg:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] gap-10 lg:gap-16">
       <div>
-        <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.fleet.eyebrow')}</p>
+        <p className="text-xs font-bold tracking-[.16em] uppercase text-[#24513B] mb-3">{t('driverLanding.fleet.eyebrow')}</p>
         <h2 className="text-[36px] md:text-[48px] font-bold tracking-[-.04em] leading-[1.04] mb-5">{t('driverLanding.fleet.title')}</h2>
         <p className="text-lg text-[#4A5260] leading-relaxed m-0 mb-8 max-w-[52ch]">{t('driverLanding.fleet.lede')}</p>
         <button type="button" onClick={onCompany} className={`min-h-[52px] px-6 bg-[#24513B] hover:bg-[#1C4130] text-white font-bold ${focus}`}>{t('driverLanding.fleet.cta')} →</button>
-        <p className="mt-8 text-[14px] leading-relaxed text-[#4A5260] border-s-2 border-[#C3A66C] ps-4 max-w-[52ch]">{t('driverLanding.fleet.notYet')}</p>
+        <p className="mt-8 text-[14px] leading-relaxed text-[#4A5260] border-s-2 border-[#24513B] ps-4 max-w-[52ch]">{t('driverLanding.fleet.notYet')}</p>
       </div>
       <ol className="list-none p-0 m-0 border-t-2 border-[#17212E]">
         {steps.map((k, i) => (
-          <li key={k} className="grid grid-cols-[56px_minmax(0,1fr)] gap-4 py-6 border-b border-[#E2DACA]">
-            <span className="text-[40px] leading-none text-[#9F8249]" style={serif}>{i + 1}</span>
+          <li key={k} className="grid grid-cols-[56px_minmax(0,1fr)] gap-4 py-6 border-b border-[#E1E6E3]">
+            <span className="text-[40px] leading-none text-[#24513B]" style={serif}>{i + 1}</span>
             <div>
               <h3 className="text-[19px] font-bold tracking-tight m-0 mb-1.5">{t(`driverLanding.fleet.${k}`)}</h3>
               <p className="text-[15px] leading-relaxed text-[#4A5260] m-0">{t(`driverLanding.fleet.${k}Desc`)}</p>
@@ -249,7 +249,7 @@ export function TermsSummary({ compact = false }: { compact?: boolean }) {
           <li key={key} className={compact ? 'text-[14px] leading-relaxed' : ''}>
             {compact ? <><b>{t(`driverLanding.terms.${key}`)}.</b> {t(`driverLanding.terms.${key}Desc`, vars)}</> : (
               <>
-                <p className="m-0 mb-1 text-xs font-bold tracking-[.12em] uppercase text-[#7A6436]">{t('driverLanding.terms.section', { n: section })}</p>
+                <p className="m-0 mb-1 text-xs font-bold tracking-[.12em] uppercase text-[#24513B]">{t('driverLanding.terms.section', { n: section })}</p>
                 <h3 className="text-[18px] font-bold tracking-tight m-0 mb-1.5">{t(`driverLanding.terms.${key}`)}</h3>
                 <p className="text-[15px] leading-relaxed text-[#4A5260] m-0">{t(`driverLanding.terms.${key}Desc`, vars)}</p>
               </>
