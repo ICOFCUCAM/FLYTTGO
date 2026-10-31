@@ -66,7 +66,12 @@
 .fgv2 .legacy-suite .section-head p, .fgv2 .corp-copy > p {
   font-size: var(--body-size); line-height: 1.75; color: var(--muted);
 }
-.fgv2 .eyebrow { color: var(--blue); font-size: 11px; letter-spacing: .2em; }
+/* Labels: one size and tracking for every eyebrow and kicker on the page. */
+.fgv2 { --label-size: 12px; --label-track: .16em; }
+.fgv2 .eyebrow, .fgv2 main .eyebrow.eyebrow, .fgv2 .eyebrow :is(.hl-sig, .hl-sig-a) { color: var(--blue); font-size: var(--label-size); letter-spacing: var(--label-track); }
+.fgv2 :is(.hero-ledger small, .entry-card > span, .entry-side > span, .v2-categories > span, .v2-related > span, .market-card small, .bw-main-head small, .finance-main-head small, .wl-config label, .wl-setting-label, .network-node small, .v2-trail-label) {
+  font-size: var(--label-size); letter-spacing: var(--label-track);
+}
 .fgv2 .eyebrow:before { background: var(--gold); width: 28px; }
 
 /* Sections alternate soft white and ivory under one warm hairline; sections that are themselves the
@@ -160,7 +165,7 @@
 .fgv2 .hero-ledger a { display: block; padding: 20px 22px 22px; color: #fff; border-left: 1px solid rgba(195,166,108,.35); transition: background .2s; }
 .fgv2 .hero-ledger a:first-child { border-left: 0; }
 .fgv2 .hero-ledger a:hover { background: rgba(255,255,255,.07); }
-.fgv2 .hero-ledger small { display: block; font-size: 11px; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--gold-text); }
+.fgv2 .hero-ledger small { display: block; font-size: var(--label-size); letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--gold-text); }
 .fgv2 .hero-ledger strong { display: block; font: 600 17px/1.3 var(--font-display); margin-top: 6px; letter-spacing: -.01em; }
 /* The design stacks the hero below 760px (its own later rule wins over its 900px one); these follow it. */
 @media (min-width: 761px) {
@@ -206,7 +211,7 @@
 .fgv2 .entry-grid { gap: 16px; }
 .fgv2 .entry-card { min-height: 300px; padding: 40px; justify-content: flex-start; border-radius: var(--radius); }
 .fgv2 .entry-card:hover { transform: none; box-shadow: none; }
-.fgv2 :is(.entry-card > span, .entry-side > span) { font-size: 11px; letter-spacing: .18em; font-weight: 700; text-transform: uppercase; }
+.fgv2 :is(.entry-card > span, .entry-side > span) { font-size: var(--label-size); letter-spacing: .18em; font-weight: 700; text-transform: uppercase; }
 .fgv2 .entry-card h3 { font: 650 clamp(28px, 2.8vw, 38px)/1.08 var(--font-display); letter-spacing: -.04em; margin: 26px 0 12px; }
 .fgv2 .entry-card p { margin: 0; font-size: 16px; line-height: 1.65; max-width: 440px; }
 .fgv2 .entry-card .entry-for { font-size: 14px; font-weight: 600; margin-top: 14px; opacity: .85; }
@@ -276,7 +281,7 @@
 .fgv2 .v2-steps { grid-template-columns: repeat(8, 1fr); margin-bottom: 64px; }
 .fgv2 .v2-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 44px 48px; }
 .fgv2 .v2-links article { display: flex; flex-direction: column; padding-top: 22px; border-top: 1px solid var(--ink); }
-.fgv2 .v2-links small { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: var(--blue); }
+.fgv2 .v2-links small { font-size: var(--label-size); letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: var(--blue); }
 .fgv2 .v2-links h3 { font: 650 24px/1.2 var(--font-display); letter-spacing: -.02em; margin: 8px 0 10px; color: var(--ink); }
 .fgv2 .v2-links p { font-size: 15px; line-height: 1.7; color: var(--muted); margin: 0 0 14px; }
 .fgv2 .v2-links ul { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 8px; }
@@ -305,7 +310,7 @@
 
 /* ── 8. The FlyttGo Marketplace: a way in by category, one dominant picture and four beside it ── */
 .fgv2 .v2-categories { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 28px; padding: 18px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.fgv2 .v2-categories > span { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; font-weight: 700; color: var(--blue); margin-right: 8px; }
+.fgv2 .v2-categories > span { font-size: var(--label-size); letter-spacing: .18em; text-transform: uppercase; font-weight: 700; color: var(--blue); margin-right: 8px; }
 .fgv2 .v2-categories a { padding: 10px 16px; border: 1px solid var(--line); background: var(--white); font-size: 14px; font-weight: 600; color: var(--blue); transition: background .2s, color .2s; }
 .fgv2 .v2-categories a:hover { background: var(--blue); border-color: var(--blue); color: #fff; }
 .fgv2 .v2-categories em { margin-left: auto; font-style: normal; font-size: 13px; color: var(--muted); }
@@ -361,11 +366,11 @@
 .fgv2 :is(.bw-metrics, .finance-metrics) article b { font-size: 16px; color: var(--ink); }
 .fgv2 :is(.bw-metrics, .finance-metrics) article em { font-size: 13px; color: var(--muted); }
 .fgv2 :is(.bw-panel-head, .finance-document-head) strong { font-size: 14px; color: var(--ink); }
-.fgv2 :is(.bw-panel-head, .finance-document-head) span { font-size: 11px; letter-spacing: .08em; color: var(--muted); }
+.fgv2 :is(.bw-panel-head, .finance-document-head) span { font-size: var(--label-size); letter-spacing: .08em; color: var(--muted); }
 .fgv2 #bw-panel-content { padding: 0; text-align: left; }
 /* The example company's records (demoRecords.ts). */
 .fgv2 .v2-records { width: 100%; border-collapse: collapse; font-size: 14px; }
-.fgv2 .v2-records th { text-align: left; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.fgv2 .v2-records th { text-align: left; font-size: var(--label-size); letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--paper); }
 .fgv2 .v2-records td { padding: 14px 16px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
 .fgv2 .v2-records tr:last-child td { border-bottom: 0; }
 .fgv2 .v2-records td:first-child { font-weight: 600; }
@@ -389,7 +394,7 @@
 .fgv2 .finance-document-content { padding: 24px; }
 .fgv2 .finance-doc-meta b { font-size: 14px; color: var(--ink); }
 .fgv2 .finance-doc-meta small { font-size: 13px; color: var(--muted); }
-.fgv2 .finance-lines th { font-size: 11px; letter-spacing: .1em; color: var(--muted); }
+.fgv2 .finance-lines th { font-size: var(--label-size); letter-spacing: .1em; color: var(--muted); }
 .fgv2 .finance-lines td { font-size: 14px; color: var(--ink); padding-top: 12px; padding-bottom: 12px; font-variant-numeric: tabular-nums; }
 .fgv2 .finance-lines :is(td, th):last-child { text-align: right; }
 .fgv2 .v2-totals { margin: 8px 0 0 auto; max-width: 340px; display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -450,10 +455,10 @@
 /* ── 15. Marketplace Studio: an infrastructure product, a convincing storefront ── */
 .fgv2 .wl-layout { grid-template-columns: 290px 1fr; min-height: 560px; }
 .fgv2 .wl-config { background: var(--paper); padding: 26px 22px; }
-.fgv2 .wl-config :is(label, .wl-setting-label) { display: block; color: var(--blue); letter-spacing: .14em; font-size: 11px; font-weight: 700; margin: 0 0 8px; }
+.fgv2 .wl-config :is(label, .wl-setting-label) { display: block; color: var(--blue); letter-spacing: .14em; font-size: var(--label-size); font-weight: 700; margin: 0 0 8px; }
 .fgv2 .wl-config :is(input, select) { border-radius: 0; border: 1px solid var(--line); background: var(--white); min-height: 44px; font-size: 14px; }
 .fgv2 .wl-settings { margin: 22px 0 0; padding: 18px 0 0; border-top: 1px solid var(--line); display: grid; gap: 14px; }
-.fgv2 .wl-settings dt { font-size: 11px; letter-spacing: .14em; font-weight: 700; color: var(--blue); }
+.fgv2 .wl-settings dt { font-size: var(--label-size); letter-spacing: .14em; font-weight: 700; color: var(--blue); }
 .fgv2 .wl-settings dd { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
 @media (max-width: 900px) { .fgv2 .wl-layout { grid-template-columns: 1fr; } }
 
@@ -464,7 +469,7 @@
 .fgv2 .network-column:has(.core) { grid-template-columns: 1fr; }
 .fgv2 .network-canvas .network-node { width: auto; height: auto; display: block; font: inherit; color: inherit; margin: 0; padding: 22px; border-radius: var(--radius); }
 .fgv2 .network-canvas .network-node.core { padding: 30px; text-align: center; background: var(--blue); color: #fff; }
-.fgv2 .network-canvas .network-node small { font-size: 11px; color: var(--blue); }
+.fgv2 .network-canvas .network-node small { font-size: var(--label-size); color: var(--blue); }
 .fgv2 .network-canvas .network-node.core small { color: var(--gold-text); }
 .fgv2 .network-canvas .network-node strong { font-size: 17px; }
 .fgv2 .network-canvas .network-node.core strong { font-size: 22px; }
@@ -475,7 +480,7 @@
 
 /* ── 17. Related links and the closing section ─────────────────────────── */
 .fgv2 .v2-related { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 26px; padding-top: 36px; font-size: 14px; }
-.fgv2 .v2-related span { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+.fgv2 .v2-related span { font-size: var(--label-size); letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
 .fgv2 .v2-related a { font-weight: 600; color: var(--blue); border-bottom: 1px solid var(--gold); padding-bottom: 2px; }
 .fgv2 .v2-related a:hover { border-color: var(--blue); }
 .fgv2 main > section.final-cta { background: var(--blue); color: #fff; }
@@ -826,7 +831,7 @@
 .fgv2 .wl-cat-toggles input { min-height: 0 !important; width: 14px; height: 14px; accent-color: var(--blue); }
 .fgv2 .wl-preview-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .fgv2 .wl-address { font: 600 13px ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); padding: 6px 12px; background: var(--white); border: 1px solid var(--line); min-width: 0; overflow-wrap: anywhere; }
-.fgv2 .wl-address:before { content: "🔒 "; font-size: 11px; }
+.fgv2 .wl-address:before { content: "🔒 "; font-size: var(--label-size); }
 .fgv2 .wl-storefront .wl-mark-el, .fgv2 .wl-mark-el { color: #fff; }
 .fgv2 .wl-mark-el { display: inline-grid; place-items: center; width: 34px; height: 34px; margin-right: 10px; vertical-align: middle; font: 800 13px var(--font-display); background: var(--wl-accent, var(--blue)); box-shadow: inset 0 -3px var(--wl-accent2, var(--gold)); }
 .fgv2 .wl-mark-el[data-style="circle"] { border-radius: 9999px; box-shadow: 0 0 0 2px var(--wl-accent2, var(--gold)); }
