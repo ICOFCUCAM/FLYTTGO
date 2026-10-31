@@ -87,7 +87,9 @@
 .fgv2 main > section + section, .fgv2 main > .v2-booking + section { border-top: 1px solid var(--line); }
 .fgv2 main > section.wrap { box-shadow: 0 0 0 100vmax var(--section-ground); clip-path: inset(0 -100vmax); }
 
-.fgv2 .btn { border-radius: var(--radius); min-height: 52px; padding: 0 24px; font-size: 14px; font-weight: 700; letter-spacing: .01em; }
+.fgv2 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; border-radius: var(--radius); min-height: 52px; padding: 0 24px; font-size: 14px; font-weight: 700; letter-spacing: .01em; }
+.fgv2 .btn .arrow { margin: 0; font-size: 13px; transition: transform .25s; }
+.fgv2 .btn:hover .arrow { transform: translate(2px, -2px); }
 .fgv2 .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
 .fgv2 .btn-primary:hover { background: #18304f; border-color: #18304f; }
 .fgv2 .btn-light { background: transparent; border-color: rgba(32,63,104,.35); color: var(--blue); }
