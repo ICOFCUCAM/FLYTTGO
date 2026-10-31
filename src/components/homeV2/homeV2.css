@@ -501,6 +501,11 @@
 
 /* ── 11. Financial workspace: its own identity, a ledger beside a timeline ── */
 .fgv2 .finance-section .v2-lifecycle { margin-bottom: 56px; }
+/* The finance lifecycle: numbered stops on one evergreen line, ending on the financial record. */
+.fgv2 .finance-section .v2-lifecycle li::before { background: var(--evergreen); height: 2px; top: 5px; }
+.fgv2 .finance-section .v2-lifecycle li::after { background: var(--white); border: 2px solid var(--evergreen); width: 12px; height: 12px; top: 0; }
+.fgv2 .finance-section .v2-lifecycle li:last-child::after { background: var(--evergreen); }
+.fgv2 .finance-section .v2-lifecycle b { color: var(--evergreen); }
 .fgv2 .finance-top { background: var(--evergreen); color: #fff; }
 .fgv2 .finance-side { background: #eef0ea; }
 .fgv2 .finance-document { background: var(--white); border-color: var(--line); }
