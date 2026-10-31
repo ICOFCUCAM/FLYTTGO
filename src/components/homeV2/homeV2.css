@@ -741,7 +741,13 @@
   .fgv2[data-moving="b"] .service-card:not(:first-child):hover:after { transform: translateX(4px); }
   .fgv2[data-moving="b"] .service-card:not(:first-child) h3 { font-size: 18px; }
   .fgv2[data-moving="b"] .service-card:first-child { grid-row: 1 / span 7; grid-template-columns: 1fr; border: 1px solid var(--line); background: var(--white); align-self: start; }
-  .fgv2[data-moving="b"] .service-card:first-child .photo { aspect-ratio: 4 / 3; height: auto; }
+  .fgv2[data-moving="b"] .service-card:first-child .photo { aspect-ratio: 4 / 5; height: auto; }
+  /* The feature service carries its caption on the picture, under a deep-blue veil. */
+  .fgv2[data-moving="b"] .service-card:first-child { position: relative; border: 0; overflow: hidden; }
+  .fgv2[data-moving="b"] .service-card:first-child .photo img { height: 100%; }
+  .fgv2[data-moving="b"] .service-card:first-child .body { position: absolute; left: 0; right: 0; bottom: 0; padding: 120px 32px 30px; background: linear-gradient(180deg, rgba(20,38,64,0), rgba(20,38,64,.88) 62%); color: #fff; }
+  .fgv2[data-moving="b"] .service-card:first-child h3 { color: #fff; font: var(--head-weight) clamp(24px, 2.2vw, 32px)/1.1 var(--font-display); letter-spacing: -.03em; margin: 0 0 8px; }
+  .fgv2[data-moving="b"] .service-card:first-child .body p { color: #eef1f5; font-size: 15px; }
 }
 /* Moving C · picture-led pairs: two columns, each service a picture beside its words. */
 @media (min-width: 901px) {
