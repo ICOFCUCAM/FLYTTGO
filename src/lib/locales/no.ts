@@ -1238,6 +1238,7 @@ export const no: PartialTranslationKeys = {
       cta: 'Vis firmasiden',
     },
     day: {
+      card: { estimated: 'Beregnet: {{n}} timer', moveDate: 'Flyttedato: {{date}}', timer: 'Tidtaker: {{time}}', total: 'Totalt: {{amount}}', commission: 'Provisjon: {{rate}} % ({{amount}})' },
       stagesLabel: 'De fire stegene i en jobb', stepOf: 'Steg {{n}} av {{total}}',
       total: 'Jobbens verdi', commission: 'Provisjon ({{rate}} %)', earnings: 'Du beholder',
       moneyNote: 'Tallene for eksempeljobben, fra provisjonsregelen utbetalingen bruker. Ikke et løfte om inntekt.',
@@ -1259,7 +1260,7 @@ export const no: PartialTranslationKeys = {
           p1: 'Både din og kundens bekreftelse trengs', p2: 'Din andel går til FlyttGo-lommeboken din', p3: 'Be om utbetaling når saldoen når 500 NOK' },
       },
       eyebrow: 'En dag med FlyttGo', title: 'Fra jobbtilbud til lommebok.',
-      lede: 'Sjåførappens eget jobbkort, med én eksempeljobb. Velg et steg for å se hva som endres på skjermen.',
+      lede: 'Én eksempeljobb i FlyttGos sjåførapp, i fire steg. Velg et steg for å se hva som endres på skjermen.',
       sample: 'Eksempeljobb på {{plan}}-planen, ikke en ekte bestilling',
       prev: 'Forrige steg', next: 'Neste steg', stepN: 'Steg {{n}}',
       accept: 'Se betalingen, så takk ja', acceptDesc: 'Hvert jobbkort viser hva du sitter igjen med etter provisjon før du takker ja. Kundens kontaktopplysninger vises først når jobben er din.',

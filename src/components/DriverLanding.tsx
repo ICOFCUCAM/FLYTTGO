@@ -233,10 +233,16 @@ export default function DriverLanding() {
       </section>
 
       {/* ── A day on FlyttGo, in the driver app's own screens (items 5, 6) ── */}
-      <section id="day" className="fg-reveal scroll-mt-32 pb-20 md:pb-28">
-        <div className="max-w-[1440px] mx-auto px-5 md:px-10 xl:px-14">
+      <section id="day" className="fg-reveal scroll-mt-32 relative overflow-hidden bg-[linear-gradient(180deg,#FBF8F1_0%,#F6F0E2_100%)] pt-10 md:pt-14 pb-36 md:pb-44">
+        <div className="relative z-10 max-w-[1440px] mx-auto px-5 md:px-10 xl:px-14">
           <DayOnFlyttGo />
         </div>
+        {/* The foot of the section: an evergreen sweep with a champagne line. */}
+        <svg aria-hidden="true" className="absolute bottom-0 left-0 w-full h-[90px] md:h-[130px]" viewBox="0 0 1440 130" preserveAspectRatio="none">
+          <path d="M0 130V74C300 98 640 100 960 76S1330 18 1440 4v126Z" fill="#1F3A2E" />
+          <path d="M0 64C300 88 640 90 960 66S1330 8 1440-6" fill="none" stroke="#C3A66C" strokeWidth="2.5" />
+          <path d="M0 130V100C340 120 720 120 1040 98S1370 56 1440 48v82Z" fill="#24513B" opacity=".55" />
+        </svg>
       </section>
 
       {/* ── What you get ───────────────────────────────────────────── */}

@@ -1546,6 +1546,7 @@ export const en = {
       cta: 'Show the company page',
     },
     day: {
+      card: { estimated: 'Estimated: {{n}} hrs', moveDate: 'Move date: {{date}}', timer: 'Timer: {{time}}', total: 'Total: {{amount}}', commission: 'Commission: {{rate}}% ({{amount}})' },
       stagesLabel: 'The four steps of a job', stepOf: 'Step {{n}} of {{total}}',
       total: 'Total job value', commission: 'Commission ({{rate}}%)', earnings: 'You keep',
       moneyNote: 'The sample job’s figures, from the commission rule the payout uses. Not a promise of earnings.',
@@ -1567,7 +1568,7 @@ export const en = {
           p1: 'Your confirmation and the customer’s are both needed', p2: 'Your share goes to your FlyttGo wallet', p3: 'Ask for a payout once your balance reaches 500 NOK' },
       },
       eyebrow: 'A day on FlyttGo', title: 'From the job offer to your wallet.',
-      lede: 'The driver app’s own job card, with one sample job. Choose a step to see what changes on the screen.',
+      lede: 'One sample job in the FlyttGo driver app, in four steps. Choose a step to see what changes on the screen.',
       sample: 'Sample job on the {{plan}} plan, not a real booking',
       prev: 'Previous step', next: 'Next step', stepN: 'Step {{n}}',
       accept: 'See the pay, then accept', acceptDesc: 'Every job card shows what you keep after commission before you accept. Customer contact details appear only once the job is yours.',

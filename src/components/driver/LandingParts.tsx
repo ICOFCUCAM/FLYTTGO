@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { SUBSCRIPTION_PLANS, calculateCommission } from '../../lib/constants';
 import { CANCELLATION_POLICY } from '../../../supabase/functions/_shared/pricing';
 import { DRIVER_TERMS, TERMS_SUMMARY } from '../../lib/driverTerms';
-import { JobCard, calcCommission } from './PortalCards';
+import { calcCommission, formatDuration } from './PortalCards';
 
 const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24513B]';
 const serif = { fontFamily: 'Georgia, "Times New Roman", serif' };
@@ -203,6 +203,28 @@ const TAB_ICON: Record<(typeof PORTAL_TABS)[number], JSX.Element> = {
   subscription: <><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z" /></>,
 };
 
+/* Small line icons, drawn for this section (24px grid, currentColor). */
+const Ico = ({ d, className = 'w-5 h-5' }: { d: JSX.Element; className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">{d}</svg>
+);
+const I = {
+  pin: <><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z" /><circle cx="12" cy="9.5" r="2.5" /></>,
+  truck: <><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" /><circle cx="7" cy="17.5" r="1.8" /><circle cx="17" cy="17.5" r="1.8" /></>,
+  clock: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>,
+  calendar: <><rect x="3.5" y="5" width="17" height="15" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
+  people: <><circle cx="9" cy="8.5" r="3" /><path d="M3.5 19a5.5 5.5 0 0 1 11 0M16 5.8a3 3 0 0 1 0 5.4M17.5 19a5.5 5.5 0 0 0-2.4-4.5" /></>,
+  timer: <><circle cx="12" cy="13" r="7.5" /><path d="M12 9v4.2l2.5 1.5M9.5 2.5h5" /></>,
+  coins: <><ellipse cx="12" cy="6.5" rx="6.5" ry="2.8" /><path d="M5.5 6.5v5c0 1.6 2.9 2.8 6.5 2.8s6.5-1.2 6.5-2.8v-5M5.5 11.5v5c0 1.6 2.9 2.8 6.5 2.8s6.5-1.2 6.5-2.8v-5" /></>,
+  percent: <><path d="M19 5 5 19" /><circle cx="7" cy="7" r="2.3" /><circle cx="17" cy="17" r="2.3" /></>,
+  wallet: <><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M16 12.5h2M3 9.5h15" /></>,
+  check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  note: <><path d="M5 4h14v16H5z" /><path d="M8.5 9h7M8.5 13h7M8.5 17h4" /></>,
+  route: <><circle cx="6" cy="18" r="2.5" /><circle cx="18" cy="6" r="2.5" /><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5" /></>,
+  shield: <><path d="M12 3.5 19 6v5.5c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V6z" /><path d="m9 12 2.2 2.2L15.5 10" /></>,
+  tasks: <><rect x="3.5" y="4.5" width="17" height="16" rx="2.5" /><path d="M8 3v3M16 3v3M8 13l2.5 2.5L16 10" /></>,
+};
+const ACTION_KEY = { accept: 'acceptJob', start: 'startJob', finish: 'finishJob', confirm: 'confirmCompletion' } as const;
+
 export function DayOnFlyttGo() {
   const { t, i18n } = useTranslation();
   const no = i18n.language === 'no';
@@ -214,13 +236,7 @@ export function DayOnFlyttGo() {
   const planName = SUBSCRIPTION_PLANS.find(p => p.id === SAMPLE_PLAN)?.name ?? SAMPLE_PLAN;
   const started = new Date(Date.now() - 74 * 60_000).toISOString();
   const ended = new Date(Date.now() - 2 * 60_000).toISOString();
-  const job = {
-    id: 'sample', status: stage.status, pickup_address: 'Storgata 12, 0184 Oslo', dropoff_address: 'Bogstadveien 40, 0366 Oslo',
-    price_estimate: SAMPLE_PRICE, estimated_hours: 3, helpers: 1, additional_services: ['furniture_assembly'],
-    move_date: new Date().toISOString().slice(0, 10), driver_id: 'sample-driver',
-    customer_notes: ix > 0 ? t('driverLanding.day.sampleNote') : null,
-    ...(ix >= 2 ? { start_time: started } : {}), ...(ix === 3 ? { end_time: ended, actual_hours: 1.2 } : {}),
-  };
+  const moveDate = new Date().toISOString().slice(0, 10);
   const go = (n: number) => { const i = (n + STAGES.length) % STAGES.length; setIx(i); tabs.current[i]?.focus(); };
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); go(ix + (document.dir === 'rtl' ? -1 : 1)); }
@@ -228,43 +244,44 @@ export function DayOnFlyttGo() {
     if (e.key === 'Home') { e.preventDefault(); go(0); }
     if (e.key === 'End') { e.preventDefault(); go(STAGES.length - 1); }
   };
-  const benefits = ['jobs', 'earnings', 'workflow', 'payment'] as const;
+  const benefits = [['jobs', I.tasks], ['earnings', I.coins], ['workflow', I.route], ['payment', I.shield]] as const;
+  const statusLabel = stage.status.replace(/_/g, ' ');
+  const row = (icon: JSX.Element, text: string, strong = false) => (
+    <div className="flex items-center gap-3 py-2.5 border-t border-gray-100 first:border-t-0">
+      <span className="text-[#24513B]"><Ico d={icon} className="w-[22px] h-[22px]" /></span>
+      <span className={`text-[15px] ${strong ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>{text}</span>
+    </div>
+  );
 
   return (
-    <div className="grid gap-x-10 gap-y-8 xl:gap-x-14 md:pt-4 [grid-template-areas:'intro'_'steps'_'phone'_'panel'] md:grid-cols-[auto_minmax(0,1fr)] md:[grid-template-areas:'intro_intro'_'phone_steps'_'phone_panel'] xl:grid-cols-[minmax(0,.6fr)_auto_minmax(0,1.4fr)] xl:[grid-template-areas:'intro_phone_steps'_'intro_phone_panel'] md:grid-rows-[auto_auto_1fr] xl:grid-rows-[auto_1fr]">
-      {/* The story in one line, and what the demonstration shows */}
-      <div className="[grid-area:intro] xl:self-center">
-        <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.day.eyebrow')}</p>
-        <h2 className="text-[36px] md:text-[44px] !font-normal !tracking-[-.01em] leading-[1.06] m-0 mb-5" style={serif}>{t('driverLanding.day.title')}</h2>
-        <p className="text-[17px] text-[#4A5260] leading-relaxed m-0 mb-8 max-w-[44ch]">{t('driverLanding.day.lede')}</p>
-        <ul className="list-none p-0 m-0 space-y-5">
-          {benefits.map((k, i) => (
-            <li key={k} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3">
-              <span aria-hidden="true" className="w-9 h-9 flex items-center justify-center border border-[#DCC9A0] bg-[#FFFEFA] text-[#9F8249] text-[15px]" style={serif}>{i + 1}</span>
-              <span><b className="block text-[16px] tracking-tight">{t(`driverLanding.day.b.${k}`)}</b><span className="block text-[14px] text-[#4A5260] leading-snug">{t(`driverLanding.day.b.${k}Desc`)}</span></span>
+    <div className="grid gap-x-10 gap-y-8 xl:gap-x-14 [grid-template-areas:'intro'_'steps'_'phone'_'panel'] md:grid-cols-[auto_minmax(0,1fr)] md:[grid-template-areas:'intro_intro'_'phone_steps'_'phone_panel'] xl:grid-cols-[minmax(0,.78fr)_auto_minmax(0,1.32fr)] xl:[grid-template-areas:'intro_phone_steps'_'intro_phone_panel'] md:grid-rows-[auto_auto_1fr] xl:grid-rows-[auto_1fr] xl:items-center">
+      {/* The story and four facts, each with its icon tile */}
+      <div className="[grid-area:intro] xl:self-center xl:row-span-2">
+        <p className="text-xs font-bold tracking-[.18em] uppercase text-[#7A6436] mb-4">{t('driverLanding.day.eyebrow')}</p>
+        <h2 className="text-[36px] md:text-[44px] !font-normal !tracking-[-.015em] leading-[1.06] m-0 mb-5 text-[#17212E]" style={serif}>{t('driverLanding.day.title')}</h2>
+        <p className="text-[17px] text-[#4A5260] leading-relaxed m-0 mb-9 max-w-[42ch]">{t('driverLanding.day.lede')}</p>
+        <ul className="list-none p-0 m-0 grid md:grid-cols-2 xl:grid-cols-1 gap-5">
+          {benefits.map(([k, icon]) => (
+            <li key={k} className="flex items-start gap-4">
+              <span className="flex-shrink-0 w-12 h-12 rounded-2xl bg-[#FFFEFA] border border-[#EDE6D6] shadow-[0_8px_18px_-12px_rgba(122,100,54,.45)] flex items-center justify-center text-[#9F8249]"><Ico d={icon} className="w-6 h-6" /></span>
+              <span className="pt-0.5"><b className="block text-[16px] tracking-tight text-[#17212E]">{t(`driverLanding.day.b.${k}`)}</b><span className="block text-[14px] text-[#4A5260] leading-snug mt-0.5">{t(`driverLanding.day.b.${k}Desc`)}</span></span>
             </li>
           ))}
         </ul>
       </div>
 
-      {/* One phone: the driver portal's own job card for the chosen stage */}
-      <figure className="[grid-area:phone] m-0 justify-self-center self-start xl:self-center">
-        {/* A 6.1-inch phone (71.6 × 147.6 mm), drawn in CSS: dark aluminium edge, thin even bezel, Dynamic Island
-          * at its true size, buttons where they sit (Action and volume left; side button and Camera Control right),
-          * a glass sheen and the home indicator. Inside, the driver portal laid out at a phone's width (390 px, as iOS
-          * renders it) and scaled to the screen, so the screen is the portal as it looks on a phone. */}
-        <div aria-hidden="true" className="fg-phone relative w-[300px] sm:w-[320px] aspect-[71.6/147.6] [--s:0.7205] sm:[--s:0.7718]">
+      {/* One phone, upright */}
+      <figure className="[grid-area:phone] m-0 justify-self-center self-start xl:self-center xl:row-span-2">
+        <div aria-hidden="true" className="fg-phone relative w-[300px] aspect-[71.6/147.6] [--s:0.7205]">
           <span className="fg-phone-btn absolute -start-[3px] top-[17.5%] h-[4.4%] w-[3px] rounded-s-[1.5px]" />
           <span className="fg-phone-btn absolute -start-[3px] top-[25.5%] h-[8%] w-[3px] rounded-s-[1.5px]" />
           <span className="fg-phone-btn absolute -start-[3px] top-[35.5%] h-[8%] w-[3px] rounded-s-[1.5px]" />
           <span className="fg-phone-btn absolute -end-[3px] top-[27%] h-[12.5%] w-[3px] rounded-e-[1.5px]" />
           <span className="fg-phone-btn absolute -end-[2px] top-[57%] h-[7%] w-[2px] rounded-e-[1px]" />
-          <div className="fg-phone-edge absolute inset-0 rounded-[52px] p-[2.5px]">
-            <div className="h-full rounded-[49.5px] bg-black p-[7px]">
-              <div className="relative h-full rounded-[42.5px] overflow-hidden bg-[#EEF2F0]">
-                {/* The portal at a phone's width in iOS points (390 wide), scaled to the screen. */}
-                <div className="absolute top-0 left-0 origin-top-left flex flex-col" style={{ width: 390, height: 'calc(100% / var(--s))', transform: 'scale(var(--s))' }}>
-                  {/* status bar and the app's top bar, in FlyttGo's evergreen */}
+          <div className="fg-phone-edge absolute inset-0 rounded-[50px] p-[2.5px]">
+            <div className="h-full rounded-[47.5px] bg-black p-[7px]">
+              <div className="relative h-full rounded-[40.5px] overflow-hidden bg-[#F2F4F3]">
+                <div className="absolute top-0 left-0 origin-top-left flex flex-col" style={{ width: 390, height: 'calc(100% / var(--s))', transform: 'scale(var(--s))', fontFamily: '"DM Sans", ui-sans-serif, system-ui, sans-serif' }}>
                   <div className="bg-[#1F3A2E] text-white">
                     <div className="relative flex items-center justify-between h-[54px] ps-[42px] pe-[30px] text-[17px] font-semibold" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif', letterSpacing: '-.02em' }}>
                       <span className="mt-[6px]">9:41</span>
@@ -279,22 +296,41 @@ export function DayOnFlyttGo() {
                     </div>
                     <div className="px-5 pt-2 pb-4 flex justify-between items-center">
                       <span className="text-[21px] font-bold">{t('driverPortal.title')}</span>
-                      <span className="px-4 py-2 rounded-full font-medium text-sm bg-green-100 text-green-700">{t('driverPortal.online')}</span>
+                      <span className="px-4 py-2 rounded-full font-semibold text-sm bg-green-100 text-green-700">{t('driverPortal.online')}</span>
                     </div>
                   </div>
-                  {/* the Jobs tab: the map card and the job card, in the portal's own markup */}
-                  <div className="flex-1 min-h-0 overflow-hidden">
-                    <div key={ix} className="fg-stage p-4 space-y-3">
-                      <div className="bg-white rounded-xl border p-4">
-                        <div className="flex items-center justify-between">
-                          <div><p className="font-bold text-gray-900 text-sm m-0">📍 {t('driverPortal.mapView')}</p><p className="text-xs text-gray-500 m-0">Tap a pin to see job details and accept.</p></div>
-                          <span className="flex-shrink-0 ms-3 text-xs font-semibold text-emerald-600">{t('driverPortal.showMap')}</span>
-                        </div>
+
+                  {/* The sample job in the chosen state */}
+                  <div className="flex-1 min-h-0 overflow-hidden p-4">
+                    <div key={ix} className="fg-stage bg-white rounded-[22px] shadow-[0_10px_30px_-18px_rgba(23,33,46,.35)] border border-gray-100 p-5">
+                      <span className="inline-block mb-3 px-3 py-1 rounded-full text-[13px] font-semibold capitalize bg-[#F3EEE2] text-[#7A6436]">{statusLabel}</span>
+                      <div className="flex gap-3 mb-3">
+                        <span className="text-[#C3A66C] mt-0.5"><Ico d={I.pin} className="w-6 h-6" /></span>
+                        <div><p className="m-0 text-[19px] font-bold text-gray-900 leading-tight">Storgata 12, 0184 Oslo</p><p className="m-0 text-[14px] text-gray-500 mt-0.5">Bogstadveien 40, 0366 Oslo</p></div>
                       </div>
-                      <JobCard preview job={job} plan={SAMPLE_PLAN} driverId="sample-driver" />
+                      <div className="flex items-center gap-3 rounded-2xl bg-[#FBF8F1] px-4 py-3 mb-2">
+                        <span className="text-[#24513B]"><Ico d={I.truck} className="w-6 h-6" /></span>
+                        <span className="text-[15px] font-semibold text-gray-900 first-letter:uppercase">{t('driverPortal.extra.furniture_assembly')} · {t('driverPortal.helpersLabel', { count: 1 })}</span>
+                      </div>
+                      {row(I.clock, t('driverLanding.day.card.estimated', { n: 3 }))}
+                      {row(I.calendar, t('driverLanding.day.card.moveDate', { date: moveDate }))}
+                      {ix >= 2 && row(I.timer, t('driverLanding.day.card.timer', { time: formatDuration(started, ix === 3 ? ended : null) }), true)}
+                      {ix >= 1 && (
+                        <div className="mt-2 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 flex gap-3">
+                          <span className="text-amber-700"><Ico d={I.note} className="w-5 h-5" /></span>
+                          <div><p className="m-0 text-[13px] font-semibold text-amber-900">{t('driverPortal.customerNotes')}</p><p className="m-0 text-[14px] text-amber-900">{t('driverLanding.day.sampleNote')}</p></div>
+                        </div>
+                      )}
+                      <div className="flex items-end justify-between mt-4 mb-4">
+                        <div><p className="m-0 text-[12px] font-semibold uppercase tracking-wide text-gray-500">{t('driverLanding.day.earnings')}</p><p className="m-0 text-[28px] font-bold text-[#1f7a46] leading-none mt-1">{nok(c.earning)}</p></div>
+                        <p className="m-0 text-[13px] text-gray-500 text-end">{t('driverLanding.day.card.total', { amount: nok(SAMPLE_PRICE) })}<br />{t('driverLanding.day.card.commission', { rate: Math.round(c.rate * 100), amount: nok(c.commission) })}</p>
+                      </div>
+                      <span className="flex items-center justify-center gap-2 h-[52px] rounded-2xl bg-[#24513B] text-white text-[17px] font-semibold">
+                        <Ico d={I.check} className="w-5 h-5" />{t(`driverPortal.${ACTION_KEY[stage.key]}`)}
+                      </span>
                     </div>
                   </div>
-                  {/* the portal's five tabs as the bar at the foot of the screen */}
+
                   <nav className="bg-white border-t border-gray-200 grid grid-cols-5 pt-2 pb-[30px]">
                     {PORTAL_TABS.map(tab => (
                       <span key={tab} className={`flex flex-col items-center gap-1 text-[10px] tracking-tight font-medium ${tab === 'jobs' ? 'text-[#24513B]' : 'text-gray-500'}`}>
@@ -304,58 +340,57 @@ export function DayOnFlyttGo() {
                     ))}
                   </nav>
                 </div>
-                {/* glass and home indicator */}
-                <span className="pointer-events-none absolute inset-0 z-30 rounded-[42.5px] bg-[linear-gradient(118deg,rgba(255,255,255,.16)_0%,rgba(255,255,255,.05)_28%,rgba(255,255,255,0)_42%)]" />
+                <span className="pointer-events-none absolute inset-0 z-30 rounded-[40.5px] bg-[linear-gradient(118deg,rgba(255,255,255,.14)_0%,rgba(255,255,255,.04)_28%,rgba(255,255,255,0)_42%)]" />
                 <span className="absolute z-30 bottom-[7px] left-1/2 -translate-x-1/2 w-[35%] h-[4.5px] rounded-full bg-black" />
               </div>
             </div>
           </div>
         </div>
-        <figcaption className="mt-4 text-center text-[12px] font-semibold text-[#7A6436]">{t('driverLanding.day.sample', { plan: planName })}</figcaption>
+        <figcaption className="mt-5 text-center text-[12px] font-semibold text-[#7A6436]">{t('driverLanding.day.sample', { plan: planName })}</figcaption>
       </figure>
 
-      {/* The four stages and what the chosen one means */}
+      {/* Four steps; the active one in a pill */}
       <div role="tablist" aria-label={t('driverLanding.day.stagesLabel')} onKeyDown={onKey} className="[grid-area:steps] self-end relative grid grid-cols-4 min-w-0">
-          <span aria-hidden="true" className="absolute top-[19px] start-[12.5%] end-[12.5%] h-px bg-[#DCD4C2]" />
-          <span aria-hidden="true" className="absolute top-[19px] start-[12.5%] h-px bg-[#24513B] transition-all duration-500" style={{ width: `${(ix / 3) * 75}%` }} />
-          {STAGES.map((st, i) => (
-            <button key={st.key} ref={el => { tabs.current[i] = el; }} type="button" role="tab" id={`day-tab-${st.key}`} aria-selected={i === ix} aria-controls="day-panel" tabIndex={i === ix ? 0 : -1}
-                    onClick={() => setIx(i)} className={`relative flex flex-col items-center gap-2 ${focus}`}>
-              <span className={`w-10 h-10 rounded-full flex items-center justify-center text-[15px] border-2 transition ${i < ix ? 'bg-[#24513B] border-[#24513B] text-white' : i === ix ? 'bg-[#24513B] border-[#24513B] text-white ring-4 ring-[#24513B]/15' : 'bg-[#FFFEFA] border-[#CFC7B5] text-[#4A5260]'}`} style={serif}>{i < ix ? '✓' : i + 1}</span>
-              <span className={`text-[13px] sm:text-[14px] font-bold text-center leading-tight ${i === ix ? 'text-[#17212E]' : 'text-[#4A5260]'}`}>{t(`driverLanding.day.stages.${st.key}.label`)}</span>
-            </button>
-          ))}
-        </div>
+        <span aria-hidden="true" className="absolute top-[21px] start-[12.5%] end-[12.5%] h-[2px] bg-[#E2DACA]" />
+        <span aria-hidden="true" className="absolute top-[21px] start-[12.5%] h-[2px] bg-[#24513B] transition-all duration-500" style={{ width: `${(ix / 3) * 75}%` }} />
+        {STAGES.map((st, i) => (
+          <button key={st.key} ref={el => { tabs.current[i] = el; }} type="button" role="tab" id={`day-tab-${st.key}`} aria-selected={i === ix} aria-controls="day-panel" tabIndex={i === ix ? 0 : -1}
+                  onClick={() => setIx(i)} className={`relative flex flex-col items-center gap-2.5 ${focus}`}>
+            <span className={`w-11 h-11 rounded-full flex items-center justify-center text-[16px] border-2 transition ${i <= ix ? 'bg-[#24513B] border-[#24513B] text-white' : 'bg-[#FFFEFA] border-[#CFC7B5] text-[#4A5260]'} ${i === ix ? 'ring-[5px] ring-[#24513B]/15' : ''}`} style={serif}>{i < ix ? '✓' : i + 1}</span>
+            <span className={`text-[13px] sm:text-[14px] font-bold text-center leading-tight px-3 py-1.5 rounded-full transition ${i === ix ? 'bg-[#24513B] text-white' : 'text-[#4A5260]'}`}>{t(`driverLanding.day.stages.${st.key}.label`)}</span>
+          </button>
+        ))}
+      </div>
 
+      {/* What the chosen step means */}
       <div className="[grid-area:panel] min-w-0 self-start">
-        <div id="day-panel" role="tabpanel" aria-labelledby={`day-tab-${stage.key}`} className="bg-[#FFFEFA] border border-[#E2DACA] shadow-[0_24px_48px_-36px_rgba(23,33,46,.35)]">
-          <div key={ix} className="fg-stage min-[1360px]:grid min-[1360px]:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-            <div className="p-6 md:p-8">
-              <p className="inline-block m-0 mb-4 px-3 py-1 text-[11px] font-bold tracking-[.12em] uppercase text-[#7A6436] bg-[#F3EEE2]">{t('driverLanding.day.stepOf', { n: ix + 1, total: STAGES.length })}</p>
-              <h3 className="text-[30px] md:text-[34px] !font-normal !tracking-[-.01em] leading-[1.1] m-0 mb-3" style={serif}>{t(`driverLanding.day.stages.${stage.key}.title`)}</h3>
-              <p className="text-[15px] leading-relaxed text-[#4A5260] m-0 mb-5">{t(`driverLanding.day.stages.${stage.key}.text`)}</p>
-              <ul className="list-none p-0 m-0 space-y-2.5">
+        <div id="day-panel" role="tabpanel" aria-labelledby={`day-tab-${stage.key}`} className="rounded-[24px] bg-[#FFFEFA] border border-[#EDE6D6] shadow-[0_40px_80px_-50px_rgba(23,33,46,.45)] overflow-hidden">
+          <div key={ix} className="fg-stage min-[1360px]:grid min-[1360px]:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+            <div className="p-7 md:p-9">
+              <p className="inline-block m-0 mb-4 px-3.5 py-1.5 rounded-full text-[11px] font-bold tracking-[.12em] uppercase text-[#7A6436] bg-[#F3EEE2]">{t('driverLanding.day.stepOf', { n: ix + 1, total: STAGES.length })}</p>
+              <h3 className="text-[30px] md:text-[34px] !font-normal !tracking-[-.01em] leading-[1.1] m-0 mb-3 text-[#17212E]" style={serif}>{t(`driverLanding.day.stages.${stage.key}.title`)}</h3>
+              <p className="text-[15px] leading-relaxed text-[#4A5260] m-0 mb-6">{t(`driverLanding.day.stages.${stage.key}.text`)}</p>
+              <ul className="list-none p-0 m-0 space-y-3">
                 {(['p1', 'p2', 'p3'] as const).map(pk => (
-                  <li key={pk} className="flex gap-2.5 text-[14px] leading-snug">
-                    <span aria-hidden="true" className="flex-shrink-0 w-5 h-5 rounded-full bg-[#24513B] text-white text-[11px] flex items-center justify-center mt-px">✓</span>
+                  <li key={pk} className="flex gap-3 text-[14.5px] leading-snug text-[#17212E]">
+                    <span aria-hidden="true" className="flex-shrink-0 w-[22px] h-[22px] rounded-full bg-[#24513B] text-white flex items-center justify-center"><Ico d={I.check} className="w-3.5 h-3.5" /></span>
                     {t(`driverLanding.day.stages.${stage.key}.${pk}`)}
                   </li>
                 ))}
               </ul>
             </div>
-            <dl className="m-0 px-6 md:px-8 py-5 border-t border-[#E2DACA] grid grid-cols-2 gap-4 text-[13px] min-[1360px]:border-t-0 min-[1360px]:border-s min-[1360px]:grid-cols-1 min-[1360px]:content-center min-[1360px]:gap-5 min-[1360px]:py-8 min-[1360px]:text-[14px]">
-              <div className="flex flex-col-reverse gap-1 min-[1360px]:flex-row min-[1360px]:justify-between min-[1360px]:items-baseline min-[1360px]:gap-4 min-[1360px]:pb-4 min-[1360px]:border-b min-[1360px]:border-[#EDE6D6]"><dt className="text-[#4A5260]">{t('driverLanding.day.total')}</dt><dd className="m-0 text-[17px] sm:text-[20px] whitespace-nowrap" style={serif}>{nok(SAMPLE_PRICE)}</dd></div>
-              <div className="flex flex-col-reverse gap-1 min-[1360px]:flex-row min-[1360px]:justify-between min-[1360px]:items-baseline min-[1360px]:gap-4 min-[1360px]:pb-4 min-[1360px]:border-b min-[1360px]:border-[#EDE6D6]"><dt className="text-[#4A5260]">{t('driverLanding.day.commission', { rate: Math.round(c.rate * 100) })}</dt><dd className="m-0 text-[17px] sm:text-[20px] whitespace-nowrap" style={serif}>{nok(c.commission)}</dd></div>
-              <div className="col-span-2 min-[1360px]:col-span-1 flex flex-col-reverse gap-1 min-[1360px]:flex-row min-[1360px]:justify-between min-[1360px]:items-baseline bg-[#EEF3EF] px-3 py-2 min-[1360px]:py-3"><dt className="font-semibold text-[#1f4a33]">{t('driverLanding.day.earnings')}</dt><dd className="m-0 text-[18px] sm:text-[22px] text-[#1f4a33] whitespace-nowrap" style={serif}>{nok(c.earning)}</dd></div>
-              <p className="col-span-2 min-[1360px]:col-span-1 m-0 text-[12px] text-[#4A5260]">{t('driverLanding.day.moneyNote')}</p>
+            <dl className="m-0 p-7 md:p-8 border-t min-[1360px]:border-t-0 min-[1360px]:border-s border-[#EDE6D6] bg-[#FBF8F1]/60 flex flex-col justify-center gap-4 text-[14px]">
+              <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#EDE6D6]"><dt className="flex items-center gap-2.5 text-[#4A5260] whitespace-nowrap"><span className="text-[#9F8249]"><Ico d={I.coins} /></span>{t('driverLanding.day.total')}</dt><dd className="m-0 text-[18px] whitespace-nowrap" style={serif}>{nok(SAMPLE_PRICE)}</dd></div>
+              <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#EDE6D6]"><dt className="flex items-center gap-2.5 text-[#4A5260] whitespace-nowrap"><span className="text-[#9F8249]"><Ico d={I.percent} /></span>{t('driverLanding.day.commission', { rate: Math.round(c.rate * 100) })}</dt><dd className="m-0 text-[18px] whitespace-nowrap" style={serif}>{nok(c.commission)}</dd></div>
+              <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#E8F0EA] px-4 py-3.5"><dt className="flex items-center gap-2.5 font-semibold text-[#1f4a33] whitespace-nowrap"><span><Ico d={I.wallet} /></span>{t('driverLanding.day.earnings')}</dt><dd className="m-0 text-[21px] text-[#1f4a33] whitespace-nowrap" style={serif}>{nok(c.earning)}</dd></div>
+              <p className="m-0 text-[12px] text-[#4A5260] leading-relaxed">{t('driverLanding.day.moneyNote')}</p>
             </dl>
           </div>
         </div>
-
-        <div className="mt-6 flex items-center justify-center gap-5">
-          <button type="button" onClick={() => setIx((ix + 3) % 4)} aria-label={t('driverLanding.day.prev')} className={`w-11 h-11 rounded-full border border-[#CFC7B5] bg-[#FFFEFA] hover:bg-[#F3EEE2] ${focus}`}>←</button>
-          <span className="flex gap-2" aria-hidden="true">{STAGES.map((st, i) => <span key={st.key} className={`h-2 rounded-full transition-all ${i === ix ? 'w-6 bg-[#24513B]' : 'w-2 bg-[#CFC7B5]'}`} />)}</span>
-          <button type="button" onClick={() => setIx((ix + 1) % 4)} aria-label={t('driverLanding.day.next')} className={`w-11 h-11 rounded-full bg-[#24513B] hover:bg-[#1C4130] text-white ${focus}`}>→</button>
+        <div className="mt-7 flex items-center justify-center gap-5">
+          <button type="button" onClick={() => setIx((ix + 3) % 4)} aria-label={t('driverLanding.day.prev')} className={`w-12 h-12 rounded-full border border-[#CFC7B5] bg-[#FFFEFA] hover:bg-[#F3EEE2] ${focus}`}>←</button>
+          <span className="flex gap-2" aria-hidden="true">{STAGES.map((st, i) => <span key={st.key} className={`h-2 rounded-full transition-all ${i === ix ? 'w-7 bg-[#24513B]' : 'w-2 bg-[#CFC7B5]'}`} />)}</span>
+          <button type="button" onClick={() => setIx((ix + 1) % 4)} aria-label={t('driverLanding.day.next')} className={`w-12 h-12 rounded-full bg-[#24513B] hover:bg-[#1C4130] text-white ${focus}`}>→</button>
         </div>
       </div>
     </div>
