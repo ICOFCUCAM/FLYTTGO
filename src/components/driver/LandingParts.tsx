@@ -242,53 +242,57 @@ export function DayOnFlyttGo() {
 
       {/* One phone: the driver portal's own job card for the chosen stage */}
       <figure className="[grid-area:phone] m-0 justify-self-center self-start xl:self-center">
-        {/* A 6.1-inch phone drawn to its proportions (71.6 × 147.6 mm): aluminium edge, thin even bezel,
-          * Dynamic Island, the buttons where they sit (Action and volume left; side button and Camera Control
-          * right), status bar and home indicator. Drawn in CSS: no product photograph. */}
-        <div aria-hidden="true" className="fg-phone relative w-[300px] sm:w-[320px] aspect-[71.6/147.6]">
-          {/* buttons */}
-          <span className="fg-phone-btn absolute -start-[3.5px] top-[17%] h-[4.6%] w-[3px] rounded-s-[2px]" />
-          <span className="fg-phone-btn absolute -start-[3.5px] top-[25%] h-[8.4%] w-[3px] rounded-s-[2px]" />
-          <span className="fg-phone-btn absolute -start-[3.5px] top-[35.4%] h-[8.4%] w-[3px] rounded-s-[2px]" />
-          <span className="fg-phone-btn absolute -end-[3.5px] top-[27%] h-[13%] w-[3px] rounded-e-[2px]" />
-          <span className="fg-phone-btn absolute -end-[3px] top-[56%] h-[7.6%] w-[2.5px] rounded-e-[2px] opacity-80" />
-          {/* aluminium edge, black bezel, screen */}
-          <div className="fg-phone-edge absolute inset-0 rounded-[54px] p-[3px]">
-            <div className="h-full rounded-[51px] bg-black p-[9px]">
-              <div className="relative h-full rounded-[43px] overflow-hidden bg-gray-50">
-                <span className="absolute top-[11px] left-1/2 -translate-x-1/2 w-[33%] h-[31px] rounded-full bg-black z-10">
-                  <span className="absolute right-[12px] top-1/2 -translate-y-1/2 w-[9px] h-[9px] rounded-full bg-[#14161c] ring-1 ring-[#23262e]" />
-                </span>
-                <div className="flex items-center justify-between h-[52px] ps-8 pe-7 text-[14px] font-semibold text-gray-900 tracking-tight">
-                  <span>9:41</span>
-                  <span className="flex items-center gap-[5px]">
-                    <svg width="17" height="11" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx=".8" fill="currentColor"/><rect x="4.6" y="5" width="3" height="6" rx=".8" fill="currentColor"/><rect x="9.2" y="2.6" width="3" height="8.4" rx=".8" fill="currentColor"/><rect x="13.8" y="0" width="3" height="11" rx=".8" fill="currentColor"/></svg>
-                    <svg width="15" height="11" viewBox="0 0 15 11"><path d="M7.5 2.2c2 0 3.9.8 5.3 2.1l1.1-1.1A9 9 0 0 0 7.5.6 9 9 0 0 0 1.1 3.2l1.1 1.1A7.5 7.5 0 0 1 7.5 2.2Zm0 3.2c1.2 0 2.3.4 3.1 1.2l1.1-1.1a6 6 0 0 0-8.4 0l1.1 1.1c.8-.8 1.9-1.2 3.1-1.2Zm0 3.1c-.5 0-.9.2-1.2.5L7.5 10.2 8.7 9a1.7 1.7 0 0 0-1.2-.5Z" fill="currentColor"/></svg>
-                    <svg width="26" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.4" fill="none" stroke="currentColor" opacity=".38"/><rect x="2" y="2" width="16.5" height="8" rx="2" fill="currentColor"/><path d="M24 4v4c.8-.3 1.3-1.1 1.3-2S24.8 4.3 24 4Z" fill="currentColor" opacity=".45"/></svg>
+        {/* A 6.1-inch phone (71.6 × 147.6 mm), drawn in CSS: dark aluminium edge, thin even bezel, Dynamic Island
+          * at its true size, buttons where they sit (Action and volume left; side button and Camera Control right),
+          * a glass sheen and the home indicator. Inside, the driver portal laid out at a phone's width (390 px, as iOS
+          * renders it) and scaled to the screen, so the screen is the portal as it looks on a phone. */}
+        <div aria-hidden="true" className="fg-phone relative w-[300px] sm:w-[320px] aspect-[71.6/147.6] [--s:0.7205] sm:[--s:0.7718]">
+          <span className="fg-phone-btn absolute -start-[3px] top-[17.5%] h-[4.4%] w-[3px] rounded-s-[1.5px]" />
+          <span className="fg-phone-btn absolute -start-[3px] top-[25.5%] h-[8%] w-[3px] rounded-s-[1.5px]" />
+          <span className="fg-phone-btn absolute -start-[3px] top-[35.5%] h-[8%] w-[3px] rounded-s-[1.5px]" />
+          <span className="fg-phone-btn absolute -end-[3px] top-[27%] h-[12.5%] w-[3px] rounded-e-[1.5px]" />
+          <span className="fg-phone-btn absolute -end-[2px] top-[57%] h-[7%] w-[2px] rounded-e-[1px]" />
+          <div className="fg-phone-edge absolute inset-0 rounded-[52px] p-[2.5px]">
+            <div className="h-full rounded-[49.5px] bg-black p-[7px]">
+              <div className="relative h-full rounded-[42.5px] overflow-hidden bg-gray-50">
+                {/* status bar, on the portal's white top bar */}
+                <div className="relative z-10 bg-white flex items-center justify-between h-[40px] sm:h-[42px] ps-[30px] pe-[24px] text-[13.5px] font-semibold text-black" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif', letterSpacing: '-.01em' }}>
+                  <span className="mt-[3px]">9:41</span>
+                  <span className="flex items-center gap-[5px] mt-[3px]">
+                    <svg width="16" height="10" viewBox="0 0 17 11"><rect x="0" y="7" width="3" height="4" rx=".8" fill="currentColor"/><rect x="4.6" y="5" width="3" height="6" rx=".8" fill="currentColor"/><rect x="9.2" y="2.6" width="3" height="8.4" rx=".8" fill="currentColor"/><rect x="13.8" y="0" width="3" height="11" rx=".8" fill="currentColor"/></svg>
+                    <svg width="14" height="10" viewBox="0 0 15 11"><path d="M7.5 2.2c2 0 3.9.8 5.3 2.1l1.1-1.1A9 9 0 0 0 7.5.6 9 9 0 0 0 1.1 3.2l1.1 1.1A7.5 7.5 0 0 1 7.5 2.2Zm0 3.2c1.2 0 2.3.4 3.1 1.2l1.1-1.1a6 6 0 0 0-8.4 0l1.1 1.1c.8-.8 1.9-1.2 3.1-1.2Zm0 3.1c-.5 0-.9.2-1.2.5L7.5 10.2 8.7 9a1.7 1.7 0 0 0-1.2-.5Z" fill="currentColor"/></svg>
+                    <svg width="24" height="11" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.4" fill="none" stroke="currentColor" opacity=".35"/><rect x="2" y="2" width="16.5" height="8" rx="2" fill="currentColor"/><path d="M24 4v4c.8-.3 1.3-1.1 1.3-2S24.8 4.3 24 4Z" fill="currentColor" opacity=".4"/></svg>
                   </span>
                 </div>
-            <div className="flex items-center justify-between px-4 mt-3 mb-2">
-              <span className="text-[14px] font-bold text-gray-900">FlyttGo Driver</span>
-              <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-green-100 text-green-700">{t('driverPortal.online')}</span>
-            </div>
-            <div className="flex gap-1.5 px-4 pb-3 overflow-hidden">
-              {PORTAL_TABS.map(tab => (
-                <span key={tab} className={`flex-shrink-0 px-2.5 py-1 rounded text-[11px] font-medium ${tab === 'jobs' ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}>{t(`driverPortal.${tab}`)}</span>
-              ))}
-            </div>
-            <div key={ix} className="fg-stage px-3">
-              {/* The Jobs tab's map card, as the portal shows it above the list (the map itself opens on tap). */}
-              <div className="origin-top-left scale-[.9] w-[111.2%] mb-[-4px]">
-                <div className="bg-white rounded-xl border p-4 flex items-center justify-between">
-                  <div><p className="font-bold text-gray-900 text-sm m-0">📍 {t('driverPortal.mapView')}</p><p className="text-xs text-gray-500 m-0">Tap a pin to see job details and accept.</p></div>
-                  <span className="flex-shrink-0 ms-3 whitespace-nowrap text-xs font-semibold text-emerald-600">{t('driverPortal.showMap')}</span>
+                <span className="absolute z-20 top-[8px] left-1/2 -translate-x-1/2 w-[32%] h-[27px] sm:h-[28.5px] rounded-full bg-black">
+                  <span className="absolute right-[10px] top-1/2 -translate-y-1/2 w-[8px] h-[8px] rounded-full bg-[radial-gradient(circle_at_35%_35%,#2b3242,#0b0d12_70%)]" />
+                </span>
+                {/* the portal at 390 px, scaled to the screen */}
+                <div className="origin-top-left" style={{ width: 390, transform: 'scale(var(--s))' }}>
+                  <div className="bg-white px-4 pb-4 pt-2 flex justify-between items-center border-b">
+                    <h1 className="text-xl font-bold m-0 text-gray-900" style={{ fontFamily: 'inherit', letterSpacing: 'normal' }}>{t('driverPortal.title')}</h1>
+                    <span className="px-4 py-2 rounded-full font-medium text-sm bg-green-100 text-green-700">{t('driverPortal.online')}</span>
+                  </div>
+                  <div key={ix} className="fg-stage p-6">
+                    <div className="flex gap-2 mb-6 flex-wrap">
+                      {PORTAL_TABS.map(tab => (
+                        <span key={tab} className={`px-4 py-2 rounded capitalize text-sm font-medium ${tab === 'jobs' ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}>{t(`driverPortal.${tab}`)}</span>
+                      ))}
+                    </div>
+                    <div className="space-y-4">
+                      <div className="bg-white rounded-xl border p-4">
+                        <div className="flex items-center justify-between">
+                          <div><h3 className="font-bold text-gray-900 text-sm m-0" style={{ fontFamily: 'inherit', letterSpacing: 'normal' }}>📍 {t('driverPortal.mapView')}</h3><p className="text-xs text-gray-500 m-0">Tap a pin to see job details and accept.</p></div>
+                          <span className="flex-shrink-0 ms-3 text-xs font-semibold text-emerald-600">{t('driverPortal.showMap')}</span>
+                        </div>
+                      </div>
+                      <JobCard preview job={job} plan={SAMPLE_PLAN} driverId="sample-driver" />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="origin-top-left scale-[.9] w-[111.2%]">
-                <JobCard preview job={job} plan={SAMPLE_PLAN} driverId="sample-driver" />
-              </div>
-            </div>
-                <span className="absolute bottom-[8px] left-1/2 -translate-x-1/2 w-[36%] h-[5px] rounded-full bg-black/85" />
+                {/* glass and home indicator */}
+                <span className="pointer-events-none absolute inset-0 z-30 rounded-[42.5px] bg-[linear-gradient(118deg,rgba(255,255,255,.16)_0%,rgba(255,255,255,.05)_28%,rgba(255,255,255,0)_42%)]" />
+                <span className="absolute z-30 bottom-[7px] left-1/2 -translate-x-1/2 w-[35%] h-[4.5px] rounded-full bg-black" />
               </div>
             </div>
           </div>

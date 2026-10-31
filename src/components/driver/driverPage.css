@@ -19,11 +19,11 @@
 @keyframes fg-stage-in { from { opacity: 0; transform: translate3d(0, 10px, 0); } to { opacity: 1; transform: none; } }
 .fg-stage { animation: fg-stage-in .45s cubic-bezier(.2,.7,.2,1); }
 
-/* The phone's aluminium edge and buttons: a soft metal gradient with a light rim. */
-.fg-phone { filter: drop-shadow(0 40px 50px rgba(23,40,32,.28)) drop-shadow(0 10px 14px rgba(23,40,32,.18)); }
-.fg-phone-edge { background: linear-gradient(145deg, #c9ccd1 0%, #8d9198 22%, #5d6168 48%, #9a9ea5 74%, #d4d7db 100%);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), inset 0 0 0 2px rgba(0,0,0,.25); }
-.fg-phone-btn { background: linear-gradient(90deg, #6c7077, #b9bcc2 50%, #6c7077); }
+/* The phone: black aluminium edge with one soft highlight, buttons in the same metal, a soft studio shadow. */
+.fg-phone { filter: drop-shadow(0 34px 38px rgba(20,28,24,.30)) drop-shadow(0 6px 10px rgba(20,28,24,.22)); }
+.fg-phone-edge { background: linear-gradient(135deg, #5b5e64 0%, #2a2c30 18%, #17181b 50%, #2a2c30 82%, #6a6d73 100%);
+  box-shadow: inset 0 0 0 .75px rgba(255,255,255,.28), inset 0 0 0 1.75px rgba(0,0,0,.6); }
+.fg-phone-btn { background: linear-gradient(90deg, #1c1d20, #55585e 45%, #2a2c30); box-shadow: 0 0 0 .5px rgba(0,0,0,.5); }
 
 @media (prefers-reduced-motion: reduce) {
   .fg-hero-photo { animation: none; }
