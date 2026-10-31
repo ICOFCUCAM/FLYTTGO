@@ -943,6 +943,11 @@
 /* Closing to footer: the ivory closing ends on a champagne hairline before the deep-blue footer. */
 .fgv2 main > section.final-cta { padding-bottom: calc(var(--section) * 1.1); box-shadow: inset 0 -1px var(--gold); }
 @media (max-width: 700px) { .fgv2[data-closing="b"] .final-actions { grid-template-columns: 1fr; } .fgv2[data-closing="b"] .final-actions .btn { border-right: 0; border-bottom: 1px solid var(--line); min-height: 64px; } }
+@media (max-width: 700px) {
+  .fgv2[data-closing="b"] .final-actions .btn { flex-direction: row; justify-content: space-between; align-items: baseline; text-align: left; padding: 18px 4px; min-height: 0; }
+  .fgv2[data-closing="b"] .final-note { flex-basis: 100%; text-align: left; order: 2; }
+  .fgv2 .final-cta h2 { font-size: calc(clamp(32px, 9vw, 44px) * var(--type-scale)); }
+}
 /* Closing C · split statement: the heading on the left, the words and actions on the right. */
 @media (min-width: 901px) {
   .fgv2[data-closing="c"] .final-cta > .wrap { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); column-gap: 64px; text-align: left; align-items: end; }
