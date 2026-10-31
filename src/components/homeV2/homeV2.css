@@ -555,7 +555,7 @@
 @media (max-width: 700px) { .fgv2 .network-column { grid-template-columns: 1fr; } }
 
 /* ── 17. Related links and the closing section ─────────────────────────── */
-.fgv2 .v2-related { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 26px; padding-top: 36px; font-size: 14px; }
+.fgv2 .v2-related { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 26px; margin-top: 44px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; }
 .fgv2 .v2-related span { font-size: var(--label-size); letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
 .fgv2 .v2-related a { font-weight: 600; color: var(--blue); border-bottom: 1px solid var(--gold); padding-bottom: 2px; }
 .fgv2 .v2-related a:hover { border-color: var(--blue); }
