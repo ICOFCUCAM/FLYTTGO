@@ -387,7 +387,10 @@
 .fgv2 .market-card .card-copy { left: 28px; right: 28px; bottom: 26px; }
 .fgv2 .market-card h3 { font-family: var(--font-display); font-weight: var(--head-weight); letter-spacing: -.025em; line-height: 1.12; margin: 0 0 8px; }
 .fgv2 .market-card p { max-width: 40ch; opacity: .92; margin: 0; }
-.fgv2 .market-card .card-arrow { border-radius: 0; }
+.fgv2 .market-card .card-arrow { border-radius: 0; transition: transform .3s, background .3s; }
+.fgv2 .market-card:hover .card-arrow, .fgv2 .market-card:focus-visible .card-arrow { background: var(--white); color: var(--blue); }
+.fgv2 .market-card:focus-visible { outline: 3px solid var(--white); outline-offset: -6px; }
+.fgv2 .market-card:focus-visible img { transform: scale(1.03); }
 
 /* ── 9. Moving and transport: one vertical within FlyttGo ──────────────── */
 .fgv2 .legacy-suite .section-head p { max-width: 440px; }
