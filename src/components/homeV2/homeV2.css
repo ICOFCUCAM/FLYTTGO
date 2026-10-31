@@ -478,6 +478,10 @@
 /* The example company's records (demoRecords.ts). */
 .fgv2 .v2-records { width: 100%; border-collapse: collapse; font-size: 14px; }
 .fgv2 .v2-records th { text-align: left; font-size: var(--label-size); letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--muted); padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--paper); }
+.fgv2 .v2-records tbody tr { transition: background .15s; }
+.fgv2 .v2-records tbody tr:hover td { background: #faf8f2; }
+.fgv2 .v2-records td { font-variant-numeric: tabular-nums; }
+.fgv2 .v2-records td:last-child .v2-chip { min-width: 96px; text-align: center; }
 .fgv2 .v2-records td { padding: 14px 16px; border-bottom: 1px solid var(--line); color: var(--ink); vertical-align: middle; }
 .fgv2 .v2-records tr:last-child td { border-bottom: 0; }
 .fgv2 .v2-records td:first-child { font-weight: 600; }
