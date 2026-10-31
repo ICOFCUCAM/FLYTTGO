@@ -489,6 +489,8 @@
 @media (max-width: 900px) {
   .fgv2 :is(.bw-body > *, .bw-main, .bw-sidebar, .bw-panel) { min-width: 0; }
   .fgv2 .bw-nav { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; }
+  .fgv2 :is(.bw-nav, .finance-side nav) { scroll-snap-type: x proximity; scrollbar-width: none; mask-image: linear-gradient(90deg, #000 82%, transparent); padding-right: 28px; }
+  .fgv2 :is(.bw-nav, .finance-side nav) button { flex: none; scroll-snap-align: start; min-height: 44px; }
   .fgv2 .bw-metrics, .fgv2 .bw-lower { grid-template-columns: 1fr; }
   .fgv2 .bw-company { padding-bottom: 12px; }
 }
