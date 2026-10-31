@@ -92,7 +92,10 @@
 .fgv2 .btn-primary:hover { background: #18304f; border-color: #18304f; }
 .fgv2 .btn-light { background: transparent; border-color: rgba(32,63,104,.35); color: var(--blue); }
 .fgv2 .btn-light:hover { background: var(--paper); border-color: var(--blue); }
-.fgv2 :is(a, button, input, select):focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+/* Focus: a deep-blue ring on light grounds, a champagne ring on dark ones; never removed. */
+.fgv2 :is(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: max(var(--radius), 1px); }
+.fgv2 :is(.entry-dark, .hero-ledger, .final-cta, .bw-topbar, .network-node.core, .driver-panel, [data-workspace="b"] .business-workspace) :is(a, button):focus-visible,
+.fgv2[data-workspace="b"] .business-workspace > .wrap > :not(.bw-frame) :is(a, button):focus-visible { outline-color: var(--gold); }
 
 /* Product mockups: square, one warm hairline, one soft lift; deep-blue title bars. */
 .fgv2 :is(.bw-frame, .finance-frame, .ecosystem-frame, .wl-builder, .network-panel, .industry-panel, .dashboard) {
