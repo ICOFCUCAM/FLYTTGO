@@ -12,6 +12,12 @@ export function isFlyttgoHost(host: string): boolean {
     || h.endsWith('.vercel.app') || h.endsWith('.local');
 }
 
+/** FlyttGo's production addresses. Development tools (the design lab, /preview/lab) are never served there. */
+export function isProductionHost(host: string): boolean {
+  const h = host.toLowerCase();
+  return h === 'flyttgo.no' || h === 'www.flyttgo.no' || h === TRANSPORT_HOST;
+}
+
 /** True on the moving and transport front page's own address. */
 export function isTransportHost(host: string): boolean {
   return host.toLowerCase() === TRANSPORT_HOST;

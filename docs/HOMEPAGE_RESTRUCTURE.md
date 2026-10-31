@@ -165,6 +165,178 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
     - the "What every booking includes" cards are white, where they had no ground of their own and showed the grid's grey;
     - the hero's floating card no longer covers the caption.
 
+### Integrated platform experience (owner, 2026-10-30)
+
+**Colours.** In order, the owner rejected the brief's gold, emerald all over the page, navy with blue, architectpro.co's indigo and lavender, and near-black with violet. The second-pass art-direction brief returns to the established palette, each colour with one job. The failures before were gold and green used as text and fills.
+- **Ivory `#F5F3EB` and soft white `#FFFEFA`:** every ground. Sections alternate between them, divided by one warm hairline, so the page stays light.
+- **Deep blue `#203F68`:** headings, primary actions, labels and the few dark panels.
+- **Forest `#24513B` and evergreen `#20352B`:** positive signals only: available, approved, Book Now, ticks.
+- **Champagne gold `#C3A66C`:** hairlines, connectors and numerals. It appears as text only on deep blue, lightened to `#DCC9A0`. `readable_css` turns any gold text on a light ground into deep blue.
+- `build.py` recolours the design with `PALETTES['brand']`. The platform page keeps `PALETTES['emerald']` and is unchanged.
+- Text on light grounds is darkened to 7:1; the minimum is 4.5:1.
+
+**What changed on the page:**
+- **Hero:**
+  - The supporting message is the owner's: "Discover services, run your company and connect with a wider business network — all through one connected FlyttGo platform."
+  - Three actions: Explore services, My Company and For Organisations.
+  - The headline is still the owner's earlier choice, "Assisting Companies to Fly High. Run your company." The brief's recommended "One platform. More ways to grow." is not used yet.
+- **Journeys:** Find a Service, My Company and For Organisations are three equal cards. The third lists corporate solutions, the provider network and marketplace infrastructure, the last marked optional.
+- **One connected platform:**
+  - It shows four capabilities around the platform core, with the provider and business network as the layer that joins them; white-label infrastructure is labelled "build · optional".
+  - The lifecycle is Discover → Request → Quote → Book → Deliver → Invoice → Pay → Record.
+- **How FlyttGo works** (new, `#how-flyttgo-works`):
+  - the lifecycle;
+  - how each journey connects;
+  - one business's path from registration to a recorded payment;
+  - a status beside every capability.
+- **Related links** at the foot of six sections lead between related capabilities. The local services card leads to the industry workflows, not to the moving services page.
+
+**Menu** (`Header.tsx`, only on `/preview/home`): Explore, My Company, For Organisations, How it works, Become a Driver, Book Now, Sign in and Get started. Every earlier item is kept.
+- **Explore:** the five service groups, plus the moving tools.
+- **My Company:** ten items, each opening the matching tab of the business or finance workspace on the page.
+- **For Organisations:** three groups. Corporate solutions links the existing corporate pages. Provider network covers drivers, provider plans and opportunities. Marketplace infrastructure is marked optional.
+- **Get started** opens the existing sign-up, which asks first whether the visitor is a customer, a driver or a business.
+
+**Status shown on the page.** Sources: `docs/PLATFORM_AUDIT_2026-10-30.md`, `SERVICE_PLATFORM.md`.
+
+| Capability | Status |
+|---|---|
+| Moving and transport booking and tracking; driver network and plans | Available |
+| Company accounts, teams, jobs, appointments, invoices in the company's name | Available |
+| Company bookings, multiple users, corporate invoicing | Available |
+| Branded booking pages (`/b/<slug>`) | Available |
+| Accounting add-on | In development (authorised accountant's review) |
+| Operator-managed provider networks | In development |
+| Other businesses and categories in the central FlyttGo Marketplace; providers other than drivers | Planned |
+| Workspace, finance, studio, network and industry screens | Illustrative (marked on the page) |
+
+### Second-pass art direction (owner, 2026-10-30)
+
+A visual upgrade of the same structure: the three journeys, the four capabilities and white label as a specialised offering are kept.
+
+- **System:**
+  - One type scale: display headings 36–62 px, introductions 16 px, small print 14–15 px, labels 11 px.
+  - One section rhythm, 84–132 px.
+  - Square surfaces with one warm hairline; product mockups lift with a single soft shadow.
+  - Deep-blue primary and outlined secondary buttons, and a visible gold focus ring.
+  - One motif: the hero's curved top-right corner on every dark panel, and a gold hairline before every label.
+- **Hero:**
+  - The owner's "Assisting Companies to Fly High." stays, with "Find services. Run your company. Grow." in the serif line.
+  - The slideshow stays. The floating card and the index label are gone. The three journeys run as a deep-blue band at the foot of the picture.
+  - Explore services and My Company are buttons; For Organisations is a quieter text link.
+- **Journeys:** Explore (deep blue) and My Company (soft white) side by side. For Organisations is a strip across both, with its three options and marketplace infrastructure marked optional.
+- **One connected platform:**
+  - Four capabilities around the FlyttGo platform core, tied to it by gold hairlines.
+  - The provider and business network is the layer that joins them, inside the core, not a fifth product.
+  - White label is "04 / build · optional".
+- **Marketplace:** a Browse row of categories above the editorial gallery, with "More categories open as businesses join." beside it.
+- **Moving and transport:**
+  - Labelled "A FlyttGo vertical".
+  - Eight services: move-out cleaning and packing and assembly join them. Both are booking extras (`constants.ts`).
+  - The van note says rates are on the van size guide.
+- **Corporate:** the made-up figures and growth curve are removed. The demonstration shows bookings awaiting approval under a booker's spending limit, roles and permissions, and one monthly invoice, all marked as example data.
+- **Provider network:** told as part of the ecosystem (same business tools and records); plans stay on their own page.
+- **Marketplace Studio:** says provider onboarding is in development.
+- **Network model:** three plain tiers a business owner can read: identities, shared infrastructure, then supply and demand. The connector labels are removed.
+- **The two flagship demonstrations** (`demoRecords.ts`, preview only): one example company's records.
+  - **Business workspace:** each tab shows a table of records (today's schedule, customers, services and prices, jobs, quotes, invoices, records, team) with status chips.
+  - **Financial workspace:** an invoice with line items, 25 % MVA, a KID and the total due; a quote; matched payments; expenses with receipts; the year-end export (preparation only); a monthly report.
+  - Everything is marked "example data" and amounts belong to the example company. The design's own script, shared with the platform page, is not changed: these render after it on the same tabs.
+- **Pictures:** one treatment with a deep-blue veil. The cleaning card uses the design's own living-room photograph (Unsplash licence); every other picture is FlyttGo's own.
+
+### Refinement pass (owner's critique, 2026-10-30)
+
+A refinement of the existing page, not a redesign. The structure, journeys, interactions and availability labels are unchanged.
+
+- **Hero:** "Assisting Companies to Fly High." stays as the signature. Beneath it, smaller, sits "One connected platform for services, business operations and growth." Every slide gets one colour grade.
+- **Booking:** framed below the hero, introduced by "Start with a service". The widget is unchanged.
+- **Journeys:** shorter cards, each with its own coloured rule: gold for Explore, forest for My Company, deep blue for For Organisations. For Organisations is a panel beneath the two main routes.
+- **Platform:** the core with the four capabilities and their detail, then one sentence on ownership and boundaries. The lifecycle, the boundary panel and the principles row are removed here; the lifecycle appears once, in How FlyttGo works.
+- **How FlyttGo works:** the lifecycle as a process line. The six journeys are an editorial list under hairlines, not boxes. The example business path is framed.
+- **Order:** "What every booking includes" moves into the moving vertical.
+- **Business workspace:** the example company and the signed-in person in the sidebar.
+- **Financial workspace:** its own identity. An evergreen title bar, the lifecycle timeline after the introduction and above the workspace, tabular figures, and an evergreen total.
+- **Industries:** the selector is a row of buttons, with the selected industry in deep blue. Its text is at the page's type size.
+- **Marketplace:** one grade on every picture, restrained veils and a slow hover.
+- **Studio:** a wider settings column that adds the domain, the provider network (in development) and the payment model.
+- **Curved corner:** used only on the hero picture, the platform core and the provider panel.
+
+**Code:**
+- `homeV2.css` is rewritten as one ordered layer: one block per component, with its tablet and phone rules beside it, and no appended overrides. The hero breakpoints follow the design's own: it stacks below 760 px.
+- `build.py` gained `dedupe_css`. In the generated `design.v2.css` it removes declarations that a later rule for the same selector, in the same scope, overrides. That takes the file from 4,322 to 3,830 declarations and from 1,562 to 1,441 rules; hero rules go from 69 to 47.
+- Rules stay in place, so the page is pixel-identical before and after at 1440, 820 and 390 px. Checked with full-page screenshots.
+
+### 2036 mandate: design lab, competing directions, signature demonstrations (owner, 2026-10-30)
+
+**Design settings in one place.** `src/components/homeV2/design.config.ts` holds the tokens (six palette colours, heading, hero and spacing scales, content width, corner radius, signature corner, shadow depth, photo saturation and warmth) and the composition variant of each key section. `applyDesign()` writes tokens as custom properties and variants as data attributes on `.fgv2`; `homeV2.css` reads nothing else. `HomeV2Page` applies the selected defaults.
+
+**Design Refinement Lab** at `/preview/lab` (`homeV2/lab/DesignLab.tsx`):
+- **Isolation:** private to preview and development hosts. It refuses to open on `flyttgo.no`, `www.flyttgo.no` and `transport.flyttgo.no` (`isProductionHost()`), carries `noindex`, is linked from nowhere, and shows no menu bar or footer.
+- **What it frames:** the real `/preview/home?lab=1`, one to three times at an identical viewport (1440, 1280, 820 or 390). Each frame has its own section variants; the colour pickers and sliders apply to every frame. The preview accepts settings only from a framing page of the same origin, and never on a production host.
+- **Inspection:** each frame reports back anything wider than the viewport and its smallest text. The Responsive check shows frame A at all four viewports and marks a harmed one in red. "Show section" scrolls every frame to the same section.
+- **Components tab:** the shared pieces (contrast table, type, buttons, status chips, job trail, transaction explorer, related links) drawn with the page's stylesheets and the trial tokens.
+- **Decisions tab:** records a choice with its reason from the open frames. Settings are kept in this browser; Export JSON downloads them with the reviewed record in `lab/decisions.ts`.
+
+**Competition.** The hero and five sections each have three materially different directions, compared at 1440 × 900 and 390 × 844. The reasons are in `lab/decisions.ts`:
+
+| Section | Directions | Selected |
+|---|---|---|
+| Hero | Editorial split, full-bleed photograph, typographic statement | **B, full-bleed photograph** |
+| Journeys | Two routes and a panel, editorial index, three equal columns | **A** |
+| Marketplace | One dominant picture, film strip, catalogue rows | **A** |
+| Business workspace | Framed on ivory, deep-blue stage, centred and wider | **B, deep-blue stage** |
+| Financial workspace | Evergreen title bar, paper ledger, evergreen ground | **A** |
+| Marketplace Studio | Settings beside, storefront first, settings as toolbar | **A** |
+
+The losing directions stay selectable in the lab. The defects the comparison found in them were fixed: unreadable text in catalogue rows and in the editorial index, and a light note on the evergreen ground.
+
+**Hero.** Three typographic levels: the brand phrase; the proposition as a quieter sans line; then the actions. The photograph runs edge to edge with the slideshow. The ivory card always ends above the journeys band, which runs under the picture into the booking widget.
+
+**One example job across both workspaces.** All of the example company's records now tell one story: A. Berg's leak repair.
+- **Business workspace:** the repair was finished yesterday and invoice 1042 has been sent. Its rows are highlighted and focusable. A trail under the records shows Enquiry → Booked → Completed → Invoice 1042 → Payment (awaiting, KID). "See it in finance →" moves to the financial workspace.
+- **Financial workspace, Overview:** a transaction explorer follows the same job through Work completed → Invoice → Payment → Voucher → Financial record → Reporting.
+  - The voucher posts debit 1500 receivables NOK 3 412,50, credit 3000 sales NOK 2 730,00 and credit 2700 output MVA NOK 682,50 (NS 4102).
+  - The record keeps "Subject to your accountant's review".
+  - Everything is marked example, in English and Norwegian.
+
+**Marketplace Studio.** The storefront now also follows:
+- the secondary colour;
+- the brand mark (initials, monogram or name only);
+- the domain (`name.flyttgo.no` or an own `.no`), which follows the name until it is edited;
+- which categories show;
+- the storefront style (classic, editorial or compact);
+- the booking and payment model (you sell, or FlyttGo sells moving and delivery).
+
+Provider networks stay "In development". Nothing is created, connected or charged.
+
+**Corporate:** roles, departments and locations; booking within a limit; and reporting with the API as a paid add-on. No figures are shown.
+
+**Order:** follows the commercial order:
+1. Hero and booking
+2. Journeys
+3. Marketplace
+4. Moving
+5. My Company
+6. Finance
+7. Industries
+8. Connected platform and how it works
+9. Corporate
+10. Providers
+11. White-label
+12. Network
+13. Closing, with the three journeys
+
+**Motion:** sections rise in once as they enter, photographs reveal top to bottom, the hero copy staggers, workspace and finance panels fade between tabs, the trail steps in order, and cards lift on hover. Motion is off under `prefers-reduced-motion` and when the lab's Motion is Off. Everything stays keyboard operable.
+
+**Build:**
+- Images below the hero load lazily.
+- Norwegian text inputs now start translated (the studio copies them into its preview). This applies to the restructured page only, so the platform page's output is unchanged.
+
+**Check script:** `scripts/platform-home/visual-check.cjs` runs against a served build:
+- full-page screenshots at 1440, 1280, 820 and 390, compared with a local baseline (`.visual-check/`, not committed);
+- overflow, smallest text, slideshow, booking widget and console errors at each width;
+- the job trail into finance, all six explorer documents, the voucher's accounts, every studio control, and the lab.
+
 ## Stage D: content checked against the source
 
 | Content | Where it is |
@@ -184,16 +356,18 @@ The page is built from the owner's own Stage 20 design, upgraded, not replaced.
 
 | Check | Result |
 |---|---|
-| Widths 1440, 820 and 390 px | The page fits; no horizontal scroll |
+| Widths 1440, 1280, 1024, 820 and 390 px | The page fits; no horizontal scroll (`visual-check.cjs`) |
 | Headings | One h1 |
 | Search engines | Robots tag reads `noindex, nofollow` |
 | Pictures | No broken images |
 | Console | No script errors. Network errors also seen on `/transport`, so not caused by this page: the map library from unpkg, blocked in the test environment, and `flyttgo_public_identity`. |
 | Interactions | Hero scroll, workspace and finance tabs, studio preview and industry selector all work |
 | Links | Ten checked; each opens its real page |
-| Menu | Every item of Explore, My Company and For Organisations opens its page or section |
+| Menu | Every item of Explore, My Company and For Organisations opens its page, section or workspace tab (34 items checked); the bar fits from 1024 px |
 | Contrast | Every text at 4.5:1 (3:1 large) on its ground; smallest text 11 px; words on photographs on a veil |
-| Slideshow and booking widget | Six slides advance; the widget sits under the hero at 1440, 820 and 390 px |
+| Slideshow and booking widget | Six slides advance; the widget sits under the hero at 1440, 1280, 820 and 390 px |
+| Demonstrations | Trail to finance, six explorer documents, voucher accounts and every studio control (`visual-check.cjs`) |
+| Design lab | Opens on preview hosts, refuses production hosts (unit test), `noindex`, frames report back, compare and components work |
 
 ## Not done yet
 

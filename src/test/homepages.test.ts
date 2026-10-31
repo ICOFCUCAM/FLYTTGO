@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isFlyttgoHost, isTransportHost, transportUrl, TRANSPORT_HOST } from '../lib/hosts';
+import { isFlyttgoHost, isProductionHost, isTransportHost, transportUrl, TRANSPORT_HOST } from '../lib/hosts';
 import { pageToPath, pageTitle, pathToPage } from '../lib/pageRoutes';
 
 /* docs/HOMEPAGES.md: flyttgo.no shows the platform's front page, and the
@@ -28,6 +28,22 @@ describe('the two front pages', () => {
   it('the restructured homepage is under review on its own path', () => {
     expect(pathToPage('/preview/home')).toBe('home-preview');
     expect(pageToPath('home-preview')).toBe('/preview/home');
+  });
+
+  it('the design lab has its own preview path and never opens on a production host', () => {
+    expect(pathToPage('/preview/lab')).toBe('home-lab');
+    expect(pageToPath('home-lab')).toBe('/preview/lab');
+    expect(isProductionHost('flyttgo.no')).toBe(true);
+    expect(isProductionHost('WWW.flyttgo.no')).toBe(true);
+    expect(isProductionHost('transport.flyttgo.no')).toBe(true);
+    expect(isProductionHost('flyttgo-git-preview.vercel.app')).toBe(false);
+    expect(isProductionHost('localhost')).toBe(false);
+  });
+
+  it('the selected design uses only variants the lab offers', async () => {
+    const { DEFAULT_VARIANTS, VARIANT_OPTIONS } = await import('../components/homeV2/design.config');
+    for (const o of VARIANT_OPTIONS) expect(o.options.map(x => x.value)).toContain(DEFAULT_VARIANTS[o.key]);
+    expect(Object.keys(DEFAULT_VARIANTS).sort()).toEqual(VARIANT_OPTIONS.map(o => o.key).sort());
   });
 
   it('links to it stay on the same site until its own address is set', () => {

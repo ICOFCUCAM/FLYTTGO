@@ -194,59 +194,94 @@ export default function Header() {
   };
 
   /* On the restructured homepage (/preview/home, docs/HOMEPAGE_RESTRUCTURE.md)
-   * the menu follows the three journeys: Explore, My Company, For
-   * Organisations, with Become a Driver and Book Now on the bar as before.
-   * The Moving Tools and the Companies links are groups inside the menus, and
-   * creating a marketplace of one's own sits apart at the foot of For
-   * Organisations as a specialised offering. */
+   * the menu follows the journeys (owner, 30 October 2026): Explore, My
+   * Company, For Organisations and How it works, with Become a Driver and
+   * Book Now on the bar as before. Every earlier item is kept inside them (the
+   * Moving Tools and the Companies links). My Company's items open the matching
+   * tab of the page's business or finance workspace; creating a marketplace
+   * is the last, optional group of For Organisations. */
   const preview = currentPage === 'home-preview';
-  type JourneyItem = { label: string; desc: string; go: () => void };
-  const page = (label: string, desc: string, to: Page): JourneyItem => ({ label, desc, go: () => handleNav(to) });
-  const section = (label: string, desc: string, id: string): JourneyItem => ({ label, desc, go: () => toSection(id) });
-  const JOURNEYS: { id: string; label: string; items: JourneyItem[]; group?: { title: string; items: JourneyItem[] }; note?: string; specialised?: JourneyItem }[] = [
-    { id: 'explore', label: t('header.journeys.explore'), items: [
-        page(t('header.journeys.services'), t('header.journeys.servicesDesc'), 'services'),
-        page(t('header.journeys.moving'), t('header.journeys.movingDesc'), 'booking'),
-        ...(isTransportHost(window.location.hostname) ? [] : [page(t('header.journeys.transport'), t('header.journeys.transportDesc'), 'transport-home')]),
-        section(t('header.journeys.local'), t('header.journeys.localDesc'), 'marketplace'),
-      ],
-      group: { title: t('header.movingTools'), items: MOVING_TOOLS.map((tool) => page(tool.label, tool.desc, tool.page)) } },
-    { id: 'company', label: t('header.journeys.myCompany'), items: [
-        section(t('header.journeys.workspace'), t('header.journeys.workspaceDesc'), 'business-workspace'),
-        section(t('header.journeys.tools'), t('header.journeys.toolsDesc'), 'unified-platform'),
-        section(t('header.journeys.finance'), t('header.journeys.financeDesc'), 'financial-administration'),
-      ],
-      note: t('header.journeys.companyNote') },
-    { id: 'organisations', label: t('header.journeys.organisations'), items: [
-        page(t('header.journeys.corporate'), t('header.journeys.corporateDesc'), 'corporate'),
-        page(t('header.journeys.providers'), t('header.journeys.providersDesc'), 'driver-onboarding'),
-      ],
-      group: { title: t('header.corporate'), items: CORPORATE_LINKS.map((link) => page(link.label, link.desc, link.page)) },
-      specialised: page(t('header.journeys.createMarketplace'), t('header.journeys.createMarketplaceDesc'), 'white-label') },
+  type JourneyItem = { label: string; desc?: string; go: () => void };
+  type JourneyColumn = { title?: string; tag?: string; items: JourneyItem[]; note?: string };
+  const page = (label: string, to: Page, desc?: string): JourneyItem => ({ label, desc, go: () => handleNav(to) });
+  const section = (label: string, id: string, tab?: string, desc?: string): JourneyItem => ({
+    label, desc, go: () => {
+      toSection(id);
+      if (tab) document.querySelector<HTMLButtonElement>(`#${id} ${tab}`)?.click();
+    },
+  });
+  const jt = (key: string) => t(`header.journeys.${key}`);
+  const JOURNEYS: { id: string; label: string; width: string; columns: JourneyColumn[] }[] = [
+    { id: 'explore', label: jt('explore'), width: 'w-[min(600px,calc(100vw-32px))]', columns: [
+      { title: jt('exploreTitle'), items: [
+        page(jt('moving'), 'booking', jt('movingDesc')),
+        ...(isTransportHost(window.location.hostname) ? [] : [page(jt('transport'), 'transport-home', jt('transportDesc'))]),
+        section(jt('local'), 'marketplace', undefined, jt('localDesc')),
+        section(jt('professional'), 'industry-experiences', undefined, jt('professionalDesc')),
+        section(jt('hospitality'), 'marketplace', undefined, jt('hospitalityDesc')),
+        page(jt('services'), 'services', jt('servicesDesc')),
+      ] },
+      { title: t('header.movingTools'), items: MOVING_TOOLS.map((tool) => page(tool.label, tool.page, tool.desc)) },
+    ] },
+    { id: 'company', label: jt('myCompany'), width: 'w-[min(620px,calc(100vw-32px))]', columns: [
+      { title: jt('runTitle'), items: [
+        section(jt('overview'), 'business-workspace', '[data-bw="overview"]'),
+        section(jt('servicesPricing'), 'business-workspace', '[data-bw="services"]'),
+        section(jt('customers'), 'business-workspace', '[data-bw="customers"]'),
+        section(jt('bookings'), 'business-workspace', '[data-bw="bookings"]'),
+        section(jt('quotes'), 'business-workspace', '[data-bw="quotes"]'),
+      ] },
+      { title: jt('moneyTitle'), items: [
+        section(jt('employees'), 'business-workspace', '[data-bw="team"]'),
+        section(jt('invoices'), 'financial-administration', '[data-finance="invoices"]'),
+        section(jt('payments'), 'financial-administration', '[data-finance="payments"]'),
+        section(jt('expenses'), 'financial-administration', '[data-finance="expenses"]'),
+        section(jt('participation'), 'how-flyttgo-works'),
+      ], note: jt('companyNote') },
+    ] },
+    { id: 'organisations', label: jt('organisations'), width: 'w-[min(900px,calc(100vw-32px))]', columns: [
+      { title: jt('corporate'), items: [
+        page(jt('bulk'), 'bulk-booking'),
+        page(jt('users'), 'company-dashboard-info'),
+        page(jt('spending'), 'corporate'),
+        page(jt('corpInvoicing'), 'invoice-billing'),
+        page(jt('recurring'), 'recurring-deliveries'),
+        page(jt('reporting'), 'corporate-api-access'),
+        page(jt('corpDashboard'), 'corporate-dashboard'),
+      ] },
+      { title: jt('providers'), items: [
+        page(jt('drivers'), 'driver-onboarding'),
+        section(jt('serviceProviders'), 'business-workspace'),
+        page(jt('plans'), 'subscriptions'),
+        section(jt('opportunities'), 'driver-network'),
+      ] },
+      { title: jt('infrastructure'), tag: jt('optional'), items: [
+        page(jt('createMarketplace'), 'white-label', jt('createMarketplaceDesc')),
+        section(jt('identity'), 'white-label-builder'),
+        section(jt('onboarding'), 'marketplace-network-experience'),
+      ] },
+    ] },
   ];
-  const journeyItem = (item: JourneyItem, small = false) => (
-    <button key={item.label} onClick={item.go} className={`w-full text-left px-4 ${small ? 'py-2' : 'py-3'} hover:bg-emerald-50 transition group`}>
-      <div className={`${small ? 'text-[13px]' : 'text-sm'} font-semibold text-gray-800 group-hover:text-emerald-700`}>{item.label}</div>
-      <div className="text-xs text-gray-500 mt-0.5">{item.desc}</div>
+  const journeyItem = (item: JourneyItem) => (
+    <button key={item.label} onClick={item.go} className="w-full text-left px-3 py-2 hover:bg-[#F5F3EB] transition group">
+      <div className="text-sm font-semibold text-gray-900 group-hover:text-[#203F68]">{item.label}</div>
+      {item.desc && <div className="text-xs text-gray-600 mt-0.5">{item.desc}</div>}
     </button>
   );
-  const journeyMenu = (j: typeof JOURNEYS[number]) => (
-    <>
-      {j.items.map((item) => journeyItem(item))}
-      {j.note && <p className="mx-4 mt-1 mb-2 px-3 py-2.5 bg-emerald-50 text-xs leading-relaxed text-emerald-800">{j.note}</p>}
-      {j.group && (
-        <div className="mt-1 pt-2 border-t border-gray-100">
-          <p className="px-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{j.group.title}</p>
-          {j.group.items.map((item) => journeyItem(item, true))}
+  const journeyMenu = (j: typeof JOURNEYS[number], stacked = false) => (
+    <div className={stacked ? '' : `grid gap-2 ${j.columns.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+      {j.columns.map((c) => (
+        <div key={c.title} className={stacked ? 'pt-1' : ''}>
+          {c.title && (
+            <p className="px-3 pt-1 pb-1 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+              {c.title}{c.tag && <span className="ms-2 normal-case tracking-normal font-normal text-gray-500">({c.tag})</span>}
+            </p>
+          )}
+          {c.items.map((item) => journeyItem(item))}
+          {c.note && <p className="mx-3 mt-2 px-3 py-2.5 bg-slate-50 border border-slate-200 text-xs leading-relaxed text-gray-700">{c.note}</p>}
         </div>
-      )}
-      {j.specialised && (
-        <div className="mt-1 pt-2 border-t border-gray-100">
-          <p className="px-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('header.journeys.specialised')}</p>
-          {journeyItem(j.specialised, true)}
-        </div>
-      )}
-    </>
+      ))}
+    </div>
   );
 
   const dropdown = (
@@ -290,7 +325,7 @@ export default function Header() {
       <div className="relative">
         {/* TOP BAR — collapses on scroll */}
         <div
-          className={`bg-[#1A365D] text-white overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
+          className={`${preview ? 'bg-[#203F68]' : 'bg-[#1A365D]'} text-white overflow-hidden transition-[max-height,opacity] duration-300 ease-out ${
             scrolled ? 'max-h-0 opacity-0' : 'max-h-12 opacity-100'
           }`}
         >
@@ -351,7 +386,7 @@ export default function Header() {
       {/* MAIN NAV */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className={`flex items-center justify-between h-16${preview ? ' relative' : ''}`}>
 
             {/* Logo */}
             <button onClick={() => handleNav('home')} className="flex items-center gap-2.5 flex-shrink-0">
@@ -367,19 +402,21 @@ export default function Header() {
             {preview && (
               <nav className="hidden lg:flex items-center gap-0.5">
                 {JOURNEYS.map((j) => (
-                  <div key={j.id} className="relative">
+                  <div key={j.id}>
                     <button onClick={() => toggleJourney(j.id)} aria-expanded={journeyOpen === j.id}
-                      className={`flex items-center gap-1 px-2.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium transition ${
-                        journeyOpen === j.id ? 'text-emerald-600 bg-emerald-50' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      className={`flex items-center gap-1 px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium transition ${
+                        journeyOpen === j.id ? 'text-[#203F68] bg-[#F5F3EB]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
                       }`}>{j.label}{chevron(journeyOpen === j.id)}</button>
+                    {/* Under the bar, centred on it: the menus are wide (columns). */}
                     {journeyOpen === j.id && (
-                      <div className="absolute top-full left-0 mt-2 w-80 py-2 max-h-[75vh] overflow-y-auto bg-white rounded-2xl shadow-xl border border-gray-100 z-50">
+                      <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 ${j.width} p-3 max-h-[75vh] overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-200 z-50`}>
                         {journeyMenu(j)}
                       </div>
                     )}
                   </div>
                 ))}
-                <button onClick={() => handleNav('driver-onboarding')} className="px-2.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.becomeDriver')}</button>
+                <button onClick={() => toSection('how-flyttgo-works')} className="px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.journeys.howItWorks')}</button>
+                <button onClick={() => handleNav('driver-onboarding')} className="px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.becomeDriver')}</button>
               </nav>
             )}
             <nav className={preview ? 'hidden' : 'hidden lg:flex items-center gap-0.5'}>
@@ -442,7 +479,7 @@ export default function Header() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
-              <button onClick={() => handleNav('booking')} className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 xl:px-5 whitespace-nowrap' : 'px-5'} py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition shadow-sm`}>{t('header.bookNow')}</button>
+              <button onClick={() => handleNav('booking')} className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-2.5 xl:px-5 whitespace-nowrap' : 'px-5'} py-2 ${preview ? 'bg-[#24513B] hover:bg-[#20352B]' : 'bg-emerald-600 hover:bg-emerald-700'} text-white rounded-lg text-sm font-semibold transition shadow-sm`}>{t('header.bookNow')}</button>
 
               {/* Notifications bell — signed-in only. Subscribes to
                * the notifications table over Supabase Realtime; flips
@@ -553,13 +590,13 @@ export default function Header() {
                     onClick={openSignIn}
                     className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-sm`}
                   >
-                    <LogIn className="w-4 h-4" />
+                    <LogIn className={`w-4 h-4${preview ? ' hidden xl:block' : ''}`} />
                     {t('header.signIn')}
                   </button>
                   <button
                     onClick={openSignUp}
                     className={`hidden sm:flex items-center gap-1.5 ${preview ? 'px-3 xl:px-4 whitespace-nowrap' : 'px-4'} py-2 border rounded-lg text-sm font-semibold transition shadow-sm ${
-                      preview ? 'bg-[#203F68] border-[#203F68] text-white hover:bg-[#18324f]' : 'border-emerald-600 text-emerald-600 hover:bg-emerald-50'
+                      preview ? 'bg-[#203F68] border-[#203F68] text-white hover:bg-[#18304f]' : 'border-emerald-600 text-emerald-600 hover:bg-emerald-50'
                     }`}
                   >
                     {preview ? t('header.journeys.getStarted') : t('header.signUp')}
@@ -587,10 +624,13 @@ export default function Header() {
           <div className="max-w-7xl mx-auto px-4 pt-3 pb-4 space-y-1">
             {preview && JOURNEYS.map((j) => (
               <div key={j.id} className="pb-2 mb-1 border-b border-gray-100">
-                <p className="px-4 pt-1 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">{j.label}</p>
-                {journeyMenu(j)}
+                <p className="px-3 pt-1 pb-1 text-sm font-bold text-gray-900">{j.label}</p>
+                {journeyMenu(j, true)}
               </div>
             ))}
+            {preview && (
+              <button onClick={() => toSection('how-flyttgo-works')} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.journeys.howItWorks')}</button>
+            )}
             {preview && (
               <button onClick={() => handleNav('driver-onboarding')} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.becomeDriver')}</button>
             )}
