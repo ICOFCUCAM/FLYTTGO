@@ -97,6 +97,11 @@
 .fgv2 :is(.entry-dark, .hero-ledger, .final-cta, .bw-topbar, .network-node.core, .driver-panel, [data-workspace="b"] .business-workspace) :is(a, button):focus-visible,
 .fgv2[data-workspace="b"] .business-workspace > .wrap > :not(.bw-frame) :is(a, button):focus-visible { outline-color: var(--gold); }
 
+/* Text links: one underline (champagne, blue on hover) and an arrow that nudges forward. */
+.fgv2 :is(.v2-related a, .entry-options a, .hero-link, .entry-card > a, .entry-body > a, .v2-links a) { text-decoration: none; transition: border-color .2s, color .2s; }
+.fgv2 :is(.v2-related a, .entry-options a, .hero-link):hover { color: var(--ink); border-color: var(--blue); }
+.fgv2 .v2-related a { display: inline-flex; gap: 6px; }
+
 /* Product mockups: square, one warm hairline, one soft lift; deep-blue title bars. */
 .fgv2 :is(.bw-frame, .finance-frame, .ecosystem-frame, .wl-builder, .network-panel, .industry-panel, .dashboard) {
   border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--lift); background: var(--white);
