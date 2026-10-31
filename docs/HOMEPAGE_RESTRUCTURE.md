@@ -319,6 +319,79 @@ Visual findings come from browser screenshots at 1440 and 390 px taken during #2
 4. The business workspace as a convincing product.
 5. A refinement studio that makes these choices measurable.
 
+### 2036 premium mandate: the Design Refinement Studio and the selected design (2026-10-31)
+
+Work followed the owner's order: the studio first, then the hero competition, then typography and photography, the sections, the demonstrations, rhythm and motion, and finally the checks. Every choice is in the visual decision log (`lab/decisions.ts`): the alternatives, what was chosen and why.
+
+**Design source.** `design.config.ts` holds:
+- seven colours (the approved palette is the default);
+- three typefaces, with hero and section typography set separately (size, weight, line height, letter spacing);
+- section and component spacing, content width and split proportion;
+- photograph saturation, warmth, contrast, crop focus and hero height;
+- radius, signature corner, shadow, hairline strength and card density;
+- motion distance and duration;
+- A/B/C compositions for 13 sections, plus the headline, the background treatment and the photography direction.
+
+`BASELINE_*` keeps the design of #21; `DEFAULT_*` is the selection. The build turns the generated stylesheet's typefaces into variables, so a change of typeface reaches every element (preview page only).
+
+**Design Refinement Studio** (`/preview/lab`, refuses production hosts, `noindex`, linked from nowhere):
+- **Compare A/B/C:** one viewport (1680, 1440, 1280, 820 or 390), the same content and assets, frames scrolled together by section. Each frame has its own compositions and, when switched on, its own tokens, so one variable can be tested alone. Any frame can be promoted to a named version.
+- **Responsive:** the active version at all five viewports, each with its findings.
+- **Inspect:** the rendered page is checked in the browser (`lab/probe.ts`, loaded only inside a studio frame):
+  - overflow and clipped content;
+  - readability (size, line length) and contrast;
+  - grid collapse and image cropping;
+  - button placement, navigation wrap, vertical gaps and tap targets;
+  - repetition, rhythm (a map of the page's grounds) and component consistency.
+
+  Each finding highlights its element. The interaction check clicks every demonstration control and lists any that change nothing. Its findings support visual review; they do not replace it.
+- **Isolate section:** dims the rest of the page and keeps it in view.
+- **Components:** type, contrast table, buttons, chips, table, trail and explorer.
+- **Versions:** named versions with notes, the approved one marked, a before and after comparison, restore, and the approved specification as JSON or Markdown (`lab/spec.ts`). Promoting never changes the site; adopting a version is a reviewed change to `design.config.ts`.
+- **Decisions:** score versions against six criteria, record decisions with reasons, and read the reviewed log.
+
+**Selected:**
+
+| Choice | Selected |
+|---|---|
+| Hero | A, editorial: the copy beside one photograph matted by a gold rule, the journeys as a ruled index. The owner compared it with B and kept A. |
+| Headline | "Book services. Run your company. Grow with FlyttGo." The owner's slogan "Assisting companies to fly high" signs it above. |
+| Type | Manrope, DM Sans and Georgia (owner), with heading tracking eased to −0.035em. |
+| Photography | Natural (owner) |
+| Moving | B, feature and list |
+| Booking | B, split with promise |
+| Industries | B, vertical index |
+| Corporate | C, ivory ledger |
+| Providers | B, typographic band |
+| Trust | C, three tiers |
+| Closing | B, ivory with the three journeys |
+| Journeys, marketplace, finance, studio | A (unchanged) |
+| Business workspace | B, deep-blue stage (unchanged) |
+
+**Copy:** each section has one job. "One platform" now appears only in the hero proposition (`V2_VOICE` in `build.py`, with Norwegian).
+
+**Business workspace:**
+- a search that filters the records shown;
+- "New booking", which adds a draft booking;
+- appointments, jobs and projects told apart;
+- a team activity feed on the overview.
+
+All of it is example data.
+
+**Marketplace Studio:** a legend says what is available (branded page and flyttgo.no address; FlyttGo sells moving and delivery), what is being connected (own domain; selling on your own terms through Stripe Connect), what is in development (own provider network) and that the preview creates nothing. Source: `docs/PLATFORM_AUDIT_2026-10-30.md`.
+
+**Rhythm:** "What every booking includes" became a ruled two-column list, and the four booking steps a timeline on a gold line. Before, three rows of four boxes followed one another.
+
+**Motion:**
+- section entrances and photograph reveals, with distance and duration as tokens;
+- tab and panel fades;
+- button feedback;
+- smooth storefront changes and arrow nudges on hover.
+
+All of it is off under reduced motion.
+
+**Readability:** descriptions, specifications and chips are 12–13 px. The participants band in hero B is opaque. Long paragraphs are held to 72 characters.
+
 ### 2036 mandate: design lab, competing directions, signature demonstrations (owner, 2026-10-30)
 
 **Design settings in one place.** `src/components/homeV2/design.config.ts` holds the tokens (six palette colours, heading, hero and spacing scales, content width, corner radius, signature corner, shadow depth, photo saturation and warmth) and the composition variant of each key section. `applyDesign()` writes tokens as custom properties and variants as data attributes on `.fgv2`; `homeV2.css` reads nothing else. `HomeV2Page` applies the selected defaults.
