@@ -935,6 +935,11 @@
 .fgv2[data-closing="b"] .final-actions .btn { background: transparent !important; color: var(--blue) !important; border: 0; border-right: 1px solid var(--line); min-height: 96px; justify-content: center; font: var(--head-weight) clamp(18px, 1.8vw, 24px) var(--font-display); letter-spacing: -.02em; }
 .fgv2[data-closing="b"] .final-actions .btn:last-child { border-right: 0; }
 .fgv2[data-closing="b"] .final-actions .btn:hover { background: var(--white) !important; }
+/* Each closing journey with one line saying what it leads to. */
+.fgv2 .final-actions .btn { flex-wrap: wrap; }
+.fgv2 .final-note { flex-basis: 100%; display: none; text-align: center; font: 400 14px/1.4 var(--font-body); letter-spacing: 0; color: var(--muted); }
+.fgv2[data-closing="b"] .final-actions .btn { flex-direction: column; gap: 6px; padding: 26px 18px; }
+.fgv2[data-closing="b"] .final-note { display: block; }
 @media (max-width: 700px) { .fgv2[data-closing="b"] .final-actions { grid-template-columns: 1fr; } .fgv2[data-closing="b"] .final-actions .btn { border-right: 0; border-bottom: 1px solid var(--line); min-height: 64px; } }
 /* Closing C · split statement: the heading on the left, the words and actions on the right. */
 @media (min-width: 901px) {
@@ -1019,8 +1024,7 @@
 .fgv2 .wl-search { display: flex; margin: 0 28px 4px; border: 1px solid var(--line); background: var(--white); box-shadow: 0 14px 30px -24px rgb(32 63 104 / .4); transform: translateY(-50%); }
 .fgv2 .wl-search span { flex: 1; padding: 14px 16px; font-size: 14px; color: var(--muted); }
 .fgv2 .wl-search b { padding: 14px 20px; color: #fff; background: var(--wl-accent, var(--blue)); font-size: 13px; letter-spacing: .04em; transition: background var(--motion-duration); }
-/* Markup for the next two refinements, shown once they are styled. */
-.fgv2 .final-note { display: none; }
+
 .fgv2 .wl-group { display: block; margin: 26px 0 12px; padding-top: 14px; border-top: 1px solid var(--blue); font: 700 13px var(--font-display); color: var(--ink); letter-spacing: -.005em; }
 .fgv2 .wl-config > .wl-group:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 .fgv2 .wl-more > .wl-group { margin-top: 22px; }
