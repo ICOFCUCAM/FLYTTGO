@@ -1101,5 +1101,8 @@
   .fgv2[data-motion="on"] .hero-ledger a:after, .fgv2[data-motion="on"] .market-card .card-arrow { transition: transform .3s; }
   .fgv2[data-motion="on"] .market-card:hover .card-arrow { transform: translate(3px, -3px); }
 }
+/* Everything is visible whenever motion cannot or should not run: printing, motion off in the studio. */
+@media print { .fgv2 :is(.v2-reveal, .v2-reveal *) { opacity: 1 !important; transform: none !important; clip-path: none !important; } }
+.fgv2[data-motion="off"] :is(.v2-reveal, .v2-reveal *) { opacity: 1; transform: none; clip-path: none; }
 @keyframes v2-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @keyframes v2-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
