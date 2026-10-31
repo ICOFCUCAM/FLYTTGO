@@ -416,6 +416,9 @@
 .fgv2 .legacy-suite .step-card p { font-size: 15px; }
 /* Step numbers on a light ground: deep-blue serif (gold is for dark grounds only). */
 .fgv2 .legacy-suite .step-no { width: auto; height: auto; background: transparent; border-radius: 0; color: var(--blue); font-family: var(--font-accent); font-size: 34px; display: block; margin-bottom: 14px; }
+/* Booking steps: larger accent numerals sitting on the gold line. */
+.fgv2 .legacy-suite .step-card .step-no { font-size: clamp(40px, 3.4vw, 54px); line-height: 1; color: var(--blue); margin-bottom: 18px; }
+.fgv2 .legacy-suite .step-card h3 { font: var(--head-weight) 19px/1.25 var(--font-display); letter-spacing: -.02em; }
 .fgv2 #van-types .price-from { display: none; } /* rates live on the van guide (linked) */
 /* "What every booking includes": a ruled two-column list, not a third row of boxes. */
 .fgv2 .testimonial-grid { background: transparent; border: 0; gap: 0 56px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
