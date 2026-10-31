@@ -361,6 +361,10 @@
 .fgv2 .v2-path ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
 .fgv2 .v2-path li { background: var(--white); padding: 15px 18px; font-size: 15px; font-weight: 600; color: var(--ink); display: flex; gap: 12px; align-items: baseline; }
 .fgv2 .v2-path li b { color: var(--blue); font-family: var(--font-accent); font-weight: 400; }
+.fgv2 .v2-path { box-shadow: inset 0 3px var(--blue); }
+.fgv2 .v2-path li { display: flex; gap: 12px; align-items: baseline; transition: background .2s; }
+.fgv2 .v2-path li b { font-size: 20px; min-width: 22px; }
+.fgv2 .v2-path li:hover { background: var(--paper); }
 .fgv2 .v2-legend { margin: 32px 0 0; font-size: 13px; line-height: 2.2; color: var(--muted); }
 .fgv2 .v2-legend .v2-status { margin-left: 10px; }
 .fgv2 .v2-legend .v2-status:first-child { margin-left: 0; }
