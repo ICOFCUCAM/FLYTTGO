@@ -79,7 +79,9 @@
 
 /* Sections alternate soft white and ivory under one warm hairline; sections that are themselves the
  * content width paint their ground across the page. */
-.fgv2 main > section { padding-top: var(--section); padding-bottom: var(--section); }
+/* One section spacing for every chapter (the generated design set eight different values). */
+.fgv2 main > section:not(.hero) { padding-top: var(--section); padding-bottom: var(--section); }
+.fgv2 main > section#entry-points { padding-top: calc(var(--section) * .75); }
 .fgv2 main > section:nth-of-type(odd) { background: var(--white); --section-ground: var(--white); }
 .fgv2 main > section:nth-of-type(even) { background: var(--paper); --section-ground: var(--paper); }
 .fgv2 main > section + section, .fgv2 main > .v2-booking + section { border-top: 1px solid var(--line); }
