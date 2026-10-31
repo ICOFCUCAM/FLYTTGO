@@ -621,6 +621,13 @@
 .fgv2 .wl-settings dt { font-size: var(--label-size); letter-spacing: .14em; font-weight: 700; color: var(--blue); }
 .fgv2 .wl-settings dd { margin: 4px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
 @media (max-width: 900px) { .fgv2 .wl-layout { grid-template-columns: 1fr; } }
+/* Tablets: the stacked studio settings in two columns, so the storefront is reached sooner. */
+@media (min-width: 640px) and (max-width: 900px) {
+  .fgv2 .wl-config { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; align-content: start; }
+  .fgv2 .wl-config > :is(.wl-group, .wl-more, .wl-settings, .wl-status, .wl-setting-label, .wl-color-row) { grid-column: 1 / -1; }
+  .fgv2 .wl-more { grid-template-columns: 1fr 1fr; column-gap: 24px; }
+  .fgv2 .wl-more > :is(.wl-group, .wl-cat-toggles, .wl-domain-row, .wl-settings, .wl-status, .wl-setting-label) { grid-column: 1 / -1; }
+}
 
 /* ── 16. Network model: three plain tiers a business owner can read ───── */
 .fgv2 .network-lines { display: none; }
