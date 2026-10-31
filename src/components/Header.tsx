@@ -334,7 +334,7 @@ export default function Header() {
         aria-hidden="true"
       />
     )}
-    <header ref={headerRef} className={`sticky top-0 z-40 shadow-md${platformHome ? ' fg-square' : ''}`}>
+    <header ref={headerRef} className={`sticky top-0 z-50 shadow-md${platformHome ? ' fg-square' : ''}`}>
 
       {/* Wrapper hosts the top bar AND the language popover as
        * siblings, so the popover escapes the top bar's overflow-hidden
