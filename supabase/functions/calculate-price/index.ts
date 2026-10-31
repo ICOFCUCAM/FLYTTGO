@@ -67,7 +67,7 @@
 // ============================================================================
 
 import { serve } from 'https://deno.land/std@0.208.0/http/server.ts';
-import { VAN_HOURLY_RATES, PRICING, routeDistance, calculateServerPrice } from '../_shared/pricing.ts';
+import { VAN_HOURLY_RATES, PRICING, routeDistance, calculateServerPrice, flooredDistanceKm } from '../_shared/pricing.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -185,10 +185,12 @@ serve(async (req: Request) => {
 
     /* STEP 2: call OSRM for real driving distance
      * STEP 3: haversine × 1.4 fallback if OSRM fails */
-    const route = await routeDistance(
+    const routed = await routeDistance(
       req.pickup_lat, req.pickup_lng,
       req.dropoff_lat, req.dropoff_lng,
     );
+    /* Never shorter than the straight line, as the payment functions price it. */
+    const route = { ...routed, distance_km: flooredDistanceKm(routed, [req.pickup_lat, req.pickup_lng, req.dropoff_lat, req.dropoff_lng]) };
 
     /* STEP 4: run the pricing formula server-side */
     const breakdown = calculateServerPrice({
@@ -197,6 +199,7 @@ serve(async (req: Request) => {
       distanceKm: route.distance_km,
       helpers:    req.helpers ?? 0,
       extras:     req.additional_services ?? [],
+      routeMinutes: route.duration_minutes,
     });
 
     /* STEP 5: return combined routing + pricing result */
@@ -207,6 +210,8 @@ serve(async (req: Request) => {
       vat_amount:       Math.round(breakdown.vat),
       price_total:      Math.round(breakdown.total),
       routing_provider: route.provider,
+      billed_hours:     breakdown.billed_hours,
+      route_hours_applied: breakdown.route_hours_applied,
       breakdown: {
         base_price:      Math.round(breakdown.base_price),
         distance_charge: Math.round(breakdown.distance_charge),

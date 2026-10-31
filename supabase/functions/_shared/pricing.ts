@@ -44,11 +44,8 @@ export interface RouteResult {
   provider:         'OSRM' | 'haversine-fallback';
 }
 
-/**
- * Straight-line great-circle distance × 1.4 (Norway road factor),
- * ~70 km/h. Used when OSRM is unreachable.
- */
-export function haversineFallback(lat1: number, lng1: number, lat2: number, lng2: number): RouteResult {
+/** Straight-line (great-circle) distance in km between two points. */
+export function straightLineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
@@ -57,7 +54,15 @@ export function haversineFallback(lat1: number, lng1: number, lat2: number, lng2
     Math.cos((lat1 * Math.PI) / 180) *
       Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLng / 2) ** 2;
-  const straightKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Straight-line great-circle distance × 1.4 (Norway road factor),
+ * ~70 km/h. Used when OSRM is unreachable.
+ */
+export function haversineFallback(lat1: number, lng1: number, lat2: number, lng2: number): RouteResult {
+  const straightKm = straightLineKm(lat1, lng1, lat2, lng2);
   const distance_km      = Math.round(straightKm * 1.4 * 10) / 10;
   const duration_minutes = Math.round(distance_km * 0.86);
   return { distance_km, duration_minutes, provider: 'haversine-fallback' };
@@ -102,9 +107,34 @@ export async function routeDistance(
   }
 }
 
+/**
+ * The distance a booking is priced on: the route's, never shorter than the
+ * straight line between the two points (a road cannot be shorter than the
+ * crow flies). Guards against a router or a stored figure that understates it.
+ */
+export function flooredDistanceKm(route: Pick<RouteResult, 'distance_km'>, coords: [number, number, number, number]): number {
+  const floor = Math.round(straightLineKm(...coords) * 10) / 10;
+  return Math.max(Number(route.distance_km) || 0, floor);
+}
+
 /* ─── Price formula ────────────────────────────────────────────── */
 
+/**
+ * The hours a job is billed (owner, 31 October 2026): the hours the customer
+ * booked, or the time the drive alone takes when that is longer (rounded up
+ * to the half hour), never below the minimum. The browser preview
+ * (src/lib/constants.ts billedHours) uses the same rule.
+ */
+export function billedHours(bookedHours: number | null | undefined, routeMinutes?: number | null): number {
+  const booked = Math.max(Number(bookedHours) || 0, PRICING.minimumHours);
+  const drive  = routeMinutes && routeMinutes > 0 ? Math.ceil((routeMinutes / 60) * 2) / 2 : 0;
+  return Math.max(booked, drive);
+}
+
 export interface PriceBreakdown {
+  billed_hours:    number;
+  /** True when the drive takes longer than the hours booked, so the drive time is billed. */
+  route_hours_applied: boolean;
   base_price:      number;
   distance_charge: number;
   helpers_charge:  number;
@@ -120,8 +150,11 @@ export function calculateServerPrice(params: {
   distanceKm: number;
   helpers:    number;
   extras:     string[];
+  /** The route's driving time; when longer than the hours booked, it is what is billed. */
+  routeMinutes?: number | null;
 }): PriceBreakdown {
-  const safeHours = Math.max(params.hours ?? 0, PRICING.minimumHours);
+  const booked    = Math.max(params.hours ?? 0, PRICING.minimumHours);
+  const safeHours = billedHours(params.hours, params.routeMinutes);
   const extraKm   = Math.max(0, (params.distanceKm ?? 0) - PRICING.distancePricing.includedKm);
 
   const base_price      = (VAN_HOURLY_RATES[params.vanType] ?? 850) * safeHours;
@@ -131,7 +164,8 @@ export function calculateServerPrice(params: {
 
   const subtotal = base_price + distance_charge + helpers_charge + extras_charge;
   const vat      = subtotal * PRICING.vat;
-  return { base_price, distance_charge, helpers_charge, extras_charge, subtotal, vat, total: subtotal + vat };
+  return { billed_hours: safeHours, route_hours_applied: safeHours > booked, base_price, distance_charge, helpers_charge,
+           extras_charge, subtotal, vat, total: subtotal + vat };
 }
 
 /* ─── Booking charge (what the customer pays) ──────────────────── */
@@ -171,13 +205,14 @@ function extrasOf(v: unknown): string[] {
  * from its stored inputs and a server-side route. This is the amount
  * the payment functions charge; nothing the browser sends changes it.
  */
-export function bookingChargeNok(b: BookingPricingRow, route: Pick<RouteResult, 'distance_km'>): number {
+export function bookingChargeNok(b: BookingPricingRow, route: Pick<RouteResult, 'distance_km'> & { duration_minutes?: number | null }): number {
   const breakdown = calculateServerPrice({
     vanType:    b.van_type ?? 'medium_van',
     hours:      num(b.estimated_hours) ?? PRICING.minimumHours,
     distanceKm: route.distance_km,
     helpers:    Math.max(0, num(b.helpers) ?? 0),
     extras:     extrasOf(b.additional_services),
+    routeMinutes: route.duration_minutes ?? null,
   });
   return Math.round(breakdown.total);
 }

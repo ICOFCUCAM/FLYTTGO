@@ -33,6 +33,7 @@
  * works on a cold load — not just on client-side navigation.
  */
 
+import { takeReturnPage } from '../../lib/bookingDraft';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../lib/auth';
@@ -94,7 +95,10 @@ export default function AuthCallbackPage() {
 
     /* Drivers and admins have their own home — sending them to the
      * customer dashboard would just feel wrong. */
-    if (profile?.role === 'driver') {
+    /* A customer who signed in from the booking goes back to it, with what they had filled in (lib/bookingDraft.ts). */
+    if (profile?.role !== 'driver' && profile?.role !== 'admin' && takeReturnPage() === 'booking') {
+      setPage('booking');
+    } else if (profile?.role === 'driver') {
       setPage('driver-portal');
     } else if (profile?.role === 'admin') {
       setPage('admin');

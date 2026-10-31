@@ -164,16 +164,19 @@ async function recalculatePrice(bookingId: string) {
   let adjustedAmount:  number | null = null;
   let adjustmentReason: string | null = null;
 
-  if (actualHours > estimatedHours) {
-    /* Recalculate using the same formula BookingFlow used, with the
-     * actual hours substituted. */
-    const recalc = calculatePrice({
-      vanType:    booking.van_type ?? 'medium_van',
-      hours:      actualHours,
-      distanceKm: Number(booking.distance_km ?? 0),
-      helpers:    Number(booking.helpers ?? 0),
-      extras:     (booking.additional_services as string[] | null) ?? [],
-    });
+  /* Recalculate using the same formula, with the actual hours substituted. The distance is the server's
+   * (chargeForBooking always writes it). Since 31 October 2026 the charge may already bill the drive time
+   * beyond the hours chosen, so there is an extra charge only when the recalculated price is higher than
+   * what was charged. */
+  const recalc = actualHours > estimatedHours ? calculatePrice({
+    vanType:    booking.van_type ?? 'medium_van',
+    hours:      actualHours,
+    distanceKm: Number(booking.distance_km ?? 0),
+    helpers:    Number(booking.helpers ?? 0),
+    extras:     (booking.additional_services as string[] | null) ?? [],
+  }) : null;
+
+  if (recalc && Math.round(recalc.total) > originalPrice) {
     finalPrice       = Math.round(recalc.total);
     adjustedAmount   = finalPrice;
     adjustmentReason = `Actual time ${actualHours}h exceeded estimated ${estimatedHours}h at ${VAN_HOURLY_RATES[booking.van_type ?? 'medium_van']} NOK/hr.`;
