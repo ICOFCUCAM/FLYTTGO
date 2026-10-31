@@ -109,6 +109,10 @@
   font-size: 14px; line-height: 1.7; color: var(--muted);
 }
 
+/* Hairlines: cards, rules and table lines all use the one warm line colour at one weight. */
+.fgv2 :is(.entry-light, .entry-org, .service-card, .fleet-card, .feature, .ecosystem-pillar, .network-node:not(.core), .industry-panel, .corp-row, .bw-metrics article, .finance-metrics article, .finance-document) { border-color: var(--line); border-width: 1px; }
+.fgv2 :is(.v2-records td, .finance-lines td, .finance-lines th) { border-color: var(--line); }
+
 /* Status chips, shared by every demonstration. */
 .fgv2 .v2-chip { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border: 1px solid; white-space: nowrap; }
 .fgv2 .v2-chip-ok { color: #1f4a33; background: #eaf2ec; border-color: #bcd3c4; }
