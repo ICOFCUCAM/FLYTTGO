@@ -244,6 +244,28 @@ A visual upgrade of the same structure: the three journeys, the four capabilitie
   - Everything is marked "example data" and amounts belong to the example company. The design's own script, shared with the platform page, is not changed: these render after it on the same tabs.
 - **Pictures:** one treatment with a deep-blue veil. The cleaning card uses the design's own living-room photograph (Unsplash licence); every other picture is FlyttGo's own.
 
+### Refinement pass (owner's critique, 2026-10-30)
+
+A refinement of the existing page, not a redesign. The structure, journeys, interactions and availability labels are unchanged.
+
+- **Hero:** "Assisting Companies to Fly High." stays as the signature. Beneath it, smaller, sits "One connected platform for services, business operations and growth." Every slide gets one colour grade.
+- **Booking:** framed below the hero, introduced by "Start with a service". The widget is unchanged.
+- **Journeys:** shorter cards, each with its own coloured rule: gold for Explore, forest for My Company, deep blue for For Organisations. For Organisations is a panel beneath the two main routes.
+- **Platform:** the core with the four capabilities and their detail, then one sentence on ownership and boundaries. The lifecycle, the boundary panel and the principles row are removed here; the lifecycle appears once, in How FlyttGo works.
+- **How FlyttGo works:** the lifecycle as a process line. The six journeys are an editorial list under hairlines, not boxes. The example business path is framed.
+- **Order:** "What every booking includes" moves into the moving vertical.
+- **Business workspace:** the example company and the signed-in person in the sidebar.
+- **Financial workspace:** its own identity. An evergreen title bar, the lifecycle timeline after the introduction and above the workspace, tabular figures, and an evergreen total.
+- **Industries:** the selector is a row of buttons, with the selected industry in deep blue. Its text is at the page's type size.
+- **Marketplace:** one grade on every picture, restrained veils and a slow hover.
+- **Studio:** a wider settings column that adds the domain, the provider network (in development) and the payment model.
+- **Curved corner:** used only on the hero picture, the platform core and the provider panel.
+
+**Code:**
+- `homeV2.css` is rewritten as one ordered layer: one block per component, with its tablet and phone rules beside it, and no appended overrides. The hero breakpoints follow the design's own: it stacks below 760 px.
+- `build.py` gained `dedupe_css`. In the generated `design.v2.css` it removes declarations that a later rule for the same selector, in the same scope, overrides. That takes the file from 4,322 to 3,830 declarations and from 1,562 to 1,441 rules; hero rules go from 69 to 47.
+- Rules stay in place, so the page is pixel-identical before and after at 1440, 820 and 390 px. Checked with full-page screenshots.
+
 ## Stage D: content checked against the source
 
 | Content | Where it is |

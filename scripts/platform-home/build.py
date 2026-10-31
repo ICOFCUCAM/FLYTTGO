@@ -253,6 +253,7 @@ V2_SECTIONS = [                                   # (attribute in the section's 
     ('id="moving-services"', 'find a service: moving services'),
     ('id="how-it-works"', 'find a service: booking and tracking journey'),
     ('id="van-types"', 'find a service: vehicle sizes (rates on the van guide)'),
+    ('class="section testimonials"', 'find a service: what every booking includes'),
     ('id="business-workspace"', 'my company: business workspace'),
     ('id="financial-administration"', 'my company: payments and finance'),
     ('id="industry-experiences"', 'my company: industry workflows'),
@@ -260,22 +261,21 @@ V2_SECTIONS = [                                   # (attribute in the section's 
     ('id="driver-network"', 'for organisations: provider network'),
     ('id="white-label-builder"', 'specialised: a marketplace under your own brand'),
     ('id="marketplace-network-experience"', 'specialised: connected network'),
-    ('class="section testimonials"', 'what every booking includes'),
     ('class="final-cta"', 'final call to action'),
 ]
 # Wording the code does not support, corrected (the audit's status table).
 V2_CLAIMS = [
     # The owner's headline for the restructured page (brief, 30 October 2026).
     ('<h1 class="display">Build your business.<br/><span class="serif">Own your marketplace.</span></h1>',
-     '<h1 class="display"><span class="h1-line">Assisting Companies</span> <span class="h1-line">to Fly High.</span><br/><span class="serif">Find services. Run your company. Grow.</span></h1>'),
+     '<h1 class="display"><span class="h1-line">Assisting Companies</span> <span class="h1-line">to Fly High.</span><br/><span class="serif">One connected platform for services, business operations and growth.</span></h1>'),
     # The three entry points in the owner's words (30 October 2026): customer,
     # business and specialist, each with who it is for and where it leads.
     ('<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">One platform. Three ways to get started.</h2><p>Whether you need a service, run a company or want to build a marketplace, start with what matters to you.</p>',
      '<span class="eyebrow">Choose your way into FlyttGo</span><h2 class="display">Three journeys. One platform.</h2><p>Most people come to FlyttGo to book a service or to run their company. Organisations add corporate services, a provider network or, as one option, a marketplace of their own.</p>'),
     ('<h3>I need a service</h3><p>Explore moving, transport, trades and other services from participating providers.</p><a href="#marketplace">Explore services ↗</a>',
-     '<h3>Find a Service</h3><p>Find moving, transport, home services and professionals.</p><p class="entry-for">For customers who need something done.</p><p class="entry-note">Moving and relocation, transport and delivery, home services, local professionals and other participating services.</p><a href="#marketplace">Explore services →</a>'),
+     '<h3>Find a Service</h3><p>Find moving, transport, home services and professionals.</p><p class="entry-for">For customers who need something done.</p><a href="#marketplace">Explore services →</a>'),
     ('<h3>I run a business</h3><p>Manage services, appointments, customers, quotes, invoices, receipts and payments.</p><a href="#business-workspace">Explore business tools ↗</a>',
-     '<h3>My Company</h3><p>Manage your business, customers, services, bookings, employees, invoices and payments.</p><p class="entry-for">For independent professionals, small businesses and established companies.</p><p class="entry-note">Run your company with the business tools. No marketplace of your own needed.</p><a href="#business-workspace">Manage my business →</a>'),
+     '<h3>My Company</h3><p>Manage your business, customers, services, bookings, employees, invoices and payments.</p><p class="entry-for">For independent professionals, small businesses and established companies.</p><a href="#business-workspace">Manage my business →</a>'),
     ('<h3>I want my own marketplace</h3><p>Create a branded marketplace with your identity, domain, services and provider network.</p><a href="#white-label-builder">Explore white-label ↗</a>',
      '<div class="entry-side"><h3>For Organisations</h3><p>Corporate solutions, a provider network and marketplace infrastructure.</p></div><div class="entry-body"><p class="entry-for">For corporate customers, provider network participants and marketplace operators.</p><ul class="entry-options"><li><a href="#business">Corporate solutions</a></li><li><a href="#driver-network">Provider network</a></li><li><a href="#white-label-builder">Marketplace infrastructure</a> <span>(optional)</span></li></ul><a href="#business">Explore organisational solutions →</a></div>'),
     # The specialised offering: a strip below the two main journeys, never their equal.
@@ -339,6 +339,14 @@ V2_CLAIMS = [
      '<div class="body"><h3>Storage transport</h3><p>Moving items to and from storage units efficiently.</p></div></article>'
      '<article class="service-card"><div class="photo"><img alt="Clean, bright living room" loading="lazy" src="https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&amp;fit=crop&amp;w=900&amp;q=80"/></div><div class="body"><h3>Move-out cleaning</h3><p>Cleaning of the home you leave, added to your move as an extra.</p></div></article>'
      '<article class="service-card"><div class="photo"><img alt="People packing and taping moving boxes" loading="lazy" src="https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766787761_26698bc2.jpg"/></div><div class="body"><h3>Packing and assembly</h3><p>Packing, furniture dismantling and assembly, added to your move as extras.</p></div></article>'),
+    # Refinement pass (owner's critique, 30 October 2026).
+    # The workspace has an identity: the example company and who is signed in.
+    ('<aside class="bw-sidebar">\n        <div class="bw-label">WORKSPACE</div>',
+     '<aside class="bw-sidebar">\n        <div class="bw-company"><i aria-hidden="true">ES</i><span><b>Example Services AS</b>Signed in as Ingrid · Owner</span></div>\n        <div class="bw-label">WORKSPACE</div>'),
+    # The studio shows the operator's domain, provider network and payment model, with what is still in development.
+    ('<label>BRAND COLOUR</label>', '<span class="wl-setting-label">BRAND COLOUR</span>'),
+    ('</div>\n      </aside>\n      <div class="wl-preview">',
+     '</div>\n        <dl class="wl-settings"><div><dt>DOMAIN</dt><dd>Your own domain or a FlyttGo address</dd></div><div><dt>PROVIDER NETWORK</dt><dd><span class="v2-chip v2-chip-wait">In development</span></dd></div><div><dt>PAYMENTS</dt><dd>FlyttGo sells, or you sell under your own terms</dd></div></dl>\n      </aside>\n      <div class="wl-preview">'),
     # The central FlyttGo Marketplace, never confused with a marketplace of one's own.
     ('<div class="eyebrow">Explore the marketplace</div>', '<div class="eyebrow">The FlyttGo Marketplace</div>'),
     ('<p>Discover the FlyttGo marketplace: moving and transport, local services, business solutions and opportunities for providers.</p>',
@@ -363,6 +371,12 @@ V2_CLAIMS = [
 # In-page links to sections the restructured page leaves out go to the section that carries the topic now.
 V2_ANCHORS = {'#platform': '#unified-platform', '#business-platform': '#business-workspace', '#white-label': '#white-label-builder',
               '#top': '#main-content'}
+V2_ECO_NOTE = ('<p class="v2-eco-note">Every business and marketplace keeps its own customers, records and permissions '
+               'on the shared foundation. Customers, businesses and operators move between the capabilities as one experience.</p>')
+V2_BOOKING = ('<div class="v2-booking" id="booking"><div class="wrap v2-booking-inner">'
+              '<div class="v2-booking-head"><span class="eyebrow">Start with a service</span>'
+              '<p>Get a moving price in a minute, or explore every service below.</p></div>'
+              '<div data-slot="booking"></div></div></div>')
 V2_LIFECYCLE = ('<ol class="v2-lifecycle" aria-label="From booking to financial record">'
                 + ''.join(f'<li><b>0{i + 1}</b>{t}</li>' for i, t in enumerate(
                     ['Booking', 'Quote', 'Job completed', 'Invoice', 'Payment', 'Financial record'])) + '</ol>')
@@ -456,10 +470,13 @@ def build_v2(base: str) -> str:
         if page.count(old) != 1:
             raise SystemExit(f'v2: expected once: {old[:60]}')
         page = page.replace(old, new)
-    # The lifecycle strip at the head of the finance section; the booking
+    # The lifecycle strip in the finance section; the booking
     # widget (BookingCard) between the hero and the first section, as on the
     # platform page (owner, 30 October 2026).
-    page = re.sub(r'(<section\b[^>]*id="financial-administration"[^>]*>\s*<div class="wrap">)', r'\1' + V2_LIFECYCLE, page, count=1)
+    # The finance lifecycle follows the section's introduction, directly above the financial workspace.
+    m = re.search(r'<div class="finance-intro">', page)
+    end = element_span(page, m.start(), 'div')
+    page = page[:end] + V2_LIFECYCLE + page[end:]
     m = re.search(r'<section\b[^>]*id="unified-platform"', page)
     end = element_span(page, m.start(), 'section')
     page = page[:end] + V2_HOW + page[end:]
@@ -467,10 +484,17 @@ def build_v2(base: str) -> str:
     page, n = re.subn(r'<div class="chart"><svg.*?</svg></div>', '', page, count=1, flags=re.S)
     if n != 1:
         raise SystemExit('v2: the corporate chart was not found')
+    # The ecosystem keeps its core, four capabilities and their detail; the lifecycle appears once (How
+    # FlyttGo works), and the boundary and principles become one sentence.
+    for cls in ('ecosystem-flow', 'ecosystem-boundary', 'ecosystem-principles'):
+        m = re.search(r'<div class="%s">' % cls, page)
+        if not m:
+            raise SystemExit(f'v2: no {cls}')
+        page = page[:m.start()] + (V2_ECO_NOTE if cls == 'ecosystem-principles' else '') + page[element_span(page, m.start(), 'div'):]
     page = related(page)
     m = re.search(r'<section\b[^>]*class="hero wrap"', page)
     end = element_span(page, m.start(), 'section')
-    page = page[:end] + '<div class="wrap v2-booking" id="booking" data-slot="booking"></div>' + page[end:]
+    page = page[:end] + V2_BOOKING + page[end:]
     return page
 
 
@@ -575,6 +599,85 @@ def readable_css(css: str) -> str:
     css = re.sub(r'((?<![-\w])color:\s*)(#[0-9a-fA-F]{3,6}\b|rgba?\([^)]*\))', colour, css)
     css = re.sub(r'(font-size:\s*)(\d+(?:\.\d+)?)px', size, css)
     return re.sub(r'(font:\s*(?:\d{3}\s+|italic\s+|normal\s+)*)(\d+(?:\.\d+)?)px', size, css)
+
+
+def _split_decls(block: str) -> list[str]:
+    """Declarations of one rule, split on ';' outside parentheses and quotes (data URIs keep theirs)."""
+    out, cur, depth, quote = [], [], 0, ''
+    for ch in block:
+        if quote:
+            quote = '' if ch == quote else quote
+        elif ch in '"\'':
+            quote = ch
+        elif ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        elif ch == ';' and depth == 0:
+            out.append(''.join(cur).strip())
+            cur = []
+            continue
+        cur.append(ch)
+    out.append(''.join(cur).strip())
+    return [d for d in out if d]
+
+
+def dedupe_css(css: str) -> str:
+    """Removes what the design file's older generations of rules leave behind (owner's critique, 30
+    October 2026: several generations of the same rules, later ones silently overriding earlier ones).
+    Every rule stays where it is. A declaration is removed only when a later rule with the same selector,
+    in the same scope (top level or the same @media condition), sets the same property and would win
+    anyway (an !important one is kept unless the later one is !important too). Rules left empty go.
+    The rendered page is unchanged; build checks compare it pixel for pixel."""
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+    entries: list[dict] = []                              # in order: {'scope', 'block', 'sel', 'decls'}
+    i, n, scope, block = 0, len(css), '', 0
+    while i < n:
+        if css[i].isspace():
+            i += 1
+            continue
+        if css[i] == '}':
+            scope, i = '', i + 1
+            continue
+        j = css.find('{', i)
+        if j < 0:
+            break
+        prelude = css[i:j].strip()
+        if prelude.startswith('@media'):
+            scope, block, i = ' '.join(prelude.split()), block + 1, j + 1
+            continue
+        if prelude.startswith('@'):
+            raise SystemExit(f'dedupe_css: unsupported at-rule {prelude[:40]}')
+        k = css.find('}', j)
+        entries.append({'scope': scope, 'block': block if scope else 0, 'sel': prelude, 'decls': _split_decls(css[j + 1:k])})
+        i = k + 1
+    prop = lambda d: d.split(':', 1)[0].strip().lower()
+    important = lambda d: d.replace(' ', '').lower().endswith('!important')
+    later: dict[tuple[str, str], dict[str, bool]] = {}    # (scope, selector) -> property -> set !important later
+    for e in reversed(entries):
+        seen = later.setdefault((e['scope'], e['sel']), {})
+        kept = []
+        for d in reversed(e['decls']):
+            p_, imp = prop(d), important(d)
+            if p_ in seen and (seen[p_] or not imp):
+                continue                                  # overridden by a later rule for the same selector
+            kept.append(d)
+            seen[p_] = seen.get(p_, False) or imp
+        e['decls'] = list(reversed(kept))
+    out, open_block = [], None
+    for e in entries:
+        if not e['decls']:
+            continue
+        if e['block'] != open_block:
+            if open_block:
+                out.append('}')
+            if e['block']:
+                out.append(e['scope'] + '{')
+            open_block = e['block']
+        out.append(f"{e['sel']}{{{';'.join(e['decls'])}}}")
+    if open_block:
+        out.append('}')
+    return '\n'.join(out)
 
 
 def recolour_css(css: str, palette: str = EMERALD) -> str:
@@ -748,7 +851,7 @@ def main() -> int:
         '/* Generated by scripts/platform-home/build.py from docs/flyttgo-premium-platform-homepage-stage-20.html.\n'
         ' * The design\'s styles, scoped under .fgv2, in the FlyttGo palette with disciplined roles (deep blue,\n'
         ' * forest, gold hairlines, ivory; owner, 30 October 2026), then made readable. Do not edit. */\n'
-        + readable_css(recolour_css(scope_css(css, '.fgv2'), BRAND)) + '\n', encoding='utf-8')
+        + dedupe_css(readable_css(recolour_css(scope_css(css, '.fgv2'), BRAND))) + '\n', encoding='utf-8')
     print(f'design.html {len(body)} chars, design.css, design-scripts.ts ({len(scripts)} scripts); links wired:')
     for u in used:
         print('  ' + u)
