@@ -4,12 +4,18 @@
  *    (calculateCommission, the same rule the payout uses), labelled an example, not a promise.
  *  - EscrowFlow: how the money moves, drawn as a line that fills in.
  *  - DriverFaq: questions answered from the platform's own rules.
- * Every figure comes from SUBSCRIPTION_PLANS, the commission rule or the cancellation policy; none is typed here.
+ *  - DayOnFlyttGo (items 5, 6): a job from accept to paid, each step shown in the driver app's own job card
+ *    and wallet (PortalCards, the components the portal renders) with one sample job, labelled a sample.
+ *  - FleetSection (item 14): how a company with several vans joins, as the platform works today.
+ *  - TermsSummary (item 12): the Driver Agreement in plain words, figures from lib/driverTerms.ts.
+ * Every figure comes from SUBSCRIPTION_PLANS, the commission rule, the cancellation policy or the agreement.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SUBSCRIPTION_PLANS, calculateCommission } from '../../lib/constants';
 import { CANCELLATION_POLICY } from '../../../supabase/functions/_shared/pricing';
+import { DRIVER_TERMS, TERMS_SUMMARY } from '../../lib/driverTerms';
+import { JobCard, WalletPanel, calcCommission } from './PortalCards';
 
 const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24513B]';
 const serif = { fontFamily: 'Georgia, "Times New Roman", serif' };
@@ -132,6 +138,129 @@ export function DriverFaq() {
           <p className="m-0 pb-6 pe-12 text-[16px] leading-relaxed text-[#4A5260] max-w-[75ch]">{t(`driverLanding.faq.${k}A`, vars[k] ?? {})}</p>
         </details>
       ))}
+    </div>
+  );
+}
+
+/* ── A day on FlyttGo (items 5 and 6) ─────────────────────────────────────────────────────────── */
+const SAMPLE_PLAN = 'pro_mini';
+const SAMPLE_PRICE = 2500;
+function sampleJob(status: string, extra: Record<string, unknown> = {}) {
+  return {
+    id: 'sample', status, pickup_address: 'Storgata 12, 0184 Oslo', dropoff_address: 'Bogstadveien 40, 0366 Oslo',
+    price_estimate: SAMPLE_PRICE, estimated_hours: 3, helpers: 1, additional_services: ['furniture_assembly'],
+    move_date: new Date().toISOString().slice(0, 10), driver_id: 'sample-driver',
+    customer_notes: status === 'awaiting_driver' ? null : '', ...extra,
+  };
+}
+
+export function DayOnFlyttGo() {
+  const { t } = useTranslation();
+  const track = useRef<HTMLOListElement>(null);
+  const started = new Date(Date.now() - 74 * 60_000).toISOString();
+  const ended = new Date(Date.now() - 2 * 60_000).toISOString();
+  const earning = Math.round(calcCommission(SAMPLE_PRICE, SAMPLE_PLAN).earning);
+  const screens: { key: string; tab: string; screen: JSX.Element }[] = [
+    { key: 'accept', tab: 'jobs', screen: <JobCard preview job={sampleJob('awaiting_driver')} plan={SAMPLE_PLAN} /> },
+    { key: 'drive', tab: 'jobs', screen: <JobCard preview job={sampleJob('driver_assigned')} plan={SAMPLE_PLAN} /> },
+    { key: 'work', tab: 'jobs', screen: <JobCard preview job={sampleJob('in_transit', { start_time: started })} plan={SAMPLE_PLAN} /> },
+    { key: 'confirm', tab: 'jobs', screen: <JobCard preview job={sampleJob('completed', { start_time: started, end_time: ended, actual_hours: 1.2 })} plan={SAMPLE_PLAN} /> },
+    { key: 'paid', tab: 'wallet', screen: <WalletPanel preview wallet={{ balance: earning, pending: 0, total_earned: earning }}
+                                                     transactions={[{ id: 's', description: t('driverLanding.day.sampleTx'), amount: earning }]} /> },
+  ];
+  const scrollBy = (dir: number) => {
+    const el = track.current; if (!el) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollBy({ left: dir * Math.min(el.clientWidth, 360) * (document.dir === 'rtl' ? -1 : 1), behavior: reduce ? 'auto' : 'smooth' });
+  };
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <p className="m-0 text-[13px] font-semibold text-[#7A6436]">{t('driverLanding.day.sample', { plan: SUBSCRIPTION_PLANS.find(p => p.id === SAMPLE_PLAN)?.name ?? SAMPLE_PLAN })}</p>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => scrollBy(-1)} aria-label={t('driverLanding.day.prev')} className={`w-11 h-11 border border-[#CFC7B5] bg-white hover:bg-[#F3EEE2] ${focus}`}>←</button>
+          <button type="button" onClick={() => scrollBy(1)} aria-label={t('driverLanding.day.next')} className={`w-11 h-11 border border-[#CFC7B5] bg-white hover:bg-[#F3EEE2] ${focus}`}>→</button>
+        </div>
+      </div>
+      <ol ref={track} className="list-none p-0 m-0 flex gap-8 overflow-x-auto snap-x snap-mandatory pb-6 [scrollbar-width:thin]">
+        {screens.map((s, i) => (
+          <li key={s.key} className="snap-start flex-shrink-0 w-[300px] sm:w-[320px]">
+            <div aria-hidden="true" className="relative h-[470px] rounded-[38px] border-[10px] border-[#17212E] bg-gray-50 overflow-hidden shadow-[0_24px_48px_-24px_rgba(23,33,46,.45)]">
+              <div className="absolute top-0 inset-x-0 h-6 flex justify-center"><span className="mt-1.5 w-20 h-4 rounded-full bg-[#17212E]" /></div>
+              <div className="pt-9 px-3 pb-3 h-full overflow-hidden">
+                <div className="flex items-center justify-between px-1 mb-3">
+                  <span className="text-[13px] font-bold text-gray-900">FlyttGo Driver</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded bg-black text-white capitalize">{t(`driverPortal.${s.tab}`)}</span>
+                </div>
+                <div className="origin-top-left scale-[.92] w-[108.7%]">{s.screen}</div>
+              </div>
+            </div>
+            <p className="mt-6 mb-1 text-[13px] font-bold tracking-[.12em] uppercase text-[#9F8249]">{t('driverLanding.day.stepN', { n: i + 1 })}</p>
+            <h3 className="text-[19px] font-bold tracking-tight m-0 mb-1.5">{t(`driverLanding.day.${s.key}`)}</h3>
+            <p className="text-[14px] leading-relaxed text-[#4A5260] m-0">{t(`driverLanding.day.${s.key}Desc`)}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/* ── For a company with several vans (item 14) ────────────────────────────────────────────────── */
+export function FleetSection({ onCompany }: { onCompany: () => void }) {
+  const { t } = useTranslation();
+  const steps = ['register', 'team', 'drivers', 'grow'] as const;
+  return (
+    <div className="grid lg:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] gap-10 lg:gap-16">
+      <div>
+        <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.fleet.eyebrow')}</p>
+        <h2 className="text-[36px] md:text-[48px] font-bold tracking-[-.04em] leading-[1.04] mb-5">{t('driverLanding.fleet.title')}</h2>
+        <p className="text-lg text-[#4A5260] leading-relaxed m-0 mb-8 max-w-[52ch]">{t('driverLanding.fleet.lede')}</p>
+        <button type="button" onClick={onCompany} className={`min-h-[52px] px-6 bg-[#24513B] hover:bg-[#1C4130] text-white font-bold ${focus}`}>{t('driverLanding.fleet.cta')} →</button>
+        <p className="mt-8 text-[14px] leading-relaxed text-[#4A5260] border-s-2 border-[#C3A66C] ps-4 max-w-[52ch]">{t('driverLanding.fleet.notYet')}</p>
+      </div>
+      <ol className="list-none p-0 m-0 border-t-2 border-[#17212E]">
+        {steps.map((k, i) => (
+          <li key={k} className="grid grid-cols-[56px_minmax(0,1fr)] gap-4 py-6 border-b border-[#E2DACA]">
+            <span className="text-[40px] leading-none text-[#9F8249]" style={serif}>{i + 1}</span>
+            <div>
+              <h3 className="text-[19px] font-bold tracking-tight m-0 mb-1.5">{t(`driverLanding.fleet.${k}`)}</h3>
+              <p className="text-[15px] leading-relaxed text-[#4A5260] m-0">{t(`driverLanding.fleet.${k}Desc`)}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/* ── The Driver Agreement in plain words (item 12) ────────────────────────────────────────────── */
+export function TermsSummary({ compact = false }: { compact?: boolean }) {
+  const { t, i18n } = useTranslation();
+  const no = i18n.language === 'no';
+  const nok = (n: number) => `${n.toLocaleString(no ? 'nb-NO' : 'en-GB')} NOK`;
+  const vars = {
+    goods: nok(DRIVER_TERMS.goodsInTransitMinNok), liability: nok(DRIVER_TERMS.publicLiabilityMinNok),
+    days: DRIVER_TERMS.commissionDisputeDays,
+  };
+  return (
+    <div>
+      <ul className={`list-none p-0 m-0 grid ${compact ? 'gap-3' : 'md:grid-cols-3 gap-x-10 gap-y-8'}`}>
+        {TERMS_SUMMARY.map(({ key, section }) => (
+          <li key={key} className={compact ? 'text-[14px] leading-relaxed' : ''}>
+            {compact ? <><b>{t(`driverLanding.terms.${key}`)}.</b> {t(`driverLanding.terms.${key}Desc`, vars)}</> : (
+              <>
+                <p className="m-0 mb-1 text-xs font-bold tracking-[.12em] uppercase text-[#7A6436]">{t('driverLanding.terms.section', { n: section })}</p>
+                <h3 className="text-[18px] font-bold tracking-tight m-0 mb-1.5">{t(`driverLanding.terms.${key}`)}</h3>
+                <p className="text-[15px] leading-relaxed text-[#4A5260] m-0">{t(`driverLanding.terms.${key}Desc`, vars)}</p>
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className={`${compact ? 'mt-4 text-[13px]' : 'mt-10 text-[14px]'} text-[#4A5260]`}>
+        {t('driverLanding.terms.note', { date: DRIVER_TERMS.lastUpdated })}{' '}
+        <a href="/driver-terms" target="_blank" rel="noopener noreferrer" className={`font-bold text-[#24513B] underline underline-offset-4 ${focus}`}>{t('driverLanding.terms.full')}</a>
+      </p>
     </div>
   );
 }

@@ -11,7 +11,8 @@ import { useApp } from '../../lib/store';
 import { APPLICATION_CITIES, DOCUMENT_ACCEPT, DOCUMENT_TYPES, VEHICLE_TYPES, type DocumentType } from './applicationData';
 import { useDriverApplication, type Field } from './useDriverApplication';
 import { checkPhoto, type PhotoCheck } from './imageQuality';
-import { supabase } from '../../lib/supabase';
+import { TermsSummary } from './LandingParts';
+import { callFunction, supabase } from '../../lib/supabase';
 
 const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24513B]';
 const inputBase = 'block w-full h-12 px-4 bg-white text-[15px] text-[#17212E] border placeholder:text-[#8a8f98] outline-none transition focus:border-[#24513B] focus:ring-2 focus:ring-[#24513B]/25';
@@ -46,6 +47,34 @@ export default function DriverApplicationForm({ presetCity, onProgress }: { pres
     const timer = window.setInterval(load, 60_000);
     return () => { live = false; window.clearInterval(timer); };
   }, [app.submitted, userId]);
+
+  /* Plate lookup in the vehicle register (owner, 31 October 2026; vehicle-lookup): offered only once the
+   * register is connected. It fills make, model and year; the driver can still change them. */
+  const [lookupOn, setLookupOn] = useState(false);
+  const [lookup, setLookup] = useState<'idle' | 'busy' | 'filled' | 'notFound' | 'signIn' | 'failed'>('idle');
+  useEffect(() => {
+    let live = true;
+    callFunction('vehicle-lookup', { probe: true }).then(r => r.ok ? r.json() : null)
+      .then(d => { if (live && d?.available) setLookupOn(true); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+  async function lookUpPlate() {
+    if (!app.licensePlate.trim()) return;
+    if (!app.user) { setLookup('signIn'); return; }
+    setLookup('busy');
+    try {
+      const r = await callFunction('vehicle-lookup', { plate: app.licensePlate });
+      const d = await r.json().catch(() => null);
+      if (r.status === 401) { setLookup('signIn'); return; }
+      if (!r.ok) { setLookup('failed'); return; }
+      if (!d?.found) { setLookup('notFound'); return; }
+      const v = d.vehicle as { make: string | null; model: string | null; year: number | null };
+      if (v.make) app.setVehicleMake(v.make[0] + v.make.slice(1).toLowerCase());
+      if (v.model) app.setVehicleModel(v.model);
+      if (v.year) app.setVehicleYear(String(v.year));
+      setLookup('filled');
+    } catch { setLookup('failed'); }
+  }
 
   const steps = [1, 2, 3, 4].map(n => ({
     n,
@@ -273,6 +302,16 @@ export default function DriverApplicationForm({ presetCity, onProgress }: { pres
                       t('driverApplication.yearHint'), app.vehicleYear.trim() ? t('driverApplication.errYear', { max: new Date().getFullYear() + 1 }) : undefined)}
                     {field('licensePlate', t('driverOnboarding.licensePlate'), text('licensePlate', app.licensePlate, app.setLicensePlate, { placeholder: 'AB 12345', autoCapitalize: 'characters' }))}
                   </div>
+                  {lookupOn && (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border border-[#DCD4C2] bg-[#FFFEFA] p-4">
+                      <button type="button" onClick={lookUpPlate} disabled={!app.licensePlate.trim() || lookup === 'busy'} className={`${btnSecondary} min-h-[44px] disabled:opacity-50`}>
+                        {lookup === 'busy' ? t('driverApplication.lookup.busy') : t('driverApplication.lookup.button')}
+                      </button>
+                      <p aria-live="polite" className="m-0 text-[13px] text-[#4A5260] flex-1 min-w-[200px]">
+                        {lookup === 'idle' || lookup === 'busy' ? t('driverApplication.lookup.hint') : t(`driverApplication.lookup.${lookup}`)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -316,6 +355,12 @@ export default function DriverApplicationForm({ presetCity, onProgress }: { pres
                     </div>
                   ))}
 
+                  <details className="border border-[#E2DACA] bg-[#FFFEFA] p-5 group">
+                    <summary className={`cursor-pointer list-none font-bold text-[#17212E] flex items-center gap-2 ${focus}`}>
+                      <span aria-hidden="true" className="text-[#24513B] transition group-open:rotate-90">›</span>{t('driverLanding.terms.inForm')}
+                    </summary>
+                    <div className="mt-4"><TermsSummary compact /></div>
+                  </details>
                   <label className={`flex items-start gap-3 p-5 border cursor-pointer ${bad('terms') ? 'border-[#A4271C]' : 'border-[#E2DACA]'} bg-white`}>
                     <input type="checkbox" checked={app.acceptedTerms} onChange={e => app.setAcceptedTerms(e.target.checked)}
                            aria-invalid={bad('terms') || undefined} className="w-5 h-5 mt-0.5 flex-shrink-0 accent-[#24513B]" />

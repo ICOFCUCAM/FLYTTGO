@@ -1,7 +1,9 @@
 import React from 'react';
 import { useApp } from '../lib/store';
 
-const LAST_UPDATED = 'March 31, 2026';
+import { DRIVER_TERMS } from '../lib/driverTerms';
+
+const LAST_UPDATED = DRIVER_TERMS.lastUpdated;
 
 export default function DriverTermsPage() {
   const { setPage } = useApp();

@@ -8,12 +8,15 @@
  * 00015), labelled as a sample price. The price checker adds them up and says it is an estimate.
  * Presentation (owner, 31 October 2026): the steps as one ruled ladder, the price checker as a planning
  * tool on paper with the totals in forest green; intro: the company lead-in shown beside the heading.
+ * Price checker upgrade (owner, 31 October 2026, item 15): sliders, a per month / first year view, and a PDF of
+ * the estimate with each price's status, to show a partner or accountant.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
 import { loadPlans, type PriceStatus } from '../lib/whiteLabel';
 import { supabase } from '../lib/supabase';
+import { buildPdf, downloadPdf, type PdfLine } from '../lib/simplePdf';
 
 type Code = 'branded' | 'branded_domain' | 'website_invoicing' | 'own_seller';
 const CODES: Code[] = ['branded', 'branded_domain', 'website_invoicing', 'own_seller'];
@@ -69,6 +72,7 @@ export default function DriverGrowth({ intro }: { intro?: { title: string; text:
   const [tierIx, setTierIx] = useState(-1);
   const [bookings, setBookings] = useState(20);
   const [avg, setAvg] = useState(3000);
+  const [view, setView] = useState<'month' | 'year'>('year');
   const est = useMemo(() => {
     const p = plan === 'free' ? null : prices[plan];
     const tier = tierIx >= 0 ? tiers.list[tierIx] : null;
@@ -77,6 +81,34 @@ export default function DriverGrowth({ intro }: { intro?: { title: string; text:
     const monthly = (p?.monthly ?? 0) + acct + fee;
     return { setup: p?.setup ?? 0, monthly, fee, acct, year: (p?.setup ?? 0) + monthly * 12, quote: !!tier && tier.monthly_fee == null };
   }, [plan, tierIx, bookings, avg, prices, tiers]);
+
+  /* The estimate as a PDF: every line the panel shows, each price's status, and that it is an estimate. */
+  const planTitle = (c: Code | 'free') => t(`driverLanding.grow.${({ free: 'free', branded: 'page', branded_domain: 'domain', website_invoicing: 'tools', own_seller: 'seller' } as const)[c]}.title`);
+  function savePdf() {
+    const p = plan === 'free' ? null : prices[plan];
+    const tier = tierIx >= 0 ? tiers.list[tierIx] : null;
+    const L: PdfLine[] = [
+      { text: t('driverLanding.grow.checker.pdfTitle'), size: 20, bold: true, gap: 0 },
+      { text: t('driverLanding.grow.checker.pdfMade', { date: new Date().toLocaleDateString(no ? 'nb-NO' : 'en-GB') }), size: 10, gap: 20 },
+      { text: t('driverLanding.grow.checker.plan'), bold: true, gap: 34, right: planTitle(plan) },
+      ...(p ? [{ text: `  ${statusLabel(p.status)} · ${t('driverLanding.grow.exMva')}`, size: 9, gap: 14 }] : []),
+      { text: t('driverLanding.grow.checker.accounting'), bold: true, gap: 22, right: tier ? (tier.monthly_fee == null ? t('driverLanding.grow.byQuote') : `${nok(tier.monthly_fee)} ${t('driverLanding.perMonth')}`) : t('driverLanding.grow.checker.noAccounting') },
+      ...(tier ? [{ text: `  ${statusLabel(tiers.status)} · ${t('driverLanding.grow.exMva')}`, size: 9, gap: 14 }] : []),
+      ...(p && p.feePct > 0 ? [
+        { text: t('driverLanding.grow.checker.bookings'), gap: 22, right: fmt(bookings) },
+        { text: t('driverLanding.grow.checker.avg'), right: nok(avg) },
+      ] : []),
+      { text: t('driverLanding.grow.checker.setupFee'), gap: 30, right: nok(est.setup) },
+      { text: t('driverLanding.grow.checker.monthly'), right: nok(est.monthly) },
+      ...(est.fee > 0 ? [{ text: `  ${t('driverLanding.grow.checker.ofWhichFee')}`, size: 10, right: nok(est.fee) }] : []),
+      ...(est.acct > 0 ? [{ text: `  ${t('driverLanding.grow.checker.ofWhichAccounting')}`, size: 10, right: nok(est.acct) }] : []),
+      { text: t('driverLanding.grow.checker.year'), size: 14, bold: true, gap: 30, right: nok(est.year) },
+      ...(est.quote ? [{ text: t('driverLanding.grow.checker.quote'), size: 10, gap: 22 }] : []),
+      { text: t('driverLanding.grow.checker.disclaimer'), size: 9, gap: 34 },
+      { text: 'flyttgo.no/become-a-driver', size: 9, gap: 14 },
+    ];
+    downloadPdf(buildPdf(L, { title: t('driverLanding.grow.checker.pdfTitle') }), 'flyttgo-price-estimate.pdf');
+  }
 
   /* One rung of the ladder: its step, what it gives, and its price with the price's status. */
   const step = (key: string, code: Code | 'free' | 'accounting') => {
@@ -168,14 +200,16 @@ export default function DriverGrowth({ intro }: { intro?: { title: string; text:
             </label>
             {plan !== 'free' && prices[plan].feePct > 0 && (
               <>
-                <label className="block text-sm font-semibold">{t('driverLanding.grow.checker.bookings')}
-                  <input type="number" min={0} max={10000} className={`${input} mt-1.5`} value={bookings}
-                         onChange={e => setBookings(Math.max(0, Math.min(10000, Number(e.target.value) || 0)))} />
-                </label>
-                <label className="block text-sm font-semibold">{t('driverLanding.grow.checker.avg')}
-                  <input type="number" min={0} max={1000000} step={100} className={`${input} mt-1.5`} value={avg}
-                         onChange={e => setAvg(Math.max(0, Math.min(1000000, Number(e.target.value) || 0)))} />
-                </label>
+                <div className="sm:col-span-2">
+                  <label htmlFor="gc-bookings" className="flex justify-between text-sm font-semibold"><span>{t('driverLanding.grow.checker.bookings')}</span><output htmlFor="gc-bookings" className="tabular-nums">{fmt(bookings)}</output></label>
+                  <input id="gc-bookings" type="range" min={0} max={300} step={5} value={bookings} onChange={e => setBookings(Number(e.target.value))}
+                         className="mt-2 w-full accent-[#24513B]" aria-valuetext={fmt(bookings)} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="gc-avg" className="flex justify-between text-sm font-semibold"><span>{t('driverLanding.grow.checker.avg')}</span><output htmlFor="gc-avg" className="tabular-nums">{nok(avg)}</output></label>
+                  <input id="gc-avg" type="range" min={500} max={20000} step={100} value={avg} onChange={e => setAvg(Number(e.target.value))}
+                         className="mt-2 w-full accent-[#24513B]" aria-valuetext={nok(avg)} />
+                </div>
               </>
             )}
           </div>
@@ -187,13 +221,24 @@ export default function DriverGrowth({ intro }: { intro?: { title: string; text:
             {est.fee > 0 && <><dt className="text-[#D5E2D8] ps-3">{t('driverLanding.grow.checker.ofWhichFee')}</dt><dd className="m-0 text-end text-[#D5E2D8]">{nok(est.fee)}</dd></>}
             {est.acct > 0 && <><dt className="text-[#D5E2D8] ps-3">{t('driverLanding.grow.checker.ofWhichAccounting')}</dt><dd className="m-0 text-end text-[#D5E2D8]">{nok(est.acct)}</dd></>}
           </dl>
-          <p className="m-0 mt-6 pt-5 border-t border-white/25 text-sm text-[#D5E2D8]">{t('driverLanding.grow.checker.year')}</p>
-          <p className="m-0 text-[44px] leading-none tracking-tight mt-1" style={{ fontFamily: 'Georgia, serif' }}>{nok(est.year)}</p>
+          <div role="radiogroup" aria-label={t('driverLanding.grow.checker.viewLabel')} className="mt-6 pt-5 border-t border-white/25 flex gap-0 self-start border-b-0">
+            {(['month', 'year'] as const).map(v => (
+              <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => setView(v)}
+                      className={`min-h-[36px] px-3 text-[13px] font-bold border border-white/40 first:border-e-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${view === v ? 'bg-white text-[#24513B]' : 'text-white hover:bg-white/10'}`}>
+                {t(`driverLanding.grow.checker.view.${v}`)}
+              </button>
+            ))}
+          </div>
+          <p className="m-0 mt-4 text-sm text-[#D5E2D8]">{view === 'year' ? t('driverLanding.grow.checker.year') : t('driverLanding.grow.checker.monthly')}</p>
+          <p className="m-0 text-[44px] leading-none tracking-tight mt-1" style={{ fontFamily: 'Georgia, serif' }}>{nok(view === 'year' ? est.year : est.monthly)}</p>
+          {view === 'month' && est.setup > 0 && <p className="m-0 mt-2 text-sm text-[#D5E2D8]">{t('driverLanding.grow.checker.plusSetup', { amount: nok(est.setup) })}</p>}
           {est.quote && <p className="m-0 mt-3 text-sm text-[#EBDDBA]">{t('driverLanding.grow.checker.quote')}</p>}
           <p className="m-0 mt-3 text-xs text-[#D5E2D8]">{t('driverLanding.grow.checker.disclaimer')}</p>
           <span className="flex-1" />
+          <button type="button" onClick={savePdf}
+                  className="mt-7 self-start min-h-[44px] px-5 border border-white/60 text-white font-bold hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{t('driverLanding.grow.checker.pdf')} ↓</button>
           <button type="button" onClick={() => setPage('white-label')}
-                  className="mt-7 self-start min-h-[50px] px-6 bg-[#C3A66C] hover:bg-[#D2B87F] text-[#17212E] font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{t('driverLanding.grow.seePlans')} →</button>
+                  className="mt-3 self-start min-h-[50px] px-6 bg-[#C3A66C] hover:bg-[#D2B87F] text-[#17212E] font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">{t('driverLanding.grow.seePlans')} →</button>
         </div>
       </div>
     </div>

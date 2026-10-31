@@ -12,7 +12,7 @@ import { useApp } from '../lib/store';
 import { SUBSCRIPTION_PLANS } from '../lib/constants';
 import DriverGrowth from './DriverGrowth';
 import DriverApplicationForm, { type ApplicationProgress } from './driver/DriverApplicationForm';
-import { DriverFaq, EscrowFlow, PlanPicker } from './driver/LandingParts';
+import { DayOnFlyttGo, DriverFaq, EscrowFlow, FleetSection, PlanPicker, TermsSummary } from './driver/LandingParts';
 import './driver/driverPage.css';
 import { APPLICATION_CITIES, DOCUMENT_TYPES, VEHICLE_TYPES } from './driver/applicationData';
 
@@ -23,7 +23,7 @@ const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outli
 const serif = { fontFamily: 'Georgia, "Times New Roman", serif' };
 
 type Plan = (typeof SUBSCRIPTION_PLANS)[number];
-const SECTIONS = ['process', 'benefits', 'plans', 'payments', 'requirements', 'faq', 'companies'] as const;
+const SECTIONS = ['process', 'day', 'benefits', 'plans', 'payments', 'requirements', 'terms', 'faq', 'companies'] as const;
 
 export default function DriverLanding() {
   const { t, i18n } = useTranslation();
@@ -100,6 +100,8 @@ export default function DriverLanding() {
   const companiesSection = (
       <section id="companies" className="fg-reveal scroll-mt-32 py-20 md:py-28">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10">
+          <FleetSection onCompany={() => setPage('corporate-dashboard')} />
+          <div className="h-20 md:h-28" aria-hidden="true" />
           <DriverGrowth intro={{ title: t('driverLanding.companyTitle'), text: t('driverLanding.companyText') }} />
         </div>
       </section>
@@ -197,6 +199,20 @@ export default function DriverLanding() {
               </li>
             ))}
           </ol>
+        </div>
+      </section>
+
+      {/* ── A day on FlyttGo, in the driver app's own screens (items 5, 6) ── */}
+      <section id="day" className="fg-reveal scroll-mt-32 pb-20 md:pb-28">
+        <div className="max-w-[1240px] mx-auto px-5 md:px-10">
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 lg:gap-16 items-end mb-10">
+            <div>
+              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.day.eyebrow')}</p>
+              <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] m-0">{t('driverLanding.day.title')}</h2>
+            </div>
+            <p className="text-lg text-[#4A5260] leading-relaxed m-0 max-w-[56ch]">{t('driverLanding.day.lede')}</p>
+          </div>
+          <DayOnFlyttGo />
         </div>
       </section>
 
@@ -341,6 +357,20 @@ export default function DriverLanding() {
               <button type="button" onClick={toForm} className="mt-10 min-h-[52px] px-6 bg-[#C3A66C] hover:bg-[#D2B87F] text-[#17212E] font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DCC9A0]">{t('driverLanding.apply')} ↓</button>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── The Driver Agreement in plain words (item 12) ── */}
+      <section id="terms" className="fg-reveal scroll-mt-32 py-20 md:py-28">
+        <div className="max-w-[1240px] mx-auto px-5 md:px-10">
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 lg:gap-16 items-end mb-12">
+            <div>
+              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.terms.eyebrow')}</p>
+              <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] m-0">{t('driverLanding.terms.title')}</h2>
+            </div>
+            <p className="text-lg text-[#4A5260] leading-relaxed m-0 max-w-[56ch]">{t('driverLanding.terms.lede')}</p>
+          </div>
+          <TermsSummary />
         </div>
       </section>
 
