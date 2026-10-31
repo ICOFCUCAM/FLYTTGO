@@ -266,6 +266,59 @@ A refinement of the existing page, not a redesign. The structure, journeys, inte
 - `build.py` gained `dedupe_css`. In the generated `design.v2.css` it removes declarations that a later rule for the same selector, in the same scope, overrides. That takes the file from 4,322 to 3,830 declarations and from 1,562 to 1,441 rules; hero rules go from 69 to 47.
 - Rules stay in place, so the page is pixel-identical before and after at 1440, 820 and 390 px. Checked with full-page screenshots.
 
+### 2036 premium mandate: audit of the code as it stands (2026-10-31)
+
+Read from the code on `main` after #21: `HomeV2Page.tsx`, the generated `design.v2(.no).html` and
+`design.v2.css`, `homeV2.css`, `design.config.ts`, `studioPreview.ts`, `demoRecords.ts`, `lab/` and `build.py`.
+Visual findings come from browser screenshots at 1440 and 390 px taken during #21.
+
+**Preserve.** These work and stay:
+- **Journeys:** customers, My Company and Organisations as three distinct ways in.
+- **Palette:** six colours with fixed roles.
+- **One example job:** the trail leads into the finance explorer, with a real NS 4102 voucher.
+- **Booking widget:** the real one, under the hero.
+- **Translation:** the EN/NO build fails when a string is missing.
+- **Design source:** the token and variant source in `design.config.ts`.
+- **Isolation:** the production homepage untouched; the lab refuses production hosts.
+
+**Ordinary, not yet distinctive.**
+- **Type:** headings use one grotesk (Manrope, tracked to −0.045em), the common SaaS voice. The italic second line of every heading is the design's fallback `Georgia`, not a chosen face.
+- **Headline:** it is a slogan. "Assisting Companies to Fly High" says how FlyttGo feels, not what it does; the visitor needs the proposition line to understand the product.
+- **Motif:** the only motif is the curved corner.
+
+**Repetitive.**
+- **Section heads:** about fourteen use the same arrangement: eyebrow, then a two-line heading with an italic second line, then a paragraph to the right.
+- **Wording:** six headings or eyebrows said "one platform" or "connected platform".
+- **Frames:** every product demonstration sits in the same frame with a title bar.
+- **Related links:** the related-link row repeats on six sections.
+
+**Needs stronger art direction.**
+- **Photography:** it is a collection, not a direction: FlyttGo vehicles, interiors and stock scenes. They are united only by a colour grade.
+- **Section grounds:** they simply alternate between white and ivory, so the page has no rhythm of emphasis.
+
+**Demonstrations that need more realism.**
+- **Business workspace:** no toolbar, date, search or team activity, so it reads as tables in a frame. Appointments and jobs are not told apart.
+- **Studio:** the storefront is a single hero and category tiles; the brand mark is small. It does not say which parts are available, illustrative or in development.
+
+**Typography, spacing, imagery, colour, composition and motion.**
+- **Headings:** the tracking is heavy at large sizes.
+- **Labels:** 11 px uppercase labels are used very widely.
+- **Composition:** almost every section is a centred wrap with the same internal rhythm.
+- **Motion:** a single entrance pattern, with no control of intensity.
+
+**Technical weaknesses that limit refinement.**
+- **Variants:** only six sections have composition variants.
+- **Typography:** families and leading are fixed in CSS.
+- **Lab measurements:** overflow and smallest text only. No version history, promotion or restore, no synchronised scrolling, no interaction check.
+- **CSS:** the generated `design.v2.css` (1,441 rules) still sets values that `homeV2.css` must override.
+
+**Greatest impact, in order.**
+1. A hero that says what FlyttGo does, chosen from three real directions.
+2. A typographic identity: a chosen editorial serif beside the grotesk.
+3. Section compositions that differ by purpose.
+4. The business workspace as a convincing product.
+5. A refinement studio that makes these choices measurable.
+
 ### 2036 mandate: design lab, competing directions, signature demonstrations (owner, 2026-10-30)
 
 **Design settings in one place.** `src/components/homeV2/design.config.ts` holds the tokens (six palette colours, heading, hero and spacing scales, content width, corner radius, signature corner, shadow depth, photo saturation and warmth) and the composition variant of each key section. `applyDesign()` writes tokens as custom properties and variants as data attributes on `.fgv2`; `homeV2.css` reads nothing else. `HomeV2Page` applies the selected defaults.

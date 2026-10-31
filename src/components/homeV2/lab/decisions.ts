@@ -1,11 +1,14 @@
 /**
- * The design decision history for /preview/home: each comparison the lab ran, what was chosen and
- * why. design.config.ts DEFAULT_VARIANTS follows the latest decision for each section. Decisions
+ * The visual decision log for /preview/home: each comparison, the alternatives considered, what was
+ * chosen and why it is stronger (owner, 31 October 2026: record every hero, photograph, font pairing,
+ * section composition and interaction choice). design.config.ts DEFAULT_VARIANTS follows the latest decision for each section. Decisions
  * recorded in the lab itself are kept in the browser and can be exported; the ones below are the
  * reviewed record, compared at identical viewports (1440 × 900 and 390 × 844).
  */
 export type Decision = {
   date: string;
+  /* what kind of choice: hero, headline, typography, photograph, composition, interaction, tokens */
+  category?: string;
   section: string;
   compared: string[];
   chosen: string;
