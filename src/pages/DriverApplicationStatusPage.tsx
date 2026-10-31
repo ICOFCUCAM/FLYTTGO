@@ -51,7 +51,7 @@ interface DriverDocument {
 
 /** Friendly label for each document_type stored in driver_documents. */
 const DOC_LABEL: Record<string, string> = {
-  driver_license:       "Driver's License",
+  driver_license:       'Driving licence',
   insurance:            'Vehicle Insurance',
   vehicle_registration: 'Vehicle Registration',
   identity_document:    'ID / Passport',

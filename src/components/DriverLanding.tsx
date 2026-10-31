@@ -6,22 +6,26 @@
  * price checker (DriverGrowth) and the application itself (driver/DriverApplicationForm). Nothing here
  * states a figure or promise the platform does not hold.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../lib/store';
-import { SUBSCRIPTION_PLANS } from '../lib/constants';
+import { IMAGES, SUBSCRIPTION_PLANS, VAN_TYPES } from '../lib/constants';
 import DriverGrowth from './DriverGrowth';
-import DriverApplicationForm from './driver/DriverApplicationForm';
+import DriverApplicationForm, { type ApplicationProgress } from './driver/DriverApplicationForm';
+import { DayOnFlyttGo, DriverFaq, EscrowFlow, FleetSection, PlanPicker, TermsSummary } from './driver/LandingParts';
+import './driver/driverPage.css';
 import { APPLICATION_CITIES, DOCUMENT_TYPES, VEHICLE_TYPES } from './driver/applicationData';
 
-const HERO = 'https://d64gsuwffb70l.cloudfront.net/69b48d1c24a3a59014dde38a_1773440407421_d3f9f76f.jpg';
+/* The FlyttGo truck in a Norwegian street, lettered flyttgo.no (the earlier picture read flyttgo.ch and Danish text). */
+const HERO = IMAGES.hero.truck1;
 const CREW = 'https://d64gsuwffb70l.cloudfront.net/69b9877aa085bb4df2a9da28_1773766976394_04c23eab.jpg';
 const PRIORITY_NO: Record<string, string> = { Standard: 'Standard', Moderate: 'Moderat', High: 'Høy', 'Very High': 'Svært høy', Highest: 'Høyest' };
 const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24513B]';
 const serif = { fontFamily: 'Georgia, "Times New Roman", serif' };
 
 type Plan = (typeof SUBSCRIPTION_PLANS)[number];
-const SECTIONS = ['process', 'benefits', 'plans', 'requirements', 'companies'] as const;
+const SECTIONS = ['process', 'day', 'benefits', 'plans', 'payments', 'requirements', 'terms', 'faq', 'companies'] as const;
+const COMPANY_SECTIONS = ['companies', 'process', 'day', 'benefits', 'plans', 'payments', 'requirements', 'terms', 'faq'] as const;
 
 export default function DriverLanding() {
   const { t, i18n } = useTranslation();
@@ -47,6 +51,48 @@ export default function DriverLanding() {
   };
   const toForm = () => go('driver-application');
 
+  /* Driver or transport company (item 13): the hero speaks to the one chosen; companies see their section first. */
+  const [audience, setAudience] = useState<'driver' | 'company'>('driver');
+  const sections = audience === 'company' ? COMPANY_SECTIONS : SECTIONS;
+  const [menu, setMenu] = useState(false);
+  /* Phones (owner, 31 October 2026): a fixed apply button once the hero is passed, hidden while the form is in view. */
+  const [showBar, setShowBar] = useState(false);
+  useEffect(() => {
+    const form = document.getElementById('driver-application');
+    let pastHero = false, formIn = false;
+    const update = () => setShowBar(pastHero && !formIn);
+    const onScroll = () => { pastHero = window.scrollY > window.innerHeight * 0.8; update(); };
+    const io = 'IntersectionObserver' in window && form ? new IntersectionObserver(([e]) => { formIn = e.isIntersecting; update(); }, { threshold: 0.05 }) : null;
+    if (io && form) io.observe(form);
+    window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+    return () => { window.removeEventListener('scroll', onScroll); io?.disconnect(); };
+  }, [audience]);
+  /* The phone sections menu closes on Escape or a tap outside it. */
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenu(false); };
+    const onDown = (e: PointerEvent) => { if (!(e.target as Element)?.closest?.('[data-sections-menu]')) setMenu(false); };
+    document.addEventListener('keydown', onKey); document.addEventListener('pointerdown', onDown);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('pointerdown', onDown); };
+  }, [menu]);
+  const titleA = audience === 'driver' ? t('driverLanding.heroTitleA') : t('driverLanding.audience.companyTitleA');
+  const titleB = audience === 'driver' ? t('driverLanding.heroTitleB') : t('driverLanding.audience.companyTitleB');
+  /* A city chosen in the ribbon is filled into the application (item 3); the form reports its progress for the sticky bar (item 4). */
+  const [presetCity, setPresetCity] = useState<string | null>(null);
+  const [progress, setProgress] = useState<ApplicationProgress>({ step: 1, started: false, submitted: false });
+  const onProgress = useCallback((p: ApplicationProgress) => setProgress(p), []);
+  const applyLabel = progress.submitted ? t('driverLanding.applySent') : progress.started ? t('driverLanding.applyContinue', { n: progress.step }) : t('driverLanding.apply');
+
+  /* Sections come in gently as they reach the screen (item 20); off under reduced motion (driverPage.css). */
+  useEffect(() => {
+    const els = Array.from(document.querySelectorAll<HTMLElement>('.fg-driver-page .fg-reveal'));
+    if (!('IntersectionObserver' in window)) { els.forEach(e => e.classList.add('fg-in')); return; }
+    const io = new IntersectionObserver(entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('fg-in'); io.unobserve(e.target); } }),
+      { rootMargin: '0px 0px -10% 0px', threshold: 0.05 });
+    els.forEach(e => io.observe(e));
+    return () => io.disconnect();
+  }, [audience]);
+
   /* The hero's three facts, read from the application and the plan list. */
   const free = SUBSCRIPTION_PLANS[0];
   const freeRate = Math.max(...Object.values(free.commission as Record<string, number>));
@@ -66,7 +112,7 @@ export default function DriverLanding() {
     }, { rootMargin: '-45% 0px -50% 0px' });
     [...SECTIONS, 'driver-application'].forEach(id => { const el = document.getElementById(id); if (el) io.observe(el); });
     return () => io.disconnect();
-  }, []);
+  }, [audience]);
 
   const meter = (n: number) => (
     <span className="inline-flex gap-[3px] align-middle" aria-hidden="true">
@@ -74,60 +120,113 @@ export default function DriverLanding() {
     </span>
   );
 
+  /* ── For transport companies (first for companies, item 13) ── */
+  const companiesSection = (
+      <section id="companies" className="fg-reveal scroll-mt-32 py-20 md:py-28">
+        <div className="max-w-[1240px] mx-auto px-5 md:px-10">
+          <FleetSection onCompany={() => setPage('corporate-dashboard')} />
+          <div className="h-20 md:h-28" aria-hidden="true" />
+          <DriverGrowth intro={{ title: t('driverLanding.companyTitle'), text: t('driverLanding.companyText') }} />
+        </div>
+      </section>
+  );
+
   return (
-    <div className="bg-[#FBF8F1] text-[#17212E]">
-      {/* ── Hero ───────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden">
-        <div className="max-w-[1440px] mx-auto grid lg:grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] min-h-[min(760px,calc(100vh-64px))]">
-          <div className="relative z-10 flex flex-col justify-center px-5 md:px-10 lg:ps-16 xl:ps-24 lg:pe-14 pt-14 pb-12 lg:py-20">
-            <p className="flex items-center gap-3 text-xs font-bold tracking-[.18em] uppercase text-[#7A6436] mb-6">
-              <span className="w-8 h-px bg-[#C3A66C]" aria-hidden="true" />{t('driverLanding.eyebrow')}
-            </p>
-            <h1 className="text-[44px] sm:text-[58px] xl:text-[76px] font-bold tracking-[-.045em] leading-[.98] mb-6 max-w-[13ch]">
-              {t('driverLanding.heroTitleA')} <span className="font-normal italic text-[#24513B]" style={serif}>{t('driverLanding.heroTitleB')}</span>
-            </h1>
-            <p className="text-lg md:text-xl leading-relaxed text-[#4A5260] max-w-[50ch] mb-9">{t('driverLanding.lede')}</p>
-            <div className="flex flex-wrap gap-3 mb-12">
-              <button type="button" onClick={toForm} className={`min-h-[56px] px-8 bg-[#24513B] hover:bg-[#1C4130] text-white font-bold text-[16px] transition ${focus}`}>{t('driverLanding.apply')} ↓</button>
-              <button type="button" onClick={() => go('plans')} className={`min-h-[56px] px-7 border border-[#17212E]/25 text-[#17212E] font-bold hover:bg-[#F3EEE2] transition ${focus}`}>{t('driverLanding.compare')}</button>
-            </div>
-            <dl className="grid grid-cols-3 gap-0 border-t border-[#E2DACA] m-0 max-w-[560px]">
-              {facts.map(([value, label], i) => (
-                <div key={label} className={`flex flex-col-reverse justify-end pt-5 ${i ? 'ps-4 sm:ps-5 border-s border-[#E2DACA]' : ''} pe-3`}>
-                  <dt className="text-[13px] leading-snug text-[#4A5260]">{label}</dt>
-                  <dd className="m-0 text-[22px] sm:text-[26px] md:text-[32px] leading-none text-[#17212E] mb-2" style={serif}>{value}</dd>
-                </div>
-              ))}
-            </dl>
+    <div className="fg-driver-page bg-[#FBF8F1] text-[#17212E]">
+      {/* ── Hero: full screen, the van on the road, the headline word by word (items 1–2) ── */}
+      <section className="relative overflow-hidden min-h-[min(820px,calc(100vh-64px))] flex items-end bg-[#1F3A2E] text-white">
+        <img src={HERO} alt={t('driverLanding.heroAlt')} className="fg-hero-photo absolute inset-0 w-full h-full object-cover" fetchPriority="high" decoding="async" />
+        <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(90deg,rgba(23,40,32,.94)_0%,rgba(23,40,32,.78)_42%,rgba(23,40,32,.18)_75%,rgba(23,40,32,.05)_100%)]" />
+        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[rgba(23,40,32,.7)] to-transparent" />
+        <div aria-hidden="true" className="lg:hidden absolute inset-0 bg-[rgba(23,40,32,.55)]" />
+        <div className="relative z-10 w-full max-w-[1440px] mx-auto px-5 md:px-10 lg:px-16 xl:px-24 pt-16 pb-14 md:pb-20">
+          {/* Who this is for: a driver or a transport company (item 13) */}
+          <div role="radiogroup" aria-label={t('driverLanding.audience.label')} className="inline-flex border border-white/30 bg-black/15 backdrop-blur mb-9">
+            {(['driver', 'company'] as const).map(a => (
+              <button key={a} type="button" role="radio" aria-checked={audience === a} onClick={() => setAudience(a)}
+                      className={`min-h-[44px] px-5 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DCC9A0] ${audience === a ? 'bg-[#FFFEFA] text-[#17212E]' : 'text-white hover:bg-white/10'}`}>
+                {t(`driverLanding.audience.${a}`)}
+              </button>
+            ))}
           </div>
-          <div className="relative min-h-[340px] sm:min-h-[440px] lg:min-h-0">
-            <img src={HERO} alt={t('driverLanding.heroAlt')} className="absolute inset-0 w-full h-full object-cover" fetchPriority="high" />
-            <div className="absolute inset-y-0 start-0 w-24 bg-gradient-to-r from-[#FBF8F1] to-transparent hidden lg:block" aria-hidden="true" />
-            <div className="absolute start-0 bottom-0 lg:bottom-10 lg:-start-10 bg-[#1F3A2E] text-[#F3EEE2] px-6 py-5 md:px-8 md:py-6 max-w-[420px]">
-              <p className="m-0 text-xs font-bold tracking-[.16em] uppercase text-[#DCC9A0] mb-1.5">{t('driverLanding.citiesTitle')}</p>
-              <p className="m-0 text-[15px] leading-relaxed">{APPLICATION_CITIES.join(' · ')}</p>
-            </div>
+          <p className="flex items-center gap-3 text-xs font-bold tracking-[.18em] uppercase text-[#DCC9A0] mb-6">
+            <span className="w-8 h-px bg-[#C3A66C]" aria-hidden="true" />{audience === 'driver' ? t('driverLanding.eyebrow') : t('driverLanding.grow.eyebrow')}
+          </p>
+          <h1 key={audience} className="text-[46px] sm:text-[64px] xl:text-[92px] font-bold tracking-[-.045em] leading-[.95] mb-7 max-w-[12ch] text-[#FFFEFA]" aria-label={titleA + ' ' + titleB}>
+            {titleA.split(' ').map((w, i) => <span key={`a${i}`} aria-hidden="true" className="fg-word me-[.25em]" style={{ animationDelay: `${120 + i * 110}ms` }}>{w}</span>)}
+            <span aria-hidden="true" className="font-normal italic text-[#DCC9A0]" style={serif}>
+              {titleB.split(' ').map((w, i, arr) => <span key={`b${i}`} className={`fg-word ${i < arr.length - 1 ? 'me-[.25em]' : ''}`} style={{ animationDelay: `${120 + (titleA.split(' ').length + i) * 110}ms` }}>{w}</span>)}
+            </span>
+          </h1>
+          <p className="text-lg md:text-xl leading-relaxed text-[#E3E9E5] max-w-[52ch] mb-9">{audience === 'driver' ? t('driverLanding.lede') : t('driverLanding.grow.lede')}</p>
+          <div className="flex flex-wrap gap-3 mb-12">
+            <button type="button" onClick={toForm} className="min-h-[56px] px-8 bg-[#C3A66C] hover:bg-[#D2B87F] text-[#17212E] font-bold text-[16px] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DCC9A0]">{t('driverLanding.apply')} ↓</button>
+            <button type="button" onClick={() => go(audience === 'driver' ? 'plans' : 'companies')} className="min-h-[56px] px-7 border border-white/50 text-white font-bold hover:bg-white/10 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DCC9A0]">
+              {audience === 'driver' ? t('driverLanding.compare') : t('driverLanding.audience.companyCta')}
+            </button>
           </div>
+          <dl className="grid sm:grid-cols-3 gap-0 border-t border-white/25 m-0 max-w-[600px] pe-16 sm:pe-0">
+            {facts.map(([value, label], i) => (
+              <div key={label} className={`flex flex-row-reverse sm:flex-col-reverse items-baseline sm:items-stretch justify-end gap-4 sm:gap-0 py-3 sm:py-0 sm:pt-5 ${i ? 'border-t sm:border-t-0 sm:ps-5 sm:border-s border-white/25' : ''} pe-3`}>
+                <dt className="text-[14px] sm:text-[13px] leading-snug text-[#D5DDD7]">{label}</dt>
+                <dd className="m-0 min-w-[84px] sm:min-w-0 text-[26px] sm:text-[30px] md:text-[36px] leading-none text-[#FFFEFA] sm:mb-2" style={serif}>{value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
       </section>
 
+      {/* ── Cities open for applications: each one starts the application there (item 3) ── */}
+      <div className="bg-[#FFFEFA] border-b border-[#E2DACA]">
+        <div className="max-w-[1240px] mx-auto px-5 md:px-10 py-4 flex items-center gap-3 overflow-x-auto [scrollbar-width:none]">
+          <span className="flex-shrink-0 text-xs font-bold tracking-[.14em] uppercase text-[#7A6436] me-2">{t('driverLanding.citiesTitle')}</span>
+          {APPLICATION_CITIES.map(c => (
+            <button key={c} type="button" onClick={() => { setPresetCity(c); toForm(); }}
+                    className={`flex-shrink-0 min-h-[40px] px-4 border border-[#DCD4C2] bg-white text-sm font-semibold hover:border-[#24513B] hover:text-[#24513B] transition ${focus}`}
+                    aria-label={t('driverLanding.cityApply', { city: c })}>{c}</button>
+          ))}
+        </div>
+      </div>
+
+      {audience === 'company' && companiesSection}
+
       {/* ── Section bar ────────────────────────────────────────────── */}
       <nav aria-label={t('driverLanding.navLabel')} className="sticky top-16 z-40 bg-[#FBF8F1]/95 backdrop-blur border-y border-[#E2DACA]">
-        <div className="max-w-[1240px] mx-auto px-5 md:px-10 flex items-center gap-1 overflow-x-auto [scrollbar-width:none]">
-          {SECTIONS.map(id => (
-            <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); go(id); }} aria-current={active === id ? 'true' : undefined}
-               className={`relative whitespace-nowrap px-3 py-4 text-sm font-semibold transition ${focus} ${active === id ? 'text-[#17212E]' : 'text-[#4A5260] hover:text-[#17212E]'}`}>
-              {t(`driverLanding.nav.${id}`)}
-              <span aria-hidden="true" className={`absolute inset-x-3 bottom-0 h-[2px] ${active === id ? 'bg-[#C3A66C]' : 'bg-transparent'}`} />
-            </a>
-          ))}
-          <span className="flex-1 min-w-4" />
-          <button type="button" onClick={toForm} className={`whitespace-nowrap my-2 min-h-[40px] px-4 bg-[#24513B] hover:bg-[#1C4130] text-white text-sm font-bold ${focus}`}>{t('driverLanding.apply')}</button>
+        <div className="max-w-[1240px] mx-auto px-5 md:px-10 flex items-center gap-3">
+          {/* Laptops: every section as a link. */}
+          <div className="hidden xl:flex flex-1 min-w-0 items-center gap-1">
+            {sections.map(id => (
+              <a key={id} href={`#${id}`} onClick={e => { e.preventDefault(); go(id); }} aria-current={active === id ? 'true' : undefined}
+                 className={`relative whitespace-nowrap px-3 py-4 text-sm font-semibold transition ${focus} ${active === id ? 'text-[#17212E]' : 'text-[#4A5260] hover:text-[#17212E]'}`}>
+                {t(`driverLanding.nav.${id}`)}
+                <span aria-hidden="true" className={`absolute inset-x-3 bottom-0 h-[2px] ${active === id ? 'bg-[#C3A66C]' : 'bg-transparent'}`} />
+              </a>
+            ))}
+          </div>
+          {/* Phones and tablets: one menu, so nothing is cut off. */}
+          <div data-sections-menu className="xl:hidden flex-1 min-w-0 relative">
+            <button type="button" aria-expanded={menu} aria-controls="driver-sections" onClick={() => setMenu(m => !m)}
+                    className={`my-2 min-h-[40px] inline-flex items-center gap-2 text-sm font-semibold text-[#17212E] ${focus}`}>
+              <span className="truncate">{active && (sections as readonly string[]).includes(active) ? t(`driverLanding.nav.${active}`) : t('driverLanding.sectionsMenu')}</span>
+              <span aria-hidden="true" className={`transition ${menu ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+            {menu && (
+              <ul id="driver-sections" className="absolute start-0 top-full mt-1 w-64 max-w-[80vw] list-none p-1 m-0 bg-[#FFFEFA] border border-[#E2DACA] shadow-[0_18px_40px_-20px_rgba(23,33,46,.45)]">
+                {sections.map(id => (
+                  <li key={id}>
+                    <a href={`#${id}`} onClick={e => { e.preventDefault(); setMenu(false); go(id); }} aria-current={active === id ? 'true' : undefined}
+                       className={`block px-4 py-3 text-[15px] font-semibold ${focus} ${active === id ? 'bg-[#F3EEE2] text-[#17212E]' : 'text-[#4A5260] hover:bg-[#F3EEE2]'}`}>{t(`driverLanding.nav.${id}`)}</a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <button type="button" onClick={toForm} className={`hidden md:inline-flex items-center flex-shrink-0 whitespace-nowrap my-2 min-h-[40px] px-4 bg-[#24513B] hover:bg-[#1C4130] text-white text-sm font-bold ${focus}`}>{applyLabel}</button>
         </div>
       </nav>
 
       {/* ── How joining works ─────────────────────────────────────── */}
-      <section id="process" className="scroll-mt-32 py-20 md:py-28">
+      <section id="process" className="fg-reveal scroll-mt-32 py-20 md:py-28">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10">
           <div className="grid lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)] gap-6 lg:gap-16 items-end mb-14">
             <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] m-0">{t('driverLanding.processTitle')}</h2>
@@ -145,8 +244,22 @@ export default function DriverLanding() {
         </div>
       </section>
 
+      {/* ── A day on FlyttGo, in the driver app's own screens (items 5, 6) ── */}
+      <section id="day" className="fg-reveal scroll-mt-32 relative overflow-x-clip bg-[linear-gradient(180deg,#FBF8F1_0%,#F6F0E2_100%)] pt-10 md:pt-14 pb-40 md:pb-52">
+        <div className="relative z-10 max-w-[1440px] mx-auto px-5 md:px-10 xl:px-14">
+          <DayOnFlyttGo />
+        </div>
+        {/* The foot of the section: an evergreen sweep with a champagne line. */}
+        <svg aria-hidden="true" className="absolute bottom-0 left-0 w-full h-[100px] md:h-[150px]" viewBox="0 0 1440 150" preserveAspectRatio="none">
+          <defs><linearGradient id="fg-sweep" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stopColor="#24513B" /><stop offset="1" stopColor="#1F3A2E" /></linearGradient></defs>
+          <path d="M0 150V92C260 118 600 124 930 98S1320 30 1440 14v136Z" fill="url(#fg-sweep)" />
+          <path d="M0 82C260 108 600 114 930 88S1320 20 1440 4" fill="none" stroke="#C3A66C" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M0 150v-30c360 26 760 26 1080 6s300-46 360-54v78Z" fill="#1F3A2E" opacity=".6" />
+        </svg>
+      </section>
+
       {/* ── What you get ───────────────────────────────────────────── */}
-      <section id="benefits" className="scroll-mt-32 bg-[#FFFEFA] py-20 md:py-28 border-y border-[#EDE6D6]">
+      <section id="benefits" className="fg-reveal scroll-mt-32 bg-[#FFFEFA] py-20 md:py-28 border-y border-[#EDE6D6]">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-12 lg:gap-20 items-center">
           <div className="relative order-2 lg:order-1">
             <div className="absolute -top-5 -start-5 w-2/3 h-2/3 bg-[#E4ECE6]" aria-hidden="true" />
@@ -168,7 +281,7 @@ export default function DriverLanding() {
       </section>
 
       {/* ── Plans compared ─────────────────────────────────────────── */}
-      <section id="plans" className="scroll-mt-32 bg-[#F3EEE2] py-20 md:py-28">
+      <section id="plans" className="fg-reveal scroll-mt-32 bg-[#F3EEE2] py-20 md:py-28">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10">
           <div className="grid lg:grid-cols-[minmax(0,1fr)_auto] gap-6 items-end mb-10">
             <div>
@@ -179,6 +292,13 @@ export default function DriverLanding() {
             <button type="button" onClick={() => setPage('subscriptions')} className={`justify-self-start lg:justify-self-end font-bold text-[#24513B] underline underline-offset-4 ${focus}`}>{t('driverLanding.fullPlans')} →</button>
           </div>
 
+          {/* The plans as a selector, with what a job leaves you (items 7–8). */}
+          <PlanPicker />
+          <details className="mt-8 group">
+            <summary className={`cursor-pointer list-none inline-flex items-center gap-2 font-bold text-[#24513B] ${focus}`}>
+              <span aria-hidden="true" className="transition group-open:rotate-90">›</span>{t('driverLanding.compareAll')}
+            </summary>
+            <div className="mt-5">
           {/* Phones and tablets: one row per plan. */}
           <ul className="lg:hidden list-none p-0 m-0 border-t-2 border-[#17212E]">
             {SUBSCRIPTION_PLANS.map((p, i) => (
@@ -216,12 +336,28 @@ export default function DriverLanding() {
               </tbody>
             </table>
           </div>
+            </div>
+          </details>
           <p className="text-[13px] text-[#4A5260] mt-5 max-w-[90ch]">{t('driverLanding.plansNote')}</p>
         </div>
       </section>
 
+      {/* ── How you get paid (item 9) ─────────────────────────────── */}
+      <section id="payments" className="fg-reveal scroll-mt-32 py-20 md:py-28">
+        <div className="max-w-[1240px] mx-auto px-5 md:px-10">
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 lg:gap-16 items-end mb-14">
+            <div>
+              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.escrow.eyebrow')}</p>
+              <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] m-0">{t('driverLanding.escrow.title')}</h2>
+            </div>
+            <p className="text-lg text-[#4A5260] leading-relaxed m-0 max-w-[56ch]">{t('driverLanding.escrow.lede')}</p>
+          </div>
+          <EscrowFlow />
+        </div>
+      </section>
+
       {/* ── What you need ──────────────────────────────────────────── */}
-      <section id="requirements" className="scroll-mt-32 bg-[#1F3A2E] text-[#F3EEE2] py-20 md:py-28">
+      <section id="requirements" className="fg-reveal scroll-mt-32 bg-[#1F3A2E] text-[#F3EEE2] py-20 md:py-28">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10">
           <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 lg:gap-16 items-end mb-14">
             <div>
@@ -236,10 +372,11 @@ export default function DriverLanding() {
           <div className="grid md:grid-cols-3 gap-10 md:gap-0">
             <div className="md:pe-10">
               <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#DCC9A0] pb-3 mb-4 border-b border-[#F3EEE2]/20">{t('driverLanding.reqVehicle')}</h3>
-              <ul className="list-none p-0 m-0 space-y-3">
+              <ul className="list-none p-0 m-0 space-y-4">
                 {VEHICLE_TYPES.map(v => {
                   const name = t(`driverApplication.vehicles.${v.id}`, v.label.replace(/\s*\(.*\)$/, ''));
-                  return <li key={v.id} className="flex items-baseline justify-between gap-4"><span className="text-[16px]">{name}</span><span className="text-[#DCC9A0] whitespace-nowrap" style={serif}>{/\(([^)]+)\)/.exec(v.label)?.[1]}</span></li>;
+                  const photo = VAN_TYPES.find(x => x.id === v.id)?.image;
+                  return <li key={v.id} className="flex items-center justify-between gap-4">{photo && <img src={photo} alt="" loading="lazy" decoding="async" className="w-16 h-11 object-cover flex-shrink-0" />}<span className="text-[16px] flex-1">{name}</span><span className="text-[#DCC9A0] whitespace-nowrap" style={serif}>{/\(([^)]+)\)/.exec(v.label)?.[1]}</span></li>;
                 })}
               </ul>
             </div>
@@ -266,15 +403,52 @@ export default function DriverLanding() {
         </div>
       </section>
 
-      {/* ── For transport companies ────────────────────────────────── */}
-      <section id="companies" className="scroll-mt-32 py-20 md:py-28">
+      {/* ── The Driver Agreement in plain words (item 12) ── */}
+      <section id="terms" className="fg-reveal scroll-mt-32 py-20 md:py-28">
         <div className="max-w-[1240px] mx-auto px-5 md:px-10">
-          <DriverGrowth intro={{ title: t('driverLanding.companyTitle'), text: t('driverLanding.companyText') }} />
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-6 lg:gap-16 items-end mb-12">
+            <div>
+              <p className="text-xs font-bold tracking-[.16em] uppercase text-[#7A6436] mb-3">{t('driverLanding.terms.eyebrow')}</p>
+              <h2 className="text-[36px] md:text-[52px] font-bold tracking-[-.04em] leading-[1.02] m-0">{t('driverLanding.terms.title')}</h2>
+            </div>
+            <p className="text-lg text-[#4A5260] leading-relaxed m-0 max-w-[56ch]">{t('driverLanding.terms.lede')}</p>
+          </div>
+          <TermsSummary />
         </div>
       </section>
 
-      {/* ── The application ───────────────────────────────────────── */}
-      <DriverApplicationForm />
+      {/* ── The application: for drivers right after the agreement (owner, 31 October 2026) ── */}
+      {audience === 'driver' && <DriverApplicationForm presetCity={presetCity} onProgress={onProgress} />}
+
+      {/* ── Questions: grouped, with a way to ask (item 11, second pass) ── */}
+      <section id="faq" className="fg-reveal scroll-mt-32 bg-[#FFFEFA] py-20 md:py-28 border-y border-[#EDE6D6]">
+        <div className="max-w-[1240px] mx-auto px-5 md:px-10">
+          <DriverFaq onApply={toForm} onContact={() => setPage('contact')} />
+        </div>
+      </section>
+
+      {/* ── For drivers, the company page is one step away (the switch at the top shows it all). ── */}
+      {audience === 'driver' && (
+        <section id="companies" className="scroll-mt-32 py-16 md:py-20">
+          <div className="max-w-[1240px] mx-auto px-5 md:px-10 grid md:grid-cols-[minmax(0,1fr)_auto] gap-6 items-center border-s-2 border-[#C3A66C] ps-6">
+            <div>
+              <h2 className="text-[26px] md:text-[32px] font-bold tracking-[-.03em] leading-tight m-0 mb-2">{t('driverLanding.companyTeaser.title')}</h2>
+              <p className="text-[16px] leading-relaxed text-[#4A5260] m-0 max-w-[62ch]">{t('driverLanding.companyTeaser.text')}</p>
+            </div>
+            <button type="button" onClick={() => { setAudience('company'); window.scrollTo({ top: 0, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }}
+                    className={`justify-self-start min-h-[52px] px-6 border border-[#17212E] font-bold hover:bg-[#17212E] hover:text-white transition ${focus}`}>{t('driverLanding.companyTeaser.cta')} →</button>
+          </div>
+        </section>
+      )}
+
+      {/* ── Phones: the way to apply stays in reach ── */}
+      <div aria-hidden={!showBar} className={`md:hidden fixed z-40 bottom-4 start-4 end-24 transition duration-300 ${showBar ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+        <button type="button" onClick={toForm} tabIndex={showBar ? 0 : -1}
+                className={`w-full min-h-[54px] rounded-full bg-[#24513B] text-white font-bold text-[15px] shadow-[0_14px_30px_-12px_rgba(23,40,32,.7)] ${focus}`}>{applyLabel} ↓</button>
+      </div>
+
+      {/* ── The application, last for companies ── */}
+      {audience === 'company' && <DriverApplicationForm presetCity={presetCity} onProgress={onProgress} />}
     </div>
   );
 }

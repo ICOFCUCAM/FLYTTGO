@@ -8,20 +8,76 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApp } from '../../lib/store';
+import { VAN_TYPES } from '../../lib/constants';
 import { APPLICATION_CITIES, DOCUMENT_ACCEPT, DOCUMENT_TYPES, VEHICLE_TYPES, type DocumentType } from './applicationData';
 import { useDriverApplication, type Field } from './useDriverApplication';
+import { checkPhoto, type PhotoCheck } from './imageQuality';
+import { TermsSummary } from './LandingParts';
+import { callFunction, supabase, supabaseFunctionUrl } from '../../lib/supabase';
 
 const focus = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#24513B]';
 const inputBase = 'block w-full h-12 px-4 bg-white text-[15px] text-[#17212E] border placeholder:text-[#8a8f98] outline-none transition focus:border-[#24513B] focus:ring-2 focus:ring-[#24513B]/25';
 const btnPrimary = `inline-flex items-center justify-center gap-2 min-h-[52px] px-7 bg-[#24513B] hover:bg-[#1C4130] text-white font-bold transition disabled:opacity-60 ${focus}`;
 const btnSecondary = `inline-flex items-center justify-center min-h-[52px] px-6 border border-[#CFC7B5] text-[#17212E] font-semibold hover:bg-[#F3EEE2] transition ${focus}`;
 
-export default function DriverApplicationForm() {
+export interface ApplicationProgress { step: number; started: boolean; submitted: boolean }
+
+/* presetCity: a city chosen elsewhere on the page (the cities ribbon); onProgress: for the page's sticky bar. */
+export default function DriverApplicationForm({ presetCity, onProgress }: { presetCity?: string | null; onProgress?: (p: ApplicationProgress) => void } = {}) {
   const { t, i18n } = useTranslation();
   const { setPage, setShowAuthModal, setAuthMode } = useApp();
-  const app = useDriverApplication();
+  const app = useDriverApplication({ persist: true });
   const { step, error, fieldErrors } = app;
   const no = i18n.language === 'no';
+
+  const { setCity } = app;
+  useEffect(() => { if (presetCity) setCity(presetCity); }, [presetCity, setCity]);
+  const started = !!(app.firstName || app.lastName || app.phone || app.city || app.vehicleType || app.vehicleMake || app.licensePlate) || step > 1;
+  useEffect(() => { onProgress?.({ step, started, submitted: app.submitted }); }, [onProgress, step, started, app.submitted]);
+
+  /* After sending: the application's real status, checked now and every minute (driver_applications). */
+  const [appStatus, setAppStatus] = useState<string | null>(null);
+  const userId = app.user?.id;
+  useEffect(() => {
+    if (!app.submitted || !userId) return;
+    let live = true;
+    const load = () => void Promise.resolve(supabase.from('driver_applications').select('status').eq('user_id', userId)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle())
+      .then(({ data }) => { if (live && data) setAppStatus((data as { status: string }).status); }).catch(() => {});
+    load();
+    const timer = window.setInterval(load, 60_000);
+    return () => { live = false; window.clearInterval(timer); };
+  }, [app.submitted, userId]);
+
+  /* Plate lookup in the vehicle register (owner, 31 October 2026; vehicle-lookup): offered only once the
+   * register is connected. It fills make, model and year; the driver can still change them. */
+  const [lookupOn, setLookupOn] = useState(false);
+  const [lookup, setLookup] = useState<'idle' | 'busy' | 'filled' | 'notFound' | 'signIn' | 'failed'>('idle');
+  useEffect(() => {
+    let live = true;
+    /* Sent like the public price check (calculatePrice.ts): no key or token needed to ask whether it is on. */
+    fetch(supabaseFunctionUrl('vehicle-lookup'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ probe: true }) })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (live && d?.available) setLookupOn(true); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
+  async function lookUpPlate() {
+    if (!app.licensePlate.trim()) return;
+    if (!app.user) { setLookup('signIn'); return; }
+    setLookup('busy');
+    try {
+      const r = await callFunction('vehicle-lookup', { plate: app.licensePlate });
+      const d = await r.json().catch(() => null);
+      if (r.status === 401) { setLookup('signIn'); return; }
+      if (!r.ok) { setLookup('failed'); return; }
+      if (!d?.found) { setLookup('notFound'); return; }
+      const v = d.vehicle as { make: string | null; model: string | null; year: number | null };
+      if (v.make) app.setVehicleMake(v.make[0] + v.make.slice(1).toLowerCase());
+      if (v.model) app.setVehicleModel(v.model);
+      if (v.year) app.setVehicleYear(String(v.year));
+      setLookup('filled');
+    } catch { setLookup('failed'); }
+  }
 
   const steps = [1, 2, 3, 4].map(n => ({
     n,
@@ -80,15 +136,32 @@ export default function DriverApplicationForm() {
             </span>
             <h2 id="da-title" ref={heading} tabIndex={-1} className="text-3xl md:text-[40px] font-bold tracking-tight leading-tight mb-3 outline-none">{t('driverOnboarding.successTitle')}</h2>
             <p className="text-[17px] leading-relaxed text-[#4A5260] max-w-[60ch] mb-8">{t('driverOnboarding.successBody')}</p>
-            <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#7A6436] mb-4">{t('driverOnboarding.successWhatNext')}</h3>
-            <ol className="list-none p-0 m-0 grid sm:grid-cols-2 gap-x-8 gap-y-4 mb-10">
-              {[1, 2, 3, 4].map(i => (
-                <li key={i} className="flex gap-4 border-t border-[#E2DACA] pt-4">
-                  <span className="text-2xl leading-none text-[#7A6436]" style={{ fontFamily: 'Georgia, serif' }}>{i}</span>
-                  <span className="text-[15px] text-[#17212E]">{t(`driverOnboarding.successStep${i}`)}</span>
-                </li>
-              ))}
-            </ol>
+            <h3 className="text-xs font-bold !tracking-[.14em] uppercase text-[#7A6436] mb-5">{t('driverApplication.timelineTitle')}</h3>
+            {appStatus === 'rejected' ? (
+              <p className="mb-10 p-4 border-s-4 border-[#A4271C] bg-[#FBEDEA] text-[#5E1610]">{t('driverApplication.timelineRejected')}</p>
+            ) : (
+              <ol className="list-none p-0 m-0 mb-10">
+                {(['received', 'checking', 'approved', 'plan'] as const).map((k, i) => {
+                  const reached = appStatus === 'approved' ? 3 : 1;          // received, then being checked, until approved
+                  const done = i < reached || (appStatus === 'approved' && i <= 2), now = i === reached;
+                  return (
+                    <li key={k} className="relative flex gap-4 pb-6 last:pb-0" aria-current={now ? 'step' : undefined}>
+                      {i < 3 && <span aria-hidden="true" className={`absolute start-[13px] top-7 bottom-0 w-[2px] ${done ? 'bg-[#24513B]' : 'bg-[#E2DACA]'}`} />}
+                      <span aria-hidden="true" className={`relative z-10 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                        done ? 'bg-[#24513B] text-white' : now ? 'bg-[#FFFEFA] border-2 border-[#24513B] text-[#24513B]' : 'bg-[#F3EEE2] border border-[#CFC7B5] text-[#4A5260]'}`}>{done ? '✓' : i + 1}</span>
+                      <div>
+                        <p className={`m-0 text-[16px] ${now || done ? 'font-bold' : 'text-[#4A5260]'}`}>{t(`driverApplication.timeline.${k}`)}</p>
+                        <p className="m-0 text-[14px] text-[#4A5260]">{t(`driverApplication.timeline.${k}Desc`)}</p>
+                        {k === 'plan' && appStatus === 'approved' && (
+                          <button type="button" onClick={() => setPage('subscriptions')} className={`mt-2 font-bold text-[#24513B] underline ${focus}`}>{t('driverApplication.choosePlan')} →</button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+            <p className="text-[13px] text-[#4A5260] mb-6">{t('driverApplication.timelineNote')}</p>
             <button type="button" onClick={() => setPage('driver-application-status')} className={btnPrimary}>{t('driverApplication.statusLink')} →</button>
           </div>
         </div>
@@ -143,6 +216,12 @@ export default function DriverApplicationForm() {
 
         {/* The form */}
         <div ref={top} className="scroll-mt-32 min-w-0">
+          {app.restored && (
+            <div className="mb-5 p-5 border border-[#BCD3C4] bg-[#EEF3EF] text-[15px] text-[#17212E] flex flex-wrap items-center gap-3">
+              <span className="flex-1 min-w-[220px]">{t('driverApplication.restored')}</span>
+              <button type="button" onClick={app.clearSaved} className={`font-bold underline text-[#24513B] ${focus}`}>{t('driverApplication.startOver')}</button>
+            </div>
+          )}
           {app.existing && (
             <div className="mb-5 p-5 border border-[#D9C9A0] bg-[#FBF5E6] text-[15px] text-[#17212E]">
               {t('driverApplication.existing', {
@@ -203,15 +282,20 @@ export default function DriverApplicationForm() {
                       {VEHICLE_TYPES.map(v => {
                         const on = app.vehicleType === v.id;
                         return (
-                          <label key={v.id} className={`relative flex flex-col gap-1 p-5 border cursor-pointer transition focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#24513B] ${
+                          <label key={v.id} className={`relative flex flex-col gap-1 p-5 pt-4 border cursor-pointer transition focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#24513B] ${
                             on ? 'border-[#24513B] bg-[#EEF3EF] shadow-[inset_0_0_0_1px_#24513B]' : bad('vehicleType') ? 'border-[#A4271C] bg-white' : 'border-[#CFC7B5] bg-white hover:border-[#8F9A8F]'}`}>
                             <input type="radio" name="da-vehicle" value={v.id} checked={on} onChange={() => app.setVehicleType(v.id)} className="sr-only" />
+                            {/* The van's photo, the same one the booking flow shows for this size (VAN_TYPES). */}
+                            {VAN_TYPES.find(x => x.id === v.id)?.image && (
+                              <img src={VAN_TYPES.find(x => x.id === v.id)!.image} alt="" loading="lazy" decoding="async"
+                                   className={`w-full aspect-[16/9] object-cover mb-3 transition ${on ? '' : 'saturate-[.85]'}`} />
+                            )}
                             <span className="flex items-baseline justify-between gap-3 pe-7">
                               <span className="font-bold text-[16px]">{vehicleName(v.id, v.label)}</span>
                               <span className="text-xl text-[#24513B] whitespace-nowrap" style={{ fontFamily: 'Georgia, serif' }}>{capacity(v.label)}</span>
                             </span>
                             <span className="text-[13px] text-[#4A5260]">{v.examples}</span>
-                            <span aria-hidden="true" className={`absolute top-3 end-3 w-4 h-4 border-2 ${on ? 'border-[#24513B] bg-[#24513B]' : 'border-[#CFC7B5]'}`} style={{ borderRadius: '50%' }} />
+                            <span aria-hidden="true" className={`absolute top-6 end-6 w-5 h-5 border-2 shadow ${on ? 'border-white bg-[#24513B]' : 'border-white bg-white/80'}`} style={{ borderRadius: '50%' }} />
                           </label>
                         );
                       })}
@@ -226,6 +310,16 @@ export default function DriverApplicationForm() {
                       t('driverApplication.yearHint'), app.vehicleYear.trim() ? t('driverApplication.errYear', { max: new Date().getFullYear() + 1 }) : undefined)}
                     {field('licensePlate', t('driverOnboarding.licensePlate'), text('licensePlate', app.licensePlate, app.setLicensePlate, { placeholder: 'AB 12345', autoCapitalize: 'characters' }))}
                   </div>
+                  {lookupOn && (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border border-[#DCD4C2] bg-[#FFFEFA] p-4">
+                      <button type="button" onClick={lookUpPlate} disabled={!app.licensePlate.trim() || lookup === 'busy'} className={`${btnSecondary} min-h-[44px] disabled:opacity-50`}>
+                        {lookup === 'busy' ? t('driverApplication.lookup.busy') : t('driverApplication.lookup.button')}
+                      </button>
+                      <p aria-live="polite" className="m-0 text-[13px] text-[#4A5260] flex-1 min-w-[200px]">
+                        {lookup === 'idle' || lookup === 'busy' ? t('driverApplication.lookup.hint') : t(`driverApplication.lookup.${lookup}`)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -269,6 +363,12 @@ export default function DriverApplicationForm() {
                     </div>
                   ))}
 
+                  <details className="border border-[#E2DACA] bg-[#FFFEFA] p-5 group">
+                    <summary className={`cursor-pointer list-none font-bold text-[#17212E] flex items-center gap-2 ${focus}`}>
+                      <span aria-hidden="true" className="text-[#24513B] transition group-open:rotate-90">›</span>{t('driverLanding.terms.inForm')}
+                    </summary>
+                    <div className="mt-4"><TermsSummary compact /></div>
+                  </details>
                   <label className={`flex items-start gap-3 p-5 border cursor-pointer ${bad('terms') ? 'border-[#A4271C]' : 'border-[#E2DACA]'} bg-white`}>
                     <input type="checkbox" checked={app.acceptedTerms} onChange={e => app.setAcceptedTerms(e.target.checked)}
                            aria-invalid={bad('terms') || undefined} className="w-5 h-5 mt-0.5 flex-shrink-0 accent-[#24513B]" />
@@ -315,8 +415,22 @@ function DocumentDrop({ k, label, desc, file, invalid, pick, mb }: {
 }) {
   const { t } = useTranslation();
   const input = useRef<HTMLInputElement>(null);
+  const camera = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const id = `da-${k}`;
+  /* A preview of a chosen photo, and a quick check that it is light and sharp enough to read (a warning only). */
+  const [preview, setPreview] = useState<string | null>(null);
+  const [quality, setQuality] = useState<PhotoCheck | null>(null);
+  useEffect(() => {
+    setQuality(null);
+    if (!file || !file.type.startsWith('image/') || typeof URL.createObjectURL !== 'function') { setPreview(null); return; }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    let on = true;
+    void checkPhoto(file).then(q => { if (on) setQuality(q); });
+    return () => { on = false; URL.revokeObjectURL(url); };
+  }, [file]);
+  const warn = quality && (quality.dark || quality.blurry) ? t(quality.dark ? 'driverApplication.photoDark' : 'driverApplication.photoBlurry') : null;
   return (
     <li>
       <div
@@ -326,17 +440,20 @@ function DocumentDrop({ k, label, desc, file, invalid, pick, mb }: {
         className={`grid sm:grid-cols-[minmax(0,1fr)_auto] gap-4 items-center p-5 border transition ${
           file ? 'border-[#24513B] bg-[#F4F8F5]' : over ? 'border-[#24513B] border-dashed bg-[#EEF3EF]' : invalid ? 'border-[#A4271C] border-dashed bg-white' : 'border-[#CFC7B5] border-dashed bg-white'}`}>
         <div className="min-w-0 flex gap-4">
-          <span aria-hidden="true" className={`flex-shrink-0 flex items-center justify-center w-10 h-10 border ${file ? 'bg-[#24513B] border-[#24513B] text-white' : 'border-[#CFC7B5] text-[#4A5260]'}`}>
+          {preview
+            ? <img src={preview} alt="" className="flex-shrink-0 w-14 h-14 object-cover border border-[#24513B]" />
+            : <span aria-hidden="true" className={`flex-shrink-0 flex items-center justify-center w-10 h-10 border ${file ? 'bg-[#24513B] border-[#24513B] text-white' : 'border-[#CFC7B5] text-[#4A5260]'}`}>
             {file
               ? <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.4}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
               : <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8}><path strokeLinecap="round" strokeLinejoin="round" d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" /></svg>}
-          </span>
+          </span>}
           <div className="min-w-0">
             <label htmlFor={id} className="block font-bold text-[16px] text-[#17212E]">{label}</label>
             <p className="m-0 text-[13px] text-[#4A5260]">{desc}</p>
             <p id={`${id}-msg`} className={`m-0 mt-1.5 text-[13px] ${file ? 'text-[#24513B] font-semibold' : invalid ? 'text-[#A4271C] font-semibold' : 'text-[#4A5260]'} truncate`}>
               {file ? `${t('driverApplication.ready')} · ${file.name} · ${mb(file.size)}` : invalid ? t('driverApplication.docMissing') : t('driverApplication.dropHint')}
             </p>
+            {warn && <p role="status" className="m-0 mt-1 text-[13px] font-semibold text-[#7A4A00]">⚠ {warn}</p>}
           </div>
         </div>
         <div className="flex gap-2 sm:justify-end">
@@ -345,6 +462,13 @@ function DocumentDrop({ k, label, desc, file, invalid, pick, mb }: {
           <button type="button" onClick={() => input.current?.click()} tabIndex={-1} aria-hidden="true"
                   className="min-h-[44px] px-4 border border-[#CFC7B5] bg-white font-semibold text-sm hover:bg-[#F3EEE2] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-[#24513B]">
             {file ? t('driverApplication.replace') : t('driverApplication.choose')}
+          </button>
+          {/* Phones: take the photo with the camera straight away. */}
+          <input ref={camera} type="file" accept="image/*" capture="environment" tabIndex={-1} aria-hidden="true" className="hidden"
+                 onChange={e => { const f = e.target.files?.[0]; if (f && !pick(f)) e.target.value = ''; }} />
+          <button type="button" onClick={() => camera.current?.click()} aria-label={`${t('driverApplication.takePhoto')}: ${label}`}
+                  className={`sm:hidden min-h-[44px] px-4 border border-[#CFC7B5] bg-white font-semibold text-sm hover:bg-[#F3EEE2] ${focus}`}>
+            {t('driverApplication.takePhoto')}
           </button>
           {file && (
             <button type="button" onClick={() => { pick(null); if (input.current) input.current.value = ''; }}

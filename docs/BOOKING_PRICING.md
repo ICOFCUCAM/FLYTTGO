@@ -30,6 +30,13 @@ booking's own fields. Nothing the browser sends about money is used.
 The browser and server formulas are tested against each other over every combination of van, hours,
 distance, drive time, helpers and extras (`src/test/booking-money.test.ts`).
 
+## Owner's decisions (31 October 2026)
+
+- **When the job clock stops:** when the driver taps Finish (`end_time`). The customer and the driver then
+  each confirm completion, and escrow releases the payment as built. Confirming does not move the clock.
+- **Long trips:** the billed hours rise with the drive time, at least the 2-hour minimum
+  (`billedHours`). The owner accepts the higher price this gives long trips, such as Oslo to Bergen.
+
 ## Not covered yet
 
 - A booking whose address cannot be found at all still cannot be priced in the browser (no manual distance).
