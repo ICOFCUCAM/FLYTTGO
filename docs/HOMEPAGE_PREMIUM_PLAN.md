@@ -85,7 +85,7 @@ This plan comes from a full-page visual review of `/preview/home` after #22: eve
 
 ## G · Studio and closing (49–54)
 49. Studio: the storefront stays in view while the settings scroll.
-50. Storefront: a search field and a provider row (illustration).
+50. Storefront: a search field in the marketplace's colours (illustration). The example provider row was left out, so that no providers are invented.
 51. Studio settings in labelled groups.
 52. Closing: each journey with a line of explanation.
 53. Closing to footer: hairline and spacing.
@@ -94,9 +94,28 @@ This plan comes from a full-page visual review of `/preview/home` after #22: eve
 ## H · Whole page (55–60)
 55. Motion: staggered card entrances.
 56. Motion parity: off and reduced motion show everything.
-57. Dark grounds: contrast pass.
+57. Forced colours: chips, cards and selected tabs keep visible boundaries. The dark-ground contrast pass found no failures to fix, so this commit covers high-contrast mode instead.
 58. Phones: pass over every section at 390 px.
 59. Tablets: pass at 820 px.
 60. Documentation, decision log and the check script updated.
 
 If work remains after commit 60, the plan continues with further commits, numbered from 61.
+
+## Done (31 October 2026)
+
+All 60 commits are made and pushed in three batches (after commits 20, 40 and 60).
+
+**Measured in the browser:**
+- Section spacing went from eight values to four: hero, booking, journeys and every other chapter.
+- Uppercase labels went from seven size and tracking combinations to one size, 12 px.
+
+**Defects found by the screenshots and fixed in their own commits:**
+- The booking widget was squeezed by the column alignment (commit 16).
+- "Explore services" wrapped inside the paired buttons on phones (commit 13).
+- The provider action was blank because its text took the background colour (commit 47).
+- The colour swatches sat under the wrong label in the tablet studio (commit 59).
+
+**Checks before each push:**
+- `visual-check.cjs` at 1440, 1280, 820 and 390. Commit 60 adds checks for the closing notes, the storefront search and the provider action.
+- The contrast audit found no failures.
+- Typecheck passes and all 340 tests pass.
