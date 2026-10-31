@@ -348,6 +348,9 @@
 .fgv2 .v2-links ul { list-style: none; margin: 0 0 20px; padding: 0; display: grid; gap: 8px; }
 .fgv2 .v2-links a { margin-top: auto; font-size: 14px; font-weight: 700; color: var(--blue); border-bottom: 1px solid var(--gold); align-self: flex-start; padding-bottom: 3px; }
 .fgv2 .v2-status { font-size: 14px; line-height: 1.5; color: var(--ink); }
+/* Capability statuses: the status word in a fixed column so the capabilities line up. */
+.fgv2 .v2-status { display: grid; grid-template-columns: 112px 1fr; align-items: baseline; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); }
+.fgv2 .v2-status > span { justify-self: start; margin: 0; }
 .fgv2 .v2-status > span { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .04em; padding: 2px 8px; margin-right: 8px; border: 1px solid; }
 .fgv2 .v2-ok > span { color: #1f4a33; background: #eaf2ec; border-color: #bcd3c4; }
 .fgv2 .v2-dev > span { color: #5a4517; background: #f8f2e4; border-color: #e2d2a6; }
