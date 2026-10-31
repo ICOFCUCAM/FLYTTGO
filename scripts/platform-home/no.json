@@ -1555,5 +1555,14 @@
  "Your own domain; selling under your own terms (Stripe Connect)": "Eget domene; salg på egne vilkår (Stripe Connect)",
  "Your own provider network": "Ditt eget leverandørnettverk",
  "Illustration": "Illustrasjon",
- "This preview creates, connects and charges nothing": "Denne forhåndsvisningen oppretter, kobler til og belaster ingenting"
+ "This preview creates, connects and charges nothing": "Denne forhåndsvisningen oppretter, kobler til og belaster ingenting",
+ "Search services in your area": "Søk etter tjenester i ditt område",
+ "Search": "Søk",
+ "Identity": "Identitet",
+ "Catalogue and look": "Utvalg og utseende",
+ "Address": "Adresse",
+ "Commerce": "Salg",
+ "Find and book a service": "Finn og bestill en tjeneste",
+ "Run bookings, jobs and invoices": "Styr bestillinger, jobber og fakturaer",
+ "Corporate services, providers, marketplaces": "Bedriftstjenester, leverandører, markedsplasser"
 }

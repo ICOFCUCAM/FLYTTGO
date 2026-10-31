@@ -532,6 +532,24 @@ V2_VOICE = [
 ]
 
 
+# Visual polish that needs markup (premium plan, 31 October 2026): the storefront's search and example
+# providers (illustration), the studio settings in labelled groups, and a line under each closing journey.
+V2_POLISH = [
+    [('<div class="wl-categories"><small>DISCOVER YOUR CATEGORIES</small>',
+      '<div class="wl-search" aria-hidden="true"><span>Search services in your area</span><b>Search</b></div>'
+      '<div class="wl-categories"><small>DISCOVER YOUR CATEGORIES</small>')],
+    [('<label for="wl-name">MARKETPLACE NAME</label>', '<span class="wl-group">Identity</span><label for="wl-name">MARKETPLACE NAME</label>'),
+     ('<label for="wl-market">MARKET FOCUS</label>', '<span class="wl-group">Catalogue and look</span><label for="wl-market">MARKET FOCUS</label>'),
+     ('<label for="wl-domain">DOMAIN</label>', '<span class="wl-group">Address</span><label for="wl-domain">DOMAIN</label>'),
+     ('<label for="wl-payments">BOOKING AND PAYMENTS</label>', '<span class="wl-group">Commerce</span><label for="wl-payments">BOOKING AND PAYMENTS</label>')],
+    [('<a class="btn btn-primary" href="#marketplace" data-anchor>Explore services <span class="arrow">↗</span></a>',
+      '<a class="btn btn-primary" href="#marketplace" data-anchor>Explore services <span class="arrow">↗</span><small class="final-note">Find and book a service</small></a>'),
+     ('<a class="btn btn-light" href="#business-workspace" data-anchor>My Company</a>',
+      '<a class="btn btn-light" href="#business-workspace" data-anchor>My Company<small class="final-note">Run bookings, jobs and invoices</small></a>'),
+     ('<a class="btn btn-light" href="#business" data-anchor>For Organisations</a>',
+      '<a class="btn btn-light" href="#business" data-anchor>For Organisations<small class="final-note">Corporate services, providers, marketplaces</small></a>')],
+]
+
 def type_vars(css: str) -> str:
     """The restructured page's typefaces as variables (design.config.ts sets them; the design lab
     changes them): Manrope is the display face, DM Sans the text face, Georgia the accent serif."""
@@ -581,7 +599,7 @@ def build_v2(base: str) -> str:
     m = re.search(r'<section\b[^>]*class="hero wrap"', page)
     end = element_span(page, m.start(), 'section')
     page = page[:end] + V2_BOOKING + page[end:]
-    for old, new in V2_VOICE:
+    for old, new in V2_VOICE + [pair for group in V2_POLISH for pair in group]:
         if page.count(old) != 1:
             raise SystemExit(f'v2 voice: expected once: {old[:60]}')
         page = page.replace(old, new)
