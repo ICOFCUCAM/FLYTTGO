@@ -215,12 +215,6 @@ export default function Header() {
     if (!url.startsWith('/')) { window.location.href = url; return; }
     handleNav('transport-home');
   };
-  const movingItem = isTransportHost(window.location.hostname) ? null : (
-    <button onClick={openMoving}
-      className={`px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm font-semibold transition ${
-        currentPage === 'transport-home' ? 'text-[#24513B] bg-[#F5F3EB]' : 'text-[#24513B] hover:bg-gray-50'
-      }`}>{t('header.journeys.logistics')}</button>
-  );
   /* The new homepage's address: `/` once it is the front page, else the preview path. */
   const homeOfDesign: Page = newDesign() ? 'home' : 'home-preview';
   type JourneyItem = { label: string; desc?: string; go: () => void };
@@ -240,7 +234,23 @@ export default function Header() {
     },
   });
   const jt = (key: string) => t(`header.journeys.${key}`);
-  const JOURNEYS: { id: string; label: string; short?: string; width: string; columns: JourneyColumn[] }[] = [
+  type Journey = { id: string; label: string; short?: string; strong?: boolean; list?: boolean; width: string; columns: JourneyColumn[] };
+  /* Logistics & transport, FlyttGo's core service (owner, 31 October 2026): a menu of its own between
+   * Explore and Run your business, in one list. Its first item is the transport front page, which the
+   * button opened before it became a menu. Not shown on the transport front page's own address. */
+  const logisticsJourney: Journey = {
+    id: 'logistics', label: jt('logistics'), short: jt('logisticsShort'), strong: true, list: true,
+    width: 'w-[min(360px,calc(100vw-32px))]', columns: [
+      { items: [
+        { label: jt('logistics'), desc: jt('logisticsDesc'), go: openMoving },
+        page(jt('ourServices'), 'services', jt('ourServicesDesc')),
+        page(jt('howFlyttGoWorks'), 'moving-hub', jt('howFlyttGoWorksDesc')),
+      ] },
+      { title: jt('freeTools'), items: MOVING_TOOLS.filter((tool) => tool.page !== 'subscriptions').map((tool) => page(tool.label, tool.page, tool.desc)) },
+      { items: [page(jt('driverPlans'), 'subscriptions', jt('driverPlansDesc'))] },
+    ],
+  };
+  const JOURNEYS: Journey[] = [
     { id: 'explore', label: jt('explore'), width: 'w-[min(600px,calc(100vw-32px))]', columns: [
       { title: jt('exploreTitle'), items: [
         page(jt('moving'), 'booking', jt('movingDesc')),
@@ -254,6 +264,7 @@ export default function Header() {
       ] },
       { title: t('header.movingTools'), items: MOVING_TOOLS.map((tool) => page(tool.label, tool.page, tool.desc)) },
     ] },
+    ...(isTransportHost(window.location.hostname) ? [] : [logisticsJourney]),
     { id: 'company', label: jt('myCompany'), short: jt('myCompanyShort'), width: 'w-[min(900px,calc(100vw-32px))]', columns: [
       { title: jt('runTitle'), items: [
         page(jt('openMyCompany'), 'my-company', jt('openMyCompanyDesc')),
@@ -302,9 +313,9 @@ export default function Header() {
     </button>
   );
   const journeyMenu = (j: typeof JOURNEYS[number], stacked = false) => (
-    <div className={stacked ? '' : `grid gap-2 ${j.columns.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-      {j.columns.map((c) => (
-        <div key={c.title} className={stacked ? 'pt-1' : ''}>
+    <div className={stacked || j.list ? '' : `grid gap-2 ${j.columns.length === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+      {j.columns.map((c, ci) => (
+        <div key={c.title ?? ci} className={stacked ? 'pt-1' : j.list && ci > 0 ? 'mt-1 pt-1 border-t border-gray-100' : ''}>
           {c.title && (
             <p className="px-3 pt-1 pb-1 text-xs font-semibold text-gray-600 uppercase tracking-wide">
               {c.title}{c.tag && <span className="ms-2 normal-case tracking-normal font-normal text-gray-500">({c.tag})</span>}
@@ -434,15 +445,17 @@ export default function Header() {
             {/* Desktop nav */}
             {preview && (
               <nav className="hidden lg:flex items-center gap-0 xl:gap-0.5 text-[13px] xl:text-sm">
-                {JOURNEYS.map((j, ji) => (
+                {JOURNEYS.map((j) => (
                   <Fragment key={j.id}>
-                  {/* Moving and transport, FlyttGo's core service, one click away (owner, 31 October 2026). */}
-                  {ji === 1 && movingItem}
                   <div>
+                    {/* Short labels below 1280 px; Logistics & transport, now a menu with its chevron, keeps its
+                      * short label below 1600 px so the bar still fits on one row. */}
                     <button onClick={() => toggleJourney(j.id)} aria-expanded={journeyOpen === j.id}
-                      className={`flex items-center gap-1 px-1.5 2xl:px-4 py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm font-medium transition ${
-                        journeyOpen === j.id ? 'text-[#203F68] bg-[#F5F3EB]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
-                      }`}>{j.short ? <><span className="xl:hidden">{j.short}</span><span className="hidden xl:inline">{j.label}</span></> : j.label}{chevron(journeyOpen === j.id)}</button>
+                      className={`flex items-center gap-1 px-1.5 ${j.strong ? '2xl:px-3' : '2xl:px-4'} py-2 whitespace-nowrap rounded-lg text-[13px] xl:text-sm ${j.strong ? 'font-semibold' : 'font-medium'} transition ${
+                        j.strong
+                          ? (journeyOpen === j.id || currentPage === 'transport-home' ? 'text-[#24513B] bg-[#F5F3EB]' : 'text-[#24513B] hover:bg-gray-50')
+                          : journeyOpen === j.id ? 'text-[#203F68] bg-[#F5F3EB]' : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                      }`}>{j.short ? <><span className={j.strong ? 'min-[1600px]:hidden' : 'xl:hidden'}>{j.short}</span><span className={j.strong ? 'hidden min-[1600px]:inline' : 'hidden xl:inline'}>{j.label}</span></> : j.label}{chevron(journeyOpen === j.id)}</button>
                     {/* Under the bar, centred on it: the menus are wide (columns). */}
                     {journeyOpen === j.id && (
                       <div className={`absolute top-full left-1/2 -translate-x-1/2 mt-1 ${j.width} p-3 max-h-[75vh] overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-200 z-50`}>
@@ -665,9 +678,6 @@ export default function Header() {
                 {journeyMenu(j, true)}
               </div>
             ))}
-            {preview && !isTransportHost(window.location.hostname) && (
-              <button onClick={() => openMoving()} className="block w-full text-left px-4 py-2.5 text-sm font-semibold rounded-lg text-[#24513B] hover:bg-gray-50">{t('header.journeys.logistics')}</button>
-            )}
             {preview && (
               <button onClick={() => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page'))} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.journeys.howItWorks')}</button>
             )}
