@@ -132,6 +132,18 @@ async function diff(page, a, b) {
     await page.close();
   }
 
+  console.log('\nThe new design\'s pages (1440)');
+  {
+    const pages = { '/': 9, '/my-company': 2, '/my-company/finance': 1, '/industries': 1, '/how-it-works': 3, '/moving': 5 };
+    for (const [path, count] of Object.entries(pages)) {
+      const { page, errors } = await open(browser, 1440, 900, path);
+      const n = await page.locator('.fgv2 main > section, .fgv2 main > .v2-booking').count();
+      const h1 = await page.locator('h1').count();
+      n === count && h1 >= 1 && !errors.length ? ok(`${path}: ${n} sections, a page heading, no errors`) : fail(`${path}: ${n} sections (expected ${count}), ${h1} h1, ${errors.length} errors`);
+      await page.close();
+    }
+  }
+
   console.log('\nDesign lab');
   {
     const { page, errors } = await open(browser, 1600, 1000, '/preview/lab');

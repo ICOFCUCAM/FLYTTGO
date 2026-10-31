@@ -649,6 +649,27 @@
 .fgv2 .network-detail :is(strong, p) { font-size: 14px; }
 @media (max-width: 700px) { .fgv2 .network-column { grid-template-columns: 1fr; } }
 
+/* ── Go further: the homepage's index of the products that have their own page ── */
+.fgv2 .v2-explore-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border-top: 2px solid var(--ink); }
+.fgv2 .v2-explore-grid a { position: relative; display: grid; align-content: start; gap: 8px; min-height: 180px; padding: 24px 28px 28px 0; border-bottom: 1px solid var(--line); color: var(--ink); transition: background .2s, padding .25s; }
+.fgv2 .v2-explore-grid a + a { padding-left: 28px; border-left: 1px solid var(--line); }
+.fgv2 .v2-explore-grid a:nth-child(4n + 1) { padding-left: 0; border-left: 0; }
+.fgv2 .v2-explore-grid small { font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; font-weight: 700; color: var(--blue); }
+.fgv2 .v2-explore-grid b { font: var(--head-weight) 21px/1.2 var(--font-display); letter-spacing: -.02em; }
+.fgv2 .v2-explore-grid span { font-size: 15px; line-height: 1.6; color: var(--muted); }
+.fgv2 .v2-explore-grid a:after { content: "→"; position: absolute; right: 24px; top: 24px; color: var(--gold); transition: transform .25s, color .2s; }
+.fgv2 .v2-explore-grid a:hover { background: var(--paper); }
+.fgv2 .v2-explore-grid a:hover:after { transform: translateX(4px); color: var(--blue); }
+@media (max-width: 1000px) {
+  .fgv2 .v2-explore-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fgv2 .v2-explore-grid a:nth-child(n) { padding-left: 24px; border-left: 1px solid var(--line); }
+  .fgv2 .v2-explore-grid a:nth-child(2n + 1) { padding-left: 0; border-left: 0; }
+}
+@media (max-width: 600px) {
+  .fgv2 .v2-explore-grid { grid-template-columns: 1fr; }
+  .fgv2 .v2-explore-grid a:nth-child(n) { padding: 20px 40px 20px 0; border-left: 0; min-height: 0; }
+}
+
 /* ── 17. Related links and the closing section ─────────────────────────── */
 .fgv2 .v2-related { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 26px; margin-top: 44px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 14px; }
 .fgv2 .v2-related span { font-size: var(--label-size); letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--muted); }

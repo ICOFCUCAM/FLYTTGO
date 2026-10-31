@@ -8,6 +8,7 @@ import AuthModal from './AuthModal';
 import { isEmbedded, useEmbedResize } from '../lib/embed';
 import { isTransportHost } from '../lib/hosts';
 import { newDesign } from '../lib/siteDesign';
+import { HOME_SECTIONS, PAGE_SECTIONS } from './homeV2/sitePages';
 
 const HomePage           = lazy(() => import('./HomePage'));
 const PlatformHomePage   = lazy(() => import('./PlatformHomePage'));
@@ -108,7 +109,13 @@ export default function AppLayout() {
        * /transport: the moving and transport front page (docs/HOMEPAGES.md). */
       /* With the new design (preview addresses now, flyttgo.no after the switch; lib/siteDesign.ts) the
        * front page is the new homepage. */
-      case 'home':             return platformHome ? (newDesign() ? <HomeV2Page /> : <PlatformHomePage />) : <HomePage />;
+      case 'home':             return platformHome ? (newDesign() ? <HomeV2Page key="home" keep={HOME_SECTIONS} /> : <PlatformHomePage />) : <HomePage />;
+      /* The new design's own pages, each holding its sections (homeV2/sitePages.ts). */
+      case 'my-company':
+      case 'my-company-finance':
+      case 'industries':
+      case 'how-it-works-page':
+      case 'moving-hub':        return <HomeV2Page key={currentPage} keep={PAGE_SECTIONS[currentPage]} />;
       case 'transport-home':   return <HomePage />;
       /* The restructured homepage under review (docs/HOMEPAGE_RESTRUCTURE.md). */
       case 'home-preview':     return <HomeV2Page />;
@@ -128,7 +135,7 @@ export default function AppLayout() {
       case 'liability':        return <LiabilityPage />;
       case 'driver-terms':     return <DriverTermsPage />;
       case 'services':          return <ServicesPage />;
-      case 'corporate':              return <CorporatePage />;
+      case 'corporate':              return newDesign() ? <><HomeV2Page keep={PAGE_SECTIONS.corporate} /><CorporatePage /></> : <CorporatePage />;
       case 'corporate-dashboard':    return <CorporateDashboard />;
       case 'bulk-booking':           return <CorporateBulkBookingPage />;
       case 'recurring-deliveries':   return <RecurringDeliveriesPage />;
@@ -149,7 +156,7 @@ export default function AppLayout() {
       case 'auth-callback':          return <AuthCallbackPage />;
       case 'driver-application-status': return <DriverApplicationStatusPage />;
       case 'accept-invitation':      return <AcceptInvitationPage />;
-      case 'white-label':            return <WhiteLabelPlansPage />;
+      case 'white-label':            return newDesign() ? <><HomeV2Page keep={PAGE_SECTIONS['white-label']} /><WhiteLabelPlansPage /></> : <WhiteLabelPlansPage />;
       case 'white-label-dpa':        return <WhiteLabelDpaPage />;
       case 'brand-site':             return <BrandSitePage />;
       case 'embed':                  return <EmbedPage />;

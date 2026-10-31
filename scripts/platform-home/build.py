@@ -548,6 +548,22 @@ V2_POLISH = [
       '<a class="btn btn-light" href="#business-workspace" data-anchor>My Company<small class="final-note">Run bookings, jobs and invoices</small></a>'),
      ('<a class="btn btn-light" href="#business" data-anchor>For Organisations</a>',
       '<a class="btn btn-light" href="#business" data-anchor>For Organisations<small class="final-note">Corporate services, providers, marketplaces</small></a>')],
+    [('<section class="section testimonials">', '<section class="section testimonials" id="booking-guarantees">')],
+    # "Go further": on the homepage only, the products that have their own page (sitePages.ts).
+    [('<section class="finance-section" id="financial-administration">',
+      '<section class="v2-explore" id="explore-more"><div class="wrap">'
+      '<div class="section-head"><div><div class="eyebrow">Go further</div><h2 class="display">Everything else<br/><span class="serif">FlyttGo does.</span></h2></div>'
+      '<p>Each part of the platform has its own page, with the full demonstration and example data.</p></div>'
+      '<div class="v2-explore-grid">'
+      '<a href="/my-company" data-page="my-company" data-anchor><small>My Company</small><b>The business workspace</b><span>Customers, services, bookings, quotes, invoices and team.</span></a>'
+      '<a href="/my-company/finance" data-page="my-company-finance" data-anchor><small>Finance</small><b>Financial administration</b><span>Follow one job from invoice to voucher, ledger and report.</span></a>'
+      '<a href="/industries" data-page="industries" data-anchor><small>Industries</small><b>Built around your work</b><span>Plumbing, electrical, cleaning, moving and consulting.</span></a>'
+      '<a href="/how-it-works" data-page="how-it-works-page" data-anchor><small>How it works</small><b>What connects underneath</b><span>One record, one lifecycle, separated data.</span></a>'
+      '<a href="/moving" data-page="moving-hub" data-anchor><small>Moving and transport</small><b>Steps, vans and guarantees</b><span>What every booking includes.</span></a>'
+      '<a href="/business" data-page="corporate" data-anchor><small>For organisations</small><b>Corporate services</b><span>Accounts, approvals, monthly invoicing and reporting.</span></a>'
+      '<a href="/business/white-label" data-page="white-label" data-anchor><small>Your own marketplace</small><b>Marketplace Studio</b><span>Name, colours, domain and storefront, as an illustration.</span></a>'
+      '</div></div></section>'
+      '<section class="finance-section" id="financial-administration">')],
 ]
 
 def type_vars(css: str) -> str:

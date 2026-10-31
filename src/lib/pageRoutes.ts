@@ -23,6 +23,11 @@ const PAGE_TO_PATH: Record<Page, string> = {
   /* The restructured homepage under review (docs/HOMEPAGE_RESTRUCTURE.md); noindex, in no menu. */
   'home-preview':            '/preview/home',
   'home-lab':                '/preview/lab',
+  'my-company':              '/my-company',
+  'my-company-finance':      '/my-company/finance',
+  'industries':              '/industries',
+  'how-it-works-page':       '/how-it-works',
+  'moving-hub':              '/moving',
   'booking':                 '/book',
   'payment':                 '/payment',
   'tracking':                '/track',
@@ -108,6 +113,11 @@ const PAGE_TITLES: Record<Page, string> = {
   'transport-home':          'FlyttGo — Moving & Transport Marketplace in Norway',
   'home-preview':            'FlyttGo — Homepage preview',
   'home-lab':                'FlyttGo — Design refinement lab',
+  'my-company':              'My Company — run your service business · FlyttGo',
+  'my-company-finance':      'Financial administration · FlyttGo',
+  'industries':              'Industries · FlyttGo',
+  'how-it-works-page':       'How FlyttGo works',
+  'moving-hub':              'Moving and transport · FlyttGo',
   'booking':                 'Book a Move · FlyttGo',
   'payment':                 'Secure Payment · FlyttGo',
   'tracking':                'Track Your Delivery · FlyttGo',
@@ -165,6 +175,16 @@ const PAGE_DESCRIPTIONS: Record<Page, string> = {
     'Preview of the restructured FlyttGo homepage, for review. Not indexed.',
   'home-lab':
     'Private design refinement lab for the FlyttGo homepage preview. Not indexed, not on production.',
+  'my-company':
+    'The FlyttGo business workspace: customers, services and prices, bookings, appointments, jobs, quotes, invoices and team, shown with one example company.',
+  'my-company-finance':
+    'Follow one job from completed work to invoice, payment, voucher, financial record and report. Example data; your accountant reviews.',
+  'industries':
+    'How plumbing, electrical, cleaning, moving and consulting businesses set up their services, bookings and workflows on FlyttGo.',
+  'how-it-works-page':
+    'What connects underneath: one record for bookings, work and money, the lifecycle from first search to final record, and how data stays separated between marketplaces.',
+  'moving-hub':
+    'Moving and transport services, the four booking steps, van sizes and what every booking includes.',
   'transport-home':
     "Book approved movers and cargo drivers across Norway. Upfront prices incl. MVA, tracking during the job and secure card payment through Stripe.",
   'booking':

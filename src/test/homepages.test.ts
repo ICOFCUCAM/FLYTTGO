@@ -51,6 +51,18 @@ describe('the two front pages', () => {
     expect(newDesign('acme.flyttgo.no')).toBe(false);
   });
 
+  it('the new design\'s pages have their own paths, and every moved section has a page that holds it', async () => {
+    for (const [page, path] of [['my-company', '/my-company'], ['my-company-finance', '/my-company/finance'], ['industries', '/industries'], ['how-it-works-page', '/how-it-works'], ['moving-hub', '/moving']] as const) {
+      expect(pageToPath(page)).toBe(path);
+      expect(pathToPage(path)).toBe(page);
+    }
+    const { HOME_SECTIONS, PAGE_SECTIONS, SECTION_PAGE } = await import('../components/homeV2/sitePages');
+    for (const [section, page] of Object.entries(SECTION_PAGE)) {
+      expect(HOME_SECTIONS).not.toContain(section);
+      expect(PAGE_SECTIONS[page]).toContain(section);
+    }
+  });
+
   it('the selected design uses only variants the lab offers', async () => {
     const { DEFAULT_VARIANTS, VARIANT_OPTIONS } = await import('../components/homeV2/design.config');
     for (const o of VARIANT_OPTIONS) expect(o.options.map(x => x.value)).toContain(DEFAULT_VARIANTS[o.key]);

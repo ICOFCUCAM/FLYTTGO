@@ -10,6 +10,7 @@ import { displayPhone, useCompanyIdentity } from '../lib/companyIdentity';
 import { isTransportHost } from '../lib/hosts';
 import { newDesign } from '../lib/siteDesign';
 import { PENDING_SECTION } from './homeV2/pendingSection';
+import { SECTION_PAGE } from './homeV2/sitePages';
 
 type Lang = 'en' | 'no';
 
@@ -220,7 +221,7 @@ export default function Header() {
         return;
       }
       try { sessionStorage.setItem(PENDING_SECTION, JSON.stringify({ id, tab })); } catch { /* private mode */ }
-      handleNav(homeOfDesign);
+      handleNav(newDesign() ? (SECTION_PAGE[id] ?? homeOfDesign) : homeOfDesign);
     },
   });
   const jt = (key: string) => t(`header.journeys.${key}`);
@@ -233,11 +234,14 @@ export default function Header() {
         section(jt('professional'), 'industry-experiences', undefined, jt('professionalDesc')),
         section(jt('hospitality'), 'marketplace', undefined, jt('hospitalityDesc')),
         page(jt('services'), 'services', jt('servicesDesc')),
+        page(jt('industriesPage'), 'industries', jt('industriesPageDesc')),
+        page(jt('movingPage'), 'moving-hub', jt('movingPageDesc')),
       ] },
       { title: t('header.movingTools'), items: MOVING_TOOLS.map((tool) => page(tool.label, tool.page, tool.desc)) },
     ] },
     { id: 'company', label: jt('myCompany'), width: 'w-[min(620px,calc(100vw-32px))]', columns: [
       { title: jt('runTitle'), items: [
+        page(jt('openMyCompany'), 'my-company', jt('openMyCompanyDesc')),
         section(jt('overview'), 'business-workspace', '[data-bw="overview"]'),
         section(jt('servicesPricing'), 'business-workspace', '[data-bw="services"]'),
         section(jt('customers'), 'business-workspace', '[data-bw="customers"]'),
@@ -245,6 +249,7 @@ export default function Header() {
         section(jt('quotes'), 'business-workspace', '[data-bw="quotes"]'),
       ] },
       { title: jt('moneyTitle'), items: [
+        page(jt('openFinance'), 'my-company-finance', jt('openFinanceDesc')),
         section(jt('employees'), 'business-workspace', '[data-bw="team"]'),
         section(jt('invoices'), 'financial-administration', '[data-finance="invoices"]'),
         section(jt('payments'), 'financial-administration', '[data-finance="payments"]'),
@@ -428,7 +433,7 @@ export default function Header() {
                     )}
                   </div>
                 ))}
-                <button onClick={() => toSection('how-flyttgo-works')} className="px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.journeys.howItWorks')}</button>
+                <button onClick={() => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page'))} className="px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.journeys.howItWorks')}</button>
                 <button onClick={() => handleNav('driver-onboarding')} className="px-1.5 xl:px-4 py-2 whitespace-nowrap rounded-lg text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition">{t('header.becomeDriver')}</button>
               </nav>
             )}
@@ -642,7 +647,7 @@ export default function Header() {
               </div>
             ))}
             {preview && (
-              <button onClick={() => toSection('how-flyttgo-works')} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.journeys.howItWorks')}</button>
+              <button onClick={() => (document.getElementById('how-flyttgo-works') ? toSection('how-flyttgo-works') : handleNav('how-it-works-page'))} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.journeys.howItWorks')}</button>
             )}
             {preview && (
               <button onClick={() => handleNav('driver-onboarding')} className="block w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg text-gray-700 hover:bg-gray-50">{t('header.becomeDriver')}</button>
