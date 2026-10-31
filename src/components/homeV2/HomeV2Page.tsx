@@ -25,7 +25,7 @@ import { initDesign as initEn } from '../platformHome/design-scripts';
 import { initDesign as initNo } from '../platformHome/design-scripts.no';
 import { installDemoRecords } from './demoRecords';
 import { installStudio } from './studioPreview';
-import { applyDesign, DEFAULT_TOKENS, DEFAULT_VARIANTS } from './design.config';
+import { applyDesign, DEFAULT_TOKENS, DEFAULT_VARIANTS, googleFontsHref } from './design.config';
 import './design.v2.css';
 import './homeV2.css';
 
@@ -69,7 +69,8 @@ function installMotion(el: HTMLElement) {
   return () => io.disconnect();
 }
 
-const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap';
+/* The selected typefaces (design.config.ts). */
+const FONTS = googleFontsHref([DEFAULT_TOKENS.fontDisplay, DEFAULT_TOKENS.fontBody, DEFAULT_TOKENS.fontAccent]);
 
 export default function HomeV2Page() {
   const { setPage, setShowAuthModal, setAuthMode } = useApp();
