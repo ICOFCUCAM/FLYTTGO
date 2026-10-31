@@ -1020,7 +1020,10 @@
 .fgv2 .wl-search span { flex: 1; padding: 14px 16px; font-size: 14px; color: var(--muted); }
 .fgv2 .wl-search b { padding: 14px 20px; color: #fff; background: var(--wl-accent, var(--blue)); font-size: 13px; letter-spacing: .04em; transition: background var(--motion-duration); }
 /* Markup for the next two refinements, shown once they are styled. */
-.fgv2 .wl-group, .fgv2 .final-note { display: none; }
+.fgv2 .final-note { display: none; }
+.fgv2 .wl-group { display: block; margin: 26px 0 12px; padding-top: 14px; border-top: 1px solid var(--blue); font: 700 13px var(--font-display); color: var(--ink); letter-spacing: -.005em; }
+.fgv2 .wl-config > .wl-group:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.fgv2 .wl-more > .wl-group { margin-top: 22px; }
 .fgv2 .wl-more > label, .fgv2 .wl-more > .wl-setting-label { margin-top: 14px; }
 .fgv2 .wl-more > :first-child { margin-top: 0; }
 .fgv2 .wl-more input[type="color"] { width: 64px; padding: 4px; cursor: pointer; }
