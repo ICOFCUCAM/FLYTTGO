@@ -1101,6 +1101,13 @@
   .fgv2[data-motion="on"] .hero-ledger a:after, .fgv2[data-motion="on"] .market-card .card-arrow { transition: transform .3s; }
   .fgv2[data-motion="on"] .market-card:hover .card-arrow { transform: translate(3px, -3px); }
 }
+/* Forced colours (Windows high contrast): chips, cards and selected tabs keep visible boundaries. */
+@media (forced-colors: active) {
+  .fgv2 :is(.v2-chip, .entry-card, .market-card, .service-card, .fleet-card, .bw-frame, .finance-frame, .wl-builder, .network-panel, .fgp-oldcard) { border: 1px solid CanvasText; }
+  .fgv2 :is(.v2-explorer button, .network-controls button, .industry-tab, .bw-nav button, .finance-side button)[aria-pressed="true"],
+  .fgv2 .industry-tab[aria-selected="true"] { outline: 2px solid Highlight; }
+  .fgv2 .hero-ledger a:before { background: Highlight; }
+}
 /* Everything is visible whenever motion cannot or should not run: printing, motion off in the studio. */
 @media print { .fgv2 :is(.v2-reveal, .v2-reveal *) { opacity: 1 !important; transform: none !important; clip-path: none !important; } }
 .fgv2[data-motion="off"] :is(.v2-reveal, .v2-reveal *) { opacity: 1; transform: none; clip-path: none; }
