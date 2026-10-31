@@ -524,6 +524,10 @@
 .fgv2 .v2-totals b { color: var(--ink); font-weight: 600; }
 .fgv2 .v2-total-final { padding-top: 8px; margin-top: 4px; border-top: 2px solid var(--evergreen); color: var(--ink); font-weight: 700; }
 .fgv2 .v2-total-final b { font: 700 20px var(--font-display); color: var(--evergreen); }
+/* Notes under the financial workspace: four ruled principles, then the important distinction set apart. */
+.fgv2 .finance-principles { gap: 0 32px; margin-top: 40px; }
+.fgv2 .finance-principles > * { padding-top: 16px; border-top: 1px solid var(--evergreen); }
+.fgv2 .finance-note { margin-top: 32px; padding: 18px 22px; background: var(--white); border: 1px solid var(--line); border-left: 3px solid var(--gold); max-width: 92ch; }
 @media (max-width: 900px) {
   .fgv2 :is(.finance-body > *, .finance-main, .finance-side) { min-width: 0; }
   .fgv2 .finance-body { grid-template-columns: 1fr; }
